@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo · Sistema de Gestión de Talento Humano</title>
+<style>
+:root{
+  --marca:#123A5C; --marca-2:#0d2b44; --accion:#1B6EC2; --accion-h:#155a9e;
+  --exito:#157347; --exito-bg:#E8F5EE;
+  --alerta:#B45309; --alerta-bg:#FDF3E7;
+  --error:#B02A37; --error-bg:#FBEDEE;
+  --txt:#111827; --txt-2:#4B5563; --txt-3:#9CA3AF;
+  --borde:#E5E7EB; --fondo:#F7F8FA; --blanco:#fff;
+  --r:6px; --sombra:0 4px 16px rgba(17,24,39,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:var(--fondo);color:var(--txt);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ---------- aviso ---------- */
+#aviso{background:#0d2b44;color:#c8dcf0;font-size:12.5px;padding:7px 20px;text-align:center;letter-spacing:.2px}
+#aviso b{color:#fff}
+
+/* ---------- layout ---------- */
+#app{display:flex;min-height:calc(100vh - 32px)}
+#lateral{width:236px;background:var(--marca);color:#cfe0ee;flex-shrink:0;display:flex;flex-direction:column}
+#logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.10)}
+#logo .n{color:#fff;font-weight:600;font-size:15px;letter-spacing:-.2px}
+#logo .s{font-size:11.5px;color:#8fb0cd;margin-top:2px}
+nav{padding:10px 8px;flex:1}
+nav .grupo{font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;color:#7799b8;padding:14px 12px 6px}
+nav a{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:var(--r);color:#cfe0ee;
+      text-decoration:none;font-size:14px;cursor:pointer;margin-bottom:1px}
+nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+nav a.on{background:var(--accion);color:#fff;font-weight:500}
+nav a .ic{width:16px;text-align:center;font-size:13px;opacity:.85}
+nav a .pill{margin-left:auto;background:var(--alerta);color:#fff;font-size:10.5px;font-weight:600;
+      padding:1px 6px;border-radius:9px}
+
+#cuerpo{flex:1;min-width:0;display:flex;flex-direction:column}
+#top{background:var(--blanco);border-bottom:1px solid var(--borde);padding:0 26px;height:54px;
+     display:flex;align-items:center;justify-content:space-between}
+#top .emp{font-weight:600;font-size:14.5px}
+#top .emp span{color:var(--txt-3);font-weight:400;font-size:13px;margin-left:8px}
+#top .usr{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--txt-2)}
+#top .av{width:29px;height:29px;border-radius:50%;background:var(--accion);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+main{padding:26px;max-width:1280px;width:100%}
+
+/* ---------- tipografía ---------- */
+h1{font-size:24px;font-weight:600;letter-spacing:-.3px;margin-bottom:3px}
+h2{font-size:18px;font-weight:600;margin-bottom:12px}
+h3{font-size:14px;font-weight:600;margin-bottom:9px}
+.sub{color:var(--txt-2);font-size:13.5px;margin-bottom:20px}
+.lbl{font-size:12.5px;font-weight:500;color:var(--txt-2);display:block;margin-bottom:5px}
+.ayuda{font-size:12px;color:var(--txt-3);margin-top:4px}
+
+/* ---------- componentes ---------- */
+.card{background:var(--blanco);border:1px solid var(--borde);border-radius:8px;padding:18px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)} .g5{grid-template-columns:repeat(5,1fr)}
+
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--r);
+     font-size:13.5px;font-weight:500;border:1px solid transparent;cursor:pointer;font-family:inherit}
+.btn-p{background:var(--accion);color:#fff} .btn-p:hover{background:var(--accion-h)}
+.btn-s{background:#fff;border-color:var(--borde);color:var(--txt)} .btn-s:hover{background:#f3f5f8}
+.btn-t{background:none;color:var(--txt-2)} .btn-t:hover{color:var(--txt)}
+.btn-d{background:var(--error);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+input,select{width:100%;height:36px;padding:0 10px;border:1px solid var(--borde);border-radius:var(--r);
+     font-size:14px;font-family:inherit;background:#fff;color:var(--txt)}
+input:focus,select:focus{outline:2px solid rgba(27,110,194,.28);border-color:var(--accion)}
+input.err{border-color:var(--error)}
+.msg-err{color:var(--error);font-size:12.5px;margin-top:4px;display:none}
+.msg-err.on{display:block}
+
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:11px}
+.t-ok{background:var(--exito-bg);color:var(--exito)}
+.t-gr{background:#EEF0F3;color:var(--txt-2)}
+.t-al{background:var(--alerta-bg);color:var(--alerta)}
+.t-er{background:var(--error-bg);color:var(--error)}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{background:var(--marca);color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:12.5px;
+     position:sticky;top:0}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--borde)}
+tbody tr:hover{background:#f6f9fc;cursor:pointer}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabla-wrap{background:#fff;border:1px solid var(--borde);border-radius:8px;overflow:hidden}
+
+.barra{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+.barra input,.barra select{height:34px;width:auto;min-width:130px;font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:5px;background:#E9F1FA;color:var(--accion);
+     font-size:12px;padding:3px 9px;border-radius:12px;font-weight:500}
+.chip b{cursor:pointer}
+.cab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:14px}
+
+.kpi .v{font-size:31px;font-weight:600;letter-spacing:-.8px;line-height:1.15}
+.kpi .l{font-size:12.5px;color:var(--txt-2);margin-top:3px}
+.kpi .d{font-size:12px;margin-top:6px}
+.up{color:var(--exito)} .down{color:var(--error)}
+
+.accion-card{background:#fff;border:1px solid var(--borde);border-left:4px solid var(--alerta);
+     border-radius:8px;padding:15px 16px;cursor:pointer}
+.accion-card:hover{box-shadow:var(--sombra)}
+.accion-card.rojo{border-left-color:var(--error)}
+.accion-card.azul{border-left-color:var(--accion)}
+.accion-card .v{font-size:27px;font-weight:600;letter-spacing:-.6px}
+.accion-card .l{font-size:12.5px;color:var(--txt-2);margin-top:2px}
+.accion-card .go{font-size:12px;color:var(--accion);margin-top:8px;font-weight:500}
+
+.aviso{border-radius:var(--r);padding:11px 13px;font-size:13px;display:flex;gap:9px;align-items:flex-start}
+.a-al{background:var(--alerta-bg);color:#7a3a06;border:1px solid #f3ddc2}
+.a-er{background:var(--error-bg);color:#7d1d26;border:1px solid #f0cfd2}
+.a-ok{background:var(--exito-bg);color:#0e5232;border:1px solid #c9e6d6}
+.a-in{background:#EAF2FA;color:#123A5C;border:1px solid #cfe0f0}
+
+.vacio{text-align:center;padding:52px 20px}
+.vacio .t{font-size:16px;font-weight:600;margin-bottom:5px}
+.vacio .d{font-size:13.5px;color:var(--txt-2);margin-bottom:16px}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--borde);margin-bottom:18px}
+.tabs a{padding:9px 14px;font-size:13.5px;color:var(--txt-2);cursor:pointer;border-bottom:2px solid transparent;font-weight:500}
+.tabs a.on{color:var(--accion);border-bottom-color:var(--accion)}
+
+.ficha{background:#F4F7FB;border:1px solid #dbe6f0;border-radius:var(--r);padding:12px 14px;
+     display:flex;gap:22px;flex-wrap:wrap;font-size:13px;margin-bottom:16px}
+.ficha .i .k{font-size:11px;color:var(--txt-3);text-transform:uppercase;letter-spacing:.4px}
+.ficha .i .v{font-weight:600;margin-top:1px}
+
+.pasos{display:flex;gap:0;margin-bottom:22px}
+.paso{flex:1;text-align:center;font-size:12px;color:var(--txt-3);position:relative;padding-top:26px}
+.paso::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+     width:12px;height:12px;border-radius:50%;background:#D8DEE6}
+.paso::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:2px;background:#D8DEE6;z-index:-1}
+.paso:last-child::after{display:none}
+.paso.on{color:var(--accion);font-weight:600}
+.paso.on::before{background:var(--accion)}
+.paso.hecho::before{background:var(--exito)}
+
+/* ---------- modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;
+     justify-content:center;padding:20px;z-index:50}
+.overlay.on{display:flex}
+.modal{background:#fff;border-radius:9px;box-shadow:var(--sombra);width:100%;max-height:90vh;overflow:auto}
+.m-sm{max-width:460px} .m-lg{max-width:800px} .m-md{max-width:600px}
+.m-cab{padding:17px 20px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center}
+.m-cab h2{margin:0;font-size:16.5px}
+.m-cab .x{cursor:pointer;color:var(--txt-3);font-size:20px;line-height:1}
+.m-body{padding:20px}
+.m-pie{padding:14px 20px;border-top:1px solid var(--borde);display:flex;justify-content:flex-end;gap:9px;background:#FAFBFC}
+
+.toast{position:fixed;top:16px;right:16px;background:var(--marca);color:#fff;padding:11px 16px;
+     border-radius:var(--r);font-size:13.5px;box-shadow:var(--sombra);z-index:99;display:none}
+.toast.on{display:block}
+
+.pantalla{display:none} .pantalla.on{display:block}
+.mini{font-size:12.5px;color:var(--txt-2)}
+.bar{height:7px;background:#EEF1F5;border-radius:4px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--accion)}
+.lista-dist div{display:flex;justify-content:space-between;font-size:13px;padding:5px 0}
+.lista-dist div span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+
+@media(max-width:1000px){
+  #lateral{display:none} main{padding:16px}
+  .g4,.g5,.g3,.g2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="aviso"><b>Prototipo de diseño</b> · Datos ficticios · No guarda información · Sirve para acordar el diseño antes de programar</div>
+
+<div id="app">
+  <aside id="lateral">
+    <div id="logo">
+      <div class="n">Gestión de Talento Humano</div>
+      <div class="s">Sistema de acompañamiento laboral</div>
+    </div>
+    <nav>
+      <a class="on" data-ir="inicio"><span class="ic">◧</span> Inicio</a>
+      <div class="grupo">Personal</div>
+      <a data-ir="empleados"><span class="ic">▤</span> Empleados</a>
+      <a data-ir="contratos"><span class="ic">▦</span> Contratos <span class="pill">7</span></a>
+      <div class="grupo">Novedades</div>
+      <a data-ir="incapacidades"><span class="ic">✚</span> Incapacidades</a>
+      <a data-ir="vacaciones"><span class="ic">☀</span> Vacaciones</a>
+      <a data-ir="licencias"><span class="ic">◔</span> Licencias y ausencias</a>
+      <div class="grupo">Movimientos</div>
+      <a data-ir="movimientos"><span class="ic">↗</span> Aumentos y promociones</a>
+      <a data-ir="terminaciones"><span class="ic">→</span> Terminaciones</a>
+      <div class="grupo">Sistema</div>
+      <a data-ir="auditoria"><span class="ic">◈</span> Auditoría</a>
+      <a data-ir="config"><span class="ic">⚙</span> Configuración</a>
+    </nav>
+  </aside>
+
+  <div id="cuerpo">
+    <div id="top">
+      <div class="emp">Distribuidora El Progreso S.A.S. <span>NIT 900.123.456-7</span></div>
+      <div class="usr"><span>Angela Lozano</span><div class="av">AL</div></div>
+    </div>
+    <main>
+
+    <!-- ══════════════ INICIO ══════════════ -->
+    <section class="pantalla on" id="p-inicio">
+      <h1>Buenos días, Angela</h1>
+      <div class="sub">Lunes, 17 de agosto de 2026</div>
+
+      <h2>Requiere tu atención</h2>
+      <div class="grid g4" style="margin-bottom:26px">
+        <div class="accion-card rojo" data-ir="contratos">
+          <div class="v">2</div><div class="l">Contratos vencidos sin gestionar</div>
+          <div class="go">Ver y gestionar →</div>
+        </div>
+        <div class="accion-card" data-ir="contratos">
+          <div class="v">3</div><div class="l">Contratos vencen en 30 días</div>
+          <div class="go">7 en 60 días · 9 en 90 días →</div>
+        </div>
+        <div class="accion-card azul" data-ir="empleados">
+          <div class="v">2</div><div class="l">Periodos de prueba terminan esta semana</div>
+          <div class="go">Ver empleados →</div>
+        </div>
+        <div class="accion-card" data-ir="vacaciones">
+          <div class="v">4</div><div class="l">Personas con vacaciones en riesgo</div>
+          <div class="go">Ver detalle →</div>
+        </div>
+      </div>
+
+      <h2>Vacaciones</h2>
+      <div class="grid g3" style="margin-bottom:26px">
+        <div class="card kpi"><div class="v">427,5</div><div class="l">Días acumulados por toda la planta</div>
+          <div class="d mini">Es un pasivo real de la empresa</div></div>
+        <div class="card kpi"><div class="v">4</div><div class="l">Personas con más de 15 días acumulados</div>
+          <div class="d up">▼ 1 frente al mes anterior</div></div>
+        <div class="card kpi"><div class="v">38</div><div class="l">Días disfrutados en agosto</div>
+          <div class="d mini">En 5 periodos registrados</div></div>
+      </div>
+
+      <h2>Planta</h2>
+      <div class="grid g2" style="margin-bottom:26px">
+        <div class="card kpi"><div class="v">34</div><div class="l">Empleados activos</div>
+          <div class="d up">▲ 2 frente al mes anterior</div></div>
+        <div class="card">
+          <h3>Distribución por tipo de contrato</h3>
+          <div class="lista-dist">
+            <div><span>Término indefinido</span><span>21</span></div>
+            <div class="bar"><i style="width:62%"></i></div>
+            <div><span>Término fijo</span><span>10</span></div>
+            <div class="bar"><i style="width:29%;background:#B45309"></i></div>
+            <div><span>Obra o labor</span><span>3</span></div>
+            <div class="bar"><i style="width:9%;background:#157347"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Rotación</h2>
+      <div class="grid g4" style="margin-bottom:26px">
+        <div class="card kpi"><div class="v">4,2%</div><div class="l">Índice de rotación de agosto</div></div>
+        <div class="card kpi"><div class="v">2 / 1</div><div class="l">Voluntaria / involuntaria</div></div>
+        <div class="card kpi"><div class="v">1</div><div class="l">Rotación temprana (menos de 6 meses)</div></div>
+        <div class="card">
+          <h3>Principales motivos de salida</h3>
+          <div class="lista-dist">
+            <div><span>Mejor oferta laboral — salario</span><span>2</span></div>
+            <div><span>Motivos personales o familiares</span><span>1</span></div>
+            <div><span>Reestructuración</span><span>1</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Ausentismo</h2>
+      <div class="grid g5" style="margin-bottom:26px">
+        <div class="card kpi"><div class="v">2,1%</div><div class="l">Ausentismo por causa médica</div></div>
+        <div class="card kpi"><div class="v">19</div><div class="l">Días perdidos — origen común</div></div>
+        <div class="card kpi"><div class="v">4</div><div class="l">Días perdidos — origen laboral</div></div>
+        <div class="card kpi"><div class="v">6</div><div class="l">Incapacidades del mes</div></div>
+        <div class="card kpi"><div class="v">3</div><div class="l">Días por ausencias no justificadas</div></div>
+      </div>
+
+      <h2>Composición y movimientos</h2>
+      <div class="grid g3">
+        <div class="card"><h3>Por rango de edad</h3><div class="lista-dist">
+          <div><span>Menos de 25</span><span>4</span></div><div><span>25 a 34</span><span>13</span></div>
+          <div><span>35 a 44</span><span>11</span></div><div><span>45 a 54</span><span>5</span></div>
+          <div><span>55 o más</span><span>1</span></div></div></div>
+        <div class="card"><h3>Por antigüedad</h3><div class="lista-dist">
+          <div><span>Menos de 6 meses</span><span>5</span></div><div><span>6 meses a 1 año</span><span>6</span></div>
+          <div><span>1 a 3 años</span><span>12</span></div><div><span>3 a 5 años</span><span>7</span></div>
+          <div><span>Más de 5 años</span><span>4</span></div></div></div>
+        <div class="card kpi"><div class="v">3</div><div class="l">Aumentos y promociones en agosto</div>
+          <div class="d mini">2 aumentos · 1 promoción</div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ EMPLEADOS ══════════════ -->
+    <section class="pantalla" id="p-empleados">
+      <div class="cab">
+        <div><h1>Empleados</h1><div class="sub" style="margin:0">34 activos · 9 inactivos</div></div>
+        <div style="display:flex;gap:9px">
+          <button class="btn btn-s" onclick="toast('Se exportarían 34 registros con los filtros aplicados')">Exportar</button>
+          <button class="btn btn-p" data-ir="nuevo-empleado">+ Nuevo empleado</button>
+        </div>
+      </div>
+      <div class="barra">
+        <input placeholder="Buscar por nombre o documento" style="min-width:250px">
+        <select><option>Estado: Activo</option><option>Estado: Inactivo</option><option>Todos</option></select>
+        <select><option>Todos los contratos</option><option>Término indefinido</option><option>Término fijo</option><option>Obra o labor</option></select>
+        <select><option>Todos los cargos</option><option>Auxiliar</option><option>Analista</option><option>Coordinador</option></select>
+        <span class="chip">Estado: Activo <b onclick="toast('Filtro removido')">×</b></span>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Documento</th><th>Nombre</th><th>Cargo</th><th>Tipo de contrato</th>
+          <th>Fecha de ingreso</th><th class="num">Saldo vac.</th><th>Estado</th></tr></thead>
+          <tbody id="tb-emp"></tbody></table>
+      </div>
+      <div class="mini" style="margin-top:11px">Mostrando 8 de 34 · La fila completa lleva a la ficha del empleado</div>
+    </section>
+
+    <!-- ══════════════ FICHA ══════════════ -->
+    <section class="pantalla" id="p-ficha">
+      <div class="cab">
+        <div>
+          <div class="mini" style="cursor:pointer;color:var(--accion)" data-ir="empleados">← Volver a empleados</div>
+          <h1 style="margin-top:6px">Carolina Restrepo Vélez</h1>
+          <div class="sub" style="margin:0">Coordinadora de Operaciones · <span class="tag t-ok">Activa</span></div>
+        </div>
+        <div style="display:flex;gap:9px"><button class="btn btn-s">Editar</button></div>
+      </div>
+      <div class="ficha">
+        <div class="i"><div class="k">Documento</div><div class="v">43.887.201</div></div>
+        <div class="i"><div class="k">Fecha de ingreso</div><div class="v">3 de febrero de 2022</div></div>
+        <div class="i"><div class="k">Antigüedad</div><div class="v">4 años, 6 meses</div></div>
+        <div class="i"><div class="k">Tipo de contrato</div><div class="v">Término indefinido</div></div>
+        <div class="i"><div class="k">Salario</div><div class="v">$ 3.200.000</div></div>
+        <div class="i"><div class="k">Saldo de vacaciones</div><div class="v" style="color:var(--alerta)">17,25 días</div></div>
+      </div>
+      <div class="aviso a-al" style="margin-bottom:18px"><span>⚠</span>
+        <div>Esta persona acumula más de 15 días de vacaciones. Además, cumple un año de su último disfrute en octubre
+        y no ha tomado los seis días hábiles continuos que exige la ley.</div></div>
+      <div class="tabs">
+        <a class="on">Datos personales</a><a>Contrato</a><a>Novedades</a><a>Movimientos</a>
+      </div>
+      <div class="grid g2">
+        <div class="card"><h3>Identificación</h3>
+          <div class="lista-dist">
+            <div><span>Tipo de documento</span><span>Cédula de ciudadanía</span></div>
+            <div><span>Fecha de nacimiento</span><span>14/07/1991</span></div>
+            <div><span>Lugar de nacimiento</span><span>Medellín, Antioquia, Colombia</span></div>
+            <div><span>Género</span><span>Femenino</span></div>
+          </div></div>
+        <div class="card"><h3>Seguridad social</h3>
+          <div class="lista-dist">
+            <div><span>EPS</span><span>Sura</span></div>
+            <div><span>Fondo de pensión</span><span>Protección</span></div>
+            <div><span>ARL</span><span>Sura · Nivel I</span></div>
+            <div><span>Caja de compensación</span><span>Comfama</span></div>
+          </div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ NUEVO EMPLEADO ══════════════ -->
+    <section class="pantalla" id="p-nuevo-empleado">
+      <div class="mini" style="cursor:pointer;color:var(--accion)" data-ir="empleados">← Cancelar y volver</div>
+      <h1 style="margin-top:6px">Nuevo empleado</h1>
+      <div class="sub">Paso 1 de 4 · Los datos se guardan al terminar</div>
+      <div class="pasos">
+        <div class="paso on">Identificación</div>
+        <div class="paso">Residencia y seguridad social</div>
+        <div class="paso">Información contractual</div>
+        <div class="paso">Perfil sociodemográfico</div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:16px">Identificación</h3>
+        <div class="grid g3" style="margin-bottom:16px">
+          <div><label class="lbl">Tipo de documento</label>
+            <select><option>Cédula de ciudadanía</option><option>Tarjeta de identidad</option>
+            <option>Cédula de extranjería</option><option>Pasaporte</option><option>PPT</option></select></div>
+          <div><label class="lbl">Número de documento</label>
+            <input id="ne-doc" value="43887201" onblur="chequeoReingreso()">
+            <div class="ayuda">Es la llave con la que se vincula toda la información de la persona</div></div>
+          <div><label class="lbl">Género</label><select><option>Femenino</option><option>Masculino</option></select></div>
+        </div>
+        <div id="ne-reingreso" class="aviso a-al" style="margin-bottom:16px;display:none">
+          <span>⚠</span>
+          <div><b>Esta persona ya tuvo una vinculación anterior con la empresa</b>, entre el 12/03/2021 y el 30/07/2026.
+          Verifique si es válido pactar periodo de prueba en este contrato.
+          <div style="margin-top:5px">Salió hace 18 días. Cuando el reingreso ocurre dentro de los 30 días siguientes a la salida,
+          conviene revisarlo con su asesor laboral antes de continuar.</div></div>
+        </div>
+        <div class="grid g4" style="margin-bottom:16px">
+          <div><label class="lbl">Primer nombre</label><input></div>
+          <div><label class="lbl">Segundo nombre <span style="color:var(--txt-3);font-weight:400">(opcional)</span></label><input></div>
+          <div><label class="lbl">Primer apellido</label><input></div>
+          <div><label class="lbl">Segundo apellido <span style="color:var(--txt-3);font-weight:400">(opcional)</span></label><input></div>
+        </div>
+        <div class="grid g4">
+          <div><label class="lbl">Fecha de nacimiento</label><input type="date"></div>
+          <div><label class="lbl">País de nacimiento</label>
+            <select id="ne-pais" onchange="cambiaPais()"><option>Colombia</option><option>Venezuela</option><option>Ecuador</option><option>Perú</option></select></div>
+          <div><label class="lbl">Departamento de nacimiento</label>
+            <select id="ne-depto"><option>Antioquia</option><option>Cundinamarca</option><option>Valle del Cauca</option></select>
+            <input id="ne-depto-txt" style="display:none" placeholder="Escribir departamento">
+            <div class="ayuda" id="ne-ayuda-ext" style="display:none;color:var(--alerta)">Fuera de Colombia se digita a mano.
+            Verifica la ortografía: el sistema no puede validarlo.</div></div>
+          <div><label class="lbl">Ciudad de nacimiento</label>
+            <select id="ne-ciudad"><option>Medellín</option><option>Envigado</option><option>Bello</option></select>
+            <input id="ne-ciudad-txt" style="display:none" placeholder="Escribir ciudad"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:18px">
+        <button class="btn btn-t" data-ir="empleados">Cancelar</button>
+        <button class="btn btn-p" onclick="toast('En el sistema real avanzaría al paso 2')">Continuar →</button>
+      </div>
+    </section>
+
+    <!-- ══════════════ CONTRATOS ══════════════ -->
+    <section class="pantalla" id="p-contratos">
+      <div class="cab">
+        <div><h1>Contratos</h1><div class="sub" style="margin:0">Vista por defecto: los que vencen en los próximos 90 días</div></div>
+        <button class="btn btn-s" onclick="toast('Se exportarían 9 registros')">Exportar</button>
+      </div>
+      <div class="aviso a-er" style="margin-bottom:16px"><span>●</span>
+        <div><b>2 contratos vencieron sin registrar prórroga ni terminación.</b>
+        Bajo la Ley 2466 de 2025, un contrato que vence sin preaviso queda prorrogado automáticamente por un término
+        igual al último pactado. Conviene registrarlo para que el sistema refleje la realidad.</div></div>
+      <div class="barra">
+        <select><option>Vencen en 90 días</option><option>Vencen en 30 días</option><option>Vencen en 60 días</option><option>Todos</option></select>
+        <select><option>Todos los contratos</option><option>Término fijo</option><option>Obra o labor</option></select>
+        <select><option>Cualquier número de prórrogas</option><option>3 o más</option></select>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Empleado</th><th>Tipo</th><th>Inicio</th><th>Vence</th>
+          <th class="num">Prórrogas</th><th>Límite de preaviso</th><th>Estado</th></tr></thead>
+          <tbody id="tb-con"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ DETALLE CONTRATO ══════════════ -->
+    <section class="pantalla" id="p-contrato">
+      <div class="mini" style="cursor:pointer;color:var(--accion)" data-ir="contratos">← Volver a contratos</div>
+      <div class="cab" style="margin-top:6px">
+        <div><h1>Contrato de Juan Pablo Mejía</h1>
+          <div class="sub" style="margin:0">Auxiliar de Bodega · Término fijo · <span class="tag t-al">Vence en 26 días</span></div></div>
+        <div style="display:flex;gap:9px">
+          <button class="btn btn-s" onclick="abrir('m-indef')">Cambiar a término indefinido</button>
+          <button class="btn btn-p" onclick="abrir('m-renovar')">Renovar contrato</button>
+        </div>
+      </div>
+      <div class="grid g4" style="margin-bottom:20px">
+        <div class="card kpi"><div class="v">12/09/26</div><div class="l">Fecha de vencimiento</div></div>
+        <div class="card kpi"><div class="v">13/08/26</div><div class="l">Límite de preaviso</div>
+          <div class="d" style="color:var(--alerta)">Quedan 3 días</div></div>
+        <div class="card kpi"><div class="v">3</div><div class="l">Prórrogas acumuladas</div>
+          <div class="d" style="color:var(--alerta)">La 5ª deberá ser de mínimo 1 año</div></div>
+        <div class="card kpi"><div class="v">1a 2m</div><div class="l">Duración total del vínculo</div>
+          <div class="d mini">Tope legal: 4 años</div></div>
+      </div>
+      <div class="card">
+        <h3>Historial de periodos</h3>
+        <table style="margin-top:8px"><thead><tr>
+          <th>#</th><th>Evento</th><th>Modalidad</th><th>Desde</th><th>Hasta</th><th>Duración</th><th>Registrado</th>
+        </tr></thead><tbody>
+          <tr><td>1</td><td>Periodo inicial</td><td>Término fijo</td><td>15/07/2025</td><td>14/10/2025</td><td>3 meses</td><td>15/07/2025 · Angela L.</td></tr>
+          <tr><td>2</td><td>Prórroga pactada</td><td>Término fijo</td><td>15/10/2025</td><td>14/01/2026</td><td>3 meses</td><td>02/10/2025 · Angela L.</td></tr>
+          <tr><td>3</td><td>Prórroga automática</td><td>Término fijo</td><td>15/01/2026</td><td>14/04/2026</td><td>3 meses</td><td>15/01/2026 · Sistema</td></tr>
+          <tr><td>4</td><td>Prórroga pactada</td><td>Término fijo</td><td>15/04/2026</td><td>12/09/2026</td><td>5 meses</td><td>28/03/2026 · Angela L.</td></tr>
+        </tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ INCAPACIDADES ══════════════ -->
+    <section class="pantalla" id="p-incapacidades">
+      <div class="cab">
+        <div><h1>Incapacidades</h1><div class="sub" style="margin:0">6 registradas en agosto · 23 días perdidos</div></div>
+        <div style="display:flex;gap:9px">
+          <button class="btn btn-s" onclick="toast('El Excel incluye documento, nombre y cargo además de los datos de la incapacidad')">Exportar</button>
+          <button class="btn btn-p" onclick="abrirNovedad('incapacidad')">+ Nueva incapacidad</button></div>
+      </div>
+      <div class="barra">
+        <input type="date" value="2026-01-01"><span class="mini">hasta</span><input type="date" value="2026-08-17">
+        <select><option>Todos los orígenes</option><option>Común</option><option>Laboral</option></select>
+        <select><option>Todas las EPS</option><option>Sura</option><option>Sanitas</option><option>Nueva EPS</option></select>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Documento</th><th>Nombre</th><th>Cargo</th><th>Inicio</th><th>Fin</th>
+          <th class="num">Días</th><th>Diagnóstico</th><th>Origen</th><th>Prórroga</th></tr></thead>
+          <tbody id="tb-inc"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ VACACIONES ══════════════ -->
+    <section class="pantalla" id="p-vacaciones">
+      <div class="cab">
+        <div><h1>Vacaciones</h1><div class="sub" style="margin:0">427,5 días acumulados por toda la planta</div></div>
+        <div style="display:flex;gap:9px">
+          <button class="btn btn-s">Exportar</button>
+          <button class="btn btn-p" onclick="abrirNovedad('vacaciones')">+ Registrar vacaciones</button></div>
+      </div>
+      <div class="aviso a-al" style="margin-bottom:16px"><span>⚠</span>
+        <div><b>4 personas tienen vacaciones en riesgo.</b> Tres acumulan más de 15 días y una cumple un año
+        el mes entrante sin haber tomado los seis días hábiles continuos que exige la ley.</div></div>
+      <div class="barra">
+        <input type="date" value="2026-01-01"><span class="mini">hasta</span><input type="date" value="2026-12-31">
+        <input placeholder="Buscar empleado" style="min-width:200px">
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Documento</th><th>Nombre</th><th>Cargo</th><th>Desde</th><th>Hasta</th>
+          <th class="num">Días hábiles</th><th class="num">Saldo después</th></tr></thead>
+          <tbody id="tb-vac"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ LICENCIAS ══════════════ -->
+    <section class="pantalla" id="p-licencias">
+      <div class="cab">
+        <div><h1>Licencias y ausencias</h1>
+          <div class="sub" style="margin:0">Licencias no remuneradas, ausencias y suspensiones. Todas suspenden el contrato.</div></div>
+        <div style="display:flex;gap:9px">
+          <button class="btn btn-s">Exportar</button>
+          <button class="btn btn-p" onclick="abrirNovedad('licencia')">+ Nueva novedad</button></div>
+      </div>
+      <div class="aviso a-in" style="margin-bottom:16px"><span>ℹ</span>
+        <div>Estos días se cuentan <b>corridos</b>: si dentro del periodo cae un domingo o un festivo,
+        ese día también cuenta. Es distinto de las vacaciones, que se cuentan en días hábiles.</div></div>
+      <div class="barra">
+        <input type="date" value="2026-01-01"><span class="mini">hasta</span><input type="date" value="2026-08-17">
+        <select><option>Todos los tipos</option><option>Licencia no remunerada</option><option>Ausencia</option><option>Suspensión</option></select>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Documento</th><th>Nombre</th><th>Cargo</th><th>Tipo</th><th>Desde</th><th>Hasta</th>
+          <th class="num">Días corridos</th></tr></thead><tbody id="tb-lic"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ MOVIMIENTOS ══════════════ -->
+    <section class="pantalla" id="p-movimientos">
+      <div class="cab">
+        <div><h1>Aumentos y promociones</h1><div class="sub" style="margin:0">3 movimientos en agosto</div></div>
+        <div style="display:flex;gap:9px"><button class="btn btn-s">Exportar</button>
+        <button class="btn btn-p" onclick="abrirNovedad('movimiento')">+ Nuevo movimiento</button></div>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Documento</th><th>Nombre</th><th>Tipo</th><th>Cargo anterior</th><th>Cargo nuevo</th>
+          <th class="num">Salario anterior</th><th class="num">Salario nuevo</th><th>Efectivo desde</th></tr></thead>
+          <tbody id="tb-mov"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ TERMINACIONES ══════════════ -->
+    <section class="pantalla" id="p-terminaciones">
+      <div class="cab">
+        <div><h1>Terminaciones</h1><div class="sub" style="margin:0">3 salidas en agosto</div></div>
+        <div style="display:flex;gap:9px"><button class="btn btn-s">Exportar</button>
+        <button class="btn btn-p" onclick="abrirNovedad('terminacion')">+ Registrar terminación</button></div>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Documento</th><th>Nombre</th><th>Cargo</th><th>Fecha de salida</th>
+          <th>Tipo de salida</th><th>Motivo</th><th>Rotación</th></tr></thead>
+          <tbody id="tb-ter"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ AUDITORÍA ══════════════ -->
+    <section class="pantalla" id="p-auditoria">
+      <div class="cab">
+        <div><h1>Auditoría</h1>
+          <div class="sub" style="margin:0">Toda acción realizada en el sistema. Esta tabla no se puede editar ni borrar.</div></div>
+        <button class="btn btn-s">Exportar</button>
+      </div>
+      <div class="barra">
+        <input type="date" value="2026-08-01"><span class="mini">hasta</span><input type="date" value="2026-08-17">
+        <select><option>Todos los usuarios</option><option>Angela Lozano</option><option>Marcela Ruiz</option></select>
+        <select><option>Todos los módulos</option><option>Empleados</option><option>Vacaciones</option><option>Incapacidades</option></select>
+        <select><option>Todas las acciones</option><option>Creó</option><option>Editó</option><option>Eliminó</option></select>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Fecha y hora</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Registro</th><th>Detalle</th></tr></thead>
+          <tbody id="tb-aud"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ══════════════ CONFIGURACIÓN ══════════════ -->
+    <section class="pantalla" id="p-config">
+      <h1>Configuración</h1>
+      <div class="sub">Parámetros de la empresa y gestión de usuarios</div>
+      <div class="tabs"><a class="on">Parámetros</a><a>Datos de la empresa</a><a>Usuarios y permisos</a><a>Facturación</a></div>
+      <div class="grid g2">
+        <div class="card">
+          <h3>¿El sábado es día laboral?</h3>
+          <div class="mini" style="margin-bottom:11px">Afecta el cálculo de los días de vacaciones y qué festivos aplican.
+          Si el sábado es laboral, un festivo que caiga en sábado sí se descuenta.</div>
+          <select><option>No, la empresa no trabaja los sábados</option><option>Sí, el sábado es día laboral</option></select>
+        </div>
+        <div class="card">
+          <h3>¿Las suspensiones afectan la acumulación de vacaciones?</h3>
+          <div class="mini" style="margin-bottom:11px">Si se activa, los días de licencia no remunerada, ausencia y suspensión
+          reducen proporcionalmente los 1,25 días que se acumulan cada mes.</div>
+          <select><option>Sí, reducen la acumulación</option><option>No, no la afectan</option></select>
+        </div>
+        <div class="card">
+          <h3>Perfil sociodemográfico</h3>
+          <div class="mini" style="margin-bottom:11px">Habilita un bloque opcional con estado civil, nivel educativo,
+          número de hijos y datos de vivienda y transporte. Es un insumo del Sistema de Gestión de Seguridad y Salud en el Trabajo.</div>
+          <select onchange="if(this.selectedIndex==0)document.getElementById('cfg-aviso').style.display='flex'">
+            <option>Sí, habilitado</option><option>No</option></select>
+          <div id="cfg-aviso" class="aviso a-al" style="margin-top:11px"><span>⚠</span>
+            <div>Los 34 empleados ya registrados quedarán con estos campos vacíos. Puedes completarlos cuando quieras;
+            si no lo haces, no pasa nada.</div></div>
+        </div>
+        <div class="card">
+          <h3>Correos que reciben las alertas</h3>
+          <div class="mini" style="margin-bottom:11px">Cada alerta llega a los administradores con acceso al módulo correspondiente.</div>
+          <div class="lista-dist">
+            <div><span>angela@elprogreso.com</span><span>Todos los módulos</span></div>
+            <div><span>marcela@elprogreso.com</span><span>Novedades</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL: buscar documento ══════════════ -->
+<div class="overlay" id="m-doc">
+  <div class="modal m-sm">
+    <div class="m-cab"><h2 id="m-doc-titulo">Nueva incapacidad</h2><span class="x" onclick="cerrar()">×</span></div>
+    <div class="m-body">
+      <label class="lbl">Número de documento del empleado</label>
+      <input id="doc-input" placeholder="Ej. 43887201" oninput="limpiarErrorDoc()">
+      <div class="msg-err" id="doc-error"></div>
+      <div class="ayuda">El empleado debe estar registrado y activo. Si acaba de ingresar y aún no está en el sistema,
+      regístralo primero.</div>
+      <div class="mini" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--borde)">
+        Para probar: <b>43887201</b> (Carolina) o <b>1017234891</b> (Juan Pablo) funcionan.
+        <b>99999999</b> muestra el error.</div>
+    </div>
+    <div class="m-pie">
+      <button class="btn btn-t" onclick="cerrar()">Cancelar</button>
+      <button class="btn btn-p" onclick="buscarDoc()">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL: formulario novedad ══════════════ -->
+<div class="overlay" id="m-form">
+  <div class="modal m-lg">
+    <div class="m-cab"><h2 id="m-form-titulo">Nueva incapacidad</h2><span class="x" onclick="cerrar()">×</span></div>
+    <div class="m-body">
+      <div class="ficha" id="f-ficha"></div>
+      <div id="f-campos"></div>
+    </div>
+    <div class="m-pie">
+      <button class="btn btn-t" onclick="cerrar()">Cancelar</button>
+      <button class="btn btn-p" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL: renovar ══════════════ -->
+<div class="overlay" id="m-renovar">
+  <div class="modal m-md">
+    <div class="m-cab"><h2>Renovar contrato</h2><span class="x" onclick="cerrar()">×</span></div>
+    <div class="m-body">
+      <div class="aviso a-in" style="margin-bottom:16px"><span>ℹ</span>
+        <div>Renovar es distinto de corregir la fecha. Si la fecha de finalización está mal digitada, usa
+        <b>Editar contrato</b>. Renovar registra una prórroga nueva, que es un hecho jurídico.</div></div>
+      <div class="ficha">
+        <div class="i"><div class="k">Periodo vigente</div><div class="v">15/04/2026 — 12/09/2026</div></div>
+        <div class="i"><div class="k">Prórrogas acumuladas</div><div class="v">3</div></div>
+        <div class="i"><div class="k">Duración total</div><div class="v">1 año, 2 meses</div></div>
+      </div>
+      <div class="grid g2" style="margin-bottom:14px">
+        <div><label class="lbl">Tipo de prórroga</label>
+          <select><option>Pactada por escrito</option><option>Automática por silencio</option></select>
+          <div class="ayuda">El límite de prórrogas cortas es distinto en cada caso</div></div>
+        <div><label class="lbl">Nueva fecha de finalización</label>
+          <input type="date" id="ren-fecha" value="2026-12-12" onchange="calcularRenovacion()"></div>
+      </div>
+      <div id="ren-resultado"></div>
+    </div>
+    <div class="m-pie">
+      <button class="btn btn-t" onclick="cerrar()">Cancelar</button>
+      <button class="btn btn-p" id="ren-btn" onclick="toast('Prórroga registrada')">Registrar prórroga</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL: cambiar a indefinido ══════════════ -->
+<div class="overlay" id="m-indef">
+  <div class="modal m-md">
+    <div class="m-cab"><h2>Cambiar a término indefinido</h2><span class="x" onclick="cerrar()">×</span></div>
+    <div class="m-body">
+      <p style="margin-bottom:14px">Vas a cambiar el contrato de <b>Juan Pablo Mejía</b> de término fijo a término indefinido.</p>
+      <div class="aviso a-in" style="margin-bottom:14px"><span>ℹ</span>
+        <div><b>Qué implica este cambio</b>
+        <div style="margin-top:6px">· El vínculo continúa. No hay salida ni liquidación.</div>
+        <div>· La fecha de ingreso no cambia: sigue siendo el 15/07/2025.</div>
+        <div>· La antigüedad y el saldo de vacaciones siguen corriendo desde esa fecha.</div>
+        <div>· Dejarán de generarse las alertas de vencimiento y renovación.</div>
+        <div>· El cambio queda registrado en el historial y en la auditoría.</div></div></div>
+      <div class="aviso a-al"><span>⚠</span>
+        <div>Este cambio no se puede revertir desde el sistema. Un contrato indefinido no puede volver a ser a término fijo.</div></div>
+    </div>
+    <div class="m-pie">
+      <button class="btn btn-t" onclick="cerrar()">Cancelar</button>
+      <button class="btn btn-p" onclick="toast('Contrato cambiado a término indefinido')">Confirmar cambio</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL: confirmar borrado ══════════════ -->
+<div class="overlay" id="m-borrar">
+  <div class="modal m-sm">
+    <div class="m-cab"><h2>Eliminar registro</h2><span class="x" onclick="cerrar()">×</span></div>
+    <div class="m-body">
+      <p style="margin-bottom:12px">Vas a eliminar las <b>vacaciones del 4 al 15 de julio de 2026</b> de Carolina Restrepo.</p>
+      <div class="aviso a-al"><span>⚠</span>
+        <div>Se devolverán <b>8 días hábiles</b> a su saldo. El saldo pasará de <b>17,25</b> a <b>25,25 días</b>.
+        <div style="margin-top:5px">Esta acción queda registrada en la auditoría con tu nombre y la fecha.</div></div></div>
+    </div>
+    <div class="m-pie">
+      <button class="btn btn-t" onclick="cerrar()">Cancelar</button>
+      <button class="btn btn-d" onclick="toast('Registro eliminado. Saldo actualizado.')">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════ datos ficticios ══════════════ */
+const EMP = {
+  '43887201':{n:'Carolina Restrepo Vélez',c:'Coordinadora de Operaciones',i:'03/02/2022',s:17.25},
+  '1017234891':{n:'Juan Pablo Mejía Ochoa',c:'Auxiliar de Bodega',i:'15/07/2025',s:12.75},
+  '71654322':{n:'Andrés Felipe Gómez',c:'Conductor',i:'01/09/2019',s:8.50},
+  '52998741':{n:'Marcela Ruiz Cárdenas',c:'Analista de Compras',i:'20/01/2024',s:21.00}
+};
+const empleados=[
+ ['43887201','Carolina Restrepo Vélez','Coordinadora de Operaciones','Término indefinido','03/02/2022','17,25','ok','Activa'],
+ ['1017234891','Juan Pablo Mejía Ochoa','Auxiliar de Bodega','Término fijo','15/07/2025','12,75','ok','Activo'],
+ ['71654322','Andrés Felipe Gómez','Conductor','Término indefinido','01/09/2019','8,50','ok','Activo'],
+ ['52998741','Marcela Ruiz Cárdenas','Analista de Compras','Término indefinido','20/01/2024','21,00','al','Activa'],
+ ['1094778120','Daniela Cardona Sierra','Auxiliar Administrativa','Término fijo','01/03/2026','3,75','ok','Activa'],
+ ['8412337','Ramiro Antonio Peña','Operario','Obra o labor','12/05/2026','2,50','ok','Activo'],
+ ['1023998457','Sebastián Ortiz Ramírez','Analista de Sistemas','Término indefinido','07/06/2026','1,25','ok','Activo'],
+ ['39887654','Luz Marina Betancur','Servicios Generales','Término indefinido','14/11/2018','16,50','al','Activa']
+];
+const contratos=[
+ ['Juan Pablo Mejía Ochoa','Término fijo','15/04/2026','12/09/2026','3','13/08/2026','al','Vence en 26 días'],
+ ['Daniela Cardona Sierra','Término fijo','01/03/2026','31/08/2026','1','01/08/2026','al','Vence en 14 días'],
+ ['Ramiro Antonio Peña','Obra o labor','12/05/2026','—','0','—','ok','Vigente'],
+ ['Carlos Alberto Zapata','Término fijo','10/02/2026','10/08/2026','2','11/07/2026','er','Vencido hace 7 días'],
+ ['Yeimy Paola Suárez','Término fijo','01/01/2026','31/07/2026','4','01/07/2026','er','Vencido hace 17 días'],
+ ['Nicolás Herrera Botero','Término fijo','01/06/2026','30/09/2026','0','31/08/2026','ok','Vence en 44 días'],
+ ['Sandra Milena Ospina','Término fijo','15/03/2026','14/10/2026','1','14/09/2026','ok','Vence en 58 días']
+];
+const incapacidades=[
+ ['43887201','Carolina Restrepo Vélez','Coordinadora de Operaciones','14/07/2026','16/07/2026','3','J06.9','Común','No'],
+ ['71654322','Andrés Felipe Gómez','Conductor','02/08/2026','09/08/2026','8','M54.5','Laboral','No'],
+ ['52998741','Marcela Ruiz Cárdenas','Analista de Compras','21/07/2026','23/07/2026','3','A09','Común','No'],
+ ['8412337','Ramiro Antonio Peña','Operario','05/08/2026','11/08/2026','7','S61.0','Laboral','Sí'],
+ ['1094778120','Daniela Cardona Sierra','Auxiliar Administrativa','30/07/2026','31/07/2026','2','R51','Común','No']
+];
+const vacaciones=[
+ ['43887201','Carolina Restrepo Vélez','Coordinadora de Operaciones','04/07/2026','15/07/2026','8','17,25'],
+ ['71654322','Andrés Felipe Gómez','Conductor','01/08/2026','12/08/2026','9','8,50'],
+ ['39887654','Luz Marina Betancur','Servicios Generales','15/06/2026','26/06/2026','9','16,50'],
+ ['1023998457','Sebastián Ortiz Ramírez','Analista de Sistemas','10/08/2026','14/08/2026','5','1,25']
+];
+const licencias=[
+ ['52998741','Marcela Ruiz Cárdenas','Analista de Compras','Licencia no remunerada','16/03/2026','15/04/2026','31'],
+ ['8412337','Ramiro Antonio Peña','Operario','Ausencia','22/07/2026','22/07/2026','1'],
+ ['1017234891','Juan Pablo Mejía Ochoa','Auxiliar de Bodega','Licencia no remunerada','06/08/2026','11/08/2026','6'],
+ ['71654322','Andrés Felipe Gómez','Conductor','Suspensión','03/06/2026','05/06/2026','3']
+];
+const movimientos=[
+ ['43887201','Carolina Restrepo Vélez','Promoción','Analista Senior','Coordinadora de Operaciones','$ 2.700.000','$ 3.200.000','01/08/2026'],
+ ['52998741','Marcela Ruiz Cárdenas','Aumento','Analista de Compras','Analista de Compras','$ 2.300.000','$ 2.500.000','01/08/2026'],
+ ['71654322','Andrés Felipe Gómez','Aumento','Conductor','Conductor','$ 1.800.000','$ 1.950.000','15/08/2026']
+];
+const terminaciones=[
+ ['1015887432','Carlos Alberto Zapata','Auxiliar Contable','31/07/2026','Renuncia','Mejor oferta laboral — salario','Voluntaria'],
+ ['1032447891','Yeimy Paola Suárez','Auxiliar de Ventas','15/08/2026','Terminación sin justa causa','Reestructuración o reducción de personal','Involuntaria'],
+ ['80112334','Hernán Darío Loaiza','Operario','05/08/2026','Expiración del plazo fijo pactado','Expiración del plazo fijo pactado','Fin natural']
+];
+const auditoria=[
+ ['17/08/2026 09:14','Angela Lozano','Vacaciones','Eliminó','Vacaciones de C. Restrepo 04–15 jul','8 días devueltos al saldo'],
+ ['17/08/2026 08:52','Marcela Ruiz','Incapacidades','Creó','Incapacidad de R. Peña 05–11 ago','7 días · origen laboral'],
+ ['16/08/2026 16:30','Angela Lozano','Empleados','Editó','Sebastián Ortiz Ramírez','Fecha de ingreso: 01/06/2026 → 07/06/2026'],
+ ['16/08/2026 11:05','Angela Lozano','Contratos','Creó','Prórroga de J.P. Mejía','15/04/2026 – 12/09/2026 · pactada'],
+ ['15/08/2026 15:22','Marcela Ruiz','Terminaciones','Creó','Y.P. Suárez','Terminación sin justa causa'],
+ ['15/08/2026 09:41','Angela Lozano','Movimientos','Creó','Aumento de A.F. Gómez','$1.800.000 → $1.950.000']
+];
+
+/* ══════════════ render ══════════════ */
+const tag=(t,x)=>'<span class="tag t-'+t+'">'+x+'</span>';
+function fila(cols,tds){return '<tr onclick="'+(tds||'')+'">'+cols+'</tr>';}
+
+document.getElementById('tb-emp').innerHTML = empleados.map(e=>
+ '<tr onclick="ir(\'ficha\')"><td>'+e[0]+'</td><td><b>'+e[1]+'</b></td><td>'+e[2]+'</td><td>'+e[3]+'</td><td>'+e[4]+
+ '</td><td class="num">'+e[5]+'</td><td>'+tag('ok',e[7])+'</td></tr>').join('');
+
+document.getElementById('tb-con').innerHTML = contratos.map(x=>
+ '<tr onclick="ir(\'contrato\')"><td><b>'+x[0]+'</b></td><td>'+x[1]+'</td><td>'+x[2]+'</td><td>'+x[3]+
+ '</td><td class="num">'+x[4]+'</td><td>'+x[5]+'</td><td>'+tag(x[6],x[7])+'</td></tr>').join('');
+
+document.getElementById('tb-inc').innerHTML = incapacidades.map(x=>
+ '<tr onclick="abrir(\'m-borrar\')"><td>'+x[0]+'</td><td><b>'+x[1]+'</b></td><td>'+x[2]+'</td><td>'+x[3]+'</td><td>'+x[4]+
+ '</td><td class="num">'+x[5]+'</td><td>'+x[6]+'</td><td>'+x[7]+'</td><td>'+x[8]+'</td></tr>').join('');
+
+document.getElementById('tb-vac').innerHTML = vacaciones.map(x=>
+ '<tr onclick="abrir(\'m-borrar\')"><td>'+x[0]+'</td><td><b>'+x[1]+'</b></td><td>'+x[2]+'</td><td>'+x[3]+'</td><td>'+x[4]+
+ '</td><td class="num">'+x[5]+'</td><td class="num">'+x[6]+'</td></tr>').join('');
+
+document.getElementById('tb-lic').innerHTML = licencias.map(x=>
+ '<tr><td>'+x[0]+'</td><td><b>'+x[1]+'</b></td><td>'+x[2]+'</td><td>'+x[3]+'</td><td>'+x[4]+'</td><td>'+x[5]+
+ '</td><td class="num">'+x[6]+'</td></tr>').join('');
+
+document.getElementById('tb-mov').innerHTML = movimientos.map(x=>
+ '<tr><td>'+x[0]+'</td><td><b>'+x[1]+'</b></td><td>'+x[2]+'</td><td>'+x[3]+'</td><td>'+x[4]+
+ '</td><td class="num">'+x[5]+'</td><td class="num">'+x[6]+'</td><td>'+x[7]+'</td></tr>').join('');
+
+document.getElementById('tb-ter').innerHTML = terminaciones.map(x=>{
+ const t = x[6]==='Voluntaria'?'gr':(x[6]==='Involuntaria'?'er':'ok');
+ return '<tr><td>'+x[0]+'</td><td><b>'+x[1]+'</b></td><td>'+x[2]+'</td><td>'+x[3]+'</td><td>'+x[4]+'</td><td>'+x[5]+
+ '</td><td>'+tag(t,x[6])+'</td></tr>';}).join('');
+
+document.getElementById('tb-aud').innerHTML = auditoria.map(x=>{
+ const t = x[3]==='Eliminó'?'er':(x[3]==='Creó'?'ok':'al');
+ return '<tr><td>'+x[0]+'</td><td>'+x[1]+'</td><td>'+x[2]+'</td><td>'+tag(t,x[3])+'</td><td>'+x[4]+
+ '</td><td class="mini">'+x[5]+'</td></tr>';}).join('');
+
+/* ══════════════ navegación ══════════════ */
+function ir(p){
+  document.querySelectorAll('.pantalla').forEach(s=>s.classList.remove('on'));
+  const el=document.getElementById('p-'+p); if(el)el.classList.add('on');
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.ir===p));
+  window.scrollTo(0,0);
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-ir]'); if(t){ir(t.dataset.ir);}
+});
+
+/* ══════════════ modales ══════════════ */
+let modalActual=null;
+function abrir(id){document.getElementById(id).classList.add('on');modalActual=id;}
+function cerrar(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('on'));modalActual=null;}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrar();});
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)cerrar();}));
+
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'),3400);cerrar();}
+
+/* ══════════════ flujo de novedad ══════════════ */
+let tipoNovedad='incapacidad';
+const TITULOS={incapacidad:'Nueva incapacidad',vacaciones:'Registrar vacaciones',
+  licencia:'Nueva licencia o ausencia',movimiento:'Nuevo movimiento salarial',terminacion:'Registrar terminación'};
+
+function abrirNovedad(t){
+  tipoNovedad=t;
+  document.getElementById('m-doc-titulo').textContent=TITULOS[t];
+  document.getElementById('doc-input').value='';
+  limpiarErrorDoc(); abrir('m-doc');
+  setTimeout(()=>document.getElementById('doc-input').focus(),60);
+}
+function limpiarErrorDoc(){
+  document.getElementById('doc-input').classList.remove('err');
+  document.getElementById('doc-error').classList.remove('on');
+}
+function buscarDoc(){
+  const v=document.getElementById('doc-input').value.trim();
+  const e=EMP[v];
+  if(!e){
+    document.getElementById('doc-input').classList.add('err');
+    const m=document.getElementById('doc-error');
+    m.textContent='El documento '+(v||'—')+' no corresponde a ningún empleado activo. Verifica el número o registra primero al empleado.';
+    m.classList.add('on'); return;
+  }
+  cerrar();
+  document.getElementById('m-form-titulo').textContent=TITULOS[tipoNovedad];
+  document.getElementById('f-ficha').innerHTML=
+    '<div class="i"><div class="k">Empleado</div><div class="v">'+e.n+'</div></div>'+
+    '<div class="i"><div class="k">Documento</div><div class="v">'+v+'</div></div>'+
+    '<div class="i"><div class="k">Cargo</div><div class="v">'+e.c+'</div></div>'+
+    '<div class="i"><div class="k">Fecha de ingreso</div><div class="v">'+e.i+'</div></div>'+
+    '<div class="i"><div class="k">Saldo de vacaciones</div><div class="v">'+e.s.toFixed(2).replace('.',',')+' días</div></div>';
+  document.getElementById('f-campos').innerHTML=campos(tipoNovedad,e);
+  abrir('m-form');
+}
+
+function campos(t,e){
+  if(t==='incapacidad') return `
+    <div class="grid g3" style="margin-bottom:14px">
+      <div><label class="lbl">Fecha de inicio</label><input type="date" value="2026-08-10" onchange="calcDias('c')"></div>
+      <div><label class="lbl">Fecha de terminación</label><input type="date" value="2026-08-14" onchange="calcDias('c')"></div>
+      <div><label class="lbl">Días de incapacidad</label>
+        <input value="5 días" disabled style="background:#F3F5F8;font-weight:600">
+        <div class="ayuda">Días corridos, incluyendo el inicial y el final</div></div>
+    </div>
+    <div class="grid g4">
+      <div><label class="lbl">Código de diagnóstico</label><input placeholder="Ej. J06.9">
+        <div class="ayuda" style="color:var(--alerta)">Dato sensible · acceso restringido</div></div>
+      <div><label class="lbl">¿Es prórroga?</label><select><option>No</option><option>Sí</option></select></div>
+      <div><label class="lbl">EPS que la expide</label><select><option>Sura</option><option>Sanitas</option><option>Nueva EPS</option><option>Salud Total</option></select></div>
+      <div><label class="lbl">Origen</label><select><option>Común</option><option>Laboral</option></select></div>
+    </div>`;
+
+  if(t==='vacaciones') return `
+    <div class="grid g3" style="margin-bottom:14px">
+      <div><label class="lbl">Día inicial</label><input type="date" id="v-ini" value="2026-08-28" onchange="calcVac()"></div>
+      <div><label class="lbl">Día final</label><input type="date" id="v-fin" value="2026-09-16" onchange="calcVac()"></div>
+      <div><label class="lbl">Días hábiles</label>
+        <input id="v-dias" value="14 días" disabled style="background:#F3F5F8;font-weight:600">
+        <div class="ayuda">No cuentan domingos ni festivos. El sábado no cuenta porque la empresa no lo tiene como laboral.</div></div>
+    </div>
+    <div id="v-saldo"></div>`;
+
+  if(t==='licencia') return `
+    <div class="grid g2" style="margin-bottom:14px">
+      <div><label class="lbl">Tipo de novedad</label>
+        <select><option>Licencia no remunerada</option><option>Ausencia</option><option>Suspensión</option></select>
+        <div class="ayuda">Las tres se entienden como suspensión del contrato</div></div>
+      <div></div>
+    </div>
+    <div class="grid g3" style="margin-bottom:14px">
+      <div><label class="lbl">Fecha inicial</label><input type="date" value="2026-08-20"></div>
+      <div><label class="lbl">Fecha final</label><input type="date" value="2026-08-25"></div>
+      <div><label class="lbl">Días</label><input value="6 días" disabled style="background:#F3F5F8;font-weight:600"></div>
+    </div>
+    <div class="aviso a-in"><span>ℹ</span>
+      <div>Del jueves 20 al martes 25 son <b>6 días corridos</b>. El domingo 23 cuenta dentro de la licencia
+      y dentro de la suspensión del contrato.
+      <div style="margin-top:5px">Esta suspensión reducirá la acumulación de vacaciones de agosto en proporción a 6 días,
+      porque la empresa tiene ese parámetro activo.</div></div></div>`;
+
+  if(t==='movimiento') return `
+    <div class="grid g2" style="margin-bottom:14px">
+      <div><label class="lbl">Tipo de movimiento</label>
+        <select><option>Promoción — cambia de cargo</option><option>Aumento salarial — mismo cargo</option></select></div>
+      <div><label class="lbl">Fecha de efectividad</label><input type="date" value="2026-09-01"></div>
+    </div>
+    <div class="grid g4">
+      <div><label class="lbl">Cargo actual</label><input value="${e.c}" disabled style="background:#F3F5F8"></div>
+      <div><label class="lbl">Nuevo cargo</label><input value="${e.c}"></div>
+      <div><label class="lbl">Salario actual</label><input value="$ 3.200.000" disabled style="background:#F3F5F8"></div>
+      <div><label class="lbl">Nuevo salario</label><input placeholder="$"></div>
+    </div>`;
+
+  return `
+    <div class="grid g2" style="margin-bottom:14px">
+      <div><label class="lbl">Fecha de salida</label><input type="date" value="2026-08-31"></div>
+      <div><label class="lbl">Tipo de salida</label>
+        <select id="t-tipo" onchange="motivos()">
+          <option>Renuncia</option><option>Terminación de contrato por mutuo acuerdo</option>
+          <option>Terminación en periodo de prueba</option><option>Despido con justa causa</option>
+          <option>Terminación sin justa causa</option><option>Expiración del plazo fijo pactado</option>
+          <option>Terminación de la obra o labor contratada</option></select></div>
+    </div>
+    <div class="grid g2" style="margin-bottom:14px">
+      <div><label class="lbl">Motivo de la baja</label><select id="t-motivo"></select>
+        <div class="ayuda" id="t-ayuda">Las opciones cambian según el tipo de salida</div></div>
+      <div><label class="lbl">Observaciones <span style="color:var(--txt-3);font-weight:400">(opcional)</span></label><input></div>
+    </div>
+    <div class="aviso a-al"><span>⚠</span>
+      <div>Al guardar, <b>${e.n}</b> pasará a estado inactivo y el sistema dejará de generar alertas sobre esta persona.
+      El registro cierra el ciclo de esta vinculación.</div></div>`;
+}
+
+const MOTIVOS={
+ 'Renuncia':['Mejor oferta laboral — salario','Mejor oferta laboral — desarrollo profesional',
+   'Inconformidad con el salario o los beneficios','Clima laboral o relación con el jefe inmediato',
+   'Motivos personales o familiares','Motivos de salud','Estudios','Cambio de ciudad o de país',
+   'Distancia o tiempo de desplazamiento','Emprendimiento propio','No informó el motivo'],
+ 'Terminación de contrato por mutuo acuerdo':['Reestructuración organizacional','Acuerdo económico de retiro',
+   'Cambio en las condiciones del cargo','Motivos personales del trabajador','Otro'],
+ 'Terminación en periodo de prueba':['No cumple el perfil técnico del cargo','Desempeño insuficiente durante la inducción',
+   'Falta de adaptación al equipo o a la cultura','Incumplimiento de horarios o asistencia','Otro'],
+ 'Despido con justa causa':['Problemas disciplinarios','Bajo desempeño','Incumplimiento de las obligaciones del cargo',
+   'Reconocimiento de pensión','Otra justa causa legal'],
+ 'Terminación sin justa causa':['Reestructuración o reducción de personal','Cierre de un área o de un proyecto',
+   'Situación económica de la empresa','Desempeño no satisfactorio sin proceso disciplinario',
+   'Duplicidad de funciones','Decisión de la dirección','Otro'],
+ 'Expiración del plazo fijo pactado':['Expiración del plazo fijo pactado'],
+ 'Terminación de la obra o labor contratada':['Finalización de la obra contratada']
+};
+function motivos(){
+  const t=document.getElementById('t-tipo').value, s=document.getElementById('t-motivo');
+  const lista=MOTIVOS[t]||[];
+  s.innerHTML=lista.map(m=>'<option>'+m+'</option>').join('');
+  const unico = lista.length===1;
+  s.disabled=unico;
+  s.style.background = unico?'#F3F5F8':'#fff';
+  document.getElementById('t-ayuda').textContent = unico
+    ? 'Este tipo de salida tiene un solo motivo. El sistema lo completa solo.'
+    : 'Las opciones cambian según el tipo de salida';
+}
+
+function calcVac(){
+  const box=document.getElementById('v-saldo');
+  box.innerHTML = `<div class="aviso a-al"><span>⚠</span>
+    <div><b>Al 28 de agosto de 2026 esta persona tendrá 12,75 días disponibles.</b>
+    Estás registrando 14 días: <b>faltan 1,25 días</b>.
+    <div style="margin-top:5px">Puedes continuar. Si la empresa aprueba vacaciones anticipadas,
+    el saldo quedará en −1,25 días.</div></div></div>`;
+}
+function calcDias(){}
+
+function calcularRenovacion(){
+  const box=document.getElementById('ren-resultado');
+  const v=document.getElementById('ren-fecha').value;
+  const y=parseInt(v.substring(0,4));
+  if(y>=2029){
+    box.innerHTML=`<div class="aviso a-er"><span>●</span>
+      <div><b>No se puede registrar esta prórroga.</b> Con esta fecha el vínculo a término fijo superaría
+      el tope legal de cuatro años, y al superarlo el contrato se convierte en indefinido por ley.
+      <div style="margin-top:6px">Usa la acción <b>Cambiar a término indefinido</b>, que es la salida correcta
+      y deja el contrato al día.</div></div></div>`;
+    document.getElementById('ren-btn').disabled=true;
+  } else {
+    box.innerHTML=`<div class="aviso a-ok"><span>✓</span>
+      <div>Prórroga de <b>3 meses</b>. El vínculo quedaría en <b>1 año y 5 meses</b> de los 4 años permitidos.
+      Sería la <b>4ª prórroga</b>: la siguiente deberá ser de mínimo un año.</div></div>`;
+    document.getElementById('ren-btn').disabled=false;
+  }
+}
+calcularRenovacion();
+
+function chequeoReingreso(){
+  const v=document.getElementById('ne-doc').value.trim();
+  document.getElementById('ne-reingreso').style.display = EMP[v]?'flex':'none';
+}
+function cambiaPais(){
+  const ext = document.getElementById('ne-pais').value!=='Colombia';
+  document.getElementById('ne-depto').style.display=ext?'none':'block';
+  document.getElementById('ne-ciudad').style.display=ext?'none':'block';
+  document.getElementById('ne-depto-txt').style.display=ext?'block':'none';
+  document.getElementById('ne-ciudad-txt').style.display=ext?'block':'none';
+  document.getElementById('ne-ayuda-ext').style.display=ext?'block':'none';
+}
+function guardar(){
+  const t={incapacidad:'Incapacidad registrada.',vacaciones:'Vacaciones registradas. Saldo actualizado.',
+   licencia:'Novedad registrada.',movimiento:'Movimiento registrado. Salario y cargo actualizados.',
+   terminacion:'Terminación registrada. El empleado pasó a inactivo.'}[tipoNovedad];
+  toast(t);
+}
+chequeoReingreso();
+</script>
+</body>
+</html>

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo · Panel del proveedor</title>
+<style>
+:root{
+  --marca:#0d2b44; --marca-2:#08202f; --accion:#1B6EC2; --accion-h:#155a9e;
+  --exito:#157347; --exito-bg:#E8F5EE;
+  --alerta:#B45309; --alerta-bg:#FDF3E7;
+  --error:#B02A37; --error-bg:#FBEDEE;
+  --txt:#111827; --txt-2:#4B5563; --txt-3:#9CA3AF;
+  --borde:#E5E7EB; --fondo:#F7F8FA; --blanco:#fff;
+  --r:6px; --sombra:0 4px 16px rgba(17,24,39,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:var(--fondo);color:var(--txt);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+#aviso{background:#08202f;color:#a9c6de;font-size:12.5px;padding:7px 20px;text-align:center}
+#aviso b{color:#fff}
+#app{display:flex;min-height:calc(100vh - 32px)}
+#lateral{width:230px;background:var(--marca);color:#c3d8e8;flex-shrink:0}
+#logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.10)}
+#logo .n{color:#fff;font-weight:600;font-size:15px}
+#logo .s{font-size:11.5px;color:#7fa5c2;margin-top:2px}
+nav{padding:10px 8px}
+nav .grupo{font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;color:#6d93b1;padding:14px 12px 6px}
+nav a{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:var(--r);color:#c3d8e8;
+      text-decoration:none;font-size:14px;cursor:pointer;margin-bottom:1px}
+nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+nav a.on{background:var(--accion);color:#fff;font-weight:500}
+nav a .ic{width:16px;text-align:center;font-size:13px;opacity:.85}
+nav a .pill{margin-left:auto;background:var(--error);color:#fff;font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:9px}
+#cuerpo{flex:1;min-width:0;display:flex;flex-direction:column}
+#top{background:var(--blanco);border-bottom:1px solid var(--borde);padding:0 26px;height:54px;
+     display:flex;align-items:center;justify-content:space-between}
+#top .emp{font-weight:600;font-size:14.5px;color:var(--marca)}
+#top .emp span{color:var(--txt-3);font-weight:400;font-size:13px;margin-left:8px}
+#top .usr{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--txt-2)}
+#top .av{width:29px;height:29px;border-radius:50%;background:var(--marca);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+main{padding:26px;max-width:1320px;width:100%}
+h1{font-size:24px;font-weight:600;letter-spacing:-.3px;margin-bottom:3px}
+h2{font-size:18px;font-weight:600;margin-bottom:12px}
+h3{font-size:14px;font-weight:600;margin-bottom:9px}
+.sub{color:var(--txt-2);font-size:13.5px;margin-bottom:20px}
+.lbl{font-size:12.5px;font-weight:500;color:var(--txt-2);display:block;margin-bottom:5px}
+.ayuda{font-size:12px;color:var(--txt-3);margin-top:4px}
+.card{background:var(--blanco);border:1px solid var(--borde);border-radius:8px;padding:18px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}.g6{grid-template-columns:repeat(6,1fr)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--r);
+     font-size:13.5px;font-weight:500;border:1px solid transparent;cursor:pointer;font-family:inherit}
+.btn-p{background:var(--accion);color:#fff}.btn-p:hover{background:var(--accion-h)}
+.btn-s{background:#fff;border-color:var(--borde);color:var(--txt)}.btn-s:hover{background:#f3f5f8}
+.btn-t{background:none;color:var(--txt-2)}
+.btn-d{background:var(--error);color:#fff}
+input,select,textarea{width:100%;height:36px;padding:0 10px;border:1px solid var(--borde);border-radius:var(--r);
+     font-size:14px;font-family:inherit;background:#fff;color:var(--txt)}
+textarea{height:auto;padding:8px 10px}
+input:focus,select:focus{outline:2px solid rgba(27,110,194,.28);border-color:var(--accion)}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:11px}
+.t-ok{background:var(--exito-bg);color:var(--exito)}
+.t-gr{background:#EEF0F3;color:var(--txt-2)}
+.t-al{background:var(--alerta-bg);color:var(--alerta)}
+.t-er{background:var(--error-bg);color:var(--error)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{background:var(--marca);color:#fff;text-align:left;padding:9px 12px;font-weight:600;font-size:12.5px}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--borde)}
+tbody tr:hover{background:#f6f9fc;cursor:pointer}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabla-wrap{background:#fff;border:1px solid var(--borde);border-radius:8px;overflow:hidden}
+.barra{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+.barra input,.barra select{height:34px;width:auto;min-width:140px;font-size:13px}
+.cab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:14px}
+.kpi .v{font-size:29px;font-weight:600;letter-spacing:-.7px;line-height:1.15}
+.kpi .l{font-size:12.5px;color:var(--txt-2);margin-top:3px}
+.kpi .d{font-size:12px;margin-top:6px}
+.up{color:var(--exito)}.down{color:var(--error)}
+.mini{font-size:12.5px;color:var(--txt-2)}
+.accion-card{background:#fff;border:1px solid var(--borde);border-left:4px solid var(--alerta);
+     border-radius:8px;padding:15px 16px;cursor:pointer}
+.accion-card:hover{box-shadow:var(--sombra)}
+.accion-card.rojo{border-left-color:var(--error)}
+.accion-card.verde{border-left-color:var(--exito)}
+.accion-card .v{font-size:26px;font-weight:600;letter-spacing:-.6px}
+.accion-card .l{font-size:12.5px;color:var(--txt-2);margin-top:2px}
+.accion-card .go{font-size:12px;color:var(--accion);margin-top:8px;font-weight:500}
+.aviso{border-radius:var(--r);padding:11px 13px;font-size:13px;display:flex;gap:9px;align-items:flex-start}
+.a-al{background:var(--alerta-bg);color:#7a3a06;border:1px solid #f3ddc2}
+.a-er{background:var(--error-bg);color:#7d1d26;border:1px solid #f0cfd2}
+.a-ok{background:var(--exito-bg);color:#0e5232;border:1px solid #c9e6d6}
+.a-in{background:#EAF2FA;color:#0d2b44;border:1px solid #cfe0f0}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--borde);margin-bottom:18px;flex-wrap:wrap}
+.tabs a{padding:9px 14px;font-size:13.5px;color:var(--txt-2);cursor:pointer;border-bottom:2px solid transparent;font-weight:500}
+.tabs a.on{color:var(--accion);border-bottom-color:var(--accion)}
+.ficha{background:#F4F7FB;border:1px solid #dbe6f0;border-radius:var(--r);padding:12px 14px;
+     display:flex;gap:22px;flex-wrap:wrap;font-size:13px;margin-bottom:16px}
+.ficha .i .k{font-size:11px;color:var(--txt-3);text-transform:uppercase;letter-spacing:.4px}
+.ficha .i .v{font-weight:600;margin-top:1px}
+.pasos{display:flex;margin-bottom:22px}
+.paso{flex:1;text-align:center;font-size:12px;color:var(--txt-3);position:relative;padding-top:26px}
+.paso::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+     width:12px;height:12px;border-radius:50%;background:#D8DEE6}
+.paso.on{color:var(--accion);font-weight:600}
+.paso.on::before{background:var(--accion)}
+.lista-dist div{display:flex;justify-content:space-between;font-size:13px;padding:5px 0}
+.lista-dist div span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+.bar{height:7px;background:#EEF1F5;border-radius:4px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--accion)}
+.overlay{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;
+     justify-content:center;padding:20px;z-index:50}
+.overlay.on{display:flex}
+.modal{background:#fff;border-radius:9px;box-shadow:var(--sombra);width:100%;max-height:90vh;overflow:auto}
+.m-sm{max-width:480px}.m-md{max-width:640px}
+.m-cab{padding:17px 20px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center}
+.m-cab h2{margin:0;font-size:16.5px}
+.m-cab .x{cursor:pointer;color:var(--txt-3);font-size:20px}
+.m-body{padding:20px}
+.m-pie{padding:14px 20px;border-top:1px solid var(--borde);display:flex;justify-content:flex-end;gap:9px;background:#FAFBFC}
+.toast{position:fixed;top:16px;right:16px;background:var(--marca);color:#fff;padding:11px 16px;
+     border-radius:var(--r);font-size:13.5px;box-shadow:var(--sombra);z-index:99;display:none}
+.toast.on{display:block}
+.pantalla{display:none}.pantalla.on{display:block}
+.timeline{border-left:2px solid var(--borde);padding-left:16px;margin-left:6px}
+.timeline .ev{margin-bottom:14px;position:relative}
+.timeline .ev::before{content:'';position:absolute;left:-22px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--accion)}
+.timeline .f{font-size:11.5px;color:var(--txt-3)}
+@media(max-width:1000px){#lateral{display:none}main{padding:16px}.g4,.g3,.g2,.g6{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="aviso"><b>Prototipo del panel del proveedor</b> · Es lo que usan David y Angela, no el cliente · Datos ficticios</div>
+
+<div id="app">
+  <aside id="lateral">
+    <div id="logo"><div class="n">Panel del proveedor</div><div class="s">Administración y operación</div></div>
+    <nav>
+      <a class="on" data-ir="inicio"><span class="ic">◧</span> Inicio</a>
+      <div class="grupo">Clientes</div>
+      <a data-ir="empresas"><span class="ic">▤</span> Empresas <span class="pill">3</span></a>
+      <a data-ir="marcha"><span class="ic">↥</span> Puesta en marcha</a>
+      <a data-ir="suscripciones"><span class="ic">$</span> Suscripciones</a>
+      <div class="grupo">Sistema</div>
+      <a data-ir="alertas"><span class="ic">✉</span> Alertas enviadas</a>
+      <a data-ir="catalogos"><span class="ic">☰</span> Catálogos</a>
+      <a data-ir="salud"><span class="ic">◈</span> Salud del sistema</a>
+      <div class="grupo">Interno</div>
+      <a data-ir="demo"><span class="ic">▷</span> Demostración</a>
+      <a data-ir="equipo"><span class="ic">⚙</span> Equipo</a>
+    </nav>
+  </aside>
+
+  <div id="cuerpo">
+    <div id="top">
+      <div class="emp">Panel del proveedor <span>12 empresas activas</span></div>
+      <div class="usr"><span>David Lozano</span><div class="av">DL</div></div>
+    </div>
+    <main>
+
+    <!-- ═══════════ INICIO ═══════════ -->
+    <section class="pantalla on" id="p-inicio">
+      <h1>Estado del negocio</h1>
+      <div class="sub">Lunes, 17 de agosto de 2026</div>
+
+      <h2>Requiere atención hoy</h2>
+      <div class="grid g3" style="margin-bottom:26px">
+        <div class="accion-card rojo" data-ir="empresas">
+          <div class="v">2</div><div class="l">Clientes en riesgo — el uso cayó fuerte este mes</div>
+          <div class="go">Ver cuáles y llamarlos →</div></div>
+        <div class="accion-card" data-ir="empresas">
+          <div class="v">1</div><div class="l">Cliente sin arrancar — creado hace 12 días, 3 empleados cargados</div>
+          <div class="go">Ver ficha →</div></div>
+        <div class="accion-card rojo" data-ir="suscripciones">
+          <div class="v">1</div><div class="l">Pago vencido hace 22 días</div>
+          <div class="go">Revisar antes de suspender →</div></div>
+        <div class="accion-card" data-ir="alertas">
+          <div class="v">3</div><div class="l">Alertas que no se pudieron entregar ayer</div>
+          <div class="go">Ver la consola de envíos →</div></div>
+        <div class="accion-card verde" data-ir="catalogos">
+          <div class="v">2027</div><div class="l">Festivos del próximo año sin cargar</div>
+          <div class="go">Cargar calendario →</div></div>
+        <div class="accion-card verde" data-ir="salud">
+          <div class="v">OK</div><div class="l">El proceso de alertas corrió hoy a las 6:02 a. m.</div>
+          <div class="go">Ver salud del sistema →</div></div>
+      </div>
+
+      <h2>Negocio</h2>
+      <div class="grid g4" style="margin-bottom:14px">
+        <div class="card kpi"><div class="v">12</div><div class="l">Empresas activas</div>
+          <div class="d up">▲ 2 este mes</div></div>
+        <div class="card kpi"><div class="v">$ 4.180.000</div><div class="l">Ingreso recurrente mensual</div>
+          <div class="d up">▲ $ 620.000</div></div>
+        <div class="card kpi"><div class="v">386</div><div class="l">Empleados gestionados en total</div>
+          <div class="d mini">Es lo que mueve el costo de infraestructura</div></div>
+        <div class="card kpi"><div class="v">27</div><div class="l">Usuarios administradores</div>
+          <div class="d mini">La otra variable del precio</div></div>
+      </div>
+      <div class="grid g4">
+        <div class="card kpi"><div class="v">2 / 0</div><div class="l">Altas y bajas del mes</div></div>
+        <div class="card kpi"><div class="v">8,3%</div><div class="l">Cancelación acumulada del año</div>
+          <div class="d mini">1 cliente de 12. Con esta muestra el dato es ruido.</div></div>
+        <div class="card kpi"><div class="v">1.847</div><div class="l">Correos enviados este mes</div>
+          <div class="d mini">El costo que más escala</div></div>
+        <div class="card kpi"><div class="v">98,4%</div><div class="l">Entregabilidad del correo</div>
+          <div class="d up">Por encima del 95%: sano</div></div>
+      </div>
+    </section>
+
+    <!-- ═══════════ EMPRESAS ═══════════ -->
+    <section class="pantalla" id="p-empresas">
+      <div class="cab">
+        <div><h1>Empresas cliente</h1><div class="sub" style="margin:0">12 activas · 1 suspendida · 2 en prueba</div></div>
+        <button class="btn btn-p" data-ir="nueva-empresa">+ Crear empresa</button>
+      </div>
+      <div class="barra">
+        <input placeholder="Buscar por nombre o NIT" style="min-width:230px">
+        <select><option>Todos los estados</option><option>Activa</option><option>Suspendida</option><option>En prueba</option></select>
+        <select><option>Toda la salud de uso</option><option>Activa</option><option>Uso bajo</option><option>Sin uso</option></select>
+        <select><option>Todo el estado de pago</option><option>Al día</option><option>En mora</option></select>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Empresa</th><th>Plan</th><th class="num">Empleados</th><th class="num">Usuarios</th>
+          <th>Uso</th><th>Último ingreso</th><th>Pago</th><th>Estado</th></tr></thead>
+          <tbody id="tb-emp"></tbody></table>
+      </div>
+      <div class="mini" style="margin-top:11px">Cuando los empleados cargados superan los del plan, la celda se resalta: es una conversación de venta.</div>
+    </section>
+
+    <!-- ═══════════ NUEVA EMPRESA ═══════════ -->
+    <section class="pantalla" id="p-nueva-empresa">
+      <div class="mini" style="cursor:pointer;color:var(--accion)" data-ir="empresas">← Cancelar y volver</div>
+      <h1 style="margin-top:6px">Crear empresa</h1>
+      <div class="sub">Se diligencia al final de la reunión de onboarding, delante del cliente</div>
+      <div class="pasos">
+        <div class="paso on">Datos de la empresa</div>
+        <div class="paso">Parámetros</div>
+        <div class="paso">Plan y cuenta</div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-bottom:16px">Datos de la empresa</h3>
+        <div class="grid g3" style="margin-bottom:14px">
+          <div><label class="lbl">Razón social</label><input placeholder="Distribuidora El Progreso S.A.S."></div>
+          <div><label class="lbl">NIT</label><input placeholder="900123456-7"></div>
+          <div><label class="lbl">Teléfono</label><input placeholder="604 444 5566"></div>
+        </div>
+        <div class="grid g3">
+          <div><label class="lbl">Ciudad</label><select><option>Medellín</option><option>Bogotá</option><option>Cali</option></select></div>
+          <div><label class="lbl">Certificado de Cámara de Comercio</label>
+            <input type="file"><div class="ayuda">Se solicita antes de firmar. Confirma que quien firma puede obligar a la empresa.</div></div>
+          <div><label class="lbl">Número de empleados declarado</label><input placeholder="34"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-bottom:6px">Parámetros</h3>
+        <div class="mini" style="margin-bottom:14px">Se preguntan y se deciden en vivo con el cliente. Aquí es donde la experiencia de Angela agrega el valor que un formulario de autoservicio nunca daría.</div>
+        <div class="grid g3">
+          <div><label class="lbl">¿El sábado es día laboral?</label>
+            <select><option>No</option><option>Sí</option></select>
+            <div class="ayuda">Afecta el cálculo de vacaciones y qué festivos aplican</div></div>
+          <div><label class="lbl">¿Las suspensiones afectan las vacaciones?</label>
+            <select><option>Sí, reducen la acumulación</option><option>No</option></select></div>
+          <div><label class="lbl">¿Perfil sociodemográfico?</label>
+            <select><option>Sí, habilitado</option><option>No</option></select>
+            <div class="ayuda">Insumo del SG-SST</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:16px">Plan y cuenta del superadministrador</h3>
+        <div class="grid g4" style="margin-bottom:14px">
+          <div><label class="lbl">Plan</label>
+            <select><option>Pequeña — hasta 50 empleados</option><option>Micro — hasta 10</option><option>Mediana — hasta 200</option></select></div>
+          <div><label class="lbl">Usuarios administradores</label><input value="2"></div>
+          <div><label class="lbl">Valor mensual</label><input value="$ 380.000"></div>
+          <div><label class="lbl">Fecha de inicio</label><input type="date" value="2026-08-17"></div>
+        </div>
+        <div class="grid g2">
+          <div><label class="lbl">Nombre del superadministrador</label><input placeholder="Ana María Gil"></div>
+          <div><label class="lbl">Correo</label><input placeholder="ana@elprogreso.com">
+            <div class="ayuda">Recibe la invitación para definir su contraseña</div></div>
+        </div>
+      </div>
+      <div class="aviso a-in" style="margin-top:16px"><span>ℹ</span>
+        <div>Al crear la empresa se muestra un <b>resumen de la configuración</b> para leérselo al cliente en voz alta
+        antes de cerrar la reunión. Evita la discusión posterior de "yo nunca dije que el sábado fuera laboral".</div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:18px">
+        <button class="btn btn-t" data-ir="empresas">Cancelar</button>
+        <button class="btn btn-p" onclick="toast('Empresa creada. Invitación enviada al superadministrador.')">Crear empresa</button>
+      </div>
+    </section>
+
+    <!-- ═══════════ FICHA EMPRESA ═══════════ -->
+    <section class="pantalla" id="p-ficha">
+      <div class="mini" style="cursor:pointer;color:var(--accion)" data-ir="empresas">← Volver a empresas</div>
+      <div class="cab" style="margin-top:6px">
+        <div><h1>Distribuidora El Progreso S.A.S.</h1>
+          <div class="sub" style="margin:0">NIT 900.123.456-7 · Cliente desde febrero de 2026 · <span class="tag t-ok">Activa</span></div></div>
+        <div style="display:flex;gap:9px">
+          <button class="btn btn-s" onclick="abrir('m-acceso')">Entrar como el cliente</button>
+          <button class="btn btn-s" data-ir="marcha">Cargar información</button>
+        </div>
+      </div>
+      <div class="ficha">
+        <div class="i"><div class="k">Plan</div><div class="v">Pequeña · hasta 50</div></div>
+        <div class="i"><div class="k">Empleados</div><div class="v">34 de 50</div></div>
+        <div class="i"><div class="k">Usuarios</div><div class="v">2 de 2</div></div>
+        <div class="i"><div class="k">Último ingreso</div><div class="v">Hoy, 8:41 a. m.</div></div>
+        <div class="i"><div class="k">Valor mensual</div><div class="v">$ 380.000</div></div>
+        <div class="i"><div class="k">Próximo cobro</div><div class="v">01/09/2026</div></div>
+      </div>
+      <div class="tabs">
+        <a class="on">Uso</a><a>Resumen</a><a>Parámetros</a><a>Usuarios</a><a>Suscripción</a><a>Alertas</a><a>Bitácora</a>
+      </div>
+      <div class="grid g4" style="margin-bottom:18px">
+        <div class="card kpi"><div class="v">34</div><div class="l">Empleados cargados</div></div>
+        <div class="card kpi"><div class="v">18</div><div class="l">Novedades registradas en agosto</div>
+          <div class="d up">▲ 4 frente a julio</div></div>
+        <div class="card kpi"><div class="v">14</div><div class="l">Días con actividad este mes</div></div>
+        <div class="card kpi"><div class="v">6</div><div class="l">Días desde la firma hasta la primera novedad</div>
+          <div class="d mini">Mide si el onboarding funcionó</div></div>
+      </div>
+      <div class="grid g2" style="margin-bottom:18px">
+        <div class="card"><h3>Módulos que realmente usa</h3>
+          <div class="lista-dist">
+            <div><span>Vacaciones</span><span>9</span></div><div class="bar"><i style="width:90%"></i></div>
+            <div><span>Incapacidades</span><span>6</span></div><div class="bar"><i style="width:60%"></i></div>
+            <div><span>Contratos</span><span>2</span></div><div class="bar"><i style="width:20%"></i></div>
+            <div><span>Terminaciones</span><span>1</span></div><div class="bar"><i style="width:10%"></i></div>
+            <div><span>Movimientos</span><span>0</span></div><div class="bar"><i style="width:2%;background:#D8DEE6"></i></div>
+          </div>
+          <div class="mini" style="margin-top:10px">Nunca ha usado Movimientos. Es un tema para la próxima llamada.</div>
+        </div>
+        <div class="card"><h3>Bitácora del cliente</h3>
+          <div class="timeline">
+            <div class="ev"><div class="f">12/08/2026 · Angela</div>
+              <div>Llamó Ana María preguntando por el cálculo de una licencia. Se le explicó lo de los días corridos. Quedó clara.</div></div>
+            <div class="ev"><div class="f">28/07/2026 · Angela</div>
+              <div>Seguimiento de los 45 días. Contentos con las alertas de contrato. Pidieron poder exportar con el cargo — ya está.</div></div>
+            <div class="ev"><div class="f">18/02/2026 · David</div>
+              <div>Carga inicial: 32 empleados, sin histórico de incapacidades. Solo cargaron saldos de vacaciones.</div></div>
+          </div>
+          <textarea placeholder="Agregar una nota..." rows="2" style="margin-top:12px"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ PUESTA EN MARCHA ═══════════ -->
+    <section class="pantalla" id="p-marcha">
+      <h1>Puesta en marcha</h1>
+      <div class="sub">Carga inicial de información desde las plantillas de Excel · Solo la ejecuta el proveedor</div>
+      <div class="pasos">
+        <div class="paso on">Elegir empresa</div><div class="paso">Empleados</div>
+        <div class="paso">Históricos</div><div class="paso">Resumen</div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="grid g2" style="margin-bottom:16px">
+          <div><label class="lbl">Empresa</label>
+            <select><option>Distribuidora El Progreso S.A.S.</option><option>Textiles Aurora Ltda.</option></select></div>
+          <div><label class="lbl">Plantilla de empleados</label><input type="file"></div>
+        </div>
+        <button class="btn btn-s" onclick="document.getElementById('res-val').style.display='block'">Validar sin cargar</button>
+      </div>
+      <div id="res-val" style="display:none">
+        <div class="aviso a-al" style="margin-bottom:14px"><span>⚠</span>
+          <div><b>34 filas leídas · 31 correctas · 3 con error.</b> Nada se ha guardado todavía.
+          Corrija el archivo y vuelva a validar.</div></div>
+        <div class="tabla-wrap" style="margin-bottom:16px">
+          <table><thead><tr><th>Fila</th><th>Columna</th><th>Valor</th><th>Problema</th></tr></thead><tbody>
+            <tr><td>7</td><td>EPS</td><td>Sanitaz</td><td>No existe en el catálogo. ¿Quiso decir "Sanitas"?</td></tr>
+            <tr><td>19</td><td>Días de vacaciones disponibles hoy</td><td>(vacío)</td><td>Obligatorio. Sin este dato el saldo arrancaría en cero.</td></tr>
+            <tr><td>23</td><td>Fecha de ingreso</td><td>31/02/2024</td><td>No es una fecha válida.</td></tr>
+          </tbody></table>
+        </div>
+        <div class="aviso a-in"><span>ℹ</span>
+          <div>La carga se ejecuta dentro de una transacción: o entra todo o no entra nada.
+          No quedan registros a medias de un intento anterior.</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Historial de cargas</h3>
+        <table style="margin-top:8px"><thead><tr>
+          <th>Fecha</th><th>Empresa</th><th>Plantilla</th><th class="num">Filas</th><th>Quién</th><th></th></tr></thead><tbody>
+          <tr><td>18/02/2026</td><td>Distribuidora El Progreso</td><td>Empleados</td><td class="num">32</td><td>David</td><td class="mini">Ver informe</td></tr>
+          <tr><td>18/02/2026</td><td>Distribuidora El Progreso</td><td>Perfil sociodemográfico</td><td class="num">32</td><td>David</td><td class="mini">Ver informe</td></tr>
+          <tr><td>05/06/2026</td><td>Textiles Aurora</td><td>Empleados</td><td class="num">61</td><td>David</td><td class="mini">Ver informe</td></tr>
+        </tbody></table>
+      </div>
+    </section>
+
+    <!-- ═══════════ SUSCRIPCIONES ═══════════ -->
+    <section class="pantalla" id="p-suscripciones">
+      <div class="cab"><div><h1>Suscripciones</h1>
+        <div class="sub" style="margin:0">$ 4.180.000 de ingreso recurrente mensual</div></div>
+        <button class="btn btn-s">Gestionar planes</button></div>
+      <div class="aviso a-er" style="margin-bottom:16px"><span>●</span>
+        <div><b>Textiles Aurora lleva 22 días de mora.</b> Según la escalera acordada, la suspensión es a los 30 días.
+        Conviene llamar antes.</div></div>
+      <div class="tabla-wrap" style="margin-bottom:20px">
+        <table><thead><tr>
+          <th>Empresa</th><th>Plan</th><th class="num">Valor mensual</th><th>Próximo cobro</th>
+          <th>Medio de pago</th><th>Estado</th><th></th></tr></thead><tbody id="tb-sus"></tbody></table>
+      </div>
+      <div class="grid g3">
+        <div class="card"><h3>Planes</h3><div class="lista-dist">
+          <div><span>Micro — hasta 10 empleados</span><span>$ 190.000</span></div>
+          <div><span>Pequeña — hasta 50</span><span>$ 380.000</span></div>
+          <div><span>Mediana — hasta 200</span><span>$ 720.000</span></div>
+          <div><span>Usuario adicional</span><span>$ 45.000</span></div>
+          <div><span>Puesta en marcha (única vez)</span><span>$ 350.000</span></div>
+        </div><div class="mini" style="margin-top:10px">Valores de ejemplo. La tabla real se define con el costo por cliente calculado.</div></div>
+        <div class="card"><h3>Distribución por plan</h3><div class="lista-dist">
+          <div><span>Micro</span><span>3</span></div><div class="bar"><i style="width:25%"></i></div>
+          <div><span>Pequeña</span><span>7</span></div><div class="bar"><i style="width:58%"></i></div>
+          <div><span>Mediana</span><span>2</span></div><div class="bar"><i style="width:17%"></i></div>
+        </div></div>
+        <div class="card"><h3>Escalera de mora</h3><div class="lista-dist">
+          <div><span>Primer aviso</span><span>5 días</span></div>
+          <div><span>Segundo aviso</span><span>15 días</span></div>
+          <div><span>Llamada</span><span>22 días</span></div>
+          <div><span>Suspensión</span><span>30 días</span></div>
+        </div><div class="mini" style="margin-top:10px">Suspender bloquea el acceso pero no borra nada. La información se le entrega si la pide.</div></div>
+      </div>
+    </section>
+
+    <!-- ═══════════ ALERTAS ═══════════ -->
+    <section class="pantalla" id="p-alertas">
+      <div class="cab"><div><h1>Alertas enviadas</h1>
+        <div class="sub" style="margin:0">Existe para cuando un cliente diga que nunca le llegó un aviso</div></div>
+        <button class="btn btn-s">Exportar</button></div>
+      <div class="grid g4" style="margin-bottom:16px">
+        <div class="card kpi"><div class="v">1.847</div><div class="l">Enviadas este mes</div></div>
+        <div class="card kpi"><div class="v">98,4%</div><div class="l">Entregadas</div><div class="d up">Sano</div></div>
+        <div class="card kpi"><div class="v">26</div><div class="l">Rebotadas</div><div class="d mini">Casi todas por correos mal escritos</div></div>
+        <div class="card kpi"><div class="v">3</div><div class="l">Fallidas ayer</div><div class="d down">Requiere revisión</div></div>
+      </div>
+      <div class="barra">
+        <input type="date" value="2026-08-01"><span class="mini">hasta</span><input type="date" value="2026-08-17">
+        <select><option>Todas las empresas</option><option>Distribuidora El Progreso</option></select>
+        <select><option>Todos los tipos</option><option>Periodo de prueba</option><option>Vencimiento de contrato</option><option>Resumen mensual</option></select>
+        <select><option>Todos los estados</option><option>Enviada</option><option>Fallida</option><option>Rebotada</option></select>
+      </div>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Programada</th><th>Enviada</th><th>Empresa</th><th>Empleado</th>
+          <th>Tipo</th><th>Destinatarios</th><th>Estado</th></tr></thead><tbody id="tb-ale"></tbody></table>
+      </div>
+      <div class="mini" style="margin-top:11px">Cuando la fecha programada y la de envío no coinciden, es el corrimiento al día hábil anterior.</div>
+    </section>
+
+    <!-- ═══════════ CATÁLOGOS ═══════════ -->
+    <section class="pantalla" id="p-catalogos">
+      <h1>Catálogos</h1>
+      <div class="sub">Datos que cambian con el tiempo y que no pueden vivir en el código</div>
+      <div class="aviso a-al" style="margin-bottom:16px"><span>⚠</span>
+        <div><b>El calendario de festivos de 2027 no está cargado.</b> De esa tabla dependen el cálculo de vacaciones,
+        el de licencias y el corrimiento de todas las alertas. Cárguelo antes de que termine el año.</div></div>
+      <div class="tabs"><a class="on">Constantes legales</a><a>Festivos</a><a>EPS y entidades</a><a>Ciudades</a><a>Umbrales</a></div>
+      <div class="tabla-wrap" style="margin-bottom:16px">
+        <table><thead><tr><th>Constante</th><th class="num">Valor</th><th>Norma que la respalda</th><th>Verificada</th></tr></thead><tbody>
+          <tr><td>Acumulación de vacaciones por mes</td><td class="num">1,25 días</td><td>Art. 186 CST — 15 días hábiles por año</td><td>17/08/2026</td></tr>
+          <tr><td>Periodo de prueba en contrato indefinido</td><td class="num">2 meses</td><td>Art. 78 CST</td><td>17/08/2026</td></tr>
+          <tr><td>Periodo de prueba en fijo (fracción)</td><td class="num">1/5</td><td>Art. 78 CST — contratos inferiores a un año</td><td>17/08/2026</td></tr>
+          <tr><td>Preaviso de no renovación</td><td class="num">30 días</td><td>Art. 46 CST, mod. Ley 2466 de 2025</td><td>17/08/2026</td></tr>
+          <tr><td>Tope del contrato a término fijo</td><td class="num">4 años</td><td>Art. 46 CST, mod. Ley 2466 de 2025</td><td>17/08/2026</td></tr>
+          <tr><td>Prórrogas cortas pactadas antes del mínimo de un año</td><td class="num">4</td><td>Concepto MinTrabajo 6157 de 2026</td><td>17/08/2026</td></tr>
+          <tr><td>Prórrogas cortas automáticas</td><td class="num">3</td><td>Concepto MinTrabajo 6157 de 2026</td><td>17/08/2026</td></tr>
+          <tr><td>Disfrute mínimo anual de vacaciones</td><td class="num">6 días</td><td>Art. 190 CST — días hábiles continuos</td><td>17/08/2026</td></tr>
+        </tbody></table>
+      </div>
+      <div class="aviso a-in"><span>ℹ</span>
+        <div>Esta pantalla es más importante de lo que parece: es donde se ajusta el sistema cuando cambia una ley,
+        sin tocar código y sin esperar un despliegue. La columna de verificación recuerda cuándo se contrastó por última vez.</div></div>
+    </section>
+
+    <!-- ═══════════ SALUD ═══════════ -->
+    <section class="pantalla" id="p-salud">
+      <h1>Salud del sistema</h1>
+      <div class="sub">Lo que hay que mirar cada mañana en menos de un minuto</div>
+      <div class="grid g4" style="margin-bottom:18px">
+        <div class="card kpi"><div class="v">6:02</div><div class="l">Proceso de alertas de hoy</div>
+          <div class="d up">Corrió bien · 41 s · 23 alertas</div></div>
+        <div class="card kpi"><div class="v">0</div><div class="l">Trabajos en cola fallidos</div></div>
+        <div class="card kpi"><div class="v">2</div><div class="l">Errores de aplicación en 24 h</div>
+          <div class="d mini">Ninguno crítico</div></div>
+        <div class="card kpi"><div class="v">03:15</div><div class="l">Última copia de seguridad</div>
+          <div class="d up">Automática, de hoy</div></div>
+      </div>
+      <div class="grid g2">
+        <div class="card"><h3>Costos que crecen</h3><div class="lista-dist">
+          <div><span>Tamaño de la base de datos</span><span>412 MB</span></div>
+          <div><span>Correos enviados este mes</span><span>1.847</span></div>
+          <div><span>Copias de seguridad almacenadas</span><span>30 días</span></div>
+        </div><div class="mini" style="margin-top:10px">Sin almacenamiento de archivos, la base crece despacio y de forma predecible.</div></div>
+        <div class="card"><h3>Últimas ejecuciones del proceso diario</h3>
+          <table style="margin-top:6px"><tbody>
+            <tr><td>17/08 6:02</td><td>41 s</td><td>23 alertas</td><td><span class="tag t-ok">OK</span></td></tr>
+            <tr><td>16/08 6:01</td><td>38 s</td><td>11 alertas</td><td><span class="tag t-ok">OK</span></td></tr>
+            <tr><td>15/08 6:02</td><td>44 s</td><td>19 alertas</td><td><span class="tag t-ok">OK</span></td></tr>
+            <tr><td>14/08 6:14</td><td>2 m 10 s</td><td>3 fallidas</td><td><span class="tag t-al">Con fallos</span></td></tr>
+          </tbody></table></div>
+      </div>
+      <div class="aviso a-al" style="margin-top:16px"><span>⚠</span>
+        <div><b>Última restauración de copia probada: 04/06/2026.</b> Han pasado más de dos meses.
+        Una copia que nunca se ha restaurado no es una copia de seguridad, es una suposición.</div></div>
+    </section>
+
+    <!-- ═══════════ DEMO ═══════════ -->
+    <section class="pantalla" id="p-demo">
+      <div class="cab"><div><h1>Ambiente de demostración</h1>
+        <div class="sub" style="margin:0">La empresa ficticia que se les entrega a los prospectos</div></div>
+        <button class="btn btn-p" onclick="toast('Ambiente restaurado a su estado original')">Restaurar ahora</button></div>
+      <div class="grid g3" style="margin-bottom:18px">
+        <div class="card kpi"><div class="v">28</div><div class="l">Empleados ficticios cargados</div></div>
+        <div class="card kpi"><div class="v">04:00</div><div class="l">Se restaura sola cada noche</div></div>
+        <div class="card kpi"><div class="v">3</div><div class="l">Accesos de prueba activos</div></div>
+      </div>
+      <div class="card">
+        <h3>Accesos de prueba entregados</h3>
+        <table style="margin-top:8px"><thead><tr>
+          <th>Prospecto</th><th>Correo</th><th>Entregado</th><th>Vence</th><th>Entradas</th><th>Estado</th></tr></thead><tbody>
+          <tr><td>Confecciones Lucía</td><td>gerencia@lucia.com</td><td>12/08/2026</td><td>26/08/2026</td><td>7</td><td><span class="tag t-ok">Activo</span></td></tr>
+          <tr><td>Transportes del Río</td><td>admin@delrio.co</td><td>09/08/2026</td><td>23/08/2026</td><td>1</td><td><span class="tag t-al">Poco uso</span></td></tr>
+          <tr><td>Panadería La Espiga</td><td>info@laespiga.com</td><td>05/08/2026</td><td>19/08/2026</td><td>12</td><td><span class="tag t-ok">Activo</span></td></tr>
+        </tbody></table>
+        <div class="mini" style="margin-top:11px">Un prospecto que entró una sola vez es una llamada pendiente, no un cliente perdido.</div>
+      </div>
+    </section>
+
+    <!-- ═══════════ EQUIPO ═══════════ -->
+    <section class="pantalla" id="p-equipo">
+      <h1>Equipo</h1>
+      <div class="sub">Usuarios internos del proveedor</div>
+      <div class="aviso a-in" style="margin-bottom:16px"><span>ℹ</span>
+        <div>Estas cuentas ven la información de <b>todos los clientes a la vez</b>.
+        El segundo factor de autenticación es obligatorio, sin excepción.</div></div>
+      <div class="tabla-wrap" style="margin-bottom:18px">
+        <table><thead><tr><th>Nombre</th><th>Correo</th><th>Nivel</th><th>Segundo factor</th><th>Último acceso</th></tr></thead><tbody>
+          <tr><td><b>David Lozano</b></td><td>david@…</td><td>Acceso completo</td><td><span class="tag t-ok">Activo</span></td><td>Hoy, 7:12 a. m.</td></tr>
+          <tr><td><b>Angela Lozano</b></td><td>angela@…</td><td>Acceso completo</td><td><span class="tag t-ok">Activo</span></td><td>Hoy, 8:03 a. m.</td></tr>
+        </tbody></table>
+      </div>
+      <div class="grid g2">
+        <div class="card"><h3>Acceso completo</h3>
+          <div class="mini">Todo el panel: empresas, suscripciones, catálogos, salud del sistema y entrada al entorno del cliente.</div></div>
+        <div class="card"><h3>Acceso de soporte</h3>
+          <div class="mini">Para cuando el equipo crezca. Ve empresas y alertas, pero no datos de empleados ni facturación.
+          Es el nivel con el que entra alguien que solo atiende dudas de uso.</div></div>
+      </div>
+    </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODAL entrar como cliente -->
+<div class="overlay" id="m-acceso">
+  <div class="modal m-md">
+    <div class="m-cab"><h2>Entrar al entorno del cliente</h2><span class="x" onclick="cerrar()">×</span></div>
+    <div class="m-body">
+      <p style="margin-bottom:14px">Vas a entrar al sistema de <b>Distribuidora El Progreso S.A.S.</b> para revisar un problema.</p>
+      <div class="aviso a-al" style="margin-bottom:14px"><span>⚠</span>
+        <div><b>Tres condiciones que no son negociables</b>
+        <div style="margin-top:6px">· Queda registrado en la auditoría de esa empresa, <b>visible para el cliente</b>, indicando que fue el proveedor.</div>
+        <div>· Es de solo lectura. Modificar datos exige activarlo de forma expresa.</div>
+        <div>· El acuerdo de tratamiento de datos lo contempla. Un acceso silencioso a datos de empleados de un tercero es exactamente lo que ese acuerdo prohíbe.</div></div></div>
+      <div><label class="lbl">Motivo del acceso</label>
+        <input placeholder="Ej. Revisar el cálculo de vacaciones reportado por Ana María">
+        <div class="ayuda">Queda en el registro. Escriba algo que tenga sentido dentro de seis meses.</div></div>
+      <div style="margin-top:12px"><label class="lbl">
+        <input type="checkbox" style="width:auto;height:auto;margin-right:6px">Necesito modificar datos, no solo consultar</label></div>
+    </div>
+    <div class="m-pie">
+      <button class="btn btn-t" onclick="cerrar()">Cancelar</button>
+      <button class="btn btn-p" onclick="toast('Acceso registrado. Entrando en modo consulta.')">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const empresas=[
+ ['Distribuidora El Progreso S.A.S.','Pequeña · 50','34','2','ok','Activa','Hoy, 8:41 a. m.','ok','Al día','ok','Activa'],
+ ['Textiles Aurora Ltda.','Mediana · 200','61','3','er','Sin uso','Hace 34 días','er','Mora 22 días','al','En riesgo'],
+ ['Inversiones Camino Real','Pequeña · 50','48','2','ok','Activa','Ayer','ok','Al día','ok','Activa'],
+ ['Almacenes La Sabana','Micro · 10','9','1','al','Uso bajo','Hace 12 días','ok','Al día','al','En riesgo'],
+ ['Constructora Vertical','Mediana · 200','127','4','ok','Activa','Hoy, 9:15 a. m.','ok','Al día','ok','Activa'],
+ ['Servicios Integrales Norte','Pequeña · 50','52','2','ok','Activa','Hoy, 7:58 a. m.','al','Vence en 3 días','ok','Activa'],
+ ['Panadería La Espiga S.A.S.','Micro · 10','3','1','er','Sin arrancar','Hace 9 días','ok','Al día','al','Sin arrancar'],
+ ['Logística del Valle','Pequeña · 50','29','2','ok','Activa','Ayer','ok','Al día','ok','Activa']
+];
+const suscripciones=[
+ ['Distribuidora El Progreso S.A.S.','Pequeña','$ 380.000','01/09/2026','Débito automático','ok','Al día'],
+ ['Textiles Aurora Ltda.','Mediana','$ 720.000','Vencida 26/07/2026','Transferencia','er','Mora 22 días'],
+ ['Inversiones Camino Real','Pequeña','$ 380.000','05/09/2026','Débito automático','ok','Al día'],
+ ['Almacenes La Sabana','Micro','$ 190.000','12/09/2026','Transferencia','ok','Al día'],
+ ['Constructora Vertical','Mediana','$ 765.000','01/09/2026','Débito automático','ok','Al día'],
+ ['Servicios Integrales Norte','Pequeña','$ 425.000','20/08/2026','Transferencia','al','Vence en 3 días']
+];
+const alertas=[
+ ['17/08 6:02','17/08 6:02','Distribuidora El Progreso','Juan Pablo Mejía','Plazo de renovación (32 días)','angela@…, marcela@…','ok','Enviada'],
+ ['17/08 6:02','17/08 6:02','Constructora Vertical','Luis Ángel Prada','Periodo de prueba — 1 mes','rrhh@…','ok','Enviada'],
+ ['16/08 6:01','16/08 6:01','Inversiones Camino Real','Sandra Ospina','Último día de periodo de prueba','gerencia@…','ok','Enviada'],
+ ['16/08 6:01','16/08 6:01','Textiles Aurora','Óscar Ramírez','Cercanía al tope de cuatro años','admin@aurora…','er','Rebotada'],
+ ['15/08 6:02','14/08 6:02','Logística del Valle','Camilo Restrepo','Mañana vence el periodo de prueba','talento@…','ok','Enviada'],
+ ['31/07 6:00','31/07 6:00','Todas las empresas','—','Resumen mensual de contratos vencidos','12 destinatarios','ok','Enviada'],
+ ['31/07 6:00','31/07 6:00','Todas las empresas','—','Resumen mensual de vacaciones acumuladas','12 destinatarios','ok','Enviada']
+];
+const tag=(t,x)=>'<span class="tag t-'+t+'">'+x+'</span>';
+
+document.getElementById('tb-emp').innerHTML=empresas.map(e=>{
+ const sobre = parseInt(e[2])>parseInt(e[1].split('· ')[1]);
+ return '<tr onclick="ir(\'ficha\')"><td><b>'+e[0]+'</b></td><td>'+e[1]+
+ '</td><td class="num"'+(sobre?' style="background:#FDF3E7;font-weight:700;color:#B45309"':'')+'>'+e[2]+
+ '</td><td class="num">'+e[3]+'</td><td>'+tag(e[4],e[5])+'</td><td>'+e[6]+'</td><td>'+tag(e[7],e[8])+
+ '</td><td>'+tag(e[9],e[10])+'</td></tr>';}).join('');
+
+document.getElementById('tb-sus').innerHTML=suscripciones.map(s=>
+ '<tr><td><b>'+s[0]+'</b></td><td>'+s[1]+'</td><td class="num">'+s[2]+'</td><td>'+s[3]+'</td><td>'+s[4]+
+ '</td><td>'+tag(s[5],s[6])+'</td><td class="mini" style="color:var(--accion)">Ver historial</td></tr>').join('');
+
+document.getElementById('tb-ale').innerHTML=alertas.map(a=>
+ '<tr><td>'+a[0]+'</td><td>'+a[1]+'</td><td>'+a[2]+'</td><td>'+a[3]+'</td><td>'+a[4]+
+ '</td><td class="mini">'+a[5]+'</td><td>'+tag(a[6],a[7])+'</td></tr>').join('');
+
+function ir(p){
+  document.querySelectorAll('.pantalla').forEach(s=>s.classList.remove('on'));
+  const el=document.getElementById('p-'+p); if(el)el.classList.add('on');
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.ir===p));
+  window.scrollTo(0,0);
+}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-ir]');if(t)ir(t.dataset.ir);});
+function abrir(id){document.getElementById(id).classList.add('on');}
+function cerrar(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('on'));}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrar();});
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)cerrar();}));
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'),3400);cerrar();}
+</script>
+</body>
+</html>

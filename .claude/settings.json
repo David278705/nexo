@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(php *)",
+      "Bash(composer *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npm ci)",
+      "Bash(npx *)",
+      "Bash(./vendor/bin/*)",
+      "Bash(vendor/bin/*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git restore *)",
+      "Bash(git checkout -- *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(find *)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(rm -rf *)",
+      "Bash(php artisan migrate:fresh *)",
+      "Bash(php artisan db:wipe *)",
+      "Bash(php artisan migrate:reset *)"
+    ]
+  }
+}
