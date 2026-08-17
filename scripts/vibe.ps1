@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 #  vibe.ps1 — Bucle de desarrollo automatico
 #
 #  Ejecuta Claude Code una tarea a la vez hasta que:
@@ -67,6 +67,16 @@ function ProximaTarea {
 function Log($texto) {
     $linea = "[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $texto
     Add-Content -Path $registro -Value $linea
+}
+
+# Frases con las que Claude Code avisa que se acabo el limite de uso o el saldo.
+# Cuando aparecen, el CLI a veces sale con codigo 0, asi que el codigo de salida
+# por si solo no basta para distinguir "limite alcanzado" de "vuelta normal".
+$patronLimite = 'usage limit reached|Claude usage limit|rate limit|Credit balance is too low|limit will reset|insufficient credits|Please run /login|Invalid API key'
+
+function HoraDeReinicio($texto) {
+    $m = [regex]::Match($texto, '(?:resets?|reset at|try again)\s+(?:at\s+)?([^\r\n\.]{3,40})', 'IgnoreCase')
+    if ($m.Success) { return $m.Groups[1].Value.Trim() } else { return "" }
 }
 
 # ---------------------------------------------------------------- el encargo
@@ -149,11 +159,33 @@ while ($vuelta -lt $Vueltas) {
     Log "Vuelta $vuelta — $tarea"
 
     $inicio = Get-Date
-    & claude @argumentos
+    # La salida se ve en pantalla y ademas queda guardada, para poder revisarla
+    # despues y para saber si la vuelta murio por limite de uso.
+    $logVuelta = "$raiz\bitacora\vuelta-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
+    & claude @argumentos 2>&1 | Tee-Object -FilePath $logVuelta
     $codigo = $LASTEXITCODE
     $duracion = [math]::Round(((Get-Date) - $inicio).TotalMinutes, 1)
 
-    Log "Vuelta $vuelta termino con codigo $codigo en $duracion min"
+    $salida = if (Test-Path $logVuelta) { Get-Content $logVuelta -Raw -ErrorAction SilentlyContinue } else { "" }
+    if ($null -eq $salida) { $salida = "" }
+
+    Log "Vuelta $vuelta termino con codigo $codigo en $duracion min · registro: $(Split-Path -Leaf $logVuelta)"
+
+    if ($salida -match $patronLimite) {
+        $cuando = HoraDeReinicio $salida
+        Write-Host ""
+        Write-Host "  Se acabo el limite de uso de tu suscripcion." -ForegroundColor Yellow
+        if ($cuando -ne "") {
+            Write-Host "  Se reinicia: $cuando" -ForegroundColor Yellow
+        }
+        Write-Host ""
+        Write-Host "  No gasto mas vueltas. Vuelve a ejecutar el script cuando se" -ForegroundColor Yellow
+        Write-Host "  reinicie tu limite y retoma exactamente donde iba." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Detalle en: $logVuelta" -ForegroundColor DarkGray
+        Log "Detenido por limite de uso. Reinicio: $cuando"
+        break
+    }
 
     if ($codigo -ne 0) {
         Write-Host ""
@@ -166,6 +198,8 @@ while ($vuelta -lt $Vueltas) {
         Write-Host ""
         Write-Host "  Revisa ESTADO.md para ver donde quedo y vuelve a ejecutar el" -ForegroundColor Yellow
         Write-Host "  script cuando tengas creditos. Retoma solo donde iba." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Salida completa de esta vuelta: $logVuelta" -ForegroundColor DarkGray
         Log "Detenido por codigo de salida $codigo"
         break
     }

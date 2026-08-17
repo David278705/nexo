@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    # Las pruebas quedan fuera del análisis: Pest reasigna `$this` dentro de las
+    # closures y PHPStan no puede resolverlo, así que solo produciría ruido.
+    # Quien valida las pruebas es Pest al ejecutarlas.
+    paths:
+        - app
+        - config
+        - database
+        - routes

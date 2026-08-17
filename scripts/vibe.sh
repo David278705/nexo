@@ -48,6 +48,15 @@ bloqueadas() { grep -c '^### \[!\]' BACKLOG.md || true; }
 proxima()    { grep -m1 '^### \[ \] ' BACKLOG.md | sed 's/^### \[ \] //' || true; }
 log()        { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$1" >> "$REGISTRO"; }
 
+# Frases con las que Claude Code avisa que se acabo el limite de uso o el saldo.
+# Cuando aparecen, el CLI a veces sale con codigo 0, asi que el codigo de salida
+# por si solo no basta para distinguir "limite alcanzado" de "vuelta normal".
+PATRON_LIMITE='usage limit reached|Claude usage limit|rate limit|Credit balance is too low|limit will reset|insufficient credits|Please run /login|Invalid API key'
+
+hora_de_reinicio() {
+  grep -oiE '(resets?|reset at|try again)( at)? [^.]{3,40}' "$1" 2>/dev/null | head -1 || true
+}
+
 ENCARGO=$(cat <<'FIN'
 Trabaja en este proyecto siguiendo el procedimiento del skill 'siguiente'.
 
@@ -122,9 +131,26 @@ while [ "$vuelta" -lt "$VUELTAS" ]; do
 
   log "Vuelta $vuelta — $tarea"
 
-  claude "${ARGS[@]}"
-  codigo=$?
-  log "Vuelta $vuelta termino con codigo $codigo"
+  # La salida se ve en pantalla y ademas queda guardada, para poder revisarla
+  # despues y para saber si la vuelta murio por limite de uso.
+  LOG_VUELTA="bitacora/vuelta-$(date +%Y-%m-%d-%H%M%S).log"
+  claude "${ARGS[@]}" 2>&1 | tee "$LOG_VUELTA"
+  codigo=${PIPESTATUS[0]}
+  log "Vuelta $vuelta termino con codigo $codigo · registro: $(basename "$LOG_VUELTA")"
+
+  if grep -qiE "$PATRON_LIMITE" "$LOG_VUELTA" 2>/dev/null; then
+    cuando=$(hora_de_reinicio "$LOG_VUELTA")
+    echo
+    amar "  Se acabo el limite de uso de tu suscripcion."
+    [ -n "$cuando" ] && amar "  Se reinicia: $cuando"
+    echo
+    amar "  No gasto mas vueltas. Vuelve a ejecutar el script cuando se"
+    amar "  reinicie tu limite y retoma exactamente donde iba."
+    echo
+    gris "  Detalle en: $LOG_VUELTA"
+    log "Detenido por limite de uso. Reinicio: $cuando"
+    break
+  fi
 
   if [ "$codigo" -ne 0 ]; then
     echo
@@ -134,6 +160,8 @@ while [ "$vuelta" -lt "$VUELTAS" ]; do
     amar "  de $MAX_TURNOS turnos, o un error de red."
     echo
     amar "  Revisa ESTADO.md y vuelve a ejecutar cuando tengas creditos."
+    echo
+    gris "  Salida completa de esta vuelta: $LOG_VUELTA"
     log "Detenido por codigo de salida $codigo"
     break
   fi

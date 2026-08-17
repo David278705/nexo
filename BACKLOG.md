@@ -11,7 +11,7 @@ Cada tarea trae **Hecho cuando**, que es lo que hay que poder demostrar para mar
 
 ## Fase 0 — Cimientos
 
-### [ ] F0-01 · Arrancar el proyecto
+### [x] F0-01 · Arrancar el proyecto
 Laravel 12 con el starter kit de Vue (Inertia 2 + Vue 3 + Tailwind). PostgreSQL configurado.
 Pest instalado. Pint y PHPStan (larastan) instalados con su configuración.
 Script `composer verificar` que corre, en orden: `pint --test`, `phpstan analyse`, `pest`,
