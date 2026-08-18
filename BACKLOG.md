@@ -25,7 +25,7 @@ comentario y la fecha de verificación. Zona horaria `America/Bogota`. Locale `e
 **Hecho cuando:** existe el archivo con las nueve constantes y una prueba lee cada una.
 **Fuente:** `.claude/rules/20-calculo-y-reglas-legales.md`
 
-### [ ] F0-03 · Multiempresa, capa 1
+### [x] F0-03 · Multiempresa, capa 1
 Tabla `tenants` con datos y parámetros. Trait `PerteneceATenant` con global scope y relleno
 automático. Middleware que resuelve el tenant desde el usuario autenticado, una sola vez por petición.
 Helper `tenant_actual()`.

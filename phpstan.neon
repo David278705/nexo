@@ -7,8 +7,13 @@ parameters:
     # Las pruebas quedan fuera del análisis: Pest reasigna `$this` dentro de las
     # closures y PHPStan no puede resolverlo, así que solo produciría ruido.
     # Quien valida las pruebas es Pest al ejecutarlas.
+    #
+    # `tests/Fixtures` sí entra: son clases PHP normales, sin closures de Pest,
+    # y ahí viven los modelos de apoyo. Sin ellas PHPStan no vería ni un solo
+    # consumidor de `PerteneceATenant` y no analizaría el trait.
     paths:
         - app
         - config
         - database
         - routes
+        - tests/Fixtures
