@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Autorizacion\Modulo;
+use App\Autorizacion\PoliticaDeModulos;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -22,6 +25,35 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'nombreAplicacion' => config('app.name'),
+            'usuario' => $this->usuario($request),
+        ];
+    }
+
+    /**
+     * El usuario autenticado, su empresa y los módulos a los que puede entrar.
+     *
+     * Los módulos se comparten para que el menú pinte solo lo accesible. No son
+     * el control de acceso —ese es el middleware `modulo:`—, pero salen de la
+     * misma política, así que menú y servidor nunca dicen cosas distintas.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function usuario(Request $request): ?array
+    {
+        $usuario = $request->user();
+
+        if (! $usuario instanceof User) {
+            return null;
+        }
+
+        $permitidos = app(PoliticaDeModulos::class)->modulosPermitidos($usuario);
+
+        return [
+            'nombre' => $usuario->name,
+            'correo' => $usuario->email,
+            'rol' => $usuario->rol->value,
+            'empresa' => $usuario->tenant?->nombre,
+            'modulos' => array_map(fn (Modulo $modulo) => $modulo->value, $permitidos),
         ];
     }
 }

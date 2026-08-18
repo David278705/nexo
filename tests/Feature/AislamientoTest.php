@@ -2,6 +2,7 @@
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\UserModulo;
 use App\Multiempresa\ContextoTenant;
 use App\Multiempresa\PoliticaRls;
 use Illuminate\Database\Eloquent\Model;
@@ -39,12 +40,28 @@ use Tests\Fixtures\RegistroDePrueba;
 const SECRETO_DE_LA_A = 'Confidencial de la Empresa A';
 
 /**
+ * El texto que identifica al registro de la empresa A en este caso.
+ *
+ * Casi siempre es el de arriba. Una tabla cuyo único campo de texto sea de
+ * catálogo cerrado —`user_modulos` y su columna `modulo`— declara el suyo con
+ * la clave `secreto`: lo que importa no es que el texto sea secreto, sino que
+ * solo lo tenga la empresa A.
+ *
+ * @param  array{secreto?: string}  $caso
+ */
+function secretoDe(array $caso): string
+{
+    return $caso['secreto'] ?? SECRETO_DE_LA_A;
+}
+
+/**
  * Registra los cinco casos de aislamiento de una tabla de negocio.
  *
  * @param  array{
  *     tabla: string,
  *     modelo: class-string<Model>,
  *     campo: string,
+ *     secreto?: string,
  *     migracion: Closure(): void,
  *     crear: Closure(string): Model,
  * }  $caso
@@ -70,7 +87,7 @@ function casoDeAislamiento(string $etiqueta, array $caso): void
             ->get("/aislamiento/{$caso['tabla']}/{$escena->registro->getKey()}");
 
         $respuesta->assertNotFound();
-        expect($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+        expect($respuesta->getContent())->not->toContain(secretoDe($caso));
     });
 
     it("{$etiqueta}: no incluye registros de otra empresa en la exportación", function () use ($caso) {
@@ -80,7 +97,7 @@ function casoDeAislamiento(string $etiqueta, array $caso): void
             ->get("/aislamiento/{$caso['tabla']}/exportar");
 
         $respuesta->assertOk();
-        expect($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+        expect($respuesta->getContent())->not->toContain(secretoDe($caso));
     });
 
     it("{$etiqueta}: no encuentra por búsqueda un registro de otra empresa", function () use ($caso) {
@@ -89,10 +106,10 @@ function casoDeAislamiento(string $etiqueta, array $caso): void
         // Se busca el texto exacto: si el filtro de empresa faltara, este es el
         // camino que más fácil lo devolvería.
         $respuesta = test()->actingAs($escena->usuarioB)
-            ->get("/aislamiento/{$caso['tabla']}?buscar=".urlencode(SECRETO_DE_LA_A));
+            ->get("/aislamiento/{$caso['tabla']}?buscar=".urlencode(secretoDe($caso)));
 
         $respuesta->assertOk()->assertJsonCount(0);
-        expect($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+        expect($respuesta->getContent())->not->toContain(secretoDe($caso));
     });
 
     it("{$etiqueta}: la empresa dueña sí lo ve por los cuatro caminos", function () use ($caso) {
@@ -111,15 +128,15 @@ function casoDeAislamiento(string $etiqueta, array $caso): void
         test()->actingAs($escena->usuarioA)
             ->get("/aislamiento/{$caso['tabla']}/{$escena->registro->getKey()}")
             ->assertOk()
-            ->assertSee(SECRETO_DE_LA_A);
+            ->assertSee(secretoDe($caso));
 
         $exportacion = test()->actingAs($escena->usuarioA)
             ->get("/aislamiento/{$caso['tabla']}/exportar");
 
-        expect($exportacion->getContent())->toContain(SECRETO_DE_LA_A);
+        expect($exportacion->getContent())->toContain(secretoDe($caso));
 
         test()->actingAs($escena->usuarioA)
-            ->get("/aislamiento/{$caso['tabla']}?buscar=".urlencode(SECRETO_DE_LA_A))
+            ->get("/aislamiento/{$caso['tabla']}?buscar=".urlencode(secretoDe($caso)))
             ->assertOk()
             ->assertJsonCount(1);
     });
@@ -133,6 +150,7 @@ function casoDeAislamiento(string $etiqueta, array $caso): void
  *     tabla: string,
  *     modelo: class-string<Model>,
  *     campo: string,
+ *     secreto?: string,
  *     migracion: Closure(): void,
  *     crear: Closure(string): Model,
  * }  $caso
@@ -147,7 +165,7 @@ function prepararAislamiento(array $caso): object
     $empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
     $empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
 
-    $registro = $contexto->paraTenant($empresaA, fn () => ($caso['crear'])(SECRETO_DE_LA_A));
+    $registro = $contexto->paraTenant($empresaA, fn () => ($caso['crear'])(secretoDe($caso)));
 
     return (object) [
         'contexto' => $contexto,
@@ -192,7 +210,12 @@ function registrarRutasDeAislamiento(array $caso): void
         // Va antes que la ficha: si no, `exportar` se leería como un
         // identificador.
         Route::get("/aislamiento/{$tabla}/exportar", fn () => response(
-            $modelo::query()->pluck($campo)->implode("\n"),
+            // El campo puede venir casteado a enumerado —`user_modulos` lo
+            // hace—, y un enumerado no se convierte solo a texto.
+            $modelo::query()
+                ->pluck($campo)
+                ->map(fn (mixed $valor) => $valor instanceof BackedEnum ? $valor->value : (string) $valor)
+                ->implode("\n"),
             200,
             ['Content-Type' => 'text/csv']
         ));
@@ -227,4 +250,19 @@ casoDeAislamiento('registros de prueba', [
         PoliticaRls::activarEn('registros_de_prueba');
     },
     'crear' => fn (string $titulo) => RegistroDePrueba::create(['titulo' => $titulo]),
+]);
+
+casoDeAislamiento('módulos de usuario', [
+    'tabla' => 'user_modulos',
+    'modelo' => UserModulo::class,
+    'campo' => 'modulo',
+    // La columna solo admite nombres de módulo, así que el marcador es uno de
+    // ellos. Sigue sirviendo: solo la empresa A tiene una fila con este valor.
+    'secreto' => 'vacaciones',
+    // La tabla la crea su propia migración; aquí no hay nada que montar.
+    'migracion' => function (): void {},
+    'crear' => fn (string $modulo) => UserModulo::create([
+        'user_id' => User::factory()->create(['tenant_id' => tenant_actual_id()])->id,
+        'modulo' => $modulo,
+    ]),
 ]);

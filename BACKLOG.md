@@ -45,7 +45,7 @@ empresa A, autenticarse en la B, intentar leer por modelo, ruta, exportación y 
 **Hecho cuando:** el archivo existe, el caso pasa, y quitar el trait a propósito lo pone en rojo.
 **Fuente:** `.claude/rules/40-pruebas-y-seguridad.md`
 
-### [ ] F0-06 · Usuarios, roles y permisos
+### [x] F0-06 · Usuarios, roles y permisos
 Tabla `users` con rol `owner | superadmin | admin`. Tabla `user_modulos`. Políticas que verifican en
 el servidor. Middleware de módulo.
 **Hecho cuando:** un usuario sin un módulo recibe 403 al pedir su ruta directamente, no solo deja de

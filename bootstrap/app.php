@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolverTenant;
+use App\Http\Middleware\VerificarModulo;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             ResolverTenant::class,
             HandleInertiaRequests::class,
+        ]);
+
+        // Se declara en cada ruta de módulo: `->middleware('modulo:vacaciones')`.
+        $middleware->alias([
+            'modulo' => VerificarModulo::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

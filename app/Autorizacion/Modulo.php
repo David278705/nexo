@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Autorizacion;
+
+/**
+ * Los módulos sobre los que se conceden permisos.
+ *
+ * Son los del menú de la sección 4.2 del documento de diseño, con una
+ * precisión: las tres subsecciones de Novedades —incapacidades, vacaciones y
+ * licencias— son módulos independientes, porque el capítulo 3 de la
+ * especificación funcional dice expresamente que «una persona puede encargarse
+ * solo de vacaciones». El menú vuelve a agruparlas bajo Novedades usando
+ * `seccion()`.
+ *
+ * Dos módulos no se asignan nunca a mano y por eso no aparecen en
+ * `asignables()`:
+ *
+ * - `Inicio` lo ve todo usuario de una empresa.
+ * - `Configuracion` es solo del superadministrador.
+ */
+enum Modulo: string
+{
+    case Inicio = 'inicio';
+
+    case Empleados = 'empleados';
+
+    case Contratos = 'contratos';
+
+    case Incapacidades = 'incapacidades';
+
+    case Vacaciones = 'vacaciones';
+
+    case Licencias = 'licencias';
+
+    case Movimientos = 'movimientos';
+
+    case Terminaciones = 'terminaciones';
+
+    case Auditoria = 'auditoria';
+
+    case Configuracion = 'configuracion';
+
+    public function etiqueta(): string
+    {
+        return match ($this) {
+            self::Inicio => 'Inicio',
+            self::Empleados => 'Empleados',
+            self::Contratos => 'Contratos',
+            self::Incapacidades => 'Incapacidades',
+            self::Vacaciones => 'Vacaciones',
+            self::Licencias => 'Licencias y ausencias',
+            self::Movimientos => 'Movimientos',
+            self::Terminaciones => 'Terminaciones',
+            self::Auditoria => 'Auditoría',
+            self::Configuracion => 'Configuración',
+        };
+    }
+
+    /**
+     * La sección del menú donde vive el módulo.
+     *
+     * Coincide con la etiqueta salvo en los tres de novedades, que el menú
+     * muestra agrupados aunque el permiso sea de cada uno por separado.
+     */
+    public function seccion(): string
+    {
+        return match ($this) {
+            self::Incapacidades, self::Vacaciones, self::Licencias => 'Novedades',
+            default => $this->etiqueta(),
+        };
+    }
+
+    /**
+     * Lo ve todo usuario de una empresa, sin asignación previa.
+     */
+    public function esDeTodos(): bool
+    {
+        return $this === self::Inicio;
+    }
+
+    /**
+     * Solo el superadministrador, por mucho que se le asigne a otro.
+     */
+    public function esSoloDelSuperadministrador(): bool
+    {
+        return $this === self::Configuracion;
+    }
+
+    /**
+     * Los módulos que el superadministrador puede repartir entre sus
+     * administradores.
+     *
+     * @return list<self>
+     */
+    public static function asignables(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $modulo) => ! $modulo->esDeTodos() && ! $modulo->esSoloDelSuperadministrador(),
+        ));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function valoresAsignables(): array
+    {
+        return array_map(fn (self $modulo) => $modulo->value, self::asignables());
+    }
+}
