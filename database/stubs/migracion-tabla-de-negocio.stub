@@ -1,0 +1,56 @@
+<?php
+
+use App\Multiempresa\PoliticaRls;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * El patrón que repite toda tabla de negocio. Cópialo tal cual.
+ *
+ * Son cuatro cosas y ninguna es opcional:
+ *
+ * 1. La columna `tenant_id` con su clave foránea.
+ * 2. El índice: `tenant_id` va primero en todo índice compuesto, porque el
+ *    filtro por empresa está en absolutamente todas las consultas.
+ * 3. `softDeletes()`, porque en este proyecto nunca se borra de verdad.
+ * 4. `PoliticaRls::activarEn()`, **en la misma migración que crea la tabla**.
+ *    No en una posterior «cuando haya clientes»: activarla después obliga a
+ *    auditar todo lo escrito en medio.
+ *
+ * Y en el modelo, el trait `PerteneceATenant`. Las dos capas o ninguna.
+ *
+ * Los catálogos globales —países, departamentos, ciudades, EPS, fondos, ARL,
+ * cajas, bancos, festivos y planes— no siguen este patrón: no pertenecen a
+ * ninguna empresa, así que no llevan `tenant_id`, ni el trait, ni política.
+ *
+ * Recuerda que el rol con el que la aplicación se conecta no puede ser
+ * superusuario ni tener `BYPASSRLS`, o la política no se aplica nunca.
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('ejemplos', function (Blueprint $tabla) {
+            $tabla->id();
+            $tabla->foreignId('tenant_id')->constrained('tenants');
+
+            // Las columnas propias del módulo van aquí.
+            $tabla->string('nombre');
+
+            $tabla->timestamps();
+            $tabla->softDeletes();
+
+            $tabla->index(['tenant_id', 'nombre']);
+        });
+
+        PoliticaRls::activarEn('ejemplos');
+    }
+
+    public function down(): void
+    {
+        PoliticaRls::desactivarEn('ejemplos');
+
+        Schema::dropIfExists('ejemplos');
+    }
+};

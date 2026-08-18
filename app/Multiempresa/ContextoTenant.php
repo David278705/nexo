@@ -18,12 +18,12 @@ class ContextoTenant
 
     public function fijar(Tenant $tenant): void
     {
-        $this->tenant = $tenant;
+        $this->establecer($tenant);
     }
 
     public function olvidar(): void
     {
-        $this->tenant = null;
+        $this->establecer(null);
     }
 
     public function hay(): bool
@@ -73,7 +73,7 @@ class ContextoTenant
         try {
             return $callback($tenant);
         } finally {
-            $this->tenant = $anterior;
+            $this->establecer($anterior);
         }
     }
 
@@ -97,7 +97,23 @@ class ContextoTenant
         try {
             return $callback();
         } finally {
-            $this->tenant = $anterior;
+            $this->establecer($anterior);
         }
+    }
+
+    /**
+     * El único sitio donde cambia la empresa en curso.
+     *
+     * Cambiarla son siempre dos cosas a la vez: la propiedad que lee el global
+     * scope (capa 1) y la variable de sesión que leen las políticas de
+     * PostgreSQL (capa 2). Si se pudieran mover por separado, la primera vez
+     * que alguien tocara solo una de las dos el aislamiento quedaría a medias
+     * sin que ninguna prueba lo notara.
+     */
+    private function establecer(?Tenant $tenant): void
+    {
+        $this->tenant = $tenant;
+
+        PoliticaRls::fijarEmpresa($this->id());
     }
 }

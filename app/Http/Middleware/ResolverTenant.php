@@ -23,6 +23,13 @@ class ResolverTenant
     {
         $usuario = $peticion->user();
 
+        // Se empieza por limpiar. La empresa vive también en una variable de
+        // sesión de PostgreSQL, y una conexión reutilizada —la cola, Octane, un
+        // pool— llega con la de la petición anterior puesta. Fijarla sin
+        // limpiarla antes funcionaría siempre menos justo cuando no hay usuario,
+        // que es cuando peor está fallar.
+        $this->contexto->olvidar();
+
         // Sin usuario, o con un usuario sin empresa —el `owner` del panel del
         // proveedor—, no se fija contexto. El global scope falla cerrado, así
         // que eso significa no ver nada, no verlo todo.

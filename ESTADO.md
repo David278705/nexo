@@ -1,56 +1,51 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-17 · Tarea F0-03
+**Última sesión:** 2026-08-17 · Tarea F0-04
 **Verificación:** verde
-**Siguiente tarea:** F0-04 · Multiempresa, capa 2 (RLS)
+**Siguiente tarea:** F0-05 · Batería de aislamiento
 
 ## Qué se hizo
 
-- **Tabla `tenants`** (`2026_08_17_100000`): datos de la empresa (`nombre`, `nit` único, `telefono`,
-  `ciudad`), `estado` como texto legible, los **tres parámetros de cálculo** (`sabado_laboral`,
-  `suspensiones_afectan_vacaciones`, `perfil_sociodemografico_habilitado`) y los **tres campos de
-  salud** del doc. 02 §3.5 (`ultimo_acceso_en`, `empleados_cargados`, `ultima_novedad_en`).
-  Con `timestamps` y `softDeletes`.
-- **`users.tenant_id`** nulable con clave foránea (`2026_08_17_100001`): es de donde el middleware
-  saca la empresa. Nulable porque el `owner` del panel del proveedor no es de ninguna.
-- **`App\Multiempresa\ContextoTenant`**, singleton: `fijar`, `olvidar`, `tenant`, `id`,
-  `idObligatorio`, y sobre todo `paraTenant()` y `sinTenant()`, que restauran el contexto anterior
-  en un `finally`. Son la vía para jobs en cola y comandos que recorren empresas.
-- **`App\Multiempresa\AlcanceTenant`**, el global scope. Ahí vive la constante `COLUMNA`.
-- **`App\Multiempresa\PerteneceATenant`**, el trait: registra el scope y rellena `tenant_id` en
-  `creating`. Trae la relación `tenant()`.
-- **`App\Http\Middleware\ResolverTenant`**, añadido al grupo `web` **antes** de
-  `HandleInertiaRequests`. Resuelve la empresa desde `$request->user()`, nunca desde la URL.
-- **Helpers `tenant_actual()` y `tenant_actual_id()`** en `app/Multiempresa/helpers.php`, cargados
-  por `composer.json` (`autoload.files`).
-- `Tenant` modelo + `TenantFactory` (estados `suspendida()` y `conSabadoLaboral()`).
-- `tests/Fixtures/RegistroDePrueba.php`: un modelo de negocio mínimo con el trait y nada más, con su
-  tabla creada por la propia prueba.
-- **`tests/Feature/MultiempresaTest.php` con once casos**, todos verdes: relleno automático, el
-  filtro presente en el SQL, no ver los registros de la otra empresa ni por `all()` ni por `find()`,
-  no ver nada sin contexto, no poder crear sin contexto, ignorar un `tenant_id` puesto a mano,
-  restaurar el contexto tras una excepción, y los tres casos del middleware.
+- **`App\Multiempresa\PoliticaRls`**: las dos mitades de la capa 2 en una sola clase, a propósito.
+  - `activarEn($tabla)` / `desactivarEn($tabla)`: `ENABLE` + `FORCE ROW LEVEL SECURITY` y la política
+    `tenant_id = empresa_actual()`, con `USING` y `WITH CHECK`. La llaman las migraciones.
+  - `fijarEmpresa(?int)` / `empresaFijada()`: la variable de sesión `nexo.tenant_id`.
+  - Todo guardado tras un chequeo de driver, así que en una conexión que no sea `pgsql` no revienta.
+- **Migración `2026_08_17_100002_create_funcion_empresa_actual`**: la función SQL `empresa_actual()`,
+  `stable`, que devuelve `nullif(current_setting('nexo.tenant_id', true), '')::bigint`. Existe para
+  que ninguna política repita la fórmula: las treinta tablas de negocio dirán `= empresa_actual()`.
+- **`ContextoTenant` mueve las dos capas a la vez.** `fijar()` y `olvidar()` ahora pasan por un
+  `establecer()` privado que cambia la propiedad *y* la variable de sesión. `paraTenant()` y
+  `sinTenant()` restauran por el mismo camino en su `finally`, así que la sesión de PostgreSQL
+  también se restaura si un job falla.
+- **`ResolverTenant` empieza por `olvidar()`.** Antes solo fijaba; ahora limpia primero, de modo que
+  una conexión reutilizada no llega con la empresa de la petición anterior puesta.
+- **`database/stubs/migracion-tabla-de-negocio.stub`**: la migración de ejemplo que pedía la tarea,
+  con las cuatro cosas obligatorias (columna, índice con `tenant_id` primero, `softDeletes`,
+  `PoliticaRls::activarEn` en la misma migración) y qué tablas no la siguen.
+- **`tests/Feature/RlsTest.php`, doce casos verdes.** Todas las consultas van por el query builder
+  para saltarse el global scope a propósito: leer, buscar por clave, insertar, actualizar y borrar
+  filas de otra empresa; sin empresa en la sesión no sale nada; y los dos casos del middleware.
+  Se comprobó a mano que comentar `PoliticaRls::activarEn` pone cinco de esos casos en rojo.
 
 ## Decisiones tomadas
 
-- **El global scope falla cerrado.** Sin empresa en contexto añade `where 1 = 0` en lugar de no
-  filtrar. Un comando mal escrito devuelve una lista vacía, no la nómina de todos los clientes.
-  Es lo contrario de lo que hace un scope ingenuo y es deliberado.
-- **El trait ignora un `tenant_id` puesto a mano** y siempre escribe el del contexto. Si respetara
-  el valor recibido, un campo escondido en un formulario podría sembrar filas en otra empresa.
-- **Crear sin contexto lanza `SinContextoDeTenant`.** Mejor reventar que escribir una fila huérfana
-  o en la empresa equivocada.
-- **`User` no lleva el trait.** El inicio de sesión tiene que encontrar al usuario por su correo
-  *antes* de saber de qué empresa es. Su aislamiento se resolverá con las políticas de F0-06.
-- **Los tres parámetros booleanos de `tenants` no tienen valor por omisión en la base de datos.**
-  Cuál es el correcto lo decide el cliente en el onboarding; ponerle un valor por defecto a
-  `suspensiones_afectan_vacaciones` sería inventar una regla de negocio.
-- **`ciudad` queda como texto** hasta que F0-11 traiga el catálogo de ciudades de Colombia.
-- **La constante `COLUMNA` vive en `AlcanceTenant`, no en el trait.** PHP no deja leer una constante
-  de trait por el nombre del trait, solo por el de la clase que lo usa; se descubrió en rojo.
-- **`tests/Fixtures` entra en las rutas de PHPStan.** Son clases PHP normales, sin closures de Pest,
-  y sin ellas PHPStan no veía ni un consumidor del trait y no lo analizaba.
-- Se commiteó aparte el trabajo de F0-02, que había quedado en el árbol sin commit.
+- **La política se declara con `FORCE ROW LEVEL SECURITY`.** Sin `FORCE`, el dueño de la tabla se
+  salta su propia política, y el dueño es justamente el rol que corrió las migraciones.
+- **La política falla cerrada, igual que el global scope.** `fijarEmpresa(null)` deja la variable en
+  cadena vacía, el `nullif` la vuelve nula, y `tenant_id = null` no es cierto para ninguna fila.
+- **`set_config(..., false)`, de sesión y no de transacción.** De transacción se perdería en cada
+  commit y la política dejaría de encontrar la empresa a mitad de la petición.
+- **Una sola política por tabla, con `USING` y `WITH CHECK`.** Sin la segunda mitad se podría
+  insertar una fila en otra empresa aunque después no se pudiera leer.
+- **La prueba cambia de rol con `set role`.** `postgres` es superusuario y PostgreSQL **nunca**
+  aplica RLS a un superusuario: sin cambiar de rol, las doce pruebas pasarían sin comprobar nada.
+  El cambio va dentro de una transacción anidada —un savepoint— porque una consulta rechazada por la
+  política aborta la transacción y solo un rollback la deja usable para el resto de la prueba.
+- **La función `empresa_actual()` es global, no por empresa.** Es una función de lectura de la
+  sesión; no toca datos de nadie.
+- **`tenants` no lleva RLS.** No es una tabla de negocio: no tiene `tenant_id`, se identifica por su
+  propia clave. Su acceso se resolverá con las políticas de F0-06.
 
 ## Preguntas para Angela
 
@@ -58,21 +53,30 @@
 
 ## Decisiones para David
 
-- Sigue abierta de dos sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
-  8.3+**. `composer.json` quedó en `"php": "^8.2"`. Hay que actualizar el PHP local o dejar
-  constancia de que el mínimo real del proyecto es 8.2.
+- **El rol de conexión de PostgreSQL.** Hoy `.env` se conecta como `postgres`, que es superusuario y
+  tiene `BYPASSRLS`: **en local la capa 2 no se aplica nunca**. En producción hay que conectarse con
+  un rol corriente (sin `SUPERUSER` ni `BYPASSRLS`) y darle `SELECT, INSERT, UPDATE, DELETE` sobre
+  las tablas. Es la única forma de que RLS sirva de algo. Conviene hacerlo también en local para no
+  descubrirlo el día del despliegue.
+- Sigue abierta de tres sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+  8.3+**. `composer.json` quedó en `"php": "^8.2"`.
+- **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
+  sensible y pidió permiso). Faltan por añadir a la sección «Capa 2» tres líneas: que la migración
+  llama a `PoliticaRls::activarEn()` copiando `database/stubs/migracion-tabla-de-negocio.stub`, que
+  nunca se llama a `fijarEmpresa()` a mano —cambiar de empresa es siempre `paraTenant()`—, y que el
+  rol de conexión no puede ser superusuario.
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F0-04 · Multiempresa, capa 2 (RLS)**. Lo que falta es la parte de PostgreSQL:
-  `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`, la política que compara contra una variable de sesión,
-  y que `ResolverTenant` haga el `SET` de esa variable. El middleware ya existe: solo hay que
-  agregarle esa línea y su equivalente al fijar contexto desde `ContextoTenant::paraTenant()`.
-  Ojo: la variable hay que limpiarla igual que el contexto, o una conexión reutilizada del pool
-  arrastra la empresa anterior.
-- La migración de ejemplo que pide F0-04 puede apoyarse en el mismo patrón que ya usa
-  `registros_de_prueba` dentro de `MultiempresaTest`.
-- `tests/Feature/AislamientoTest.php` **todavía no existe**: es F0-05. `MultiempresaTest` prueba el
-  trait; `AislamientoTest` probará los caminos (ruta, exportación, búsqueda) tabla por tabla.
-- Recordatorio del trait: la regla es que **nunca** aparezca un `where('tenant_id', ...)` en un
-  controlador. Si aparece, es que el modelo perdió el trait.
+- La siguiente es **F0-05 · Batería de aislamiento**: `tests/Feature/AislamientoTest.php`. Ojo con la
+  diferencia de propósito: `MultiempresaTest` prueba el trait, `RlsTest` prueba la política de
+  PostgreSQL, y `AislamientoTest` prueba **los caminos** —modelo, ruta, exportación, búsqueda—, una
+  tabla de negocio por caso. El «Hecho cuando» exige que quitar el trait a propósito la ponga en
+  rojo, así que el caso tiene que apoyarse en la capa 1, no solo en la capa 2.
+- Todavía no hay ninguna tabla de negocio real. La de F0-05 tendrá que apoyarse otra vez en
+  `Tests\Fixtures\RegistroDePrueba` y en una tabla creada por la propia prueba, con su ruta de
+  juguete registrada en el test.
+- Cuando llegue la primera tabla de verdad (F1-01, `personas`), su migración copia el stub y añade su
+  caso a `AislamientoTest`. No se da por terminada una tabla de negocio sin las dos cosas.
+- El helper `conRolDeAplicacion()` de `RlsTest` es reutilizable; si `AislamientoTest` lo necesita,
+  conviene sacarlo a `tests/Pest.php` antes de copiarlo.

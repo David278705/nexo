@@ -33,7 +33,7 @@ Helper `tenant_actual()`.
 lo demuestra.
 **Fuente:** `.claude/rules/10-multiempresa.md`
 
-### [ ] F0-04 · Multiempresa, capa 2 (RLS)
+### [x] F0-04 · Multiempresa, capa 2 (RLS)
 Políticas de Row Level Security en PostgreSQL. Variable de sesión fijada por el middleware.
 Migración de ejemplo que muestre el patrón a repetir en cada tabla de negocio.
 **Hecho cuando:** una consulta SQL directa sin el global scope tampoco devuelve filas de otra empresa.
