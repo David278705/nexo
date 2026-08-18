@@ -39,7 +39,7 @@ Migración de ejemplo que muestre el patrón a repetir en cada tabla de negocio.
 **Hecho cuando:** una consulta SQL directa sin el global scope tampoco devuelve filas de otra empresa.
 **Fuente:** `.claude/rules/10-multiempresa.md`
 
-### [ ] F0-05 · Batería de aislamiento
+### [x] F0-05 · Batería de aislamiento
 `tests/Feature/AislamientoTest.php` con la estructura y al menos un caso completo: crear en la
 empresa A, autenticarse en la B, intentar leer por modelo, ruta, exportación y búsqueda.
 **Hecho cuando:** el archivo existe, el caso pasa, y quitar el trait a propósito lo pone en rojo.
