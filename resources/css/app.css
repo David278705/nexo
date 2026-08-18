@@ -4,8 +4,34 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.vue';
 
+/*
+ * La paleta del documento 3, sección 3.1, como variables. Ningún componente
+ * escribe un color literal: escribe `bg-marca` o `text-texto-secundario`.
+ *
+ * F0-09 completa el sistema de diseño; aquí están las variables que las
+ * pantallas de acceso ya necesitan, con los valores definitivos.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-marca: #123a5c;
+    --color-accion: #1b6ec2;
+    --color-accion-oscuro: #155a9e;
+    --color-exito: #157347;
+    --color-advertencia: #b45309;
+    --color-error: #b02a37;
+
+    --color-texto: #111827;
+    --color-texto-secundario: #4b5563;
+    --color-texto-terciario: #9ca3af;
+
+    --color-borde: #e5e7eb;
+    --color-fondo: #f7f8fa;
+    --color-superficie: #ffffff;
+
+    --radius-caja: 6px;
+    --radius-modal: 8px;
 }

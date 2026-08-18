@@ -52,7 +52,7 @@ el servidor. Middleware de módulo.
 ver el menú.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 3
 
-### [ ] F0-07 · Autenticación
+### [x] F0-07 · Autenticación
 Iniciar y cerrar sesión, recuperar contraseña, restablecer, aceptar invitación. Bloqueo tras intentos
 fallidos. Registro de accesos incluidos los fallidos.
 **Hecho cuando:** los cuatro flujos funcionan y hay prueba de cada uno.

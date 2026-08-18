@@ -26,6 +26,9 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'nombreAplicacion' => config('app.name'),
             'usuario' => $this->usuario($request),
+            // Los mensajes de una petición a la siguiente. El de recuperar
+            // contraseña es el primero que lo usa.
+            'estado' => fn () => $request->session()->get('estado'),
         ];
     }
 

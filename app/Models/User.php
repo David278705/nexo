@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
+use App\Notificaciones\RestablecerContrasena;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -107,6 +108,28 @@ class User extends Authenticatable
     public function modulosAsignados(): Collection
     {
         return $this->modulos->map(fn (UserModulo $asignado) => $asignado->modulo);
+    }
+
+    /**
+     * Las invitaciones de primer ingreso emitidas a este usuario.
+     *
+     * @return HasMany<Invitacion, $this>
+     */
+    public function invitaciones(): HasMany
+    {
+        return $this->hasMany(Invitacion::class, 'user_id');
+    }
+
+    /**
+     * El correo de restablecimiento, en español y con su caducidad dicha.
+     *
+     * Laravel manda el suyo si no se cambia esto; el sistema entero está en
+     * español, así que el único correo en inglés sería justo el que más gente
+     * ve.
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new RestablecerContrasena($token));
     }
 
     /**

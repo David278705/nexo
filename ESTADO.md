@@ -1,52 +1,47 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-17 · Tarea F0-06
+**Última sesión:** 2026-08-18 · Tarea F0-07
 **Verificación:** verde
-**Siguiente tarea:** F0-07 · Autenticación
+**Siguiente tarea:** F0-08 · Auditoría
 
 ## Qué se hizo
 
-- **`App\Autorizacion\Rol`** (`owner | superadmin | admin`) y **`App\Autorizacion\Modulo`**, los dos
-  enumerados guardados como texto legible. `Modulo` trae `etiqueta()`, `seccion()` —para agrupar las
-  novedades en el menú—, `esDeTodos()`, `esSoloDelSuperadministrador()` y `asignables()`.
-- **Columna `rol` en `users`**, con `admin` por defecto: si alguna vez se crea un usuario sin decir su
-  rol, el error tiene que ser que no ve algo, nunca que lo ve todo.
-- **Tabla `user_modulos`** siguiendo el stub de tabla de negocio: `tenant_id`, índice con la empresa
-  primero, borrado lógico y `PoliticaRls::activarEn()` en la misma migración. Su índice único es
-  **parcial** (`where deleted_at is null`), porque con borrado lógico un módulo revocado bloquearía
-  para siempre volver a concederlo.
-- **`App\Autorizacion\PoliticaDeModulos`**, el único sitio donde se decide el acceso, registrada como
-  la habilidad `modulo` en `AppServiceProvider`. Expone también `modulosPermitidos()`.
-- **Middleware `modulo:`** (`VerificarModulo`), con alias registrado en `bootstrap/app.php`. Se declara
-  en la ruta: `->middleware('modulo:vacaciones')`. Un nombre de módulo inexistente **revienta**, no
-  responde 403: es una errata en la ruta, no una petición inválida.
-- **`HandleInertiaRequests`** comparte `usuario` con nombre, correo, rol, empresa y los módulos
-  permitidos, calculados con la misma política. F0-10 arma el menú con eso.
-- **`tests/Feature/RolesYPermisosTest.php`**, 14 casos, todos con petición HTTP real: el «Hecho cuando»
-  es el primero. También el caso de aislamiento de `user_modulos` en `AislamientoTest`.
-- `composer verificar` en verde: 64 pruebas de Pest, PHPStan sin errores, build y Vitest.
+- **Los cuatro flujos de acceso de la sección 5.1**, cada uno con su ruta, su controlador y su
+  página Vue en `resources/js/Pages/Acceso/`: iniciar sesión, recuperar contraseña, restablecer
+  contraseña y aceptar invitación. Las cuatro son rutas `guest`; `/` y `/salir` pasan a `auth`.
+- **`App\Autenticacion\LimitadorDeIntentos`**: los dos primeros fallos salen gratis, el tercero cuesta
+  un minuto y cada fallo siguiente duplica la espera hasta un tope de quince minutos. Cuenta por
+  **correo e IP juntos**, no por uno solo, y vive en la caché.
+- **Tabla `accesos`** y `App\Autenticacion\RegistroDeAccesos`: una línea por intento, exitoso, fallido
+  o bloqueado, con correo tecleado, empresa cuando se conoce, IP y agente.
+- **Tabla `invitaciones`** y `App\Autenticacion\Invitaciones`: token en claro solo en el correo, hash
+  en la tabla, emitir invalida las anteriores del mismo usuario, y aceptar define la contraseña, marca
+  el correo como verificado e inicia sesión.
+- **Correos en español** (`resources/views/correos/`) para invitación y restablecimiento;
+  `User::sendPasswordResetNotification()` reemplaza el de Laravel, que llegaba en inglés.
+- **Componentes base nuevos**: `CampoTexto`, `Boton`, `Aviso`, `IndicadorFortaleza` y
+  `Acceso/PanelDeAcceso`, más `Utilidades/fortalezaDeContrasena.js`. F0-09 los formaliza.
+- **`tests/Feature/AutenticacionTest.php`** (18 casos) y **`tests/Unit/LimitadorDeIntentosTest.php`**
+  (6 casos). `composer verificar` en verde: 88 pruebas de Pest, PHPStan sin errores, build y Vitest.
 
 ## Decisiones tomadas
 
-- **Las tres subsecciones de novedades son módulos independientes.** El capítulo 3 dice que «una
-  persona puede encargarse solo de vacaciones», y la sección 4.2 del documento de diseño agrupa las
-  tres bajo «Novedades». Se resuelve con permiso por subsección y `seccion()` para el menú, que
-  cumple las dos cosas sin inventar nada.
-- **`Inicio` y `Configuracion` no se asignan.** El primero lo ve todo usuario de una empresa; el
-  segundo es del superadministrador y el rol manda por encima de la tabla: aunque alguien inserte la
-  fila, un administrador sigue recibiendo 403. Hay prueba de ese caso.
-- **`user_modulos` es tabla de negocio, no de sistema.** Quién puede ver qué es información de la
-  empresa, y quitar un permiso debe quedar registrado como cualquier otro cambio. Por eso lleva el
-  trait, RLS y su caso de aislamiento.
-- **El `owner` no entra a los módulos del cliente.** Su sitio es el panel del proveedor. Cuando F5-07
-  le dé acceso al entorno de una empresa, será de solo lectura y quedando en la auditoría de esa
-  empresa; hasta entonces la política responde que no, y hay prueba.
-- **`users` sigue sin el trait `PerteneceATenant`.** Hay que poder buscar por correo antes de saber de
-  qué empresa es el usuario, que es justo lo que hace el inicio de sesión. El aislamiento de los
-  usuarios se apoya en `user_modulos` y en la política, no en un global scope sobre `users`.
-- **`AislamientoTest` admite ahora una clave `secreto` opcional** en cada caso. `user_modulos` la usa
-  porque su único campo de texto es de catálogo cerrado; lo que importa no es que el texto sea
-  secreto, sino que solo lo tenga la empresa A.
+- **Un solo mensaje de error al entrar y siempre el mismo.** Correo inexistente y contraseña
+  equivocada responden idéntico; hay prueba que compara las dos respuestas. Decir «ese correo no
+  existe» regala la lista de quién trabaja en la empresa.
+- **`accesos` no sigue el patrón de tabla de negocio, a propósito.** Un intento fallido se escribe
+  antes de saber de quién es: con `tenant_id` obligatorio y RLS activo, justo esas filas no se podrían
+  escribir. La empresa se guarda nulable, cuando se conoce, y el aislamiento lo pondrá la pantalla que
+  muestre el registro. Tampoco lleva borrado lógico: es registro de seguridad, como la auditoría.
+- **`invitaciones` tampoco lleva `tenant_id` ni RLS.** El enlace se abre sin sesión iniciada, así que
+  en esa petición no hay empresa en contexto y la política haría que la invitación no se encontrara
+  nunca. La empresa se sabe por el usuario invitado.
+- **El token de invitación se guarda con hash SHA-256**, igual que una contraseña: quien lea la tabla
+  no puede fabricar el enlace de nadie.
+- **Aceptar la invitación marca el correo como verificado.** Abrir un enlace que solo llegó a ese
+  buzón es exactamente la prueba que la verificación de correo busca.
+- **El enlace de recuperación expira en una hora**, como pide el documento: es el `expire => 60` que
+  ya traía `config/auth.php`.
 
 ## Preguntas para Angela
 
@@ -54,11 +49,15 @@
 
 ## Decisiones para David
 
+- **Vigencia del enlace de invitación: siete días.** El documento fija la hora del enlace de
+  recuperación pero no dice nada de la invitación, que es otra cosa: a la recuperación se responde en
+  el momento, a una invitación puede que alguien entre el lunes siguiente. Está en
+  `Invitaciones::DIAS_DE_VIGENCIA`, en un solo sitio. **Confírmalo o cámbialo.**
 - **El rol de conexión de PostgreSQL.** Sigue abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Conviene hacerlo también en local para
   no descubrirlo el día del despliegue.
-- Sigue abierta de cinco sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Sigue abierta de seis sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo sensible).
   Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()` copiando
@@ -67,15 +66,15 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F0-07 · Autenticación**: iniciar y cerrar sesión, recuperar y restablecer
-  contraseña, aceptar invitación, bloqueo tras intentos fallidos y registro de accesos incluidos los
-  fallidos. El proyecto **no trae starter kit de autenticación**: no hay rutas ni pantallas de acceso
-  todavía, hay que construirlas.
-- La pantalla «Aceptar invitación» muestra al usuario un resumen de sus módulos: ya se puede sacar de
-  `PoliticaDeModulos::modulosPermitidos()`.
+- La siguiente es **F0-08 · Auditoría**: tabla `auditoria` y observador genérico con valores anterior
+  y nuevo. Ojo: `accesos` **no** es la auditoría; son dos registros distintos y no hay que fundirlos.
+  El observador tendrá que saltarse los modelos que no son de negocio (`Acceso`, `Invitacion`).
+- **Nadie emite invitaciones todavía desde la interfaz.** `Invitaciones::emitir()` existe y está
+  probado, pero la pantalla que lo llama es la de usuarios de Configuración (F1-12) y la creación de
+  empresa del panel (F1B-02). Hasta entonces se emite desde tinker o desde una prueba.
+- Los componentes `CampoTexto`, `Boton` y `Aviso` nacieron aquí por necesidad. **F0-09 no los crea de
+  nuevo: los revisa contra `prototipos/sistema.html` y les quita cualquier color literal.**
 - Cuando F0-10 monte las rutas reales de cada módulo, cada una lleva `->middleware('modulo:<nombre>')`
   y el menú se pinta con `usuario.modulos` de las props compartidas. Las rutas de juguete de
-  `RolesYPermisosTest` desaparecen cuando existan las reales.
-- La pantalla de usuarios de Configuración (F1-12 y siguientes) concede módulos escribiendo en
-  `user_modulos` y los revoca con borrado lógico. `Modulo::asignables()` es la lista que se ofrece.
+  `RolesYPermisosTest` desaparecen cuando existan las reales. El cierre de sesión ya es `POST /salir`.
 - Sigue pendiente para F1-01: la migración de `personas` copia el stub y suma su `casoDeAislamiento()`.

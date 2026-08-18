@@ -1,9 +1,12 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 it('sirve la página de inicio como componente de Inertia', function () {
-    $this->get('/')
+    // El inicio pide sesión desde F0-07; sin usuario redirige al acceso.
+    $this->actingAs(User::factory()->create())
+        ->get('/')
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina
             ->component('Inicio')

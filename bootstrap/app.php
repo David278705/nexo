@@ -25,6 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'modulo' => VerificarModulo::class,
         ]);
+
+        // Las dos direcciones del acceso. Sin esto, Laravel busca la ruta
+        // `login`, que en este proyecto se llama `acceso` y está en español.
+        $middleware->redirectGuestsTo('/acceso');
+        $middleware->redirectUsersTo('/');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
