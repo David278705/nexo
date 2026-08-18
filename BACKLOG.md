@@ -58,7 +58,7 @@ fallidos. Registro de accesos incluidos los fallidos.
 **Hecho cuando:** los cuatro flujos funcionan y hay prueba de cada uno.
 **Fuente:** `docs/03-diseno-e-interfaz.md` 5.1
 
-### [ ] F0-08 · Auditoría
+### [x] F0-08 · Auditoría
 Tabla `auditoria`. Observador genérico que registra creación, edición y borrado con valores anterior
 y nuevo. No editable ni borrable desde la aplicación.
 **Hecho cuando:** crear un registro cualquiera deja una línea sin que nadie la escriba a mano.

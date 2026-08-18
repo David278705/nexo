@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auditoria\ObservadorDeAuditoria;
 use App\Autorizacion\Modulo;
 use App\Autorizacion\PoliticaDeModulos;
 use App\Models\User;
@@ -26,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // La auditoría se engancha aquí, una sola vez y para todos los modelos.
+        // No hay nada que agregar por cada tabla nueva: si se guarda en la base
+        // de datos, queda registrado.
+        ObservadorDeAuditoria::registrar();
+
         // La única habilidad de acceso a módulos. El middleware `modulo:`, los
         // controladores y el menú preguntan todos por aquí, así que no puede
         // haber dos respuestas distintas a la misma pregunta.
