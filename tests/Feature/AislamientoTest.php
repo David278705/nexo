@@ -1,8 +1,11 @@
 <?php
 
+use App\Models\PerfilSociodemografico;
+use App\Models\Persona;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserModulo;
+use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Multiempresa\PoliticaRls;
 use Illuminate\Database\Eloquent\Model;
@@ -264,5 +267,35 @@ casoDeAislamiento('módulos de usuario', [
     'crear' => fn (string $modulo) => UserModulo::create([
         'user_id' => User::factory()->create(['tenant_id' => tenant_actual_id()])->id,
         'modulo' => $modulo,
+    ]),
+]);
+
+casoDeAislamiento('personas', [
+    'tabla' => 'personas',
+    'modelo' => Persona::class,
+    'campo' => 'primer_nombre',
+    'migracion' => function (): void {},
+    'crear' => fn (string $nombre) => Persona::factory()->create(['primer_nombre' => $nombre]),
+]);
+
+casoDeAislamiento('vinculaciones', [
+    'tabla' => 'vinculaciones',
+    'modelo' => Vinculacion::class,
+    'campo' => 'cargo',
+    'migracion' => function (): void {},
+    'crear' => fn (string $cargo) => Vinculacion::factory()->create(['cargo' => $cargo]),
+]);
+
+casoDeAislamiento('perfil sociodemográfico', [
+    'tabla' => 'perfil_sociodemografico',
+    'modelo' => PerfilSociodemografico::class,
+    'campo' => 'tipo_vivienda',
+    // Ningún campo del perfil es texto libre: son listas y números. Se usa como
+    // marcador una de las opciones cerradas, como en `user_modulos`. Lo que
+    // importa no es que el texto sea secreto, sino que solo lo tenga la A.
+    'secreto' => 'propia',
+    'migracion' => function (): void {},
+    'crear' => fn (string $vivienda) => PerfilSociodemografico::factory()->create([
+        'tipo_vivienda' => $vivienda,
     ]),
 ]);

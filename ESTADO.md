@@ -1,74 +1,81 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-18 · Tarea F0-11
+**Última sesión:** 2026-08-18 · Tarea F1-01
 **Verificación:** verde
-**Siguiente tarea:** F1-01 · Personas y vinculaciones
-*(F0-11 queda `[!]`: lo suyo está hecho salvo el contenido de las cinco listas de entidades, que
-depende de la decisión D.5. Se retoma sola cuando Angela responda.)*
+**Siguiente tarea:** F1-02 · Periodos contractuales
+*(F0-11 sigue `[!]`: solo le falta el contenido de las cinco listas de entidades, que depende de la
+decisión D.5. Se retoma sola cuando Angela responda.)*
 
 ## Qué se hizo
 
-- **Nueve tablas de catálogo global**, en tres migraciones: `paises`, `departamentos` y `ciudades`;
-  las cinco de entidades —`eps`, `fondos_pension`, `arls`, `cajas_compensacion`, `bancos`—; y
-  `festivos`. **Ninguna lleva `tenant_id`, ni el trait, ni política de RLS**, porque son iguales para
-  todos los clientes. Una prueba lo comprueba tabla por tabla y modelo por modelo.
-- **Los datos reales de Colombia**: 33 departamentos con su código DANE, **1.101 municipios**
-  colgados de su departamento, y **232 países** con su código ISO. Viven en
-  `database/data/ubicaciones.php` y `database/data/paises.php`, no dentro del seeder: son datos, no
-  código, y así se corrigen sin tocar lógica.
-- **El calendario de festivos de 2025, 2026 y 2027**, escrito a mano fecha por fecha en
-  `database/data/festivos.php`, con la Ley 51 de 1983 aplicada uno a uno. **Incluye los que caen en
-  sábado** —1 de mayo, 7 de agosto y 25 de diciembre de 2027—, que es la instrucción expresa del
-  capítulo 10.
-- **`App\Catalogos\Ubicaciones`**, que entrega al formulario los países y los departamentos **con sus
-  ciudades dentro**, más el código de Colombia. Es el servicio que resuelve la regla 5.1.1 en un solo
-  sitio para las tres pantallas que la van a pedir.
-- **`SelectorUbicacion.vue`**: país de lista; si es Colombia, departamento y ciudad encadenados; si no,
-  los dos como texto libre. Limpia lo de abajo al cambiar lo de arriba. Se monta en
-  `/sistema-de-diseno` con el catálogo real cargado, no con tres ciudades de mentira.
-- **`Festivo::esFestivo()`, `fechasDelAnio()` y `aniosCargados()`**, que es lo que el motor de cálculo
-  y el aviso del panel van a consultar. Solo lectura del calendario: las tres reglas de conteo son de
-  la fase 2 y no se adelantaron.
-- **`tests/Feature/CatalogosTest.php`** (15 casos) y **`SelectorUbicacion.test.js`** (9 casos).
-  `composer verificar` en verde: 129 pruebas de Pest, PHPStan sin errores, build y 70 de Vitest.
+- **Las tres primeras tablas de negocio del sistema**, cada una en su migración y las tres con el
+  patrón completo del stub: `tenant_id` con su clave foránea, `tenant_id` primero en todo índice
+  compuesto, `softDeletes()` y `PoliticaRls::activarEn()` **en la misma migración que crea la tabla**.
+  Una prueba comprueba las tres cosas tabla por tabla, incluida la política, leyéndola de
+  `pg_policies`.
+- **`personas`**: el ser humano. Documento, nombres, nacimiento, expedición del documento, género y
+  residencia. **El documento es único por empresa aquí**, con un índice `unique` parcial
+  —`where deleted_at is null`— sobre `(tenant_id, numero_documento)`.
+- **`vinculaciones`**: la relación laboral. Cargo, tipo de contrato, fechas, salario, bonificación,
+  las cinco claves foráneas de seguridad social y banco, y el estado. **Sin columna de saldo de
+  vacaciones**, y hay una prueba que se pondría en rojo si alguien la agregara.
+- **`perfil_sociodemografico`**: el bloque opcional de 5.2, colgado de la **persona** y con todas sus
+  columnas nulas a propósito.
+- **Cuatro enumerados en `app/Contratacion/`**: `TipoDocumento` (los cinco de 5.1, con la tarjeta de
+  identidad incluida), `TipoContrato` (los tres, con `exigeFechaFin()` y `admiteRenovacion()`),
+  `EstadoVinculacion` y `TipoVivienda`. Todos se guardan como texto legible, no como número.
+- **Tres modelos** —`Persona`, `Vinculacion`, `PerfilSociodemografico`— con `PerteneceATenant`,
+  borrado lógico, sus relaciones y sus casteos. `Persona::nombreCompleto()` y el scope
+  `conDocumento()`, que es el primer paso de todo registro de empleado.
+- **Cinco fábricas nuevas** —`Persona`, `Vinculacion`, `PerfilSociodemografico`, `Ciudad` y
+  `Departamento`— con los estados que hacen falta: `nacidaEnElExterior()`, `sinSegundosNombres()`,
+  `aTerminoFijo()`, `deObraOLabor()`, `terminada()` y `vacio()`.
+- **`tests/Feature/PersonasYVinculacionesTest.php`** (22 casos) y **tres casos nuevos en
+  `AislamientoTest`** —personas, vinculaciones y perfil— que son quince pruebas más de aislamiento.
+  `composer verificar` en verde: 166 pruebas de Pest, PHPStan sin errores, build y 70 de Vitest.
 
 ## Decisiones tomadas
 
-- **Las cinco listas de entidades quedaron vacías a propósito.** Su contenido es la decisión D.5,
-  marcada bloqueante y de Angela. Una lista de EPS inventada por el programador es peor que una lista
-  vacía: la vacía se nota el primer día, la inventada se usa meses y acaba en los datos de todos los
-  clientes. La tabla, el modelo y el seeder ya existen; solo faltan las filas.
-- **Los seeders escriben con el query builder, no con Eloquent.** El observador de auditoría de F0-08
-  se engancha a los eventos de *todos* los modelos: cargar 1.101 municipios con `create()` dejaría
-  1.101 líneas de auditoría de algo que no hizo ningún usuario. Cuando una ciudad se edite desde el
-  panel sí pasará por el modelo y sí quedará auditada, que es cuando importa.
-- **Los cuatro seeders son repetibles** (`upsert` por código ISO, código DANE, nombre dentro del
-  departamento y fecha). Cargar el año siguiente de festivos, o corregir el nombre de un municipio,
-  es volver a correrlos. Hay prueba de que no duplican.
-- **Una fila por fecha festiva, no una por celebración.** El 30 de junio de 2025 caen San Pedro y el
-  Sagrado Corazón: van juntos en una fila. Al motor de cálculo le importa si el día es festivo, no
-  cuántas fiestas hay en él.
-- **`festivos` guarda también el año**, redundante con la fecha y a propósito: el aviso de «falta
-  cargar el año siguiente» y la pantalla del panel consultan por año, y agrupar por columna indexada
-  es mejor que envolver la fecha en una función en cada consulta.
-- **Las ciudades viajan anidadas dentro de su departamento**, no en una lista plana. Así el
-  encadenamiento es un filtro en el navegador y no una petición al servidor por cada departamento que
-  el usuario prueba. Son mil cien municipios: caben de sobra en las props.
-- **Bogotá D.C. es un departamento más**, con código 11 y una sola ciudad. En el formulario se
-  comporta igual que los demás y tratarlo aparte solo agregaría un caso especial.
-- **`codigo_dane` de los municipios quedó nulo.** Los códigos de cinco dígitos no se inventan: la
-  columna existe y se llena cuando se cargue el archivo oficial del DANE desde el panel (F1B-04).
+- **El índice único del documento es parcial: solo alcanza a las personas vivas.** En este sistema no
+  se borra de verdad, así que sin el `where deleted_at is null` una persona eliminada por error
+  reservaría su documento para siempre y la empresa no podría volver a registrarla nunca. Lo mismo en
+  el índice de una fila de perfil por persona. Hay prueba de los dos comportamientos.
+- **El departamento no se guarda: se llega a él por la ciudad.** La ciudad del catálogo ya sabe de qué
+  departamento es; repetirlo sería tener dos verdades que se pueden contradecir. Cuando el país no es
+  Colombia sí hay dos columnas de texto libre `*_exterior`, que es la otra mitad de la regla 5.1.1.
+  **Nunca un identificador y un nombre en la misma columna**: eso obliga meses después a adivinar cuál
+  de las dos cosas hay dentro.
+- **Las tres ubicaciones de una persona tienen la misma forma**: nacimiento, expedición del documento
+  y residencia. La residencia no lleva par de columnas del exterior porque siempre es en Colombia.
+- **El estado de la vinculación no está en `fillable`.** Es la regla 5.3: no lo digita nadie. Nace
+  activo por el valor por defecto de la columna y solo lo cambia `desactivar()`, que llamará el módulo
+  de terminaciones. Una prueba comprueba que un `fill()` con `estado` no lo cambia.
+- **`saldo_inicial_vacaciones` y `fecha_corte_saldo` sí existen, y no rompen la regla 2.** No son un
+  saldo que se sume y se reste: son el punto de partida que trae la carga inicial, tal como lo define
+  la sección 3.4 del documento 2. El saldo se sigue calculando entero.
+- **Lo que depende de D.5 quedó nulo, no inventado.** `genero`, `tipo_riesgo`, las cinco claves
+  foráneas de EPS, fondos, ARL, cajas y bancos, y las cuatro listas del perfil. Son campos
+  obligatorios del formulario, y esa obligatoriedad se aplicará en la validación del servidor en F1-04
+  y F1-06, cuando las listas tengan filas que elegir. La forma de las tablas no depende de la
+  respuesta; su contenido sí.
+- **`tipo_vivienda` y `estrato` sí tienen enumerado y rango** porque sus opciones están decididas en el
+  propio documento 1, no en D.5.
+- **El nombre de la tabla del perfil va en singular**, `perfil_sociodemografico`, contra la convención
+  de plurales: es una fila por persona y así lo nombra el backlog.
+- **La fábrica de departamentos busca el primer código DANE libre en la base de datos** en lugar de
+  pedírselo a `faker->unique()`: solo hay cien códigos de dos dígitos y la memoria del generador dura
+  toda la ejecución de las pruebas, mientras que la base se vacía entre una y otra.
 
 ## Preguntas para Angela
 
-- **BLOQUEANTE, decisión D.5 — el contenido de las cinco listas maestras.** Es lo único que le falta
-  a F0-11. Se necesitan, en orden de urgencia: **EPS** (las vigentes hoy), **fondos de pensión**,
+- **BLOQUEANTE, decisión D.5 — el contenido de las cinco listas maestras.** Es lo único que le falta a
+  F0-11. Se necesitan, en orden de urgencia: **EPS** (las vigentes hoy), **fondos de pensión**,
   **ARL**, **cajas de compensación** (varían por departamento: ¿se ofrecen todas o se filtran por el
   departamento del empleado?) y **entidades bancarias**. Llegan como una lista de nombres; el sistema
   ya está listo para recibirlas y para que después se administren sin desplegar código.
-- Del mismo D.5, para cuando toquen sus tareas: **tipo de riesgo** (¿«I» o «Nivel I — riesgo mínimo»?),
-  **género**, **nivel educativo**, **estado civil**, **medio de transporte** y **tiempo de
-  desplazamiento**. No bloquean todavía; bloquean en F1-04 y F1-06.
+- Del mismo D.5, y ya con las columnas esperándolas: **tipo de riesgo** (¿«I» o «Nivel I — riesgo
+  mínimo»?), **género**, **nivel educativo**, **estado civil**, **medio de transporte** y **tiempo de
+  desplazamiento**. **Bloquean en F1-04 y en F1-06**, que son dos y cuatro tareas más adelante.
 
 ## Decisiones para David
 
@@ -84,8 +91,9 @@ depende de la decisión D.5. Se retoma sola cuando Angela responda.)*
   `Invitaciones::DIAS_DE_VIGENCIA`, en un solo sitio. **Confírmalo o cámbialo.**
 - **El rol de conexión de PostgreSQL.** Sigue abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
-  falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Sigue abierta de diez sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+  falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Ahora hay tres tablas de negocio
+  dependiendo de ello, no una de juguete.
+- Sigue abierta de once sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo sensible).
   Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()` copiando
@@ -96,19 +104,19 @@ depende de la decisión D.5. Se retoma sola cuando Angela responda.)*
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-01 · Personas y vinculaciones**, y es la primera tabla de negocio de verdad:
-  copia `database/stubs/migracion-tabla-de-negocio.stub` —`tenant_id`, índice con la empresa primero,
-  `softDeletes()` y `PoliticaRls::activarEn()` en la misma migración— y **suma su caso a
-  `AislamientoTest`**. Los catálogos de esta sesión no lo hacen porque son globales; `personas` sí.
-- **El documento es único por empresa en `personas`, no en `vinculaciones`.** Es la regla 5 del
-  proyecto y donde se equivoca todo el mundo.
-- **`personas` no guarda texto de ciudad: guarda el identificador del catálogo** cuando el país es
-  Colombia, y texto libre cuando no lo es. Son dos columnas distintas o una columna más una bandera;
-  se decide al escribir la migración, pero mezclando ambos en la misma columna no.
-- **El formulario de ubicación ya está resuelto**: `SelectorUbicacion` más
-  `Ubicaciones::paraFormulario()`. La residencia se monta con `solo-colombia`, porque el sistema solo
-  gestiona contratos laborales colombianos.
-- **Cargar el calendario del año siguiente es una tarea anual del proveedor**: se agregan las fechas a
-  `database/data/festivos.php`, se verifican y se vuelve a correr `FestivosSeeder`. En F1B-04 hay que
-  construir el aviso que lo recuerda; `Festivo::aniosCargados()` ya está para eso.
-- Toda pantalla nueva se envuelve en `Armazon`, y la regla de los colores literales sigue intacta.
+- La siguiente es **F1-02 · Periodos contractuales**, y se apoya entera en lo de esta sesión:
+  `periodos_contractuales` cuelga de `vinculaciones` con `orden`, `evento`, `tipo_contrato` y las dos
+  fechas. Es tabla de negocio: copia el stub y **suma su caso a `AislamientoTest`**, que ya tiene tres
+  ejemplos nuevos de cómo se escribe.
+- **El `evento` de la fila incluye `prorroga_pactada` y `prorroga_automatica`**, que es la decisión D.1
+  pendiente. El modelo las contempla desde ya; si Angela decide no distinguirlas, el campo queda con un
+  solo valor y no hay nada que rehacer. **No hay que adelantar el conteo de prórrogas cortas**: eso es
+  F1-10 y depende además de B.1 y B.3.
+- **`vinculaciones.tipo_contrato` y `fecha_fin` guardan lo vigente hoy**, que es lo que se ve en los
+  listados. El tramo a tramo es de la tabla nueva. Cuando F1-09 construya «Renovar», tiene que mover
+  las dos cosas a la vez: la fila nueva del historial y la fecha vigente de la vinculación.
+- **El registro de empleado nunca crea una persona a ciegas**: primero `Persona::conDocumento()`; si
+  existe, se reutiliza y se le crea una vinculación nueva —ahí entra la advertencia de F1-05—; si no
+  existe, se crean las dos. El scope ya está escrito.
+- Toda pantalla nueva se envuelve en `Armazon`, la regla de los colores literales sigue intacta, y el
+  formulario de ubicación ya está resuelto con `SelectorUbicacion` más `Ubicaciones::paraFormulario()`.

@@ -92,7 +92,7 @@ Falta solo cargar las cinco listas de entidades cuando llegue la respuesta a D.5
 
 ## Fase 1 — Personas y contratos
 
-### [ ] F1-01 · Personas y vinculaciones
+### [x] F1-01 · Personas y vinculaciones
 Tablas `personas`, `perfil_sociodemografico` y `vinculaciones`, con la separación entre persona y
 vinculación. Documento único por empresa en `personas`, no en `vinculaciones`.
 **Hecho cuando:** una persona puede tener dos vinculaciones sin duplicar sus datos personales, y hay
