@@ -77,11 +77,16 @@ pantallas pequeñas. Un módulo sin permiso no aparece en el menú.
 **Hecho cuando:** se navega entre secciones vacías y el menú se adapta al rol.
 **Fuente:** `docs/03-diseno-e-interfaz.md` cap. 4
 
-### [ ] F0-11 · Catálogos y festivos
+### [!] F0-11 · Catálogos y festivos — bloqueada: falta el contenido de EPS, fondos, ARL, cajas y bancos (decisión D.5, de Angela)
 Tablas globales: países, departamentos y ciudades de Colombia, EPS, fondos, ARL, cajas, bancos,
 festivos. Seeders con los datos de Colombia. Los festivos incluyen los que caen en sábado.
 **Hecho cuando:** las listas encadenadas de departamento y ciudad funcionan con datos reales.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 10
+
+Hecho: las nueve tablas, sus modelos, las listas encadenadas con los 33 departamentos y 1.101
+municipios, 232 países y los festivos de 2025, 2026 y 2027 con los de sábado incluidos.
+Falta solo cargar las cinco listas de entidades cuando llegue la respuesta a D.5: el seeder
+`EntidadesSeeder` las espera y no hay que tocar ni migración ni modelo.
 
 ---
 

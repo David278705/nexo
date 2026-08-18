@@ -1,6 +1,7 @@
 <?php
 
 use App\Autorizacion\Modulo;
+use App\Catalogos\Ubicaciones;
 use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
@@ -73,6 +74,11 @@ Route::middleware('auth')->group(function () {
  * un cliente no le sirve de nada.
  */
 if (! app()->isProduction()) {
-    Route::get('/sistema-de-diseno', fn () => Inertia::render('SistemaDeDiseno'))
-        ->name('sistema-de-diseno');
+    Route::get('/sistema-de-diseno', fn () => Inertia::render(
+        'SistemaDeDiseno',
+        // Las ubicaciones van con datos del catálogo real: es la única forma de
+        // comprobar que las listas encadenadas se comportan con los mil cien
+        // municipios y no solo con tres de mentira.
+        Ubicaciones::paraFormulario(),
+    ))->name('sistema-de-diseno');
 }

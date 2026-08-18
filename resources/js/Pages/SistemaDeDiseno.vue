@@ -11,8 +11,20 @@ import Etiqueta from "@/Components/Etiqueta.vue";
 import Modal from "@/Components/Modal.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 import Selector from "@/Components/Selector.vue";
+import SelectorUbicacion from "@/Components/SelectorUbicacion.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
 import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
+
+/*
+ * Las ubicaciones llegan del catálogo real —los mil cien municipios cargados—,
+ * no de datos de mentira: la regla del país encadenado solo se comprueba de
+ * verdad probándola con la lista completa.
+ */
+defineProps({
+    paises: { type: Array, default: () => [] },
+    departamentos: { type: Array, default: () => [] },
+    codigoDeColombia: { type: String, default: "CO" },
+});
 
 /*
  * Página de muestra del sistema de diseño. No es una pantalla del producto: es
@@ -108,6 +120,7 @@ const documento = ref("123");
 const fecha = ref("2026-04-15");
 const ciudad = ref("");
 const tipoDeContrato = ref("fijo");
+const ubicacion = ref({ pais: "", departamento: "", ciudad: "" });
 
 const filtros = ref([
     { clave: "estado", texto: "Estado: Activo" },
@@ -223,6 +236,26 @@ function mostrarNotificacion() {
                     v-model="nombre"
                     etiqueta="Segundo apellido"
                     opcional
+                />
+            </div>
+        </section>
+
+        <section class="mt-8">
+            <h2 class="text-seccion font-semibold text-texto">
+                País, departamento y ciudad
+            </h2>
+            <p class="mt-1 text-apoyo text-texto-secundario">
+                Con Colombia, las listas se encadenan: al elegir el departamento
+                se cargan sus municipios. Con cualquier otro país, los dos
+                campos se digitan.
+            </p>
+            <div class="mt-3">
+                <SelectorUbicacion
+                    v-model="ubicacion"
+                    :paises="paises"
+                    :departamentos="departamentos"
+                    :codigo-de-colombia="codigoDeColombia"
+                    sufijo="de nacimiento"
                 />
             </div>
         </section>

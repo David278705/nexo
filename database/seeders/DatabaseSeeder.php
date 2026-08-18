@@ -15,7 +15,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Los catálogos globales van primero: no dependen de ninguna empresa y
+        // todo lo demás —empleados, novedades, cálculos— sí depende de ellos.
+        $this->call(CatalogosSeeder::class);
 
         User::factory()->create([
             'name' => 'Test User',
