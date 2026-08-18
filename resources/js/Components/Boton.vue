@@ -1,19 +1,42 @@
 <script setup>
-defineProps({
+import { computed } from "vue";
+
+const props = defineProps({
     tipo: { type: String, default: "submit" },
+    // Las cuatro variantes del documento 3, sección 3.4. El destructivo solo
+    // vive dentro de una confirmación, nunca suelto en una tabla.
+    variante: {
+        type: String,
+        default: "primario",
+        validator: (valor) =>
+            ["primario", "secundario", "texto", "destructivo"].includes(valor),
+    },
     // El botón se deshabilita mientras envía, para evitar el doble registro
     // (documento 3, sección 6.2).
     enviando: { type: Boolean, default: false },
     ancho: { type: Boolean, default: false },
 });
+
+const estilos = computed(
+    () =>
+        ({
+            primario:
+                "bg-accion text-texto-invertido hover:bg-accion-oscuro border-transparent",
+            secundario:
+                "bg-superficie text-texto border-borde hover:bg-superficie-resaltada",
+            texto: "bg-transparent text-texto-secundario hover:text-texto border-transparent",
+            destructivo:
+                "bg-error text-texto-invertido hover:bg-error-texto border-transparent",
+        })[props.variante],
+);
 </script>
 
 <template>
     <button
         :type="tipo"
         :disabled="enviando"
-        class="inline-flex items-center justify-center rounded-[var(--radius-caja)] bg-accion px-4 py-2 font-medium text-white transition-colors hover:bg-accion-oscuro focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 disabled:opacity-60"
-        :class="ancho ? 'w-full' : ''"
+        class="inline-flex h-control items-center justify-center gap-2 rounded-[var(--radius-caja)] border px-4 text-tabla font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+        :class="[estilos, ancho ? 'w-full' : '']"
     >
         <slot />
     </button>

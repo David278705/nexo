@@ -5,6 +5,12 @@ import { createInertiaApp } from '@inertiajs/vue3';
 
 const nombreApp = import.meta.env.VITE_APP_NAME || 'Nexo';
 
+function colorDeLaPaleta(variable) {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(variable)
+        .trim();
+}
+
 createInertiaApp({
     title: (titulo) => (titulo ? `${titulo} · ${nombreApp}` : nombreApp),
     resolve: (nombre) => {
@@ -17,7 +23,9 @@ createInertiaApp({
             .use(plugin)
             .mount(el);
     },
+    // La barra de progreso también sale de la paleta: se lee la variable en
+    // lugar de escribir el color, que es la regla del sistema de diseño.
     progress: {
-        color: '#4f46e5',
+        color: colorDeLaPaleta('--color-accion'),
     },
 });

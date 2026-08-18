@@ -64,7 +64,7 @@ y nuevo. No editable ni borrable desde la aplicación.
 **Hecho cuando:** crear un registro cualquiera deja una línea sin que nadie la escriba a mano.
 **Fuente:** `docs/02-arquitectura-y-datos.md` 7.2
 
-### [ ] F0-09 · Sistema de diseño
+### [x] F0-09 · Sistema de diseño
 Variables CSS con la paleta completa. Tipografía Inter. Componentes base: `TablaDatos`,
 `BarraFiltros`, `Modal`, `CampoTexto`, `CampoFecha`, `Selector`, `Etiqueta`, `Aviso`, `EstadoVacio`,
 `TarjetaIndicador`, `Notificacion`.

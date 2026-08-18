@@ -39,3 +39,14 @@ Route::middleware('auth')->group(function () {
         'mensaje' => 'Sistema de Gestión de Talento Humano',
     ]))->name('inicio');
 });
+
+/*
+ * El catálogo del sistema de diseño. No es una pantalla del producto —no lleva
+ * datos ni permisos—, es donde se comprueba de un vistazo que los once
+ * componentes siguen viéndose como el prototipo. Fuera de producción, porque a
+ * un cliente no le sirve de nada.
+ */
+if (! app()->isProduction()) {
+    Route::get('/sistema-de-diseno', fn () => Inertia::render('SistemaDeDiseno'))
+        ->name('sistema-de-diseno');
+}
