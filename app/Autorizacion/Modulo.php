@@ -71,6 +71,39 @@ enum Modulo: string
     }
 
     /**
+     * El grupo bajo el que la barra lateral agrupa el módulo, como en
+     * `prototipos/sistema.html`. `Inicio` va suelto arriba, sin encabezado.
+     */
+    public function grupo(): ?string
+    {
+        return match ($this) {
+            self::Inicio => null,
+            self::Empleados, self::Contratos => 'Personal',
+            self::Incapacidades, self::Vacaciones, self::Licencias => 'Novedades',
+            self::Movimientos, self::Terminaciones => 'Movimientos',
+            self::Auditoria, self::Configuracion => 'Sistema',
+        };
+    }
+
+    /**
+     * La dirección de la sección. `Inicio` es la raíz; el resto toma su propio
+     * valor, para que el nombre del módulo, la ruta y el permiso sean el mismo
+     * texto y no puedan separarse.
+     */
+    public function url(): string
+    {
+        return $this === self::Inicio ? '/' : '/'.$this->value;
+    }
+
+    /**
+     * El nombre de la ruta de Laravel, que es el valor salvo en `Inicio`.
+     */
+    public function nombreDeRuta(): string
+    {
+        return $this->value;
+    }
+
+    /**
      * Lo ve todo usuario de una empresa, sin asignación previa.
      */
     public function esDeTodos(): bool

@@ -1,10 +1,12 @@
 <?php
 
+use App\Autorizacion\Modulo;
 use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
 use App\Http\Controllers\Acceso\SesionController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 /*
@@ -35,9 +37,33 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('acceso.salir');
 
+    /*
+     * El saludo y la fecha de la sección 5.2. La fecha se arma en el servidor
+     * para que salga en la zona horaria de la aplicación —`America/Bogota`— y
+     * no en la del navegador de quien mira.
+     */
     Route::get('/', fn () => Inertia::render('Inicio', [
-        'mensaje' => 'Sistema de Gestión de Talento Humano',
+        'fecha' => Str::ucfirst(now()->translatedFormat('l, j \d\e F \d\e Y')),
     ]))->name('inicio');
+
+    /*
+     * Las secciones del menú (documento 3, tabla 4.2). Todavía están vacías
+     * —cada una llega en su tarea de la fase 1 y 2—, pero existen desde ya
+     * para que la navegación del armazón sea real y no un menú que no lleva a
+     * ninguna parte. Cada una declara su módulo, así que escribir la dirección
+     * a mano sin permiso devuelve 403 igual que cuando tengan contenido.
+     */
+    foreach (Modulo::cases() as $modulo) {
+        if ($modulo === Modulo::Inicio) {
+            continue;
+        }
+
+        Route::get($modulo->url(), fn () => Inertia::render('SeccionPendiente', [
+            'titulo' => $modulo->etiqueta(),
+        ]))
+            ->middleware('modulo:'.$modulo->value)
+            ->name($modulo->nombreDeRuta());
+    }
 });
 
 /*

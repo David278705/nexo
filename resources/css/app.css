@@ -61,6 +61,18 @@
     /* El estado inactivo: gris, sin significado de urgencia. */
     --color-neutro-fondo: #eef0f3;
 
+    /*
+     * La barra lateral (4.1). Son los tonos que el prototipo escribe sobre la
+     * marca: el texto de las opciones, el encabezado de cada grupo, la línea
+     * bajo el logotipo y el resaltado del cursor. Aquí como color sólido en
+     * lugar de blanco translúcido, para que nadie tenga que escribir un blanco.
+     */
+    --color-menu-texto: #cfe0ee;
+    --color-menu-apoyo: #8fb0cd;
+    --color-menu-grupo: #7799b8;
+    --color-menu-resaltado: #1e4364;
+    --color-menu-borde: #24486c;
+
     /* Tipografía (3.2). Seis tamaños, ni uno más. */
     --text-titulo: 24px;
     --text-titulo--line-height: 1.25;

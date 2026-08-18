@@ -71,7 +71,7 @@ Variables CSS con la paleta completa. Tipografía Inter. Componentes base: `Tabl
 **Hecho cuando:** existe una página de muestra con todos los componentes y ninguno tiene un color literal.
 **Fuente:** `docs/03-diseno-e-interfaz.md` cap. 3 · `prototipos/sistema.html`
 
-### [ ] F0-10 · Estructura de la aplicación
+### [x] F0-10 · Estructura de la aplicación
 Barra lateral con los módulos, encabezado con nombre de empresa y usuario, y el comportamiento en
 pantallas pequeñas. Un módulo sin permiso no aparece en el menú.
 **Hecho cuando:** se navega entre secciones vacías y el menú se adapta al rol.

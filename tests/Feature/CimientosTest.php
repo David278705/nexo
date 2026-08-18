@@ -10,7 +10,8 @@ it('sirve la página de inicio como componente de Inertia', function () {
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina
             ->component('Inicio')
-            ->where('mensaje', 'Sistema de Gestión de Talento Humano')
+            ->has('fecha')
+            ->etc()
         );
 });
 

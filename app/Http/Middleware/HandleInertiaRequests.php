@@ -56,7 +56,13 @@ class HandleInertiaRequests extends Middleware
             'correo' => $usuario->email,
             'rol' => $usuario->rol->value,
             'empresa' => $usuario->tenant?->nombre,
-            'modulos' => array_map(fn (Modulo $modulo) => $modulo->value, $permitidos),
+            'nit' => $usuario->tenant?->nit,
+            'modulos' => array_map(fn (Modulo $modulo) => [
+                'clave' => $modulo->value,
+                'etiqueta' => $modulo->etiqueta(),
+                'grupo' => $modulo->grupo(),
+                'url' => $modulo->url(),
+            ], $permitidos),
         ];
     }
 }

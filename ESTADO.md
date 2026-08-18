@@ -1,53 +1,54 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-18 · Tarea F0-09
+**Última sesión:** 2026-08-18 · Tarea F0-10
 **Verificación:** verde
-**Siguiente tarea:** F0-10 · Estructura de la aplicación
+**Siguiente tarea:** F0-11 · Catálogos y festivos
 
 ## Qué se hizo
 
-- **`resources/css/app.css` es ahora el sistema de diseño completo** y el único archivo del frontend
-  donde se escribe un color: los nueve de la tabla 3.1, sus variantes tonales (fondo, borde y texto
-  para información, éxito, advertencia y error), los seis tamaños tipográficos como `--text-*`
-  (`text-titulo`, `text-seccion`, `text-cuerpo`, `text-tabla`, `text-apoyo`, `text-cifra`), los radios,
-  las medidas de control (38 px) y de fila (44 px), los tres anchos (`contenido` 1280, `modal-corto`
-  560, `modal-ancho` 800) y la sombra de lo que flota. Más una regla base de `:focus-visible`.
-- **Los once componentes de la sección 3.4**, en `resources/js/Components/`: `TablaDatos`,
-  `BarraFiltros`, `Modal`, `CampoTexto`, `CampoFecha`, `Selector`, `Etiqueta`, `Aviso`, `EstadoVacio`,
-  `TarjetaIndicador` y `Notificacion`. `Boton` sumó sus cuatro variantes (primario, secundario, texto,
-  destructivo). `CampoTexto`, `Boton` y `Aviso` se revisaron, no se rehicieron.
-- **`resources/js/Pages/SistemaDeDiseno.vue`**, la página de muestra con los once componentes, la
-  paleta y la escala tipográfica. Su ruta `/sistema-de-diseno` solo se registra fuera de producción.
-- **`tests/Feature/SistemaDeDisenoTest.php`** (5 casos): los once componentes existen, los once están
-  en la muestra, la muestra se sirve, la paleta y los seis tamaños están en `app.css`, y **ningún
-  archivo de `resources/js` escribe un color literal** —ni hexadecimal, ni `rgb()`, ni una clase de la
-  paleta de fábrica de Tailwind—.
-- **Cuatro archivos de Vitest** (`TablaDatos`, `Selector`, `Modal`, `Notificacion`, `Formularios`) con
-  28 casos nuevos. `composer verificar` en verde: 105 pruebas de Pest, PHPStan sin errores, build y
-  39 de Vitest.
+- **`resources/js/Components/Armazon.vue`**, el armazón del documento 3, sección 4.1: barra lateral a
+  la izquierda, encabezado arriba y el contenido en el `slot`. Toda pantalla del sistema se envuelve
+  aquí. Lee la prop compartida `usuario` con `usePage()`; no recibe nada por props ni decide nada.
+- **`resources/js/Components/BarraLateral.vue`**, el menú con los módulos agrupados como el prototipo
+  (Inicio suelto, luego Personal, Novedades, Movimientos y Sistema). Resalta la sección activa,
+  incluidas las rutas hijas —`/empleados/7` deja activo Empleados—, y avisa con `navegar` para que el
+  menú desplegado se cierre.
+- **`resources/js/Components/EncabezadoApp.vue`**, la franja de 54 px de la sección 4.3: empresa y NIT
+  a la izquierda, y a la derecha el usuario con avatar de iniciales y su menú de perfil con cierre de
+  sesión. El botón de menú lateral solo existe por debajo de 1024px.
+- **`Modulo::grupo()`, `Modulo::url()` y `Modulo::nombreDeRuta()`**, para que el nombre del módulo, su
+  dirección y su permiso sean el mismo texto. `HandleInertiaRequests` ahora comparte cada módulo como
+  `{clave, etiqueta, grupo, url}` y suma el `nit` de la empresa.
+- **Las nueve secciones del menú son rutas reales** en `routes/web.php`, registradas recorriendo
+  `Modulo::cases()`, cada una con su `middleware('modulo:…')` y su página `SeccionPendiente.vue`. El
+  contenido llega en su tarea de fase 1 o 2; la navegación y el 403 son los definitivos.
+- **`Inicio.vue` dejó de ser una pantalla suelta**: se monta en el armazón y muestra el saludo y la
+  fecha de la sección 5.2. La fecha llega escrita desde el servidor.
+- **`tests/Feature/EstructuraTest.php`** (9 casos) y tres archivos de Vitest nuevos —`BarraLateral`,
+  `EncabezadoApp`, `Armazon`— con 22 casos. `composer verificar` en verde: 114 pruebas de Pest,
+  PHPStan sin errores, build y 61 de Vitest.
 
 ## Decisiones tomadas
 
-- **Cada tono tiene fondo, borde y texto propios, no uno solo.** El `#B45309` de la tabla 3.1 sobre su
-  propio fondo claro no llega a 4,5:1, que es el mínimo que exige la sección 3.5. Los valores de las
-  tres variantes salen de `prototipos/sistema.html`, que ya los tenía resueltos.
-- **`--color-texto-invertido` en lugar de `text-white`.** Es blanco, sí, pero escribirlo como blanco
-  deja un color literal en el componente y abre la puerta al siguiente. Con la variable, la prueba
-  puede prohibir el literal sin excepciones que haya que recordar.
-- **La página de muestra nombra la clase, no el hexadecimal.** Si la muestra dijera `#123A5C` habría
-  dos verdades sobre el mismo color y una acabaría vieja. Dice `bg-marca`, que además es lo que el
-  programador va a escribir.
-- **La barra de progreso de Inertia lee la variable en tiempo de ejecución** con
-  `getComputedStyle(...).getPropertyValue('--color-accion')`. Estaba en `#4f46e5`, un índigo que no es
-  de la paleta y que se veía en cada navegación.
-- **`CampoFecha` envuelve a `CampoTexto` con `tipo="date"`.** El control nativo trae calendario y deja
-  escribir la fecha, que es lo que pide 3.4, y así etiqueta, ayuda, error y medidas viven en un sitio.
-- **La búsqueda del `Selector` aparece sola a partir de once opciones**, sin que nadie la pida: filtra
-  un `<select>` nativo en vez de reinventar un desplegable, que es donde se pierde la accesibilidad.
-- **La fila de `TablaDatos` es clicable con ratón y con teclado** (`tabindex="0"`, Enter y espacio).
-  «La fila completa es clicable» sin teclado deja la tabla fuera del recorrido de la sección 3.5.
-- **La ruta de la muestra no está bajo `auth`.** No lleva datos de nadie y no existe en producción;
-  pedir sesión solo estorbaría a quien la usa, que es quien está programando.
+- **Un módulo sin permiso no llega al navegador, no se esconde en él.** El menú pinta lo que trae la
+  prop compartida, que sale de `PoliticaDeModulos`, la misma que responde 403. Menú y servidor no
+  pueden discrepar porque no hay dos fuentes.
+- **Las secciones vacías existen desde ya, con su middleware.** Un menú cuyas opciones no llevan a
+  ninguna parte no se puede probar. Así `EstructuraTest` comprueba el 403 sobre la ruta real
+  —`/vacaciones`—, no sobre una ruta de juguete registrada dentro de la prueba.
+- **`grupo()` convive con `seccion()` y no la reemplaza.** `seccion()` es lo que se le enseña al
+  invitado en el resumen de sus permisos; `grupo()` es el encabezado del menú. Coinciden hoy en
+  Novedades y en nada más: Movimientos y Terminaciones caen bajo un grupo «Movimientos» que no es la
+  sección de ninguno de los dos.
+- **La fecha del saludo se arma en el servidor** con `translatedFormat`. Formateada en el navegador
+  saldría en el reloj y el idioma de cada máquina, no en `America/Bogota`.
+- **El armazón lee `usePage()` en vez de recibir props.** Si cada pantalla tuviera que pasarle el
+  usuario y los módulos, la primera que lo olvide deja el sistema sin menú.
+- **En pantalla pequeña se monta una segunda barra lateral, no se mueve la primera.** Es el mismo
+  componente; la de escritorio simplemente no existe por debajo de 1024px. Se cierra con la tecla de
+  escape, con el fondo, con su botón y al elegir una sección.
+- **El armazón no entra en `/sistema-de-diseno`.** Esa página es el catálogo de los once componentes
+  y no pide sesión; meterle el menú de un usuario que no existe solo la rompería.
 
 ## Preguntas para Angela
 
@@ -62,27 +63,30 @@
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Conviene hacerlo también en local para
   no descubrirlo el día del despliegue.
-- Sigue abierta de ocho sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Sigue abierta de nueve sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo sensible).
   Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()` copiando
   `database/stubs/migracion-tabla-de-negocio.stub`, que nunca se llama a `fijarEmpresa()` a mano
   —cambiar de empresa es siempre `paraTenant()`—, y que el rol de conexión no puede ser superusuario.
+- **El menú dice «Movimientos» donde el prototipo dice «Aumentos y promociones».** Se siguió la tabla
+  4.2 del documento 3, que es la fuente. Si prefieres el texto largo del prototipo, se cambia en
+  `Modulo::etiqueta()` y en ningún otro sitio.
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F0-10 · Estructura de la aplicación**: barra lateral, encabezado y comportamiento
-  en pantallas pequeñas. Los módulos que puede ver el usuario **ya vienen compartidos como prop desde
-  F0-06** (hay prueba de ello en `RolesYPermisosTest`); el menú los pinta, no los vuelve a calcular.
-- **Cuando F0-10 haga el armazón, `Inicio.vue` deja de ser una pantalla suelta** y pasa a usarlo. Hoy
-  centra un título en la pantalla porque no había dónde colgarlo.
-- **La prueba de colores literales es la que sostiene el sistema de diseño.** Si una pantalla nueva
-  necesita un color que no está, se agrega la variable a `app.css` y se usa por nombre; no se escribe
-  el hexadecimal ni se agrega una excepción a la prueba.
-- **`/sistema-de-diseno` es el sitio donde se mira un componente antes de usarlo.** Todo componente
-  compartido que nazca de aquí en adelante se agrega a esa página, y la prueba de los once lo exige
-  para los que ya están.
-- La paginación de vendor de Laravel mete clases `text-gray-*` en el CSS compilado. Viene de las
-  vistas Blade del framework, no del código propio, y por eso la prueba solo recorre `resources/js`.
+- La siguiente es **F0-11 · Catálogos y festivos**: tablas globales —países, departamentos, ciudades,
+  EPS, fondos, ARL, cajas, bancos y festivos—. **Ninguna lleva `tenant_id` ni el trait**; están en la
+  lista de tablas globales de `.claude/rules/10-multiempresa.md`, así que tampoco suman caso a
+  `AislamientoTest`.
+- **Toda pantalla nueva se envuelve en `Armazon`.** No hay que pasarle nada: el menú, la empresa y el
+  usuario los saca de la prop compartida.
+- **Cuando un módulo estrene contenido de verdad**, se le quita del bucle de `routes/web.php` y se le
+  da su propio controlador. El bucle es el andamio de las secciones que aún no existen, no el destino.
+- **Los tres componentes del armazón no están en `/sistema-de-diseno`.** No son piezas que se elijan
+  al construir una pantalla: son el marco donde la pantalla se mete. La prueba de los once componentes
+  base sigue exigiendo solo los del capítulo 3.4.
+- La regla de los colores literales sigue intacta: los cinco tonos del menú viven en `app.css` como
+  `--color-menu-*`.
 - Sigue pendiente para F1-01: la migración de `personas` copia
   `database/stubs/migracion-tabla-de-negocio.stub` y suma su `casoDeAislamiento()`.

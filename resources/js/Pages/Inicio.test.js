@@ -1,21 +1,61 @@
-import { describe, expect, it, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { describe, expect, it, vi } from "vitest";
+import { mount } from "@vue/test-utils";
 
-// `Head` de Inertia necesita el gestor de encabezado que instala `createInertiaApp`,
-// que no existe fuera del navegador. Se reemplaza por un componente vacío.
-vi.mock('@inertiajs/vue3', async (importarOriginal) => ({
+const pagina = {
+    url: "/",
+    props: {
+        usuario: {
+            nombre: "María Fernanda Gutiérrez",
+            correo: "maria@progreso.co",
+            empresa: "Distribuidora El Progreso S.A.S.",
+            nit: "900123456-7",
+            modulos: [
+                { clave: "inicio", etiqueta: "Inicio", grupo: null, url: "/" },
+            ],
+        },
+    },
+};
+
+/*
+ * `Head` necesita el gestor de encabezado que instala `createInertiaApp`, y
+ * `Link` el router. Ninguno existe fuera del navegador.
+ */
+vi.mock("@inertiajs/vue3", async (importarOriginal) => ({
     ...(await importarOriginal()),
-    Head: { name: 'Head', template: '<span />' },
+    Head: { name: "Head", template: "<span />" },
+    usePage: () => pagina,
+    router: { post: vi.fn() },
+    Link: {
+        name: "Link",
+        props: ["href"],
+        template: "<a :href='href'><slot /></a>",
+    },
 }));
 
-const Inicio = (await import('./Inicio.vue')).default;
+const Inicio = (await import("./Inicio.vue")).default;
 
-describe('Inicio', () => {
-    it('muestra el mensaje que llega como prop', () => {
+describe("Inicio", () => {
+    it("saluda por el nombre de pila, no por el nombre completo", () => {
+        const saludo = mount(Inicio, {
+            props: { fecha: "Lunes, 17 de agosto de 2026" },
+        }).find("h1");
+
+        expect(saludo.text()).toBe("Hola, María");
+    });
+
+    it("muestra la fecha tal como llega del servidor", () => {
         const componente = mount(Inicio, {
-            props: { mensaje: 'Hola' },
+            props: { fecha: "Lunes, 17 de agosto de 2026" },
         });
 
-        expect(componente.text()).toContain('Hola');
+        expect(componente.text()).toContain("Lunes, 17 de agosto de 2026");
+    });
+
+    it("se monta dentro del armazón, con su menú", () => {
+        const componente = mount(Inicio, {
+            props: { fecha: "Lunes, 17 de agosto de 2026" },
+        });
+
+        expect(componente.find('nav[aria-label="Secciones"]').exists()).toBe(true);
     });
 });
