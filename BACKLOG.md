@@ -19,7 +19,7 @@ Script `composer verificar` que corre, en orden: `pint --test`, `phpstan analyse
 **Hecho cuando:** `composer verificar` corre entero y termina en verde con el proyecto vacío.
 **Fuente:** `docs/02-arquitectura-y-datos.md` cap. 1
 
-### [ ] F0-02 · Configuración base
+### [x] F0-02 · Configuración base
 `config/reglas_laborales.php` con todas las constantes legales, cada una con su norma citada en
 comentario y la fecha de verificación. Zona horaria `America/Bogota`. Locale `es`.
 **Hecho cuando:** existe el archivo con las nueve constantes y una prueba lee cada una.

@@ -1,45 +1,46 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-17 · Tarea F0-01
+**Última sesión:** 2026-08-17 · Tarea F0-02
 **Verificación:** verde
-**Siguiente tarea:** F0-02 · Configuración base
+**Siguiente tarea:** F0-03 · Multiempresa, capa 1
 
 ## Qué se hizo
 
-- Laravel 12 conectado a **Inertia 2 + Vue 3 + Tailwind 4**. Se quitó el arranque de Vue suelto
-  (`components/App.vue`, `bootstrap.js` con axios) y se reemplazó por `createInertiaApp` en
-  `resources/js/app.js`, con resolución de páginas desde `resources/js/Pages/`.
-- `resources/views/app.blade.php` es ya la plantilla raíz de Inertia (`@inertia`, `@inertiaHead`).
-  Es el único Blade de la interfaz.
-- Middleware `App\Http\Middleware\HandleInertiaRequests` registrado en `bootstrap/app.php`.
-- Página de humo `Pages/Inicio.vue` servida por `Route::get('/')` con `Inertia::render`.
-- **PostgreSQL** como base de datos de desarrollo (`nexo`) y de pruebas (`nexo_pruebas`, fijada en
-  `phpunit.xml`). `.env.example` actualizado a `pgsql`.
-- **Pest 3** instalado (`tests/Pest.php` aplica `RefreshDatabase` a todo `Feature`).
-  `tests/Feature/CimientosTest.php` cubre: la página de inicio responde como componente de Inertia,
-  las pruebas corren contra el driver `pgsql`, y `/up` responde.
-- **Pint** (`pint.json`, preset Laravel) y **PHPStan/Larastan nivel 6** (`phpstan.neon`).
-- **Vitest + @vue/test-utils + jsdom** (`vitest.config.js`), con `Inicio.test.js` como primera prueba
-  de componente.
-- Script `composer verificar`: `pint --test` → `phpstan analyse` → `pest` → `npm run build` →
-  `npm run test`. Corre entero y termina en verde.
+- `config/reglas_laborales.php` con las **nueve constantes legales**, cada una con la norma citada y
+  la fecha de verificación (2026-08-17) en su propio comentario:
+  `dias_vacaciones_por_mes` (1,25 · art. 186 CST) · `periodo_prueba_indefinido_meses` (2 · art. 78) ·
+  `periodo_prueba_fijo_divisor` (5 · art. 78) · `periodo_prueba_fijo_tope_meses` (2 · art. 78) ·
+  `preaviso_dias` (30 · art. 46 mod. Ley 2466 de 2025) · `tope_termino_fijo_anios` (4 · art. 46
+  reformado) · `disfrute_minimo_dias_habiles` (6 · art. 190) · `prorrogas_cortas_pactadas` (4) ·
+  `prorrogas_cortas_automaticas` (3), las dos últimas según el Concepto MinTrabajo
+  08SE2026120300000006157 del 18 de febrero de 2026.
+- `config/app.php`: zona horaria `America/Bogota` y locale `es` (con `fallback_locale` `es` y
+  `faker_locale` `es_CO`). Los tres comentarios del archivo se reescribieron explicando el porqué.
+- `.env` y `.env.example` con `APP_TIMEZONE=America/Bogota`, `APP_LOCALE=es`,
+  `APP_FALLBACK_LOCALE=es` y `APP_FAKER_LOCALE=es_CO`.
+- Traducciones al español instaladas con `laravel-lang/common` (dev) y `php artisan lang:add es`.
+  Quedaron en `lang/es/` y `lang/es.json`.
+- `tests/Unit/ReglasLaboralesTest.php`: lee **cada una** de las nueve constantes con su valor,
+  comprueba que no hay ni una de más ni de menos, y verifica zona horaria, locale y que los mensajes
+  de validación sí se traducen.
+- `tests/Pest.php` ahora extiende `Tests\TestCase` también en `Unit`, sin `RefreshDatabase`.
 
 ## Decisiones tomadas
 
-- **PHPStan analiza `app`, `config`, `database` y `routes`, no `tests`.** Pest reasigna `$this`
-  dentro de las closures y PHPStan no lo resuelve, así que analizar las pruebas solo produce ruido
-  (`Call to an undefined method PHPUnit\Framework\TestCase::get()`). Quien valida las pruebas es Pest
-  al ejecutarlas. Está anotado como comentario dentro de `phpstan.neon`.
-- **Las pruebas corren contra PostgreSQL real, no SQLite en memoria.** Es obligatorio: F0-04 monta
-  Row Level Security, que SQLite no tiene. Mejor pagar el costo desde la primera prueba que
-  descubrirlo en la fase 0 tarde. Requiere que exista la base `nexo_pruebas`.
-- **`@inertiajs/vue3` fijado a `^2.0`** (quedó en 2.3.27). `npm install` sin restricción traía la 3.x,
-  que no corresponde al adaptador de servidor `inertiajs/inertia-laravel` v2. El backlog pide Inertia 2.
-- **`axios` fuera de `package.json`.** La convención del proyecto es que los datos llegan como props
-  de Inertia, no por peticiones sueltas. Inertia lo sigue trayendo como dependencia propia.
-- El `Head` de Inertia se sustituye con `vi.mock` en las pruebas de Vitest, porque necesita el gestor
-  de encabezado que solo instala `createInertiaApp` en el navegador. Si una segunda prueba lo
-  necesita, ese mock se extrae a un archivo de setup compartido.
+- **La quinta parte del periodo de prueba se guarda como divisor entero (`5`), no como `0.2`.**
+  El cálculo es `duración pactada ÷ 5` y así queda exacto, sin coma flotante.
+- **`1.25` sí queda como decimal.** Es exactamente representable en binario (1 + ¼), así que no hay
+  pérdida. La regla de «nunca coma flotante» aplica al dinero, y esto son días.
+- **Nueve constantes exactas, ni una más.** La fecha del 25 de junio de 2025 (desde cuándo corren los
+  cuatro años en contratos anteriores a la reforma, `docs/06` C.2) **no** se agregó: el backlog pide
+  nueve y esa fecha es una regla de transición, no una constante legal de cálculo. Cuando F1-10
+  la necesite, se agrega ahí con su comentario.
+- **Las constantes se leen con `config()`, nunca se copian a una clase de PHP.** Así el panel del
+  proveedor (F1B-04) podrá mostrarlas y, llegado el caso, sobreescribirlas sin desplegar código.
+- **`lang` excluido de Pint** (`pint.json`). Son archivos generados por `laravel-lang`, con finales de
+  línea y alineación propios; formatearlos a mano los rompería en el siguiente `lang:update`.
+- `laravel-lang/common` entra como dependencia **de desarrollo**: solo genera archivos, y los
+  archivos generados sí están versionados. En producción no hace falta.
 
 ## Preguntas para Angela
 
@@ -47,19 +48,18 @@
 
 ## Decisiones para David
 
-- **La máquina tiene PHP 8.2.12 (XAMPP), y `CLAUDE.md` pide PHP 8.3+.** Laravel 12 corre con 8.2, y la
-  verificación está verde, así que no bloquea nada hoy. Pero `composer.json` quedó en `"php": "^8.2"`.
-  Si el destino de producción va a ser 8.3+, conviene actualizar el PHP local antes de que aparezca
-  código que use sintaxis de 8.3, o dejar constancia de que el mínimo real del proyecto es 8.2.
+- Sigue abierta la de la sesión anterior: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+  8.3+**. `composer.json` quedó en `"php": "^8.2"`. Hay que actualizar el PHP local o dejar
+  constancia de que el mínimo real del proyecto es 8.2.
 
 ## Notas para la próxima sesión
 
-- La siguiente tarea es **F0-02 · Configuración base**: `config/reglas_laborales.php` con las nueve
-  constantes legales, cada una con su norma citada y fecha de verificación, más zona horaria
-  `America/Bogota` y locale `es`. Fuente: `.claude/rules/20-calculo-y-reglas-legales.md`.
-  Ojo: `.env` y `config/app.php` siguen con `APP_LOCALE=en`; eso lo arregla F0-02, no se tocó aquí
-  para no adelantar tarea.
-- Para levantar el proyecto en una máquina nueva hay que crear a mano las dos bases de PostgreSQL
-  (`nexo` y `nexo_pruebas`); todavía no hay comando que lo haga.
-- `composer verificar` tarda ~30 s. Si algo sale rojo, el orden ayuda: Pint y PHPStan fallan rápido
-  y antes de tocar la base de datos.
+- La siguiente tarea es **F0-03 · Multiempresa, capa 1**: tabla `tenants`, trait `PerteneceATenant`
+  con global scope y relleno automático, middleware que resuelve el tenant una sola vez por petición,
+  y helper `tenant_actual()`. Fuente: `.claude/rules/10-multiempresa.md`.
+- Ojo con F0-03: el trait tiene que ser lo único que filtre. Si aparece un `where('tenant_id', ...)`
+  en un controlador, la prueba de F0-05 deja de servir para lo que se escribió.
+- Ninguna constante legal debe volver a escribirse dentro de la lógica. Si el motor de cálculo (F2-02)
+  necesita un número, sale de `config('reglas_laborales.…')`.
+- Para levantar el proyecto en una máquina nueva siguen haciendo falta las dos bases de PostgreSQL
+  (`nexo` y `nexo_pruebas`) creadas a mano.
