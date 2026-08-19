@@ -10,16 +10,21 @@ use Illuminate\Support\Facades\Log;
  * Las cinco listas de entidades: EPS, fondos de pensión, ARL, cajas de
  * compensación y bancos.
  *
- * **Está vacío a propósito y no es un olvido.** El contenido de estas cinco
- * listas es la decisión D.5 de `docs/06-decisiones-pendientes.md`, marcada como
- * bloqueante y pendiente de Angela, que es quien sabe cuáles son las opciones
- * que las empresas usan de verdad. Una lista de EPS inventada por el
- * programador es peor que una lista vacía: la vacía se nota, la inventada se
- * usa durante meses y aparece en los datos de todos los clientes.
+ * El contenido de estas cinco listas era la decisión D.5 de
+ * `docs/06-decisiones-pendientes.md`, y llegó en
+ * `plantillas/Listas_Desplegables_Formulario_Empleados.xlsx`. Está copiado en
+ * `database/data/entidades.php`, que es lo que lee este seeder. Ni la migración
+ * ni el modelo cambiaron: su forma nunca dependió de la respuesta.
  *
- * Cuando lleguen, se agregan a `database/data/entidades.php` con la misma forma
- * que `paises.php` y este seeder las carga. Ni la migración ni el modelo
- * cambian: su forma no depende de la respuesta.
+ * Sigue leyendo el archivo con `file_exists` en vez de darlo por sentado: si
+ * alguien lo borra, el resto de los catálogos —geografía y festivos— tiene que
+ * poder cargarse igual, y el aviso queda en el registro.
+ *
+ * **Actualiza en vez de duplicar.** Correrlo dos veces deja las mismas filas, y
+ * un nombre que cambie en el archivo se refleja sin crear una entidad nueva:
+ * `nombre` es la clave. Una EPS que desaparezca del archivo **no** se borra de
+ * la tabla, se queda para que los empleados que ya la tenían la sigan leyendo;
+ * desactivarla es una acción del panel del proveedor (F1B-04).
  */
 class EntidadesSeeder extends Seeder
 {

@@ -304,24 +304,28 @@ Alternativa si se quiere simplificar: aplicar siempre la regla más estricta, la
 - Edad: menos de 25 · 25 a 34 · 35 a 44 · 45 a 54 · 55 o más.
 - Antigüedad: menos de 6 meses · 6 meses a 1 año · 1 a 3 años · 3 a 5 años · más de 5 años.
 
-### D.5 Listados maestros
+### D.5 Listados maestros — RESUELTA
 
-**BLOQUEANTE.** Varias listas desplegables necesitan su contenido antes de poder construirse. Angela es quien conoce cuáles son las opciones que las empresas usan realmente:
+**Respondida** con `plantillas/Listas_Desplegables_Formulario_Empleados.xlsx`, hoja «Listas». Trae las once listas, cada una en una columna, más una hoja de notas y fuentes oficiales.
 
-| Lista | Comentario |
+| Lista | Estado |
 |---|---|
-| EPS | Listado completo de las vigentes en Colombia. Es la lista más larga y la que más cambia. |
-| Fondos de pensión |  |
-| ARL |  |
-| Cajas de compensación | Varían por departamento. |
-| Entidades bancarias |  |
-| Tipo de riesgo | Niveles I a V. Confirmar si se presentan con descripción o solo el número. |
-| Género | Confirmar las opciones que se van a ofrecer. |
-| Nivel educativo | Para el perfil sociodemográfico. |
-| Estado civil | Para el perfil sociodemográfico. |
-| Medio de transporte y tiempo de desplazamiento | Para el perfil sociodemográfico. |
+| EPS | **Cargada** (18 opciones, incluidas «Régimen Especial / de Excepción» y «Otra»). |
+| Fondos de pensión | **Cargada** (7, incluidas «Pensionado» y «Otro»). |
+| ARL | **Cargada** (9). |
+| Cajas de compensación | **Cargada** (34). Se ofrecen todas, sin filtrar por departamento. |
+| Entidades bancarias | **Cargada** (25, incluidas Nequi, Daviplata y RappiPay). |
+| Tipo de riesgo | Respondida: con descripción — «Riesgo I – Mínimo» a «Riesgo V – Máximo». Se aplica en **F1-04**. |
+| Género | Respondida: Femenino · Masculino. Se aplica en **F1-04**. |
+| Nivel educativo | Respondida: Ninguno · Básica Primaria · Bachiller · Técnico / Tecnólogo · Profesional · Posgraduado(a). Se aplica en **F1-06**. |
+| Estado civil | Respondida: Soltero(a) · Casado(a) · Unión libre · Separado(a) · Divorciado(a) · Viudo(a). Se aplica en **F1-06**. |
+| Medio de transporte y tiempo de desplazamiento | Respondidas: seis medios más «Otro», y cinco rangos de tiempo. Se aplican en **F1-06**. |
 
-*Estas listas deben poder actualizarse sin tocar el código, porque van a cambiar con el tiempo.*
+Las cinco de arriba están en `database/data/entidades.php` y las carga `EntidadesSeeder`; las seis de abajo se aplican cuando se construyan los formularios que las usan.
+
+**Queda una pregunta abierta que trajo el propio archivo:** la columna «Cesantías» (Porvenir, Protección, Colfondos, Skandia, FNA, Otro). El fondo de cesantías **no está en la sección 5.1 de la especificación** y no tiene ni tabla ni columna. Ver `ESTADO.md`.
+
+*Estas listas deben poder actualizarse sin tocar el código, porque van a cambiar con el tiempo:* eso es la tarea **F1B-04**, administración de catálogos desde el panel del proveedor. Hasta entonces se actualizan en `database/data/entidades.php` y se recarga el seeder, que actualiza sin duplicar.
 
 ### D.6 Confirmaciones menores
 

@@ -187,16 +187,60 @@ describe('con los catálogos cargados', function () {
             ->toBe($antes);
     });
 
-    it('deja vacías las cinco listas de entidades mientras falte la decisión D.5', function () {
-        // Las tablas existen y los modelos también, pero el contenido de EPS,
-        // fondos, ARL, cajas y bancos es una decisión de negocio pendiente. Que
-        // estén vacías es el estado correcto hoy: una lista inventada sería
-        // peor. Cuando lleguen los datos, esta prueba cambia con ellos.
-        expect(Eps::count())->toBe(0)
-            ->and(FondoPension::count())->toBe(0)
-            ->and(Arl::count())->toBe(0)
-            ->and(CajaCompensacion::count())->toBe(0)
-            ->and(Banco::count())->toBe(0);
+    it('carga las cinco listas de entidades con lo que trajo el archivo del cliente', function () {
+        // Las cuentas exactas de la hoja «Listas» del archivo
+        // `Listas_Desplegables_Formulario_Empleados.xlsx`. Van con el número y no
+        // con un `toBeGreaterThan` a propósito: si alguien agrega o quita una
+        // entidad, tiene que pasar por aquí y darse cuenta.
+        expect(Eps::count())->toBe(18)
+            ->and(FondoPension::count())->toBe(7)
+            ->and(Arl::count())->toBe(9)
+            ->and(CajaCompensacion::count())->toBe(34)
+            ->and(Banco::count())->toBe(25);
+    });
+
+    it('trae en cada lista las entidades por las que se pregunta primero', function () {
+        // Una de cada lista, de las que cualquiera nombraría al abrir el
+        // formulario. Si una lista se cargara en la tabla equivocada —cajas en
+        // bancos, por ejemplo—, las cuentas seguirían dando y esto no.
+        expect(Eps::where('nombre', 'Nueva EPS')->exists())->toBeTrue()
+            ->and(FondoPension::where('nombre', 'Porvenir')->exists())->toBeTrue()
+            ->and(Arl::where('nombre', 'ARL Sura')->exists())->toBeTrue()
+            ->and(CajaCompensacion::where('nombre', 'Compensar')->exists())->toBeTrue()
+            ->and(Banco::where('nombre', 'Bancolombia')->exists())->toBeTrue();
+    });
+
+    it('deja en cada lista la salida para la entidad que no esté', function () {
+        // Sin esta opción, quien tenga una EPS que no está en la lista deja el
+        // campo vacío o escribe cualquier cosa en otro. Cuatro de las cinco la
+        // traen; las ARL no, porque son nueve y están todas.
+        expect(Eps::where('nombre', 'Otra')->exists())->toBeTrue()
+            ->and(FondoPension::where('nombre', 'Otro')->exists())->toBeTrue()
+            ->and(Banco::where('nombre', 'Otra')->exists())->toBeTrue();
+    });
+
+    it('ofrece toda la lista al formulario y deja de ofrecer la que se desactive', function () {
+        // Es lo que verá el formulario de F1-04. Nace todo activo; desactivar
+        // una EPS liquidada será una acción del panel del proveedor, y entonces
+        // deja de ofrecerse sin desaparecer de los empleados que ya la tenían.
+        expect(Eps::paraElegir()->count())->toBe(18);
+
+        $liquidada = Eps::where('nombre', 'Nueva EPS')->firstOrFail();
+        $liquidada->update(['activo' => false]);
+
+        expect(Eps::paraElegir()->pluck('nombre'))->not->toContain('Nueva EPS')
+            ->and(Eps::find($liquidada->id))->not->toBeNull();
+    });
+
+    it('no duplica ni pierde entidades al volver a correr el seeder', function () {
+        $antes = Eps::pluck('id', 'nombre')->all();
+
+        $this->seed(CatalogosSeeder::class);
+
+        // Los mismos nombres y **los mismos identificadores**: si el seeder
+        // borrara y volviera a insertar, cada empleado ya registrado quedaría
+        // apuntando a una EPS que ya no existe.
+        expect(Eps::pluck('id', 'nombre')->all())->toBe($antes);
     });
 
     it('ofrece en las listas solo lo que está activo', function () {

@@ -17,10 +17,10 @@ use Illuminate\Support\Facades\Schema;
  * EPS, el de la Superfinanciera para los bancos— y admite nulos porque no todas
  * las listas lo tienen. El nombre es único: es lo que ve y elige el usuario.
  *
- * **El contenido de estas cinco listas está pendiente de la decisión D.5 de
- * `docs/06-decisiones-pendientes.md`**, que es de Angela. Las tablas existen
- * desde ya porque su forma no depende de la respuesta; lo que falta son las
- * filas, y esas no se inventan. Su seeder está escrito y vacío, esperándolas.
+ * El contenido de las cinco listas era la decisión D.5 de
+ * `docs/06-decisiones-pendientes.md` y ya llegó: está en
+ * `database/data/entidades.php` y lo carga `EntidadesSeeder`. La forma de la
+ * tabla no cambió con la respuesta, que era justo lo que se esperaba.
  */
 return new class extends Migration
 {
