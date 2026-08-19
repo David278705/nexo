@@ -1,5 +1,8 @@
 <?php
 
+use App\Autorizacion\Modulo;
+use App\Autorizacion\Rol;
+use App\Exports\EmpleadosExport;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
@@ -14,6 +17,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
 use Tests\Fixtures\RegistroDePrueba;
 
 /**
@@ -298,6 +302,82 @@ casoDeAislamiento('periodos contractuales', [
     'migracion' => function (): void {},
     'crear' => fn (string $evento) => PeriodoContractual::factory()->create(['evento' => $evento]),
 ]);
+
+/**
+ * El listado de empleados, ya por sus rutas de verdad.
+ *
+ * Los casos de arriba prueban el patrón con rutas de juguete; este prueba el
+ * primer módulo construido —listado, ficha, exportación y búsqueda— tal como lo
+ * usa un cliente. Cuando cada módulo exista, tendrá el suyo así.
+ */
+describe('empleados, por sus rutas reales', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->empleadoDeLaA = $this->contexto->paraTenant($this->empresaA, fn () => Vinculacion::factory()
+            ->de(Persona::factory()->create(['primer_nombre' => 'Confidencial', 'primer_apellido' => 'DeLaEmpresaA']))
+            ->create(['cargo' => SECRETO_DE_LA_A]));
+
+        $this->usuarioB = usuarioDe($this->empresaB, Rol::Administrador, Modulo::Empleados);
+    });
+
+    it('no lista empleados de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/empleados');
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['empleados']['filas'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('no encuentra por búsqueda un empleado de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)
+            ->get('/empleados?buscar='.urlencode('Confidencial'));
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['empleados']['filas'])->toBe([]);
+    });
+
+    it('responde 404 en la ficha de un empleado de otra empresa', function () {
+        $this->actingAs($this->usuarioB)
+            ->get('/empleados/'.$this->empleadoDeLaA->getKey())
+            ->assertNotFound();
+    });
+
+    it('no incluye empleados de otra empresa en la exportación', function () {
+        Excel::fake();
+
+        $this->actingAs($this->usuarioB)->get('/empleados/exportar?estado=todos')->assertOk();
+
+        Excel::assertDownloaded(
+            'empleados-'.now()->format('Y-m-d').'.xlsx',
+            fn (EmpleadosExport $exportacion) => $exportacion->collection()->isEmpty()
+        );
+    });
+
+    it('la empresa dueña sí ve a su empleado por los cuatro caminos', function () {
+        Excel::fake();
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Empleados);
+
+        $listado = $this->actingAs($usuarioA)->get('/empleados?buscar='.urlencode('Confidencial'));
+        $listado->assertOk();
+
+        expect($listado->viewData('page')['props']['empleados']['filas'])->toHaveCount(1);
+
+        $this->actingAs($usuarioA)
+            ->get('/empleados/'.$this->empleadoDeLaA->getKey())
+            ->assertOk();
+
+        $this->actingAs($usuarioA)->get('/empleados/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'empleados-'.now()->format('Y-m-d').'.xlsx',
+            fn (EmpleadosExport $exportacion) => $exportacion->collection()->count() === 1
+        );
+    });
+});
 
 casoDeAislamiento('perfil sociodemográfico', [
     'tabla' => 'perfil_sociodemografico',

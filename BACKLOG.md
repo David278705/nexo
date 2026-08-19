@@ -122,12 +122,17 @@ Hecho: la tabla, `EventoContractual`, el modelo `PeriodoContractual` y `Historia
 calcula prórrogas acumuladas —pactadas y automáticas por separado—, duración total del vínculo,
 vencimiento vigente y tope de cuatro años. El periodo inicial lo abre sola la vinculación al crearse.
 
-### [ ] F1-03 · Listado de empleados
+### [x] F1-03 · Listado de empleados
 
 Tabla con filtros de estado, tipo de contrato, cargo, rango de ingreso y búsqueda. Exportación que
 respeta filtros. Estado vacío con su texto.
 **Hecho cuando:** los filtros funcionan en el servidor y la exportación trae exactamente lo filtrado.
 **Fuente:** `docs/03-diseno-e-interfaz.md` 5.3 · usa el skill `crear-modulo`
+
+Hecho: `ListadoDeEmpleados` —los seis filtros, el orden y la paginación, todo en el servidor—,
+`EmpleadoController`, `EmpleadosExport` con Laravel Excel, la pantalla `Empleados/Index` y el
+componente compartido `Paginacion`. Pantalla y exportación comparten la misma consulta, así que
+«Exportar N registros filtrados» no puede mentir.
 
 ### [ ] F1-04 · Registro de empleado
 

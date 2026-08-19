@@ -6,8 +6,13 @@ import EstadoVacio from "@/Components/EstadoVacio.vue";
  * fijo al hacer scroll, filas de 44 px, cifras a la derecha y fila completa
  * clicable (documento 3, sección 3.4).
  *
- * Cada columna es `{ clave, titulo, numerica }`. El contenido de una celda se
- * puede reemplazar con el slot `celda-<clave>`, que recibe la fila entera.
+ * Cada columna es `{ clave, titulo, numerica, ordenable }`. El contenido de una
+ * celda se puede reemplazar con el slot `celda-<clave>`, que recibe la fila
+ * entera.
+ *
+ * El ordenamiento no se hace aquí: la columna pulsada se emite y el listado se
+ * la pide al servidor, porque la tabla solo tiene delante una página de 25 y
+ * ordenar esas 25 daría un orden falso.
  */
 defineProps({
     columnas: { type: Array, required: true },
@@ -16,9 +21,26 @@ defineProps({
     clave: { type: String, default: "id" },
     tituloVacio: { type: String, default: "Aún no hay registros" },
     descripcionVacio: { type: String, default: "" },
+    // La columna por la que ya viene ordenada la página y en qué sentido.
+    ordenPor: { type: String, default: "" },
+    ordenDireccion: { type: String, default: "asc" },
 });
 
-const emit = defineEmits(["abrir"]);
+const emit = defineEmits(["abrir", "ordenar"]);
+
+// El lector de pantalla necesita saber por dónde está ordenada la tabla; la
+// flecha sola no se lo dice (documento 3, sección 3.5).
+function sentido(columna, ordenPor, ordenDireccion) {
+    if (!columna.ordenable) {
+        return undefined;
+    }
+
+    if (columna.clave !== ordenPor) {
+        return "none";
+    }
+
+    return ordenDireccion === "desc" ? "descending" : "ascending";
+}
 </script>
 
 <template>
@@ -39,10 +61,28 @@ const emit = defineEmits(["abrir"]);
                             v-for="columna in columnas"
                             :key="columna.clave"
                             scope="col"
+                            :aria-sort="
+                                sentido(columna, ordenPor, ordenDireccion)
+                            "
                             class="sticky top-0 z-10 bg-marca px-3 py-2 text-apoyo font-semibold text-texto-invertido"
                             :class="columna.numerica ? 'text-right' : 'text-left'"
                         >
-                            {{ columna.titulo }}
+                            <button
+                                v-if="columna.ordenable"
+                                type="button"
+                                class="inline-flex items-center gap-1"
+                                @click="emit('ordenar', columna.clave)"
+                            >
+                                {{ columna.titulo }}
+                                <span aria-hidden="true">{{
+                                    columna.clave !== ordenPor
+                                        ? "↕"
+                                        : ordenDireccion === "desc"
+                                          ? "↓"
+                                          : "↑"
+                                }}</span>
+                            </button>
+                            <template v-else>{{ columna.titulo }}</template>
                         </th>
                     </tr>
                 </thead>

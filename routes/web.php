@@ -6,6 +6,7 @@ use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
 use App\Http\Controllers\Acceso\SesionController;
+use App\Http\Controllers\EmpleadoController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -54,8 +55,27 @@ Route::middleware('auth')->group(function () {
      * ninguna parte. Cada una declara su módulo, así que escribir la dirección
      * a mano sin permiso devuelve 403 igual que cuando tengan contenido.
      */
+    /*
+     * Empleados (documento 3, sección 5.3). Es el primer módulo con contenido
+     * real, así que sale del bucle de secciones pendientes de abajo.
+     *
+     * Las tres direcciones literales van antes que la de la ficha: si no,
+     * `exportar` y `nuevo` se leerían como identificadores de empleado.
+     */
+    Route::middleware('modulo:'.Modulo::Empleados->value)->group(function () {
+        Route::get('/empleados', [EmpleadoController::class, 'index'])
+            ->name(Modulo::Empleados->nombreDeRuta());
+        Route::get('/empleados/exportar', [EmpleadoController::class, 'exportar'])
+            ->name('empleados.exportar');
+        Route::get('/empleados/nuevo', [EmpleadoController::class, 'nuevo'])
+            ->name('empleados.nuevo');
+        Route::get('/empleados/{empleado}', [EmpleadoController::class, 'ficha'])
+            ->whereNumber('empleado')
+            ->name('empleados.ficha');
+    });
+
     foreach (Modulo::cases() as $modulo) {
-        if ($modulo === Modulo::Inicio) {
+        if ($modulo === Modulo::Inicio || $modulo === Modulo::Empleados) {
             continue;
         }
 

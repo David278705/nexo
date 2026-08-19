@@ -6,6 +6,7 @@ use App\Http\Middleware\VerificarModulo;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,10 +17,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // ResolverTenant va antes que nada que consulte datos de negocio, y
         // después de la sesión, que es de donde sale el usuario autenticado.
-        $middleware->web(append: [
-            ResolverTenant::class,
-            HandleInertiaRequests::class,
-        ]);
+        //
+        // Se saca `SubstituteBindings` de su sitio y se vuelve a poner detrás a
+        // propósito: la resolución de `{empleado}` en la dirección es una
+        // consulta a una tabla de negocio, y si corriera antes lo haría sin
+        // empresa en contexto. Toda ficha respondería 404, incluida la propia.
+        $middleware->web(
+            remove: [SubstituteBindings::class],
+            append: [
+                ResolverTenant::class,
+                SubstituteBindings::class,
+                HandleInertiaRequests::class,
+            ],
+        );
 
         // Se declara en cada ruta de módulo: `->middleware('modulo:vacaciones')`.
         $middleware->alias([

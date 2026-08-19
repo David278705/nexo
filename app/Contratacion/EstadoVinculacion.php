@@ -31,4 +31,23 @@ enum EstadoVinculacion: string
     {
         return $this === self::Activo;
     }
+
+    /**
+     * @return list<array{valor: string, texto: string}>
+     */
+    public static function paraElegir(): array
+    {
+        return array_map(
+            fn (self $estado): array => ['valor' => $estado->value, 'texto' => $estado->etiqueta()],
+            self::cases(),
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function valores(): array
+    {
+        return array_map(fn (self $estado): string => $estado->value, self::cases());
+    }
 }

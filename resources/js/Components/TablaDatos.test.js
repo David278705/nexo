@@ -52,6 +52,45 @@ describe("TablaDatos", () => {
         expect(componente.find("tbody tr").attributes("tabindex")).toBe("0");
     });
 
+    it("pide al servidor el orden al pulsar el encabezado de una columna ordenable", async () => {
+        const componente = mount(TablaDatos, {
+            props: {
+                columnas: [
+                    { clave: "nombre", titulo: "Nombre", ordenable: true },
+                    { clave: "saldo", titulo: "Saldo", numerica: true },
+                ],
+                filas,
+            },
+        });
+
+        const encabezados = componente.findAll("thead th");
+
+        expect(encabezados[1].find("button").exists()).toBe(false);
+
+        await encabezados[0].find("button").trigger("click");
+
+        expect(componente.emitted("ordenar")).toEqual([["nombre"]]);
+    });
+
+    it("dice por dónde está ordenada, y no solo con una flecha", () => {
+        const componente = mount(TablaDatos, {
+            props: {
+                columnas: [
+                    { clave: "nombre", titulo: "Nombre", ordenable: true },
+                    { clave: "saldo", titulo: "Saldo", ordenable: true },
+                ],
+                filas,
+                ordenPor: "nombre",
+                ordenDireccion: "desc",
+            },
+        });
+
+        const encabezados = componente.findAll("thead th");
+
+        expect(encabezados[0].attributes("aria-sort")).toBe("descending");
+        expect(encabezados[1].attributes("aria-sort")).toBe("none");
+    });
+
     it("sin registros muestra el estado vacío y no la palabra «no hay datos»", () => {
         const componente = mount(TablaDatos, {
             props: {
