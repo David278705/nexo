@@ -111,12 +111,16 @@ vinculación. Documento único por empresa en `personas`, no en `vinculaciones`.
 prueba de ello.
 **Fuente:** `docs/02-arquitectura-y-datos.md` 3.2
 
-### [ ] F1-02 · Periodos contractuales
+### [x] F1-02 · Periodos contractuales
 
 Tabla `periodos_contractuales` con `orden`, `evento`, tipo de contrato y fechas. El periodo inicial
 es la fila con `orden = 1`.
 **Hecho cuando:** se pueden calcular sobre ella las prórrogas acumuladas y la duración total del vínculo.
 **Fuente:** `docs/02-arquitectura-y-datos.md` 3.3
+
+Hecho: la tabla, `EventoContractual`, el modelo `PeriodoContractual` y `HistorialDeContrato`, que
+calcula prórrogas acumuladas —pactadas y automáticas por separado—, duración total del vínculo,
+vencimiento vigente y tope de cuatro años. El periodo inicial lo abre sola la vinculación al crearse.
 
 ### [ ] F1-03 · Listado de empleados
 

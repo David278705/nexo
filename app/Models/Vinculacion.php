@@ -3,14 +3,19 @@
 namespace App\Models;
 
 use App\Contratacion\EstadoVinculacion;
+use App\Contratacion\EventoContractual;
+use App\Contratacion\HistorialDeContrato;
 use App\Contratacion\TipoContrato;
 use App\Multiempresa\PerteneceATenant;
 use Database\Factories\VinculacionFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Una relación laboral concreta entre una persona y la empresa.
@@ -25,7 +30,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * partida que trae la carga inicial— y solo se lee, nunca se suma ni se resta.
  *
  * @property int $id
+ * @property TipoContrato $tipo_contrato
+ * @property Carbon $fecha_ingreso
+ * @property Carbon|null $fecha_fin
  * @property-read Persona $persona
+ * @property-read Collection<int, PeriodoContractual> $periodos
  */
 class Vinculacion extends Model
 {
@@ -70,6 +79,53 @@ class Vinculacion extends Model
     public function persona(): BelongsTo
     {
         return $this->belongsTo(Persona::class);
+    }
+
+    /**
+     * El historial del contrato, del tramo inicial al vigente.
+     *
+     * Nunca está vacío: el periodo inicial lo abre `ObservadorDeVinculacion` al
+     * crearse la vinculación. `tipo_contrato` y `fecha_fin` de esta tabla
+     * guardan lo vigente hoy; el tramo a tramo está aquí.
+     *
+     * @return HasMany<PeriodoContractual, $this>
+     */
+    public function periodos(): HasMany
+    {
+        return $this->hasMany(PeriodoContractual::class)->orderBy('orden');
+    }
+
+    /**
+     * Lo que se calcula sobre ese historial: prórrogas acumuladas, duración
+     * total del vínculo, vencimiento vigente y tope legal.
+     */
+    public function historial(): HistorialDeContrato
+    {
+        return HistorialDeContrato::de($this);
+    }
+
+    /**
+     * Agrega un tramo al historial y le asigna el número que le toca.
+     *
+     * Es el único camino por el que crece el historial, para que nadie tenga
+     * que calcular el `orden` a mano ni pueda equivocarse con él. Por aquí
+     * pasarán «Renovar» y «Cambiar a término indefinido» (F1-09), que además
+     * tendrán que mover `tipo_contrato` y `fecha_fin` de la vinculación: el
+     * historial y lo vigente se mueven a la vez o quedan desalineados.
+     */
+    public function registrarPeriodo(
+        EventoContractual $evento,
+        TipoContrato $tipoContrato,
+        Carbon $fechaInicio,
+        ?Carbon $fechaFin = null,
+    ): PeriodoContractual {
+        return $this->periodos()->create([
+            'orden' => $this->historial()->proximoOrden(),
+            'evento' => $evento,
+            'tipo_contrato' => $tipoContrato,
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin,
+        ]);
     }
 
     /**

@@ -1,64 +1,72 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-18 · Tarea F0-11
+**Última sesión:** 2026-08-18 · Tarea F1-02
 **Verificación:** verde
-**Siguiente tarea:** F1-02 · Periodos contractuales
+**Siguiente tarea:** F1-03 · Listado de empleados
 
 ## Qué se hizo
 
-- **Se cerró F0-11, que era la única tarea bloqueada del backlog.** Llegó
-  `plantillas/Listas_Desplegables_Formulario_Empleados.xlsx` con las once listas desplegables del
-  formulario de empleado, que es la respuesta completa a la decisión D.5.
-- **`database/data/entidades.php`**: las cinco listas de entidades copiadas literalmente de la hoja
-  «Listas» del archivo —**18 EPS, 7 fondos de pensión, 9 ARL, 34 cajas de compensación y 25
-  bancos**—, con el comentario de dónde salió cada una y qué advierte la hoja «Notas y fuentes».
-  `EntidadesSeeder` ya estaba escrito esperándolo: no hubo que tocar ni la migración ni el modelo,
-  que era exactamente lo que se predijo al construirlas.
-- **Cinco casos nuevos en `CatalogosTest`** que reemplazan al que afirmaba que las listas estaban
-  vacías: las cuentas exactas de cada lista, una entidad reconocible de cada una —para que cargar una
-  lista en la tabla equivocada se note—, la opción «Otra», que desactivar una EPS la saca del
-  formulario sin borrarla, y que correr el seeder dos veces deja **los mismos identificadores**, no
-  solo el mismo número de filas.
-- **`docs/06-decisiones-pendientes.md`: D.5 marcada RESUELTA**, con las once listas y en qué tarea se
-  aplica cada una de las seis que todavía no se usan.
-- `composer verificar` en verde: 170 pruebas de Pest, PHPStan sin errores, build y 70 de Vitest.
+- **`periodos_contractuales`**, la tabla del historial de contrato (documento 2, 3.3): `tenant_id`,
+  `vinculacion_id`, `orden`, `evento`, `tipo_contrato` y las dos fechas, con borrado lógico y su
+  política de RLS en la misma migración. Índice único **parcial** sobre `(tenant_id, vinculacion_id,
+  orden)` con `where deleted_at is null`, igual que el del documento en `personas`.
+- **`App\Contratacion\EventoContractual`**: los cuatro eventos —inicial, prórroga pactada, prórroga
+  automática y cambio a indefinido—, con `esProrroga()`, que deja fuera el cambio a indefinido.
+- **`App\Models\PeriodoContractual`** con `PerteneceATenant`, borrado lógico, casteos y los scopes
+  `enOrden()` y `prorrogas()`. No calcula nada: solo guarda el tramo.
+- **`App\Contratacion\HistorialDeContrato`**, el único sitio donde se hacen las cuentas del contrato:
+  `prorrogasAcumuladas()`, `prorrogasPactadas()`, `prorrogasAutomaticas()`, `fechaDeVencimiento()`,
+  `inicioDelConteoDelTope()`, `duracionTotalEnDias()`, `fechaDelTopeLegal()`, `superaElTopeLegal()` y
+  `proximoOrden()`. Se construye con `HistorialDeContrato::de($vinculacion)` o con `::con($periodos)`
+  cuando el listado ya los trae cargados.
+- **`ObservadorDeVinculacion`**: toda vinculación abre su periodo inicial al crearse, con la misma
+  modalidad y las mismas fechas. Registrado en `AppServiceProvider::boot()`.
+- **`Vinculacion::periodos()`, `historial()` y `registrarPeriodo()`**, que asigna el `orden` solo. Es
+  por donde pasarán «Renovar» y «Cambiar a término indefinido» en F1-09.
+- **Constante legal nueva**: `reglas_laborales.vigencia_reforma_termino_fijo` = `2025-06-25`, con su
+  norma y su fecha de verificación. Es una fecha y no un número de días: se compara, no se suma.
+- **`PeriodosContractualesTest`** con 22 casos, **el caso de aislamiento de la tabla** en
+  `AislamientoTest` y dos ajustes en `ReglasLaboralesTest` por la constante nueva.
+- `composer verificar` en verde: 198 pruebas de Pest, PHPStan sin errores, build y 70 de Vitest.
 
 ## Decisiones tomadas
 
-- **Los nombres se copiaron literalmente del archivo, sin corregirlos ni normalizarlos.** Son los que
-  el cliente reconoce y los que va a leer en las exportaciones. Eso incluye rarezas que se dejaron a
-  propósito: «Pensionado» dentro de los fondos de pensión —que no es un fondo sino el estado de quien
-  se vincula ya pensionado—, y Nequi, Daviplata y RappiPay dentro de los bancos, que son cuenta de
-  destino del sueldo y no bancos.
-- **`codigo` quedó nulo en las cinco listas.** El archivo trae nombres, no los códigos de la
-  Supersalud ni de la Superfinanciera. La columna sigue ahí para cuando se carguen; inventar un
-  código para no dejarla vacía es peor que dejarla vacía.
-- **Las cajas de compensación se ofrecen todas, sin filtrar por departamento.** Era una de las
-  preguntas abiertas y el archivo entregó una lista plana de 34. Filtrar por departamento habría sido
-  una regla inventada, y además dejaría fuera al empleado que vive en un departamento y trabaja en
-  otro.
-- **El seeder actualiza por nombre y nunca borra.** Una EPS que desaparezca del archivo se queda en la
-  tabla: hay empleados apuntando a ella. Retirarla de la oferta es desactivarla, y eso es una acción
-  del panel del proveedor (F1B-04), no del seeder.
-- **La prueba de orden alfabético se cambió por una de comportamiento.** Comparar el orden de
-  PostgreSQL contra el de PHP se rompe con «Régimen» y con «S.O.S.», donde las dos intercalaciones no
-  coinciden: la prueba habría fallado por la configuración regional de la base y no por un error real.
-- **Solo se cargaron las cinco listas que pedía F0-11.** Las otras seis del archivo —tipo de riesgo,
-  género, nivel educativo, estado civil, medio de transporte y tiempo de desplazamiento— quedaron
-  anotadas en D.5 y se aplican en F1-04 y F1-06, que son sus tareas. Ya no bloquean nada.
+- **El periodo inicial lo abre un observador, no el controlador.** Son varios los caminos que crean
+  vinculaciones —formulario, carga inicial, pruebas— y cualquiera podría olvidarlo. Un contrato sin
+  tramo inicial deja el conteo de prórrogas y el tope de cuatro años sin punto de partida, y eso no
+  se nota hasta que la alerta llega tarde. Los tramos siguientes sí los registra quien decide.
+- **El cambio a indefinido no cuenta como prórroga.** No extiende un plazo, cambia la modalidad.
+  Sumarlo adelantaría el límite de prórrogas cortas del artículo 46.
+- **Pactadas y automáticas se cuentan por separado**, con dos métodos distintos, porque el límite
+  legal no es el mismo: cuatro contra tres (Concepto MinTrabajo 6157 de 2026).
+- **`superaElTopeLegal()` responde, no bloquea.** Quién impide guardar es la validación de F1-09, y
+  cuál de los dos casos bloquea y cuál advierte sigue siendo la decisión B.3.
+- **No se construyó el conteo de prórrogas cortas.** Es F1-10 y depende de B.1 y B.3. Aquí quedó solo
+  su insumo, que es lo que pedía la tarea.
+- **`fechaDelTopeLegal()` es la última fecha de finalización que todavía no supera el tope**: cuatro
+  años exactos desde el inicio del conteo. Terminar justo ese día no lo supera; el día siguiente sí.
+- **`duracionTotalEnDias()` cuenta días corridos, con los dos extremos incluidos**, y arranca en
+  `inicioDelConteoDelTope()`, no en la firma. Está anotado en el propio método que cuando F2-02
+  construya `diasCorridos()` este método lo llame en lugar de restar fechas por su cuenta.
+- **El `orden` no lo digita nadie**: lo asignan `registrarPeriodo()` y la fábrica, ambos a partir del
+  máximo que ya tiene la vinculación.
+- **La fábrica de periodos crea una prórroga pactada por defecto, no el tramo inicial.** El inicial ya
+  lo abre la vinculación; una fábrica que lo repitiera chocaría contra el índice único.
 
 ## Preguntas para Angela
 
-- **La columna «Cesantías» del archivo no tiene dónde ir.** Trae Porvenir, Protección, Colfondos,
-  Skandia, el Fondo Nacional del Ahorro y «Otro», pero **el fondo de cesantías no aparece en la
-  sección 5.1 de la especificación funcional**, así que no hay columna en `vinculaciones` ni tabla que
-  lo reciba. La pregunta concreta: **¿se agrega «fondo de cesantías» como campo obligatorio del
-  formulario de empleado?** Si la respuesta es sí, es una tarea nueva —tabla, columna, seeder y
+- **La columna «Cesantías» del archivo de listas no tiene dónde ir.** Trae Porvenir, Protección,
+  Colfondos, Skandia, el Fondo Nacional del Ahorro y «Otro», pero **el fondo de cesantías no aparece
+  en la sección 5.1 de la especificación funcional**, así que no hay columna en `vinculaciones` ni
+  tabla que lo reciba. La pregunta concreta: **¿se agrega «fondo de cesantías» como campo obligatorio
+  del formulario de empleado?** Si la respuesta es sí, es una tarea nueva —tabla, columna, seeder y
   formulario— y hay que decidir si entra antes de F1-04, que es cuando se construye ese formulario.
-  No se agregó por cuenta propia: sería inventar un campo del producto.
-- Menor, del mismo archivo: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)»
-  sin distinguir especialización, maestría y doctorado**. La propia hoja de notas dice que es fácil de
-  separar después. Se construye así en F1-06 salvo aviso.
+- Menor, del mismo archivo: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y
+  **«Posgraduado(a)» sin distinguir especialización, maestría y doctorado**. La propia hoja de notas
+  dice que es fácil de separar después. Se construye así en F1-06 salvo aviso.
+- **D.1 sigue abierta: ¿se registra el tipo de prórroga?** No bloqueó nada —el enumerado ya distingue
+  pactada de automática y, si se decide no distinguirlas, el campo queda con un solo valor—, pero la
+  respuesta cambia el formulario de «Renovar» de F1-09: o pregunta cuál de las dos es, o no pregunta.
 
 ## Decisiones para David
 
@@ -72,13 +80,16 @@
   el calendario oficial. Cincuenta y tres fechas, quince minutos, mismo riesgo global que las EPS.
 - **Contrastar los 1.101 municipios contra el archivo del DANE.** Un municipio que falte deja a un
   empleado sin poder registrar dónde nació. Ese mismo cotejo trae los códigos DANE que hoy están nulos.
+- **B.3, ¿bloquear o advertir?**, deja de ser teórica en F1-09: `superaElTopeLegal()` ya existe y solo
+  falta decidir qué hace la pantalla con su respuesta. La sugerencia del documento 6 es bloquear el
+  tope de cuatro años y advertir con fuerza en la prórroga corta.
 - **Vigencia del enlace de invitación: siete días.** Abierta desde F0-07, en
   `Invitaciones::DIAS_DE_VIGENCIA`, en un solo sitio. **Confírmalo o cámbialo.**
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
-  falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Hay tres tablas de negocio dependiendo
-  de ello.
-- Abierta de doce sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide 8.3+**.
+  falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Ya son cuatro las tablas de negocio que
+  dependen de ello.
+- Abierta de trece sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide 8.3+**.
   `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -89,22 +100,20 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-02 · Periodos contractuales**. `periodos_contractuales` cuelga de
-  `vinculaciones` con `orden`, `evento`, `tipo_contrato` y las dos fechas; el periodo inicial es la
-  fila con `orden = 1`. Es tabla de negocio: copia `database/stubs/migracion-tabla-de-negocio.stub` y
-  **suma su caso a `AislamientoTest`**, que ya tiene tres ejemplos de cómo se escribe.
-- **El `evento` incluye `prorroga_pactada` y `prorroga_automatica`**, que es la decisión D.1 pendiente.
-  El modelo las contempla desde ya; si Angela decide no distinguirlas, el campo queda con un solo
-  valor y no hay nada que rehacer. **No adelantes el conteo de prórrogas cortas**: eso es F1-10 y
-  depende además de B.1 y B.3.
-- **`vinculaciones.tipo_contrato` y `fecha_fin` guardan lo vigente hoy**, que es lo que se ve en los
-  listados. El tramo a tramo es de la tabla nueva. Cuando F1-09 construya «Renovar», tiene que mover
-  las dos cosas a la vez.
-- **Ya no queda ninguna tarea bloqueada en el backlog.** F1-04 y F1-06 tienen todo lo que necesitaban
-  de D.5 salvo la pregunta de cesantías, que solo afecta a un campo y no impide construir el resto.
-- **Las cinco listas ya tienen filas, así que en F1-04 la validación del servidor puede exigirlas de
-  verdad**: EPS, fondo, ARL, caja y banco pasan a ser obligatorias en el formulario, aunque las
-  columnas sigan admitiendo nulos por las vinculaciones que traiga la carga inicial.
+- La siguiente es **F1-03 · Listado de empleados**, y es la primera pantalla de datos reales del
+  sistema: usa el skill `crear-modulo`, abre `prototipos/sistema.html` antes de escribir nada y sigue
+  la sección 5.3 del documento 3. Filtros de estado, tipo de contrato, cargo, rango de ingreso y
+  búsqueda, **todos resueltos en el servidor**, y exportación que trae exactamente lo filtrado.
+- **El listado lee de `vinculaciones` con su persona, no de `personas`.** Un empleado del listado es
+  una vinculación: dos vinculaciones de la misma persona son dos filas, que es lo que hace que la
+  rotación cuente bien.
+- **Para la columna de vencimiento y el filtro por contrato, `vinculaciones.tipo_contrato` y
+  `fecha_fin` ya traen lo vigente**; no hace falta tocar `periodos_contractuales` desde el listado. Si
+  alguna pantalla necesita el historial, se carga con `->with('periodos')` y se arma con
+  `HistorialDeContrato::con()`, que no vuelve a consultar.
+- **Toda vinculación creada desde ahora abre su periodo inicial sola.** Si una prueba cuenta filas de
+  `periodos_contractuales`, ese tramo está ahí; no es un dato de sobra.
 - El registro de empleado nunca crea una persona a ciegas: primero `Persona::conDocumento()`. El
   formulario de ubicación ya está resuelto con `SelectorUbicacion` más `Ubicaciones::paraFormulario()`,
   y toda pantalla nueva se envuelve en `Armazon`.
+- **No queda ninguna tarea bloqueada en el backlog.**

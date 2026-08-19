@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Auditoria\ObservadorDeAuditoria;
 use App\Autorizacion\Modulo;
 use App\Autorizacion\PoliticaDeModulos;
+use App\Contratacion\ObservadorDeVinculacion;
 use App\Models\User;
+use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -31,6 +33,11 @@ class AppServiceProvider extends ServiceProvider
         // No hay nada que agregar por cada tabla nueva: si se guarda en la base
         // de datos, queda registrado.
         ObservadorDeAuditoria::registrar();
+
+        // Toda vinculación nace con su periodo inicial, venga del formulario,
+        // de la carga inicial o de una prueba. El historial del contrato no
+        // puede empezar en la primera prórroga.
+        Vinculacion::observe(ObservadorDeVinculacion::class);
 
         // La única habilidad de acceso a módulos. El middleware `modulo:`, los
         // controladores y el menú preguntan todos por aquí, así que no puede

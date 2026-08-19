@@ -18,8 +18,15 @@ it('lee cada constante legal con su valor vigente', function (string $constante,
     'prórrogas cortas automáticas por silencio' => ['prorrogas_cortas_automaticas', 3],
 ]);
 
+it('sabe desde cuándo rige el régimen del término fijo', function () {
+    // No es un número sino una fecha: se compara contra la fecha de inicio del
+    // contrato para saber desde cuándo corren los cuatro años del tope
+    // (documento 6, C.2).
+    expect(config('reglas_laborales.vigencia_reforma_termino_fijo'))->toBe('2025-06-25');
+});
+
 it('no tiene constantes legales de más ni de menos', function () {
-    expect(array_keys(config('reglas_laborales')))->toHaveCount(9);
+    expect(array_keys(config('reglas_laborales')))->toHaveCount(10);
 });
 
 it('opera en la zona horaria de Colombia', function () {

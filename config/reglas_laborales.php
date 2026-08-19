@@ -127,4 +127,22 @@ return [
     */
     'prorrogas_cortas_automaticas' => 3,
 
+    /*
+    | 10. Entrada en vigencia del régimen del término fijo
+    |
+    | Los cuatro años del tope corren desde la celebración del contrato,
+    | salvo en los contratos que ya estaban vigentes ese día: para ellos
+    | corren desde esta fecha y no desde su firma original. Se venían
+    | prorrogando bajo la norma anterior, son situaciones consolidadas y
+    | la ley no tiene efecto retroactivo.
+    |
+    | Es una fecha y no un número de días a propósito: se compara contra
+    | la fecha de inicio del contrato, nunca se suma a nada.
+    |
+    | Norma: Ley 2466 de 2025, entrada en vigencia. Su aplicación al tope
+    | está en la sección C.2 de `docs/06-decisiones-pendientes.md`.
+    | Verificado: 2026-08-18.
+    */
+    'vigencia_reforma_termino_fijo' => '2025-06-25',
+
 ];

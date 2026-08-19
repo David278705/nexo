@@ -1,0 +1,220 @@
+<?php
+
+namespace App\Contratacion;
+
+use App\Models\PeriodoContractual;
+use App\Models\Vinculacion;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+
+/**
+ * Lo que se calcula sobre el historial de un contrato (documento 2, 3.3).
+ *
+ * Un solo sitio para las cuatro cuentas que pide el documento —prórrogas
+ * acumuladas, duración total del vínculo a término fijo, fecha de vencimiento
+ * vigente y el historial que ve el usuario— para que ninguna pantalla las
+ * repita con su propia versión. Son el insumo de las validaciones bloqueantes
+ * de 5.5 y de las alertas del capítulo 9.
+ *
+ * ## Lo que este objeto no hace
+ *
+ * - **No bloquea nada.** `superaElTopeLegal()` responde sí o no; quién impide
+ *   guardar es la validación de F1-09.
+ * - **No cuenta prórrogas cortas.** El límite de cuatro pactadas y tres
+ *   automáticas es F1-10 y depende además de las decisiones B.1 y B.3, que
+ *   siguen abiertas. Aquí solo está el conteo, que es su insumo.
+ * - **No escribe.** Agregar un tramo es `Vinculacion::registrarPeriodo()`.
+ */
+class HistorialDeContrato
+{
+    /**
+     * @param  Collection<int, PeriodoContractual>  $periodos  Del primero al último.
+     */
+    private function __construct(private readonly Collection $periodos) {}
+
+    /**
+     * El historial de una vinculación, leído de la base de datos.
+     */
+    public static function de(Vinculacion $vinculacion): self
+    {
+        return new self(
+            $vinculacion->periodos()->enOrden()->get()->values()
+        );
+    }
+
+    /**
+     * El historial a partir de tramos ya cargados.
+     *
+     * Es el camino de los listados, que traen las vinculaciones con sus
+     * periodos de una vez y no pueden permitirse una consulta por fila.
+     *
+     * @param  iterable<int, PeriodoContractual>  $periodos
+     */
+    public static function con(iterable $periodos): self
+    {
+        return new self(
+            (new Collection($periodos))->sortBy('orden')->values()
+        );
+    }
+
+    /**
+     * Los tramos, del inicial al vigente. Es el historial que se muestra en
+     * pantalla, con el periodo inicial incluido.
+     *
+     * @return Collection<int, PeriodoContractual>
+     */
+    public function periodos(): Collection
+    {
+        return $this->periodos;
+    }
+
+    /**
+     * El contrato original: la fila con `orden = 1`.
+     */
+    public function inicial(): ?PeriodoContractual
+    {
+        return $this->periodos->first();
+    }
+
+    /**
+     * El tramo en el que está hoy el contrato: el último del historial.
+     */
+    public function vigente(): ?PeriodoContractual
+    {
+        return $this->periodos->last();
+    }
+
+    /**
+     * Cuántas prórrogas acumula el contrato.
+     *
+     * El cambio a indefinido no suma: no extiende un plazo, cambia la
+     * modalidad.
+     */
+    public function prorrogasAcumuladas(): int
+    {
+        return $this->periodos->filter(fn (PeriodoContractual $tramo) => $tramo->esProrroga())->count();
+    }
+
+    public function prorrogasPactadas(): int
+    {
+        return $this->cuantasCon(EventoContractual::ProrrogaPactada);
+    }
+
+    public function prorrogasAutomaticas(): int
+    {
+        return $this->cuantasCon(EventoContractual::ProrrogaAutomatica);
+    }
+
+    /**
+     * La modalidad vigente, que es la del último tramo.
+     */
+    public function tipoDeContratoVigente(): ?TipoContrato
+    {
+        return $this->vigente()?->tipo_contrato;
+    }
+
+    /**
+     * La fecha de vencimiento vigente: la del último tramo.
+     *
+     * Vacía en indefinido y en obra o labor, que no vencen por plazo.
+     */
+    public function fechaDeVencimiento(): ?Carbon
+    {
+        return $this->vigente()?->fecha_fin;
+    }
+
+    /**
+     * Desde cuándo corren los cuatro años del tope (documento 6, C.2).
+     *
+     * Desde el inicio del primer tramo, salvo que el contrato sea anterior a la
+     * entrada en vigencia de la Ley 2466 de 2025: los contratos que se venían
+     * prorrogando bajo la norma anterior son situaciones consolidadas y la ley
+     * no tiene efecto retroactivo, así que para ellos el conteo arranca el día
+     * de la reforma y no el de la firma.
+     */
+    public function inicioDelConteoDelTope(): ?Carbon
+    {
+        $inicio = $this->inicial()?->fecha_inicio;
+
+        if (! $inicio instanceof Carbon) {
+            return null;
+        }
+
+        $reforma = $this->entradaEnVigenciaDeLaReforma();
+
+        return $inicio->lessThan($reforma) ? $reforma : $inicio->copy();
+    }
+
+    /**
+     * La duración total del vínculo, en días corridos y contando los dos
+     * extremos.
+     *
+     * Corre desde el inicio del conteo del tope —no desde la firma, cuando el
+     * contrato es anterior a la reforma— hasta la fecha que se pida, que por
+     * defecto es el vencimiento vigente. Devuelve nulo cuando no hay contra qué
+     * medir: un indefinido no tiene fecha de finalización.
+     *
+     * El conteo de días corridos se formaliza en el motor de cálculo (F2-02).
+     * Cuando exista `diasCorridos()`, este método lo llama en lugar de restar
+     * fechas aquí.
+     */
+    public function duracionTotalEnDias(?Carbon $hasta = null): ?int
+    {
+        $desde = $this->inicioDelConteoDelTope();
+        $hasta ??= $this->fechaDeVencimiento();
+
+        if (! $desde instanceof Carbon || ! $hasta instanceof Carbon) {
+            return null;
+        }
+
+        return (int) $desde->startOfDay()->diffInDays($hasta->copy()->startOfDay()) + 1;
+    }
+
+    /**
+     * La última fecha de finalización que todavía no supera el tope legal.
+     *
+     * Cuatro años desde el inicio del conteo (artículo 46 del CST reformado por
+     * la Ley 2466 de 2025). Pasado el tope el contrato **es** indefinido por
+     * ministerio de la ley: no es una opción del empleador.
+     */
+    public function fechaDelTopeLegal(): ?Carbon
+    {
+        $anios = (int) config('reglas_laborales.tope_termino_fijo_anios');
+
+        return $this->inicioDelConteoDelTope()?->addYears($anios);
+    }
+
+    /**
+     * Si terminar el contrato en esa fecha superaría los cuatro años.
+     *
+     * Se pregunta con la fecha de finalización propuesta antes de registrar una
+     * prórroga. Terminar justo el día del tope no lo supera.
+     */
+    public function superaElTopeLegal(Carbon $fechaFin): bool
+    {
+        $tope = $this->fechaDelTopeLegal();
+
+        return $tope instanceof Carbon && $fechaFin->greaterThan($tope);
+    }
+
+    /**
+     * El número que le toca al próximo tramo. El inicial es el 1.
+     */
+    public function proximoOrden(): int
+    {
+        return (int) $this->periodos->max('orden') + 1;
+    }
+
+    private function cuantasCon(EventoContractual $evento): int
+    {
+        return $this->periodos
+            ->filter(fn (PeriodoContractual $tramo) => $tramo->evento === $evento)
+            ->count();
+    }
+
+    private function entradaEnVigenciaDeLaReforma(): Carbon
+    {
+        return Carbon::parse((string) config('reglas_laborales.vigencia_reforma_termino_fijo'))
+            ->startOfDay();
+    }
+}

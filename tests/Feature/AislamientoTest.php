@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\PerfilSociodemografico;
+use App\Models\PeriodoContractual;
 use App\Models\Persona;
 use App\Models\Tenant;
 use App\Models\User;
@@ -284,6 +285,18 @@ casoDeAislamiento('vinculaciones', [
     'campo' => 'cargo',
     'migracion' => function (): void {},
     'crear' => fn (string $cargo) => Vinculacion::factory()->create(['cargo' => $cargo]),
+]);
+
+casoDeAislamiento('periodos contractuales', [
+    'tabla' => 'periodos_contractuales',
+    'modelo' => PeriodoContractual::class,
+    'campo' => 'evento',
+    // Como en `user_modulos`: la tabla no tiene texto libre, así que el
+    // marcador es una de sus opciones cerradas. Solo la empresa A tiene un
+    // tramo con este evento; el `inicial` que abre toda vinculación no estorba.
+    'secreto' => 'prorroga_pactada',
+    'migracion' => function (): void {},
+    'crear' => fn (string $evento) => PeriodoContractual::factory()->create(['evento' => $evento]),
 ]);
 
 casoDeAislamiento('perfil sociodemográfico', [
