@@ -1,51 +1,57 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-19 · Tarea F1-07
+**Última sesión:** 2026-08-19 · Tarea F1-08
 **Verificación:** verde
-**Siguiente tarea:** F1-08 · Listado y detalle de contratos
+**Siguiente tarea:** F1-09 · Renovar contrato
 
 ## Qué se hizo
 
-- **`App\Contratacion\FichaDeEmpleado`**, que arma la pantalla entera: el encabezado, el resumen de
-  seis datos y el contenido de las cuatro pestañas. El controlador quedó en tres líneas y no formatea
-  ni calcula nada, igual que con `ListadoDeEmpleados`.
-- **La pantalla `Empleados/Ficha`**, con las pestañas de datos personales, contrato, novedades y
-  movimientos. Cambiar de pestaña no pide nada al servidor: el contenido de las cuatro ya viene en
-  las props.
-- **Tres componentes compartidos nuevos**: `Pestanas` (recorrible con flechas y con `role="tab"`),
-  `ListaDeDatos` (la tarjeta de pares etiqueta-valor, que se repetía cuatro veces en la sola pestaña
-  de datos) y `ResumenDeEmpleado`, la franja azul del prototipo.
-- **`TablaDatos` aprendió a no ser clicable.** El historial de periodos informa, no lleva a ninguna
-  parte, y una fila con `cursor-pointer` que no hace nada al pulsarla es peor que ninguna.
-- **Dos relaciones que faltaban en `Persona`**: `paisNacimiento()` y `paisExpedicion()`. La columna
-  guarda el código ISO y la ficha necesita el nombre.
-- **`FichaDeEmpleadoTest` con 19 casos** —el resumen completo, la antigüedad en cuatro escenarios, el
-  perfil sociodemográfico encendido, apagado y vacío, el historial con y sin prórroga, el tope legal
-  solo donde hay plazo— y 11 casos nuevos de Vitest.
-- `composer verificar` en verde a la primera: 305 pruebas de Pest, PHPStan sin errores, build y 126
-  de Vitest.
+- **`App\Contratacion\VigenciaDelContrato`**, el objeto nuevo de la sesión: responde en qué día está
+  un contrato —cuántos días faltan para vencer, si el plazo del preaviso todavía alcanza, qué estado
+  se lee y de qué color—. Recibe el día como parámetro, así que se puede situar en cualquier fecha
+  sin tocar el historial. Lo usarán tal cual las alertas de vencimiento del capítulo 9.
+- **`HistorialDeContrato::fechaLimiteDePreaviso()`**: treinta días antes del vencimiento vigente,
+  leídos de `reglas_laborales.preaviso_dias`. Hay una prueba que cambia la constante a 45 y exige que
+  la fecha se mueva; un 30 escrito a mano la pondría en rojo.
+- **`ListadoDeContratos`** con los tres filtros del documento 3, 5.4 —rango de vencimiento, tipo de
+  contrato y número de prórrogas—, el orden y la paginación, todo en el servidor y con una sola
+  consulta compartida con la exportación, igual que `ListadoDeEmpleados`.
+- **`DetalleDelContrato`**, `ContratoController`, `ContratosExport` y las pantallas
+  `Contratos/Index` y `Contratos/Detalle`. El módulo salió del bucle de secciones pendientes.
+- **Dos componentes compartidos aprendieron algo, ninguno nuevo**: `TarjetaIndicador` acepta una
+  nota bajo la cifra —«Quedan 12 días» bajo el límite de preaviso— y `Selector` puede ocultar su
+  línea de marcador, que en un filtro de lista cerrada es una opción que no significa nada.
+- **`ContratosTest` con 33 casos** —la vista por defecto, los cinco filtros, las siete columnas, los
+  cuatro estados con su color, el aviso de vencidos, la exportación, el detalle y los permisos—,
+  cinco casos nuevos de aislamiento por las rutas reales y 16 de Vitest.
+- `composer verificar` en verde: 343 pruebas de Pest, PHPStan sin errores, build y 142 de Vitest.
 
 ## Decisiones tomadas
 
-- **El saldo de vacaciones se enseña como un hueco con nombre, no como un cero.** Dice «Aún no
-  disponible» con una línea que explica de qué depende. Pintar «0,00 días» sería el único número
-  falso posible, y guardar una columna lo prohíbe la regla 2. Cuando exista F2-02 se cambia
-  `FichaDeEmpleado::saldoDeVacaciones()` y no cambia nada más: la pantalla ya lo trata como un dato
-  cualquiera del resumen.
-- **Las pestañas de novedades y movimientos cargan vacías y explican qué se verá ahí.** No dicen «no
-  hay datos» ni anuncian que falta un módulo: describen el contenido futuro, que además es cierto hoy
-  —esa persona no tiene ninguna registrada—. El día que exista el módulo solo se llena el arreglo.
-- **La antigüedad deja de correr cuando la persona sale.** Se mide hasta `fechaDeSalida()` si la hay
-  y hasta hoy si no. No es una cuenta laboral —no descuenta suspensiones— y por eso no vive en el
-  motor de cálculo: es la distancia entre dos fechas.
-- **El historial de periodos se enseña ya en la ficha, no solo en F1-08.** La tarjeta de contrato sin
-  él sería tres renglones. `FichaDeEmpleado::filasDelHistorial()` es pública y estática justamente
-  para que el detalle del contrato de F1-08 use la misma tabla y no una copia.
-- **El tope de cuatro años y la duración total solo aparecen donde hay plazo.** En un indefinido no
-  existe el tope, y enseñarlo vacío invita a preguntarse por qué está.
-- **Las fechas van en `d/m/Y`,** como el listado y la exportación, aunque el prototipo escriba «3 de
-  febrero de 2022» en este encabezado. Una sola forma de leer una fecha en todo el sistema pesa más
-  que el detalle de una pantalla.
+- **La vista por defecto incluye los contratos ya vencidos.** «Vencen en los próximos 90 días» filtra
+  por arriba y no por abajo. Un contrato que venció sin que nadie registrara la prórroga es lo más
+  urgente de esta pantalla, y esconderlo del rango por defecto sería esconder el problema. Quien los
+  quiera solos tiene la opción «Ya vencidos».
+- **El listado solo trae vinculaciones activas.** El contrato de quien ya salió no hay que
+  gestionarlo, así que no hay filtro de estado del empleado. Es la diferencia con el listado de
+  empleados, que sí lo tiene.
+- **La columna «Inicio» es la del periodo vigente, no la fecha de ingreso.** Es lo que hace el
+  prototipo y es lo correcto: en un contrato con tres prórrogas, el tramo que corre empezó el día de
+  la última, y es esa la fecha que se contrasta con el vencimiento de la columna siguiente. La
+  antigüedad se sigue preguntando en la ficha del empleado.
+- **El ámbar del estado arranca el día en que se cumple la fecha límite del preaviso**, que sale de
+  la constante legal y no de un umbral inventado. Antes de esa fecha, verde; después, ámbar; vencido,
+  rojo. Es la única regla de color de la pantalla y coincide con los tonos del prototipo.
+- **La duración total del vínculo se enseña en días, no en «1a 2m».** El prototipo escribe años y
+  meses; se siguió lo que ya hace la pestaña de contrato de la ficha, que es el mismo dato en la
+  misma sesión de trabajo del usuario. Una sola forma de leer una duración pesa más que el detalle de
+  una pantalla.
+- **En un contrato sin plazo, las tarjetas que no existen no se pintan vacías.** Un indefinido no
+  tiene vencimiento, ni preaviso, ni tope de cuatro años: en vez de cuatro tarjetas con rayas, salen
+  dos y una frase que dice por qué.
+- **`VigenciaDelContrato` se separó de `HistorialDeContrato` a propósito.** El historial no depende
+  del día en que se mire; la vigencia sí. Juntarlos habría obligado a pasar la fecha de hoy a un
+  objeto que calcula prórrogas y topes, que no la necesitan.
 
 ## Preguntas para Angela
 
@@ -64,25 +70,27 @@
 - Menor: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)» sin
   distinguir especialización, maestría y doctorado**, tal como los pediste. Separarlos después es
   agregar casos al enumerado y nada más.
-- **D.1 sigue abierta: ¿se registra el tipo de prórroga?** La respuesta cambia el formulario de
-  «Renovar» de F1-09: o pregunta cuál de las dos es, o no pregunta.
+- **D.1 se vuelve bloqueante en la próxima tarea: ¿se registra el tipo de prórroga?** El enumerado ya
+  distingue pactada de automática y el conteo de prórrogas cortas depende de ello —cuatro pactadas,
+  tres automáticas—, pero **el formulario de «Renovar» de F1-09 tiene que preguntarlo o no
+  preguntarlo, y eso es una decisión tuya**.
 - **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
   prolongado y la anticipación de la alerta de cercanía al tope de cuatro años.
 
 ## Decisiones para David
 
-- **El texto del hueco del saldo se lee en pantalla y es tuyo.** Hoy dice «Aún no disponible» y, en
-  letra pequeña, «El saldo se calcula con las vacaciones disfrutadas y las suspensiones registradas.
-  Se verá aquí cuando el módulo de vacaciones esté disponible». Está en un solo sitio
-  (`FichaDeEmpleado::saldoDeVacaciones()`). Si prefieres otra frase para las demostraciones, se
-  cambia ahí.
-- **La ficha no tiene botón de «Editar».** El prototipo lo enseña y el documento 3 describe la
-  pantalla de edición, pero **no hay tarea de editar empleado en el backlog de la fase 1**. No se
-  puso un botón que lleve a una pantalla que no existe. Si la edición va en la fase 1, es una tarea
-  nueva; si va después, la ficha ya tiene su sitio libre.
-- **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de
-  una vinculación inactiva. Ahora de ella dependen dos cosas: el énfasis de los 30 días de la
-  advertencia de reingreso y **la antigüedad de quien ya salió**. Está anotado en F2-09.
+- **El detalle del contrato no tiene los botones de «Renovar» ni «Cambiar a término indefinido».** El
+  documento 3 los describe y el prototipo los enseña, pero son las tareas F1-09 y F1-11 y todavía no
+  existen las pantallas. Se hizo como con el botón de «Editar» de la ficha: no se pone un botón que
+  lleve a ninguna parte. El sitio está libre y el dato que decide si aparecen —`admiteRenovacion`—
+  ya viaja en las props, así que agregarlos es una línea de cada lado.
+- **El texto del hueco del saldo de vacaciones se lee en pantalla y sigue siendo tuyo.** Está en
+  `FichaDeEmpleado::saldoDeVacaciones()`, en un solo sitio.
+- **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de una
+  vinculación inactiva. De ella dependen el énfasis de los 30 días de la advertencia de reingreso y
+  la antigüedad de quien ya salió. Está anotado en F2-09.
+- **B.3, ¿bloquear o advertir?**, deja de ser teórica en F1-09. La sugerencia del documento 6 es
+  bloquear el tope de cuatro años y advertir con fuerza en la prórroga corta.
 - **Contrastar las cuatro listas de seguridad social contra las fuentes oficiales antes de vender.**
   Lo advierte la propia hoja «Notas y fuentes» del archivo: hay nueve EPS intervenidas por la
   Supersalud y el sector está en movimiento. **Es una lista global: si está mal, está mal para todos
@@ -91,14 +99,12 @@
   mismo riesgo global que las EPS.
 - **Contrastar los 1.101 municipios contra el archivo del DANE.** Ese mismo cotejo trae los códigos
   DANE que hoy están nulos.
-- **B.3, ¿bloquear o advertir?**, deja de ser teórica en F1-09. La sugerencia del documento 6 es
-  bloquear el tope de cuatro años y advertir con fuerza en la prórroga corta.
 - **Vigencia del enlace de invitación: siete días.** Abierta desde F0-07, en
   `Invitaciones::DIAS_DE_VIGENCIA`. **Confírmalo o cámbialo.**
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Abierta de dieciocho sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Abierta de diecinueve sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -109,18 +115,23 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-08 · Listado y detalle de contratos**: vista por defecto de los que vencen en
-  90 días, detalle con el historial desde el periodo inicial y la fecha límite de preaviso visible.
-- **La tabla del historial ya está resuelta.** `FichaDeEmpleado::filasDelHistorial()` la arma y la
-  pestaña de contrato la enseña; el detalle de F1-08 la reutiliza tal cual y le agrega el preaviso y
-  los dos botones de acción. **No escribas una segunda.**
-- **`HistorialDeContrato` ya calcula todo lo que F1-08 necesita** menos el preaviso: prórrogas
-  acumuladas, vencimiento vigente, duración total y fecha del tope legal.
-- **El listado de contratos se parece mucho al de empleados.** `ListadoDeEmpleados` es el patrón a
-  seguir —filtros normalizados en el servidor, una sola consulta compartida con la exportación— y
-  `Paginacion`, `BarraFiltros` y `TablaDatos` ya existen.
-- **`ResumenDeEmpleado` está pensado para reaparecer** en el modal grande de novedades (documento 3,
-  5.5), que es F2-03. No lo dupliques allá.
+- La siguiente es **F1-09 · Renovar contrato**: acción separada de editar la fecha, que calcula y
+  muestra duración de la prórroga, total acumulado y prórrogas restantes, y registra el tipo.
+  **Depende de D.1**, que sigue abierta y está arriba.
+- **La escritura ya existe: `Vinculacion::registrarPeriodo()`.** Lo único que F1-09 agrega es que,
+  además del tramo, hay que mover `tipo_contrato` y `fecha_fin` de la vinculación. **El historial y
+  lo vigente se mueven a la vez o quedan desalineados**; hoy eso solo lo hace el observador al crear,
+  y las pruebas de F1-08 lo hacen a mano justo por eso. Conviene que `registrarPeriodo()` lo asuma.
+- **Los cálculos del modal de renovación ya están hechos.** `HistorialDeContrato` da prórrogas
+  pactadas y automáticas por separado, duración total, tope legal y `superaElTopeLegal($fechaFin)`,
+  que es exactamente la validación bloqueante de F1-10.
+- **El detalle del contrato es donde va el botón.** `Contratos/Detalle.vue` ya recibe
+  `contrato.admiteRenovacion`, y el modal es el componente `Modal` que ya existe.
+- **La tabla del historial es una sola en todo el sistema.** La arma
+  `FichaDeEmpleado::filasDelHistorial()` y la enseñan la pestaña de contrato de la ficha y el detalle
+  del contrato. Si F1-09 le agrega la columna «Registrado», se agrega ahí y aparece en las dos.
+- **`VigenciaDelContrato` es el sitio de cualquier cuenta de días sobre un contrato.** No escribas
+  otra: recibe el día por parámetro justamente para el proceso diario de alertas.
 - **`OpcionesDeLista` sigue solo en los cuatro enumerados de F1-06.** `Genero`, `TipoDocumento`,
   `TipoContrato`, `TipoRiesgo`, `TipoVivienda` y `EstadoVinculacion` mantienen sus métodos escritos a
   mano. Unificarlos es un rato y no rompe nada.

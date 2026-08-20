@@ -124,6 +124,23 @@ class HistorialDeContrato
     }
 
     /**
+     * La fecha límite para avisar que el contrato no se prorroga.
+     *
+     * Treinta días calendario antes del vencimiento vigente (artículo 46 del
+     * CST, modificado por la Ley 2466 de 2025). Pasada esa fecha sin aviso, el
+     * silencio prorroga el contrato solo.
+     *
+     * Vacía donde no hay plazo: un indefinido no vence, y una obra o labor
+     * termina cuando termina la obra, que no es una fecha que se sepa antes.
+     */
+    public function fechaLimiteDePreaviso(): ?Carbon
+    {
+        $dias = (int) config('reglas_laborales.preaviso_dias');
+
+        return $this->fechaDeVencimiento()?->copy()->subDays($dias);
+    }
+
+    /**
      * Desde cuándo corren los cuatro años del tope (documento 6, C.2).
      *
      * Desde el inicio del primer tramo, salvo que el contrato sea anterior a la

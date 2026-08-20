@@ -17,6 +17,18 @@ const props = defineProps({
         default: "",
         validator: (valor) => ["", "sube", "baja"].includes(valor),
     },
+    /*
+     * Una línea de contexto bajo la etiqueta, para las tarjetas que no comparan
+     * contra un periodo anterior sino que explican la cifra: «Quedan 3 días»
+     * bajo el límite de preaviso, «Tope legal: 12/09/2029» bajo la duración.
+     */
+    nota: { type: String, default: "" },
+    notaTono: {
+        type: String,
+        default: "",
+        validator: (valor) =>
+            ["", "advertencia", "error"].includes(valor),
+    },
 });
 
 const estiloDeLaTendencia = computed(
@@ -30,6 +42,14 @@ const estiloDeLaTendencia = computed(
 const flecha = computed(
     () => ({ sube: "▲", baja: "▼" })[props.tendencia] ?? "",
 );
+
+const estiloDeLaNota = computed(
+    () =>
+        ({
+            advertencia: "text-advertencia-texto",
+            error: "text-error-texto",
+        })[props.notaTono] ?? "text-texto-secundario",
+);
 </script>
 
 <template>
@@ -42,6 +62,10 @@ const flecha = computed(
         <p class="mt-1 text-apoyo text-texto-secundario">{{ etiqueta }}</p>
         <p v-if="variacion" class="mt-2 text-apoyo" :class="estiloDeLaTendencia">
             {{ flecha }} {{ variacion }}
+        </p>
+
+        <p v-if="nota" class="mt-2 text-apoyo" :class="estiloDeLaNota">
+            {{ nota }}
         </p>
     </div>
 </template>

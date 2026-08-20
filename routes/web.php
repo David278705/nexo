@@ -6,6 +6,7 @@ use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
 use App\Http\Controllers\Acceso\SesionController;
+use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -76,8 +77,25 @@ Route::middleware('auth')->group(function () {
             ->name('empleados.ficha');
     });
 
+    /*
+     * Contratos (documento 3, sección 5.4). Un contrato es una vinculación, así
+     * que el identificador del detalle es el mismo de la ficha del empleado.
+     *
+     * Como en empleados, la dirección literal de la exportación va antes que la
+     * del detalle: si no, `exportar` se leería como un identificador.
+     */
+    Route::middleware('modulo:'.Modulo::Contratos->value)->group(function () {
+        Route::get('/contratos', [ContratoController::class, 'index'])
+            ->name(Modulo::Contratos->nombreDeRuta());
+        Route::get('/contratos/exportar', [ContratoController::class, 'exportar'])
+            ->name('contratos.exportar');
+        Route::get('/contratos/{contrato}', [ContratoController::class, 'detalle'])
+            ->whereNumber('contrato')
+            ->name('contratos.detalle');
+    });
+
     foreach (Modulo::cases() as $modulo) {
-        if ($modulo === Modulo::Inicio || $modulo === Modulo::Empleados) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos], true)) {
             continue;
         }
 

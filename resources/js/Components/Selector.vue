@@ -7,6 +7,13 @@ const props = defineProps({
     // Cada opción es `{ valor, texto }`.
     opciones: { type: Array, default: () => [] },
     marcador: { type: String, default: "Seleccione…" },
+    /*
+     * Hay selectores que nunca están sin elegir: los filtros de lista cerrada
+     * traen siempre un valor, y su opción «todos» ya está entre las opciones.
+     * Ahí la línea de marcador sobra y confunde, porque parece una opción más
+     * que hace otra cosa.
+     */
+    conMarcador: { type: Boolean, default: true },
     error: { type: String, default: "" },
     ayuda: { type: String, default: "" },
     opcional: { type: Boolean, default: false },
@@ -72,7 +79,7 @@ const opcionesVisibles = computed(() => {
             @change="emit('update:modelValue', $event.target.value)"
             @blur="emit('salir', $event.target.value)"
         >
-            <option value="">{{ marcador }}</option>
+            <option v-if="conMarcador" value="">{{ marcador }}</option>
             <option
                 v-for="opcion in opcionesVisibles"
                 :key="opcion.valor"

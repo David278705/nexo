@@ -187,12 +187,19 @@ pestañas—, la pantalla `Empleados/Ficha` y tres componentes compartidos: `Pes
 ve arriba **diciendo que todavía no se puede calcular**: el motor es F2-02 y la regla 2 prohíbe
 guardarlo, así que cualquier número de hoy sería inventado.
 
-### [ ] F1-08 · Listado y detalle de contratos
+### [x] F1-08 · Listado y detalle de contratos
 
 Vista por defecto de los que vencen en 90 días. Detalle con historial de periodos empezando por el
 inicial. Fecha límite de preaviso visible en la ficha.
 **Hecho cuando:** un contrato con tres prórrogas muestra cuatro filas de historial.
 **Fuente:** `docs/01-especificacion-funcional.md` 5.5
+
+Hecho: `ListadoDeContratos` —los tres filtros del documento 3, el orden y la paginación, todo en el
+servidor—, `DetalleDelContrato`, `ContratoController`, `ContratosExport` y las pantallas
+`Contratos/Index` y `Contratos/Detalle`. `VigenciaDelContrato` es el objeto nuevo: responde en qué
+día está un contrato —cuánto falta para vencer, si el preaviso todavía alcanza— y lo reutilizarán las
+alertas del capítulo 9. La fecha límite de preaviso sale de `preaviso_dias`, nunca de un 30 escrito a
+mano. El historial del detalle es la misma tabla de la ficha, armada por el mismo método.
 
 ### [ ] F1-09 · Renovar contrato
 

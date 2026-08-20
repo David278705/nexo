@@ -2,6 +2,7 @@
 
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
+use App\Exports\ContratosExport;
 use App\Exports\EmpleadosExport;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
@@ -375,6 +376,80 @@ describe('empleados, por sus rutas reales', function () {
         Excel::assertDownloaded(
             'empleados-'.now()->format('Y-m-d').'.xlsx',
             fn (EmpleadosExport $exportacion) => $exportacion->collection()->count() === 1
+        );
+    });
+});
+
+/**
+ * El listado de contratos, por sus rutas de verdad (F1-08).
+ *
+ * Un contrato es una vinculación, así que la tabla ya tiene su caso arriba. Lo
+ * que se prueba aquí es el módulo nuevo: listado, detalle y exportación.
+ */
+describe('contratos, por sus rutas reales', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->contratoDeLaA = $this->contexto->paraTenant($this->empresaA, fn () => Vinculacion::factory()
+            ->de(Persona::factory()->create(['primer_nombre' => 'Confidencial', 'primer_apellido' => 'DeLaEmpresaA']))
+            ->aTerminoFijo(now()->subMonths(6)->toDateString(), now()->addDays(20)->toDateString())
+            ->create(['cargo' => SECRETO_DE_LA_A]));
+
+        $this->usuarioB = usuarioDe($this->empresaB, Rol::Administrador, Modulo::Contratos);
+    });
+
+    it('no lista contratos de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/contratos');
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['contratos']['filas'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('no cuenta contratos de otra empresa en el aviso de vencidos', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/contratos');
+
+        expect($respuesta->viewData('page')['props']['conteos']['porVencer'])->toBe(0);
+    });
+
+    it('responde 404 en el detalle de un contrato de otra empresa', function () {
+        $this->actingAs($this->usuarioB)
+            ->get('/contratos/'.$this->contratoDeLaA->getKey())
+            ->assertNotFound();
+    });
+
+    it('no incluye contratos de otra empresa en la exportación', function () {
+        Excel::fake();
+
+        $this->actingAs($this->usuarioB)->get('/contratos/exportar?vence=todos')->assertOk();
+
+        Excel::assertDownloaded(
+            'contratos-'.now()->format('Y-m-d').'.xlsx',
+            fn (ContratosExport $exportacion) => $exportacion->collection()->isEmpty()
+        );
+    });
+
+    it('la empresa dueña sí ve su contrato por los tres caminos', function () {
+        Excel::fake();
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Contratos);
+
+        $listado = $this->actingAs($usuarioA)->get('/contratos');
+        $listado->assertOk();
+
+        expect($listado->viewData('page')['props']['contratos']['filas'])->toHaveCount(1);
+
+        $this->actingAs($usuarioA)
+            ->get('/contratos/'.$this->contratoDeLaA->getKey())
+            ->assertOk();
+
+        $this->actingAs($usuarioA)->get('/contratos/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'contratos-'.now()->format('Y-m-d').'.xlsx',
+            fn (ContratosExport $exportacion) => $exportacion->collection()->count() === 1
         );
     });
 });
