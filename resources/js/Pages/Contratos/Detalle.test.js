@@ -106,8 +106,15 @@ const props = {
     ],
 };
 
+/*
+ * El modal de renovación se sustituye por un maniquí: tiene su propio archivo de
+ * pruebas y aquí lo que se comprueba es la pantalla que lo abre.
+ */
 function montar(cambios = {}) {
-    return mount(Detalle, { props: { ...props, ...cambios } });
+    return mount(Detalle, {
+        props: { ...props, ...cambios },
+        global: { stubs: { ModalDeRenovacion: true } },
+    });
 }
 
 describe("el detalle del contrato", function () {
@@ -148,6 +155,21 @@ describe("el detalle del contrato", function () {
 
         expect(enlaces).toContain("/empleados/7");
         expect(enlaces).toContain("/contratos");
+    });
+
+    it("ofrece renovar el contrato cuando el servidor dice que se puede", function () {
+        const pantalla = montar({ renovacion: { disponible: true } });
+
+        expect(pantalla.text()).toContain("Renovar contrato");
+    });
+
+    it("no ofrece renovar donde la acción no existe", function () {
+        const pantalla = montar({
+            contrato: { ...props.contrato, admiteRenovacion: false },
+            renovacion: { disponible: false },
+        });
+
+        expect(pantalla.text()).not.toContain("Renovar contrato");
     });
 
     it("deja solo las tarjetas que existen en un contrato sin plazo", function () {

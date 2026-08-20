@@ -1,8 +1,11 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
+import { ref } from "vue";
 import Armazon from "@/Components/Armazon.vue";
+import Boton from "@/Components/Boton.vue";
 import Etiqueta from "@/Components/Etiqueta.vue";
 import ListaDeDatos from "@/Components/ListaDeDatos.vue";
+import ModalDeRenovacion from "@/Components/ModalDeRenovacion.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
 import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
 
@@ -18,12 +21,22 @@ import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
  * servidor. Es una tabla que informa, no que lleve a otra parte, y por eso no
  * es clicable.
  */
-defineProps({
+const props = defineProps({
     contrato: { type: Object, required: true },
     indicadores: { type: Array, default: () => [] },
     campos: { type: Array, default: () => [] },
     historial: { type: Array, default: () => [] },
+    renovacion: { type: Object, default: () => ({}) },
 });
+
+/*
+ * «Renovar contrato» solo existe en el término fijo (documento 1, 5.5). El botón
+ * de «Cambiar a término indefinido» va al lado y llega con F1-11: no se pone un
+ * botón que no lleve a ninguna parte.
+ */
+const renovando = ref(false);
+
+const urlDelContrato = `/contratos/${props.contrato.empleadoId}`;
 
 const columnasHistorial = [
     { clave: "orden", titulo: "#", numerica: true },
@@ -59,12 +72,22 @@ const columnasHistorial = [
                 </p>
             </div>
 
-            <Link
-                :href="`/empleados/${contrato.empleadoId}`"
-                class="text-apoyo text-accion"
-            >
-                Ver la ficha del empleado
-            </Link>
+            <div class="flex flex-wrap items-center gap-4">
+                <Link
+                    :href="`/empleados/${contrato.empleadoId}`"
+                    class="text-apoyo text-accion"
+                >
+                    Ver la ficha del empleado
+                </Link>
+
+                <Boton
+                    v-if="contrato.admiteRenovacion && renovacion.disponible"
+                    tipo="button"
+                    @click="renovando = true"
+                >
+                    Renovar contrato
+                </Boton>
+            </div>
         </div>
 
         <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -99,5 +122,13 @@ const columnasHistorial = [
                 />
             </div>
         </div>
+
+        <ModalDeRenovacion
+            v-if="renovacion.disponible"
+            :abierto="renovando"
+            :url="urlDelContrato"
+            :renovacion="renovacion"
+            @cerrar="renovando = false"
+        />
     </Armazon>
 </template>

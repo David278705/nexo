@@ -420,6 +420,20 @@ describe('contratos, por sus rutas reales', function () {
             ->assertNotFound();
     });
 
+    it('responde 404 al renovar un contrato de otra empresa', function () {
+        $this->actingAs($this->usuarioB)
+            ->post('/contratos/'.$this->contratoDeLaA->getKey().'/renovar', [
+                'tipo' => 'prorroga_pactada',
+                'fecha_fin' => now()->addYear()->toDateString(),
+            ])
+            ->assertNotFound();
+
+        expect($this->contexto->paraTenant(
+            $this->empresaA,
+            fn () => $this->contratoDeLaA->periodos()->count()
+        ))->toBe(1);
+    });
+
     it('no incluye contratos de otra empresa en la exportación', function () {
         Excel::fake();
 

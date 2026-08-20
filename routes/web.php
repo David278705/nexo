@@ -92,6 +92,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/contratos/{contrato}', [ContratoController::class, 'detalle'])
             ->whereNumber('contrato')
             ->name('contratos.detalle');
+        /*
+         * «Renovar contrato» es una dirección propia y un verbo propio, no un
+         * campo más del formulario de edición: renovar es un hecho jurídico y
+         * corregir la fecha de finalización es arreglar una digitación
+         * (documento 1, 5.5). El sistema no deja que una se use por la otra.
+         */
+        Route::post('/contratos/{contrato}/renovar', [ContratoController::class, 'renovar'])
+            ->whereNumber('contrato')
+            ->name('contratos.renovar');
     });
 
     foreach (Modulo::cases() as $modulo) {

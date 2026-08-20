@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Contratacion\EstadoVinculacion;
 use App\Contratacion\EventoContractual;
 use App\Contratacion\HistorialDeContrato;
+use App\Contratacion\RenovacionDeContrato;
 use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoRiesgo;
 use App\Multiempresa\PerteneceATenant;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * Una relación laboral concreta entre una persona y la empresa.
@@ -106,13 +109,24 @@ class Vinculacion extends Model
     }
 
     /**
-     * Agrega un tramo al historial y le asigna el número que le toca.
+     * Agrega un tramo al historial, le asigna el número que le toca y deja lo
+     * vigente de la vinculación apuntando a ese tramo.
      *
      * Es el único camino por el que crece el historial, para que nadie tenga
      * que calcular el `orden` a mano ni pueda equivocarse con él. Por aquí
-     * pasarán «Renovar» y «Cambiar a término indefinido» (F1-09), que además
-     * tendrán que mover `tipo_contrato` y `fecha_fin` de la vinculación: el
-     * historial y lo vigente se mueven a la vez o quedan desalineados.
+     * pasan «Renovar» (F1-09) y «Cambiar a término indefinido» (F1-11).
+     *
+     * **Las dos escrituras van juntas a propósito.** `tipo_contrato` y
+     * `fecha_fin` de esta tabla son lo vigente hoy y el historial es el tramo a
+     * tramo: si una prórroga agregara la fila y no moviera la fecha, el listado
+     * de contratos seguiría avisando de un vencimiento que ya se renovó. Se
+     * mueven a la vez o quedan desalineados, y hacerlo aquí es lo que evita que
+     * cada acción tenga que acordarse.
+     *
+     * Solo se guarda si algo cambió: cuando llama `ObservadorDeVinculacion` al
+     * abrir el periodo inicial, el tramo trae exactamente lo que la vinculación
+     * ya tiene, y un `update` con los mismos valores solo ensuciaría la
+     * auditoría del registro con una modificación que nadie hizo.
      */
     public function registrarPeriodo(
         EventoContractual $evento,
@@ -120,13 +134,53 @@ class Vinculacion extends Model
         Carbon $fechaInicio,
         ?Carbon $fechaFin = null,
     ): PeriodoContractual {
-        return $this->periodos()->create([
-            'orden' => $this->historial()->proximoOrden(),
-            'evento' => $evento,
-            'tipo_contrato' => $tipoContrato,
-            'fecha_inicio' => $fechaInicio,
-            'fecha_fin' => $fechaFin,
-        ]);
+        return DB::transaction(function () use ($evento, $tipoContrato, $fechaInicio, $fechaFin): PeriodoContractual {
+            $periodo = $this->periodos()->create([
+                'orden' => $this->historial()->proximoOrden(),
+                'evento' => $evento,
+                'tipo_contrato' => $tipoContrato,
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
+            ]);
+
+            $this->fill(['tipo_contrato' => $tipoContrato, 'fecha_fin' => $fechaFin]);
+
+            if ($this->isDirty()) {
+                $this->save();
+            }
+
+            // El historial acaba de crecer: quien tenga la relación cargada de
+            // antes leería un tramo menos.
+            $this->unsetRelation('periodos');
+
+            return $periodo;
+        });
+    }
+
+    /**
+     * Registra una prórroga del contrato a término fijo (documento 1, 5.5).
+     *
+     * El tramo nuevo empieza el día siguiente al vencimiento vigente: una
+     * prórroga continúa el mismo contrato, no abre una vinculación nueva ni deja
+     * un día sin cubrir.
+     *
+     * **Es una acción distinta de corregir la fecha de finalización.** Corregir
+     * arregla un error de digitación y no toca el historial; renovar registra un
+     * hecho jurídico nuevo y por eso agrega una fila.
+     *
+     * Aquí no se valida: que el contrato admita prórroga y que la fecha sea
+     * posterior al vencimiento vigente lo comprueba `RenovarContrato`, y el
+     * tope legal es F1-10.
+     */
+    public function renovar(EventoContractual $prorroga, Carbon $fechaFin): PeriodoContractual
+    {
+        $inicio = RenovacionDeContrato::de($this->historial())->fechaDeInicio();
+
+        if (! $inicio instanceof Carbon) {
+            throw new LogicException('Un contrato sin fecha de vencimiento vigente no se renueva.');
+        }
+
+        return $this->registrarPeriodo($prorroga, TipoContrato::Fijo, $inicio, $fechaFin);
     }
 
     /**

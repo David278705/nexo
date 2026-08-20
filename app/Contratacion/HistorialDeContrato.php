@@ -18,11 +18,9 @@ use Illuminate\Support\Collection;
  *
  * ## Lo que este objeto no hace
  *
- * - **No bloquea nada.** `superaElTopeLegal()` responde sí o no; quién impide
- *   guardar es la validación de F1-09.
- * - **No cuenta prórrogas cortas.** El límite de cuatro pactadas y tres
- *   automáticas es F1-10 y depende además de las decisiones B.1 y B.3, que
- *   siguen abiertas. Aquí solo está el conteo, que es su insumo.
+ * - **No bloquea nada.** `superaElTopeLegal()` y `prorrogasCortasRestantes()`
+ *   responden; quién impide guardar es la validación de F1-10, que además
+ *   depende de las decisiones B.1 y B.3.
  * - **No escribe.** Agregar un tramo es `Vinculacion::registrarPeriodo()`.
  */
 class HistorialDeContrato
@@ -103,6 +101,53 @@ class HistorialDeContrato
     public function prorrogasAutomaticas(): int
     {
         return $this->cuantasCon(EventoContractual::ProrrogaAutomatica);
+    }
+
+    /**
+     * Si el contrato original se pactó por menos de un año.
+     *
+     * Es la primera de las tres condiciones de la regla de prórroga mínima
+     * (documento 1, 5.5): el límite de prórrogas cortas solo aplica a los
+     * contratos a término fijo inferiores a un año.
+     */
+    public function contratoInicialEsInferiorAUnAnio(): bool
+    {
+        return $this->inicial()?->esInferiorAUnAnio() ?? false;
+    }
+
+    /**
+     * Cuántas prórrogas inferiores a un año acumula el contrato de ese tipo.
+     *
+     * Se cuentan por tipo y solo las cortas, porque es lo que la regla del
+     * artículo 46 limita: una prórroga de dos años no gasta ninguno de los
+     * cuatro cupos de prórroga corta.
+     */
+    public function prorrogasCortas(EventoContractual $evento): int
+    {
+        return $this->periodos
+            ->filter(fn (PeriodoContractual $tramo) => $tramo->evento === $evento
+                && $tramo->esInferiorAUnAnio())
+            ->count();
+    }
+
+    /**
+     * Cuántas prórrogas cortas de ese tipo todavía caben.
+     *
+     * Nulo cuando la regla no aplica: el contrato inicial no es inferior a un
+     * año, o el evento no es una prórroga. Nunca negativo: si el contrato ya
+     * pasó el límite, quedan cero.
+     *
+     * Este método responde, no impide. El bloqueo del guardado es F1-10.
+     */
+    public function prorrogasCortasRestantes(EventoContractual $evento): ?int
+    {
+        $limite = $evento->limiteDeProrrogasCortas();
+
+        if ($limite === null || ! $this->contratoInicialEsInferiorAUnAnio()) {
+            return null;
+        }
+
+        return max(0, $limite - $this->prorrogasCortas($evento));
     }
 
     /**

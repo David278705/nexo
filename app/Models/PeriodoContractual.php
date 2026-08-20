@@ -69,6 +69,28 @@ class PeriodoContractual extends Model
     }
 
     /**
+     * Si el tramo dura menos de un año.
+     *
+     * Es la única condición que define una «prórroga corta», que es la que
+     * cuenta para el límite del artículo 46 del CST: «la renovación no podrá
+     * ser inferior a un año». Un tramo del 15 de abril de 2026 al 14 de abril
+     * de 2027 dura exactamente un año contando los dos extremos, así que no es
+     * corto; un día menos sí lo es.
+     *
+     * Un tramo sin fecha de finalización nunca es corto: no termina por plazo.
+     */
+    public function esInferiorAUnAnio(): bool
+    {
+        $fin = $this->getAttribute('fecha_fin');
+
+        if (! $fin instanceof Carbon) {
+            return false;
+        }
+
+        return $fin->lessThan($this->fecha_inicio->copy()->addYear()->subDay());
+    }
+
+    /**
      * Del primer tramo al último, que es como se lee un historial.
      *
      * Se ordena por `orden` y no por fecha: dos tramos pueden empezar el mismo

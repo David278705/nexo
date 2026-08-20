@@ -1,57 +1,62 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-19 · Tarea F1-08
+**Última sesión:** 2026-08-19 · Tarea F1-09
 **Verificación:** verde
-**Siguiente tarea:** F1-09 · Renovar contrato
+**Siguiente tarea:** F1-10 · Validaciones de prórroga
 
 ## Qué se hizo
 
-- **`App\Contratacion\VigenciaDelContrato`**, el objeto nuevo de la sesión: responde en qué día está
-  un contrato —cuántos días faltan para vencer, si el plazo del preaviso todavía alcanza, qué estado
-  se lee y de qué color—. Recibe el día como parámetro, así que se puede situar en cualquier fecha
-  sin tocar el historial. Lo usarán tal cual las alertas de vencimiento del capítulo 9.
-- **`HistorialDeContrato::fechaLimiteDePreaviso()`**: treinta días antes del vencimiento vigente,
-  leídos de `reglas_laborales.preaviso_dias`. Hay una prueba que cambia la constante a 45 y exige que
-  la fecha se mueva; un 30 escrito a mano la pondría en rojo.
-- **`ListadoDeContratos`** con los tres filtros del documento 3, 5.4 —rango de vencimiento, tipo de
-  contrato y número de prórrogas—, el orden y la paginación, todo en el servidor y con una sola
-  consulta compartida con la exportación, igual que `ListadoDeEmpleados`.
-- **`DetalleDelContrato`**, `ContratoController`, `ContratosExport` y las pantallas
-  `Contratos/Index` y `Contratos/Detalle`. El módulo salió del bucle de secciones pendientes.
-- **Dos componentes compartidos aprendieron algo, ninguno nuevo**: `TarjetaIndicador` acepta una
-  nota bajo la cifra —«Quedan 12 días» bajo el límite de preaviso— y `Selector` puede ocultar su
-  línea de marcador, que en un filtro de lista cerrada es una opción que no significa nada.
-- **`ContratosTest` con 33 casos** —la vista por defecto, los cinco filtros, las siete columnas, los
-  cuatro estados con su color, el aviso de vencidos, la exportación, el detalle y los permisos—,
-  cinco casos nuevos de aislamiento por las rutas reales y 16 de Vitest.
-- `composer verificar` en verde: 343 pruebas de Pest, PHPStan sin errores, build y 142 de Vitest.
+- **`App\Contratacion\RenovacionDeContrato`**, el objeto nuevo de la sesión: responde qué pasaría si
+  se guardara una prórroga con esa fecha y ese tipo —cuánto dura, en cuánto queda el vínculo
+  acumulado, qué número de prórroga sería y cuántos cupos cortos quedarían—. Devuelve el texto ya
+  escrito y su tono. También decide si la pantalla ofrece la acción y desde qué día corre el tramo
+  nuevo, que es el día siguiente al vencimiento vigente.
+- **`Vinculacion::renovar()`** y, debajo, **`registrarPeriodo()` ahora mueve también `tipo_contrato` y
+  `fecha_fin` de la vinculación**, en la misma transacción que crea el tramo. Era la nota que dejó
+  F1-08: el historial y lo vigente se mueven a la vez o quedan desalineados. Solo guarda si algo
+  cambió, así que el periodo inicial que abre el observador no ensucia la auditoría con una edición
+  que nadie hizo.
+- **`RenovarContrato`**, la validación: solo término fijo (403 en lo demás), el tipo de prórroga
+  obligatorio y solo las dos que existen, y la fecha posterior al vencimiento vigente con el mensaje
+  que dice qué hacer si lo que había era un error de digitación.
+- **`ModalDeRenovacion`** y el botón «Renovar contrato» en el detalle. El modal no cuenta ni un día:
+  al cambiar la fecha o el tipo pide al servidor solo la prop `renovacion` con una recarga parcial de
+  Inertia, y pinta las líneas que llegan.
+- **`HistorialDeContrato` aprendió a contar cupos cortos**: `contratoInicialEsInferiorAUnAnio()`,
+  `prorrogasCortas()` y `prorrogasCortasRestantes()`, que es el insumo exacto de F1-10.
+  `PeriodoContractual::esInferiorAUnAnio()` es la única definición de «prórroga corta» del sistema.
+- **`RenovacionTest` con 33 casos** —la fila nueva, que editar la fecha no la crea, el día de inicio,
+  el vencimiento movido, los dos tipos, la auditoría, las cuatro validaciones, los 403, las tres
+  cuentas, los cupos por tipo, el aviso del tope— más un caso de aislamiento por la ruta real de
+  renovar y 10 de Vitest.
+- `composer verificar` en verde: 376 pruebas de Pest, PHPStan sin errores, build y 152 de Vitest.
 
 ## Decisiones tomadas
 
-- **La vista por defecto incluye los contratos ya vencidos.** «Vencen en los próximos 90 días» filtra
-  por arriba y no por abajo. Un contrato que venció sin que nadie registrara la prórroga es lo más
-  urgente de esta pantalla, y esconderlo del rango por defecto sería esconder el problema. Quien los
-  quiera solos tiene la opción «Ya vencidos».
-- **El listado solo trae vinculaciones activas.** El contrato de quien ya salió no hay que
-  gestionarlo, así que no hay filtro de estado del empleado. Es la diferencia con el listado de
-  empleados, que sí lo tiene.
-- **La columna «Inicio» es la del periodo vigente, no la fecha de ingreso.** Es lo que hace el
-  prototipo y es lo correcto: en un contrato con tres prórrogas, el tramo que corre empezó el día de
-  la última, y es esa la fecha que se contrasta con el vencimiento de la columna siguiente. La
-  antigüedad se sigue preguntando en la ficha del empleado.
-- **El ámbar del estado arranca el día en que se cumple la fecha límite del preaviso**, que sale de
-  la constante legal y no de un umbral inventado. Antes de esa fecha, verde; después, ámbar; vencido,
-  rojo. Es la única regla de color de la pantalla y coincide con los tonos del prototipo.
-- **La duración total del vínculo se enseña en días, no en «1a 2m».** El prototipo escribe años y
-  meses; se siguió lo que ya hace la pestaña de contrato de la ficha, que es el mismo dato en la
-  misma sesión de trabajo del usuario. Una sola forma de leer una duración pesa más que el detalle de
-  una pantalla.
-- **En un contrato sin plazo, las tarjetas que no existen no se pintan vacías.** Un indefinido no
-  tiene vencimiento, ni preaviso, ni tope de cuatro años: en vez de cuatro tarjetas con rayas, salen
-  dos y una frase que dice por qué.
-- **`VigenciaDelContrato` se separó de `HistorialDeContrato` a propósito.** El historial no depende
-  del día en que se mire; la vigencia sí. Juntarlos habría obligado a pasar la fecha de hoy a un
-  objeto que calcula prórrogas y topes, que no la necesitan.
+- **D.1 se resolvió como la propone el documento 6: el modal pregunta el tipo de prórroga.** No fue
+  una invención: el documento 3, sección 5.4, ya lista «el tipo de prórroga» entre los campos del
+  modal, el prototipo lo enseña con las dos opciones literales, y el propio enunciado de F1-09 pide
+  registrarlo. La alternativa de aplicar siempre la regla más estricta habría avisado una prórroga
+  antes a quien sí formaliza por escrito.
+- **El tramo nuevo empieza el día siguiente al vencimiento vigente.** Es lo que hace el prototipo
+  —tramo que termina el 14/04 y siguiente que empieza el 15/04— y es lo correcto: una prórroga
+  continúa el mismo contrato, así que no puede contar un día dos veces ni dejar un día sin cubrir.
+- **El límite de prórrogas cortas cuenta solo las prórrogas cortas, y por tipo.** Una prórroga de dos
+  años no gasta ninguno de los cuatro cupos. «Corta» es una sola cosa en todo el sistema: que el
+  tramo dure menos de un año, contando los dos extremos.
+- **El tope de cuatro años y el cupo corto se advierten, no bloquean.** Es el reparto del backlog:
+  F1-09 calcula y enseña, F1-10 bloquea. Las pruebas dicen expresamente que hoy se permite guardar,
+  así que cuando F1-10 lo convierta en bloqueo, esas expectativas cambian a propósito y no por
+  descuido.
+- **Las cuentas del modal se calculan en el servidor y no en el navegador.** Repetirlas en Vue habría
+  sido más rápido de escribir y se habría separado de la versión del servidor a la primera
+  corrección; el número que el usuario lee tiene que ser el mismo que se va a guardar.
+- **El aviso proyectado es ámbar cuando hay una consecuencia que la empresa debe conocer** —se pasa
+  del tope o se gasta el último cupo corto— y azul cuando la prórroga no tiene ninguna. El rojo queda
+  para F1-10, cuando algo esté mal de verdad porque no se pueda guardar.
+- **Renovar es una dirección propia con verbo propio**, `POST /contratos/{contrato}/renovar`, y no un
+  campo más de un formulario de edición. Es la exigencia de la sección 5.5: que una acción no se pueda
+  usar en lugar de la otra.
 
 ## Preguntas para Angela
 
@@ -70,27 +75,35 @@
 - Menor: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)» sin
   distinguir especialización, maestría y doctorado**, tal como los pediste. Separarlos después es
   agregar casos al enumerado y nada más.
-- **D.1 se vuelve bloqueante en la próxima tarea: ¿se registra el tipo de prórroga?** El enumerado ya
-  distingue pactada de automática y el conteo de prórrogas cortas depende de ello —cuatro pactadas,
-  tres automáticas—, pero **el formulario de «Renovar» de F1-09 tiene que preguntarlo o no
-  preguntarlo, y eso es una decisión tuya**.
+- **D.1 ya no bloquea.** El modal pregunta el tipo de prórroga, con los textos del prototipo:
+  «Pactada por escrito» y «Automática por silencio». Si prefieres otro par de textos, se cambian en
+  `EventoContractual::prorrogasParaElegir()`.
+- **B.1 se vuelve bloqueante en la próxima tarea.** F1-10 convierte en bloqueo el límite de prórrogas
+  cortas, y el documento 6 pide confirmar su aplicación práctica con el asesor laboral antes de
+  impedir un guardado: **si el sistema bloquea algo que en realidad es legal, el cliente no puede
+  operar**. Hoy está construido como advertencia, que es exactamente lo que el documento propone
+  mientras llega la confirmación.
 - **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
   prolongado y la anticipación de la alerta de cercanía al tope de cuatro años.
 
 ## Decisiones para David
 
-- **El detalle del contrato no tiene los botones de «Renovar» ni «Cambiar a término indefinido».** El
-  documento 3 los describe y el prototipo los enseña, pero son las tareas F1-09 y F1-11 y todavía no
-  existen las pantallas. Se hizo como con el botón de «Editar» de la ficha: no se pone un botón que
-  lleve a ninguna parte. El sitio está libre y el dato que decide si aparecen —`admiteRenovacion`—
-  ya viaja en las props, así que agregarlos es una línea de cada lado.
+- **B.3, ¿bloquear o advertir?, es la decisión que abre F1-10.** La sugerencia del documento 6 es
+  bloquear el tope de cuatro años —pasado el tope el contrato **es** indefinido, no puede ser otra
+  cosa— y advertir con fuerza, permitiendo guardar, en la prórroga corta después del límite, porque
+  ahí sí puede haber un contrato ya firmado que haya que registrar. Los dos textos ya están escritos
+  en `RenovacionDeContrato` y hoy salen como advertencia; convertir el primero en bloqueo es agregar
+  una regla a `RenovarContrato`.
+- **El detalle del contrato todavía no tiene «Cambiar a término indefinido».** Es F1-11 y el sitio
+  está libre, al lado del botón de renovar, que ya existe. El modal de esa acción es el mismo
+  componente `Modal` y el aviso del tope ya nombra la acción por su nombre.
+- **Tampoco tiene «Editar contrato».** El aviso del modal de renovación dice «edita el contrato» sin
+  enlazar a ninguna parte, porque esa pantalla no existe. Cuando exista, el aviso lleva un enlace.
 - **El texto del hueco del saldo de vacaciones se lee en pantalla y sigue siendo tuyo.** Está en
   `FichaDeEmpleado::saldoDeVacaciones()`, en un solo sitio.
 - **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de una
   vinculación inactiva. De ella dependen el énfasis de los 30 días de la advertencia de reingreso y
   la antigüedad de quien ya salió. Está anotado en F2-09.
-- **B.3, ¿bloquear o advertir?**, deja de ser teórica en F1-09. La sugerencia del documento 6 es
-  bloquear el tope de cuatro años y advertir con fuerza en la prórroga corta.
 - **Contrastar las cuatro listas de seguridad social contra las fuentes oficiales antes de vender.**
   Lo advierte la propia hoja «Notas y fuentes» del archivo: hay nueve EPS intervenidas por la
   Supersalud y el sector está en movimiento. **Es una lista global: si está mal, está mal para todos
@@ -104,8 +117,8 @@
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Abierta de diecinueve sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
-  8.3+**. `composer.json` quedó en `"php": "^8.2"`.
+- Abierta de veinte sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide 8.3+**.
+  `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
   copiando `database/stubs/migracion-tabla-de-negocio.stub`, que nunca se llama a `fijarEmpresa()` a
@@ -115,24 +128,27 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-09 · Renovar contrato**: acción separada de editar la fecha, que calcula y
-  muestra duración de la prórroga, total acumulado y prórrogas restantes, y registra el tipo.
-  **Depende de D.1**, que sigue abierta y está arriba.
-- **La escritura ya existe: `Vinculacion::registrarPeriodo()`.** Lo único que F1-09 agrega es que,
-  además del tramo, hay que mover `tipo_contrato` y `fecha_fin` de la vinculación. **El historial y
-  lo vigente se mueven a la vez o quedan desalineados**; hoy eso solo lo hace el observador al crear,
-  y las pruebas de F1-08 lo hacen a mano justo por eso. Conviene que `registrarPeriodo()` lo asuma.
-- **Los cálculos del modal de renovación ya están hechos.** `HistorialDeContrato` da prórrogas
-  pactadas y automáticas por separado, duración total, tope legal y `superaElTopeLegal($fechaFin)`,
-  que es exactamente la validación bloqueante de F1-10.
-- **El detalle del contrato es donde va el botón.** `Contratos/Detalle.vue` ya recibe
-  `contrato.admiteRenovacion`, y el modal es el componente `Modal` que ya existe.
-- **La tabla del historial es una sola en todo el sistema.** La arma
-  `FichaDeEmpleado::filasDelHistorial()` y la enseñan la pestaña de contrato de la ficha y el detalle
-  del contrato. Si F1-09 le agrega la columna «Registrado», se agrega ahí y aparece en las dos.
-- **`VigenciaDelContrato` es el sitio de cualquier cuenta de días sobre un contrato.** No escribas
-  otra: recibe el día por parámetro justamente para el proceso diario de alertas.
+- La siguiente es **F1-10 · Validaciones de prórroga**, y casi todo su insumo está construido:
+  `HistorialDeContrato::superaElTopeLegal($fechaFin)` y `prorrogasCortasRestantes($tipo)` responden
+  las dos preguntas, y `RenovacionDeContrato` ya escribe los dos mensajes con las palabras del
+  prototipo. **Lo único que F1-10 agrega es la regla en `RenovarContrato`** y el cambio de tono a
+  rojo en el aviso del modal.
+- **El backlog pide que las dos validaciones sean «configurables por estado».** No está dicho en el
+  documento 1 ni en el 3 qué significa eso exactamente —¿un parámetro de empresa, como los cuatro de
+  F1-12?—. Si al leer la tarea no queda claro, es una pregunta para David antes de inventar un
+  parámetro.
+- **`RenovacionDeContrato` es el sitio de cualquier cuenta sobre una prórroga propuesta**, igual que
+  `VigenciaDelContrato` lo es de las cuentas sobre un contrato existente. No escribas una tercera.
+- **`registrarPeriodo()` ya deja el historial y lo vigente alineados**, así que F1-11 solo tiene que
+  llamarlo con `EventoContractual::CambioAIndefinido` y `TipoContrato::Indefinido`, sin fecha de fin.
+  La fecha de ingreso no se toca, que es el criterio de terminado de esa tarea.
+- **El helper `enLaEmpresa()` de las pruebas vive en `PersonasYVinculacionesTest.php`** y Pest lo
+  comparte con todos los archivos. Sin él, cualquier consulta hecha desde una prueba fuera de una
+  petición HTTP devuelve vacío, porque el global scope falla cerrado.
+- **La tabla del historial sigue sin las columnas «Duración» y «Registrado» del prototipo.** La arma
+  `FichaDeEmpleado::filasDelHistorial()` y la enseñan las dos pantallas, así que agregarlas es un solo
+  sitio. No hacía falta para F1-09.
 - **`OpcionesDeLista` sigue solo en los cuatro enumerados de F1-06.** `Genero`, `TipoDocumento`,
-  `TipoContrato`, `TipoRiesgo`, `TipoVivienda` y `EstadoVinculacion` mantienen sus métodos escritos a
-  mano. Unificarlos es un rato y no rompe nada.
+  `TipoContrato`, `TipoRiesgo`, `TipoVivienda`, `EstadoVinculacion` y `EventoContractual` mantienen
+  sus métodos escritos a mano. Unificarlos es un rato y no rompe nada.
 - **No queda ninguna tarea bloqueada en el backlog.**

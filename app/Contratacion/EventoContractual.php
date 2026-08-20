@@ -24,9 +24,10 @@ namespace App\Contratacion;
  * juntas daría el número equivocado en uno de los dos casos.
  *
  * Distinguirlas es además la decisión D.1 de `docs/06-decisiones-pendientes.md`,
- * que sigue abierta. El modelo ya la contempla: si Angela decide no
- * distinguirlas, el campo queda con un solo valor de prórroga y no hay nada que
- * rehacer.
+ * resuelta como propone ese documento: la acción «Renovar contrato» pregunta de
+ * cuál de las dos se trata, y el documento 3, sección 5.4, la lista entre los
+ * campos del modal. Si algún día se decide simplificar, el formulario queda con
+ * un solo valor de prórroga y el resto del modelo no cambia.
  */
 enum EventoContractual: string
 {
@@ -63,6 +64,53 @@ enum EventoContractual: string
     public function esInicial(): bool
     {
         return $this === self::Inicial;
+    }
+
+    /**
+     * Cuántas prórrogas inferiores a un año admite este tipo de prórroga antes
+     * de que la renovación deba ser de mínimo un año.
+     *
+     * Cuatro las pactadas por escrito y tres las automáticas por silencio. Son
+     * dos números distintos y por eso viven aquí, en el enumerado que distingue
+     * las dos prórrogas: pedir el límite sin decir de cuál prórroga se habla no
+     * es una pregunta que se pueda responder.
+     *
+     * Salen de `config/reglas_laborales.php` (Concepto MinTrabajo 6157 de 2026),
+     * nunca de un número escrito a mano. Nulo en los eventos que no son
+     * prórroga: el periodo inicial y el cambio a indefinido no tienen límite.
+     */
+    public function limiteDeProrrogasCortas(): ?int
+    {
+        return match ($this) {
+            self::ProrrogaPactada => (int) config('reglas_laborales.prorrogas_cortas_pactadas'),
+            self::ProrrogaAutomatica => (int) config('reglas_laborales.prorrogas_cortas_automaticas'),
+            default => null,
+        };
+    }
+
+    /**
+     * Las dos prórrogas, que son las opciones de la acción «Renovar contrato»
+     * (documento 3, sección 5.4, y decisión D.1 del documento 6).
+     *
+     * El periodo inicial no se elige —lo abre la vinculación al nacer— y el
+     * cambio a indefinido es otra acción con su propio botón.
+     *
+     * @return list<array{valor: string, texto: string}>
+     */
+    public static function prorrogasParaElegir(): array
+    {
+        return [
+            ['valor' => self::ProrrogaPactada->value, 'texto' => 'Pactada por escrito'],
+            ['valor' => self::ProrrogaAutomatica->value, 'texto' => 'Automática por silencio'],
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function valoresDeProrroga(): array
+    {
+        return [self::ProrrogaPactada->value, self::ProrrogaAutomatica->value];
     }
 
     /**

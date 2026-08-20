@@ -40,15 +40,26 @@ class DetalleDelContrato
     }
 
     /**
+     * @param  array{tipo?: string|null, fecha_fin?: string|null}  $propuesta  Lo digitado en el modal de renovación.
      * @return array<string, mixed>
      */
-    public function paraLaPantalla(): array
+    public function paraLaPantalla(array $propuesta = []): array
     {
         return [
             'contrato' => $this->encabezado(),
             'indicadores' => $this->indicadores(),
             'campos' => $this->campos(),
             'historial' => FichaDeEmpleado::filasDelHistorial($this->historial),
+            /*
+             * El modal de «Renovar contrato» (F1-09). Viaja siempre, también en
+             * un contrato que no admite renovación: la pantalla necesita saber
+             * que no la admite para no pintar el botón.
+             *
+             * Las cuentas del modal llegan ya escritas desde el servidor. Cuando
+             * el usuario cambia la fecha o el tipo de prórroga, la pantalla pide
+             * de nuevo solo esta prop y no calcula nada por su cuenta.
+             */
+            'renovacion' => RenovacionDeContrato::de($this->historial)->paraLaPantalla($propuesta),
         ];
     }
 
@@ -71,8 +82,8 @@ class DetalleDelContrato
             'tono' => $this->vigencia->tono(),
             /*
              * Renovar y cambiar a indefinido son exclusivas del término fijo
-             * (documento 1, 5.5). El dato viaja desde ya porque de él depende
-             * qué ve esta pantalla; los dos botones llegan con F1-09 y F1-11.
+             * (documento 1, 5.5). El botón de renovar ya existe (F1-09); el de
+             * cambiar a indefinido llega con F1-11.
              */
             'admiteRenovacion' => $tipo->admiteRenovacion(),
         ];

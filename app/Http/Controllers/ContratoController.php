@@ -6,7 +6,9 @@ use App\Contratacion\DetalleDelContrato;
 use App\Contratacion\ListadoDeContratos;
 use App\Contratacion\TipoContrato;
 use App\Exports\ContratosExport;
+use App\Http\Requests\RenovarContrato;
 use App\Models\Vinculacion;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -75,11 +77,39 @@ class ContratoController extends Controller
         );
     }
 
-    public function detalle(Vinculacion $contrato): RespuestaInertia
+    /**
+     * El detalle, y con él el estado del modal de renovación.
+     *
+     * `tipo` y `fecha_fin` llegan cuando el modal está abierto y el usuario
+     * acaba de cambiar uno de los dos: la pantalla vuelve a pedir solo la prop
+     * `renovacion` y el servidor devuelve la proyección recalculada. Es lo que
+     * evita que el modal cuente días en el navegador.
+     */
+    public function detalle(Request $peticion, Vinculacion $contrato): RespuestaInertia
     {
         return Inertia::render(
             'Contratos/Detalle',
-            DetalleDelContrato::de($contrato)->paraLaPantalla(),
+            DetalleDelContrato::de($contrato)->paraLaPantalla([
+                'tipo' => $peticion->query('tipo'),
+                'fecha_fin' => $peticion->query('fecha_fin'),
+            ]),
         );
+    }
+
+    /**
+     * Registra la prórroga (documento 1, 5.5).
+     *
+     * Aquí no se decide nada: quién puede renovar y con qué fecha lo comprueba
+     * `RenovarContrato`, y el tramo lo escribe `Vinculacion::renovar()`, que
+     * mueve el historial y lo vigente en la misma transacción.
+     */
+    public function renovar(RenovarContrato $peticion, Vinculacion $contrato): RedirectResponse
+    {
+        $periodo = $contrato->renovar($peticion->prorroga(), $peticion->hasta());
+
+        return redirect()
+            ->route('contratos.detalle', $contrato)
+            ->with('estado', 'Se registró la '.mb_strtolower($periodo->evento->etiqueta(), 'UTF-8')
+                .'. El contrato vence ahora el '.$peticion->hasta()->format('d/m/Y').'.');
     }
 }

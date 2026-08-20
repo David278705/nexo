@@ -201,12 +201,22 @@ día está un contrato —cuánto falta para vencer, si el preaviso todavía alc
 alertas del capítulo 9. La fecha límite de preaviso sale de `preaviso_dias`, nunca de un 30 escrito a
 mano. El historial del detalle es la misma tabla de la ficha, armada por el mismo método.
 
-### [ ] F1-09 · Renovar contrato
+### [x] F1-09 · Renovar contrato
 
 Acción separada de editar la fecha, con nombres y consecuencias distintas. Calcula y muestra duración
 de la prórroga, total acumulado y prórrogas restantes. Registra el tipo de prórroga.
 **Hecho cuando:** renovar crea una fila nueva en el historial y editar la fecha no.
 **Fuente:** `docs/01-especificacion-funcional.md` 5.5
+
+Hecho: `RenovacionDeContrato` —el objeto nuevo, que responde qué pasaría si se guardara esa prórroga—,
+`Vinculacion::renovar()`, `RenovarContrato`, la ruta `POST /contratos/{contrato}/renovar` y el
+componente `ModalDeRenovacion`. **D.1 quedó resuelta como la propone el documento 6**: el modal
+pregunta el tipo de prórroga, y de él dependen los cupos cortos —cuatro pactadas, tres automáticas,
+leídos de la configuración—. `registrarPeriodo()` ahora mueve también `tipo_contrato` y `fecha_fin` de
+la vinculación en la misma transacción: el historial y lo vigente ya no pueden desalinearse. Las tres
+cuentas del modal se calculan en el servidor y llegan escritas; al cambiar la fecha o el tipo, la
+pantalla pide de nuevo solo la prop `renovacion`. El tope de cuatro años y el límite de prórrogas
+cortas se **advierten** y no bloquean: volverlos bloqueo es F1-10.
 
 ### [ ] F1-10 · Validaciones de prórroga
 
