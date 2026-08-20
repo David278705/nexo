@@ -50,6 +50,32 @@ const opciones = {
     arls: [{ valor: 3, texto: "ARL Sura" }],
     cajasCompensacion: [{ valor: 4, texto: "Comfama" }],
     bancos: [{ valor: 5, texto: "Bancolombia" }],
+
+    // Las seis listas del perfil sociodemográfico (documento 1, 5.2). Viajan
+    // siempre, tenga la empresa el bloque encendido o apagado.
+    estadosCiviles: [
+        { valor: "soltero", texto: "Soltero(a)" },
+        { valor: "union_libre", texto: "Unión libre" },
+    ],
+    nivelesEducativos: [
+        { valor: "bachiller", texto: "Bachiller" },
+        { valor: "tecnico_tecnologo", texto: "Técnico / Tecnólogo" },
+    ],
+    tiposVivienda: [
+        { valor: "propia", texto: "Propia" },
+        { valor: "arrendada", texto: "Arrendada" },
+    ],
+    estratos: [
+        { valor: 1, texto: "Estrato 1" },
+        { valor: 3, texto: "Estrato 3" },
+    ],
+    mediosTransporte: [
+        { valor: "a_pie", texto: "A pie" },
+        { valor: "transporte_publico", texto: "Transporte público" },
+    ],
+    tiemposDesplazamiento: [
+        { valor: "entre_30_y_60_minutos", texto: "Entre 30 y 60 minutos" },
+    ],
 };
 
 const ubicaciones = {
@@ -151,6 +177,81 @@ describe("Asistente de nuevo empleado", () => {
         expect(montar().text()).toContain(
             "La residencia es siempre en Colombia",
         );
+    });
+});
+
+describe("Perfil sociodemográfico", () => {
+    // Llevar el asistente hasta el paso del perfil sin tener que llenar los
+    // tres pasos anteriores: lo que se prueba aquí es el bloque, no el avance.
+    function enElPaso(componente, indice) {
+        componente.vm.paso = indice;
+
+        return componente.vm.$nextTick();
+    }
+
+    it("no aparece cuando la empresa no lo habilitó", () => {
+        const texto = montar().text();
+
+        expect(texto).toContain("Paso 1 de 4");
+        expect(texto).not.toContain("Perfil sociodemográfico");
+    });
+
+    it("agrega un quinto paso cuando la empresa lo habilitó", () => {
+        const texto = montar({ perfilSociodemografico: true }).text();
+
+        expect(texto).toContain("Paso 1 de 5");
+        expect(texto).toContain("Perfil sociodemográfico");
+    });
+
+    it("va antes del resumen, que siempre es el último paso", () => {
+        const componente = montar({ perfilSociodemografico: true });
+
+        expect(componente.vm.indiceDelPerfil).toBe(3);
+        expect(componente.vm.pasos[4].titulo).toBe("Resumen");
+    });
+
+    it("avanza al resumen sin llenar ni un campo del bloque", async () => {
+        const componente = montar({ perfilSociodemografico: true });
+
+        await enElPaso(componente, componente.vm.indiceDelPerfil);
+        await componente.find("form").trigger("submit");
+
+        expect(componente.vm.esElResumen).toBe(true);
+        expect(componente.text()).toContain("Paso 5 de 5");
+    });
+
+    it("dice que todos sus campos son opcionales", async () => {
+        const componente = montar({ perfilSociodemografico: true });
+
+        await enElPaso(componente, componente.vm.indiceDelPerfil);
+
+        expect(componente.text()).toContain(
+            "Todos estos campos son opcionales.",
+        );
+    });
+
+    it("en el resumen solo enseña lo que se llenó", async () => {
+        const componente = montar({ perfilSociodemografico: true });
+
+        componente.vm.form.perfil.estrato = 3;
+        componente.vm.form.perfil.numero_hijos = "2";
+        await enElPaso(componente, 4);
+
+        // Se mira el resumen y no el texto de la pantalla: los pasos anteriores
+        // siguen en el DOM, ocultos, con todas sus etiquetas.
+        expect(componente.vm.resumenDelPerfil).toEqual([
+            { etiqueta: "Número de hijos", valor: "2" },
+            { etiqueta: "Estrato socioeconómico", valor: "Estrato 3" },
+        ]);
+        expect(componente.text()).toContain("Estrato 3");
+    });
+
+    it("en el resumen explica el bloque en blanco en vez de dejarlo vacío", async () => {
+        const componente = montar({ perfilSociodemografico: true });
+
+        await enElPaso(componente, 4);
+
+        expect(componente.text()).toContain("Sin diligenciar");
     });
 });
 

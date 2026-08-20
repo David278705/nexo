@@ -25,7 +25,9 @@ use Illuminate\Support\Facades\DB;
  *    digita.
  *
  * El periodo inicial del historial no se crea aquí: lo abre solo
- * `ObservadorDeVinculacion`.
+ * `ObservadorDeVinculacion`. El perfil sociodemográfico tampoco se decide aquí:
+ * lo escribe `BloqueSociodemografico`, que es quien sabe si la empresa lo tiene
+ * habilitado (documento 1, 5.2).
  *
  * Las tres ubicaciones se guardan siguiendo la regla 5.1.1: si el país es
  * Colombia va el identificador del catálogo y los textos quedan vacíos; si es
@@ -41,6 +43,14 @@ class RegistroDeEmpleado
     {
         return DB::transaction(function () use ($datos): Vinculacion {
             $persona = $this->personaDe($datos);
+
+            /** @var array<string, mixed> $perfil */
+            $perfil = $datos['perfil'] ?? [];
+
+            // El bloque de 5.2 cuelga de la persona, no de la vinculación, y
+            // solo se escribe si la empresa lo tiene habilitado y hay algo
+            // digitado. Decide `BloqueSociodemografico`, no este método.
+            BloqueSociodemografico::guardar($persona, $perfil);
 
             return $persona->vinculaciones()->create($this->vinculacion($datos));
         });

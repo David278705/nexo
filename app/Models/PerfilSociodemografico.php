@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Contratacion\EstadoCivil;
+use App\Contratacion\MedioTransporte;
+use App\Contratacion\NivelEducativo;
+use App\Contratacion\TiempoDesplazamiento;
 use App\Contratacion\TipoVivienda;
 use App\Multiempresa\PerteneceATenant;
 use Database\Factories\PerfilSociodemograficoFactory;
@@ -74,6 +78,10 @@ class PerfilSociodemografico extends Model
     protected function casts(): array
     {
         return [
+            'estado_civil' => EstadoCivil::class,
+            'nivel_educativo' => NivelEducativo::class,
+            'medio_transporte' => MedioTransporte::class,
+            'tiempo_desplazamiento' => TiempoDesplazamiento::class,
             'tipo_vivienda' => TipoVivienda::class,
             'numero_hijos' => 'integer',
             'personas_a_cargo' => 'integer',

@@ -1,55 +1,68 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-19 · Tarea F1-05
+**Última sesión:** 2026-08-19 · Tarea F1-06
 **Verificación:** verde
-**Siguiente tarea:** F1-06 · Perfil sociodemográfico
+**Siguiente tarea:** F1-07 · Ficha del empleado
 
 ## Qué se hizo
 
-- **`App\Contratacion\AdvertenciaDeReingreso`**, la sección 5.6 del documento 1. Los dos textos
-  —la advertencia y la nota— son **constantes del servidor**, no cadenas dentro de un componente
-  Vue, para que una prueba pueda compararlos carácter a carácter con el documento. Devuelve `null`
-  cuando no hay nada que advertir, y así el aviso no existe en lugar de existir vacío.
-- **La prop opcional `reingreso`** en `EmpleadoController::nuevo()`. No se calcula al abrir la
-  pantalla: solo cuando el asistente la pide. `Inertia::optional()` es exactamente eso.
-- **`AvisoDeReingreso.vue`**, componente compartido. Se muestra dos veces en el asistente: pegado al
-  campo del documento, que es donde se digita, y otra vez en el resumen, que es donde ya se conoce la
-  fecha de ingreso y donde es la última oportunidad antes de guardar.
-- **`Vinculacion::fechaDeSalida()`**, el único sitio del que sale la fecha de la salida anterior.
-- **`AdvertenciaDeReingresoTest`** con 17 casos, incluidos los dos lados de la ventana de 30 días
-  —día 30 dentro, día 31 fuera— y el aislamiento entre empresas. Seis casos nuevos de Vitest en el
-  asistente y cinco del componente.
-- `composer verificar` en verde: 270 pruebas de Pest, PHPStan sin errores, build y 108 de Vitest.
+- **`App\Contratacion\BloqueSociodemografico`**, la sección 5.2 del documento 1 entera en un solo
+  sitio: si la empresa lo tiene habilitado, las seis listas para el formulario, las reglas de
+  validación y la escritura. El controlador, el `FormRequest` y `RegistroDeEmpleado` le preguntan a
+  él; ninguno de los tres decide nada del bloque.
+- **Los cuatro enumerados que faltaban**: `EstadoCivil`, `NivelEducativo`, `MedioTransporte` y
+  `TiempoDesplazamiento`, con las opciones **literales del archivo de listas de Angela**
+  (`plantillas/Listas_Desplegables_Formulario_Empleados.xlsx`), que es lo que cerró la decisión D.5.
+  No se inventó ninguna opción. `TipoVivienda` y el estrato ya existían desde F1-01.
+- **El trait `OpcionesDeLista`** con `paraElegir()` y `valores()`. Iban seis enumerados repitiendo
+  los mismos ocho renglones; los cuatro nuevos ya no los repiten.
+- **El quinto paso del asistente**, intercalado antes del resumen y solo cuando el parámetro está en
+  sí. Su lista de campos obligatorios está vacía a propósito. En el resumen se enseña únicamente lo
+  que se llenó, y si no se llenó nada se dice con palabras en vez de dejar ocho renglones vacíos.
+- **`PerfilSociodemograficoTest`** con 14 casos: el parámetro encendido y apagado, las ocho
+  respuestas guardadas, el bloque en blanco, encenderlo con la planta ya cargada, el reingreso que
+  actualiza el perfil existente y las listas que rechazan lo que no está en ellas. Siete casos
+  nuevos de Vitest en el asistente.
+- `composer verificar` en verde a la primera: 284 pruebas de Pest, PHPStan sin errores, build y 115
+  de Vitest.
 
 ## Decisiones tomadas
 
-- **La comprobación es del servidor y viaja por Inertia**, no por `axios`. `router.reload({ only:
-  ['reingreso'] })` al salir del campo, con `preserveState`, así que el formulario a medio llenar no
-  se pierde. Es el único camino por el que el navegador puede saber si un documento ya estuvo
-  vinculado sin que se le entregue la lista de documentos de la empresa.
-- **La advertencia aparece aunque la vinculación anterior siga activa.** El documento dice «ya tuvo
-  un registro anterior», no «ya salió»: dos vinculaciones simultáneas de la misma persona son
-  igualmente algo que quien registra tiene que ver.
-- **El énfasis se pregunta dos veces.** En el paso 1 no existe todavía la fecha de ingreso, así que
-  el reingreso se mide contra hoy; al salir del campo de fecha de ingreso, en el paso 3, se vuelve a
-  preguntar y el aviso del resumen ya sale con la cuenta correcta.
-- **Un ingreso anterior a la salida no lleva énfasis.** Es un dato mal digitado, no un reingreso
-  cercano, y marcarlo en rojo enseñaría a ignorar el aviso.
-- **El tono es advertencia, nunca error.** Un reingreso es legítimo; lo que se pide es verificar. El
-  énfasis de los 30 días va **en palabras además de en negrilla** —cambia el título del aviso—,
-  porque el color no puede ser el único portador de la información.
-- **`fechaDeSalida()` es provisional y está en un solo método a propósito.** Ver abajo.
+- **Las opciones salen del archivo de listas, no de la plantilla de carga.** Las dos fuentes existen
+  y **no coinciden**: la plantilla `2 - Perfil sociodemografico (opcional).xlsx` dice «Primaria ·
+  Bachillerato · Técnico · Tecnólogo · Profesional · Posgrado» y rangos de desplazamiento distintos.
+  Se siguió el archivo de listas porque es posterior, porque es el que resolvió D.5 para las cinco
+  listas de entidades y porque la sesión pasada ya anunció que F1-06 se construiría así. **Queda una
+  pregunta abierta abajo: la plantilla de carga hay que alinearla antes de F5-01.**
+- **Un perfil vacío no se guarda.** Si el bloque está encendido y no se llena nada, no se crea la
+  fila. Una fila de ocho nulos y la ausencia de fila significan lo mismo, y solo la primera obliga a
+  explicar después por qué está ahí. Es además lo que hace que encender el parámetro con la planta
+  ya cargada no marque nada como error: no hay nada que reclamar.
+- **El bloque se valida siempre, encendido o apagado, pero solo se guarda encendido.** Rechazar el
+  envío con un `prohibited` castigaría a quien tenía el formulario abierto cuando cambiaron el
+  parámetro. Lo que llega con el bloque apagado se descarta en silencio.
+- **El perfil cuelga de la persona, no de la vinculación**, y por eso un reingreso **actualiza** el
+  perfil que ya existía en vez de crear un segundo. El estrato no cambia porque a alguien lo
+  recontraten, pero sí pudo cambiar mientras estuvo fuera.
+- **Los numéricos van con tope**: hijos y personas a cargo hasta 30, estrato del 1 al 6. El estrato
+  es el rango del documento; el 30 es una barrera contra el dedo torpe, no una regla legal.
 
 ## Preguntas para Angela
 
+- **La plantilla de carga y el formulario ya no dicen lo mismo.** `plantillas/2 - Perfil
+  sociodemografico (opcional).xlsx` ofrece «Primaria · Bachillerato · Técnico · Tecnólogo ·
+  Profesional · Posgrado» y los rangos «Menos de 30 min · De 30 min a 1 hora · De 1 a 2 horas · Más
+  de 2 horas»; el formulario quedó con las del archivo de listas, que son otras. **¿Se corrige la
+  plantilla para que coincida con el formulario?** Es lo que se recomienda: dos vocabularios para el
+  mismo campo obligarían a traducir en la carga inicial. Bloquea F5-01, no antes.
 - **La columna «Cesantías» del archivo de listas sigue sin dónde ir.** Trae Porvenir, Protección,
   Colfondos, Skandia, el Fondo Nacional del Ahorro y «Otro», pero **el fondo de cesantías no aparece
   en la sección 5.1 de la especificación funcional**. La pregunta concreta: **¿se agrega «fondo de
   cesantías» como campo obligatorio del formulario de empleado?** Si la respuesta es sí, es una tarea
   nueva —tabla, columna, seeder y un campo más en el paso 2 del asistente, que ya está construido.
-- Menor, del mismo archivo: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y
-  **«Posgraduado(a)» sin distinguir especialización, maestría y doctorado**. La propia hoja de notas
-  dice que es fácil de separar después. Se construye así en F1-06 salvo aviso.
+- Menor: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)» sin
+  distinguir especialización, maestría y doctorado**, tal como los pediste. Separarlos después es
+  agregar casos al enumerado y nada más: lo guardado es texto legible, no un número de orden.
 - **D.1 sigue abierta: ¿se registra el tipo de prórroga?** No ha bloqueado nada todavía, pero la
   respuesta cambia el formulario de «Renovar» de F1-09: o pregunta cuál de las dos es, o no pregunta.
 - **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
@@ -57,12 +70,10 @@
 
 ## Decisiones para David
 
-- **La fecha de salida no existe todavía, y el énfasis de los 30 días depende de ella.** Es un campo
-  del módulo de terminaciones (documento 1, 7.1), que es F2-09. Hoy `Vinculacion::fechaDeSalida()`
-  devuelve `fecha_fin` de una vinculación inactiva, que en un término fijo expirado **es** la fecha
-  de salida y en las demás modalidades es nula. Consecuencia acotada a propósito: **la advertencia se
-  muestra siempre igual**; lo único que se pierde cuando no hay fecha es el énfasis. Cuando F2-09
-  registre la salida de verdad, se cambia ese método y nadie más se entera. **Está anotado en F2-09.**
+- **La fecha de salida no existe todavía, y el énfasis de los 30 días de la advertencia de reingreso
+  depende de ella.** Hoy `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de una vinculación
+  inactiva. La advertencia se muestra siempre igual; lo único que se pierde es el énfasis. **Está
+  anotado en F2-09**, que es donde se corrige con un método de tres líneas.
 - **Contrastar las cuatro listas de seguridad social contra las fuentes oficiales antes de vender.**
   Lo advierte la propia hoja «Notas y fuentes» del archivo: hay nueve EPS intervenidas por la
   Supersalud —siguen operando, por eso se cargaron— y el sector está en movimiento. Las fuentes son
@@ -80,7 +91,7 @@
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Ya son cuatro las tablas de negocio que
   dependen de ello.
-- Abierta de dieciséis sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Abierta de diecisiete sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -91,18 +102,20 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-06 · Perfil sociodemográfico**: bloque opcional activable por parámetro de
-  empresa, con **todos sus campos opcionales aunque el bloque esté activo**, y los empleados
-  existentes en blanco sin marcar error al activarlo después.
-- **El asistente está escrito para eso desde F1-04**: `pasos` es un `computed`, no una lista fija, y
-  el perfil se intercala **antes** del resumen. La tabla `perfil_sociodemografico` y su modelo ya
-  existen desde F1-01; lo que falta es el parámetro de empresa, el paso y la escritura.
-- **Los parámetros de empresa viven en `tenants`** y su pantalla es F1-12, que llega después. F1-06
-  solo necesita leer el parámetro, no editarlo.
-- **Si F1-06 agrega campos al asistente, hay que agregarlos a la lista de campos de su paso** en
-  `pasos`: de ahí sale tanto el «no avanzar con un obligatorio vacío» como el «volver al paso del
-  error» cuando el servidor rechaza algo. Con todo opcional, el paso nuevo llevará `campos: []`.
-- **`consultar()` del asistente ya sabe repreguntar.** Si el perfil mueve de sitio la fecha de
-  ingreso, el `@salir` que dispara la advertencia de reingreso tiene que ir con ella.
-- **La columna de saldo de vacaciones entra en el listado cuando exista F2-02**, no antes.
+- La siguiente es **F1-07 · Ficha del empleado**: encabezado con el saldo de vacaciones siempre
+  visible y cuatro pestañas —datos, contrato, novedades y movimientos—.
+- **El saldo de vacaciones no existe hasta F2-02.** La ficha tendrá que enseñar el encabezado con lo
+  que haya, sin inventar un cálculo ni guardar una columna: la regla 2 del proyecto lo prohíbe.
+  Decidir en esa tarea cómo se ve el hueco.
+- **La ruta y el controlador de la ficha ya existen** desde F1-03: `EmpleadoController::ficha()`
+  resuelve la vinculación de verdad y hoy pinta `SeccionPendiente`. Es cambiar el `Inertia::render`.
+- **El bloque sociodemográfico se enseña en la pestaña de datos solo si el parámetro está en sí**, y
+  `PerfilSociodemografico::estaVacio()` existe desde F1-01 justo para eso: enseñarlo como pendiente
+  en vez de como una lista de campos vacíos. `BloqueSociodemografico::habilitado()` y `::opciones()`
+  son lo que hace falta; la edición del perfil desde la ficha no es de esta tarea.
+- **Los parámetros de empresa siguen sin pantalla**: es F1-12. Hasta entonces el único modo de
+  encender el perfil sociodemográfico es tocando `tenants` a mano.
+- **`OpcionesDeLista` está solo en los cuatro enumerados nuevos.** `Genero`, `TipoDocumento`,
+  `TipoContrato`, `TipoRiesgo`, `TipoVivienda` y `EstadoVinculacion` siguen con los métodos
+  escritos a mano. Unificarlos es un rato y no rompe nada, pero no era de esta tarea.
 - **No queda ninguna tarea bloqueada en el backlog.**

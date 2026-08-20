@@ -29,9 +29,10 @@ import SelectorUbicacion from "@/Components/SelectorUbicacion.vue";
  *   reglas de verdad son las de `RegistrarEmpleado`, y cuando alguna falla el
  *   asistente vuelve al paso donde está el error.
  *
- * El cuarto paso es el resumen. El perfil sociodemográfico —que el documento 3
- * numera como paso 4— se intercala antes de él en F1-06, y solo cuando la
- * empresa lo tenga habilitado.
+ * El último paso es siempre el resumen. Antes de él se intercala el perfil
+ * sociodemográfico (documento 1, 5.2) cuando la empresa lo tiene habilitado:
+ * entonces el asistente tiene cinco pasos y no cuatro. Lo decide el servidor,
+ * no esta pantalla.
  */
 const props = defineProps({
     opciones: { type: Object, required: true },
@@ -39,6 +40,9 @@ const props = defineProps({
     // La advertencia de reingreso (documento 1, 5.6). Llega vacía con la
     // pantalla y solo se llena cuando el servidor la calcula, en `consultar()`.
     reingreso: { type: Object, default: null },
+    // El parámetro de la empresa (documento 1, capítulo 4). Se cambia en la
+    // pantalla de parámetros, no aquí.
+    perfilSociodemografico: { type: Boolean, default: false },
 });
 
 const colombia = props.ubicaciones.codigoDeColombia;
@@ -71,6 +75,19 @@ const form = useForm({
     salario: "",
     bonificacion: "0",
     banco_id: "",
+
+    // El bloque de 5.2. Viaja siempre, habilitado o no: si la empresa lo tiene
+    // apagado va vacío y el servidor no escribe nada con él.
+    perfil: {
+        estado_civil: "",
+        nivel_educativo: "",
+        numero_hijos: "",
+        personas_a_cargo: "",
+        tipo_vivienda: "",
+        estrato: "",
+        medio_transporte: "",
+        tiempo_desplazamiento: "",
+    },
 });
 
 // Solo el término fijo lleva fecha de finalización (documento 1, 5.4). El campo
@@ -160,10 +177,24 @@ const pasos = computed(() => [
             "banco_id",
         ],
     },
+    /*
+     * El perfil sociodemográfico va antes del resumen y solo si la empresa lo
+     * habilitó. Su lista de campos está vacía a propósito: **todos sus campos
+     * son opcionales aunque el bloque esté activo** (documento 1, 5.2), así que
+     * no hay nada que impida continuar ni nada que marcar como faltante.
+     */
+    ...(props.perfilSociodemografico
+        ? [{ titulo: "Perfil sociodemográfico", campos: [] }]
+        : []),
     { titulo: "Resumen", campos: [] },
 ]);
 
 const paso = ref(0);
+
+// El paso del perfil, cuando existe. Es el penúltimo: el resumen siempre cierra.
+const indiceDelPerfil = computed(() =>
+    props.perfilSociodemografico ? pasos.value.length - 2 : -1,
+);
 
 const titulos = computed(() => pasos.value.map((uno) => uno.titulo));
 
@@ -277,6 +308,54 @@ const resumen = computed(() => [
         valor: textoDe(props.opciones.bancos, form.banco_id),
     },
 ]);
+
+/*
+ * El repaso del bloque opcional. Solo se enseña lo que se llenó: una lista de
+ * ocho renglones vacíos parecería un formulario a medio hacer, y aquí quedar en
+ * blanco es una respuesta válida.
+ */
+const resumenDelPerfil = computed(() =>
+    [
+        {
+            etiqueta: "Estado civil",
+            valor: textoDe(props.opciones.estadosCiviles, form.perfil.estado_civil),
+        },
+        {
+            etiqueta: "Nivel educativo",
+            valor: textoDe(
+                props.opciones.nivelesEducativos,
+                form.perfil.nivel_educativo,
+            ),
+        },
+        { etiqueta: "Número de hijos", valor: form.perfil.numero_hijos },
+        {
+            etiqueta: "Personas a cargo",
+            valor: form.perfil.personas_a_cargo,
+        },
+        {
+            etiqueta: "Tipo de vivienda",
+            valor: textoDe(props.opciones.tiposVivienda, form.perfil.tipo_vivienda),
+        },
+        {
+            etiqueta: "Estrato socioeconómico",
+            valor: textoDe(props.opciones.estratos, form.perfil.estrato),
+        },
+        {
+            etiqueta: "Medio de transporte",
+            valor: textoDe(
+                props.opciones.mediosTransporte,
+                form.perfil.medio_transporte,
+            ),
+        },
+        {
+            etiqueta: "Tiempo de desplazamiento",
+            valor: textoDe(
+                props.opciones.tiemposDesplazamiento,
+                form.perfil.tiempo_desplazamiento,
+            ),
+        },
+    ].filter((linea) => String(linea.valor ?? "").trim() !== ""),
+);
 </script>
 
 <template>
@@ -555,7 +634,91 @@ const resumen = computed(() => [
                 </div>
             </div>
 
-            <!-- Paso 4 · Resumen -->
+            <!-- Paso 4 · Perfil sociodemográfico, solo si la empresa lo habilitó -->
+            <div
+                v-if="perfilSociodemografico"
+                v-show="paso === indiceDelPerfil"
+                class="rounded-[var(--radius-caja)] border border-borde bg-superficie p-5"
+            >
+                <h2 class="text-seccion font-semibold text-texto">
+                    Perfil sociodemográfico
+                </h2>
+
+                <Aviso class="mt-3">
+                    <strong>Todos estos campos son opcionales.</strong> Se pueden
+                    dejar en blanco y completar después. Son el insumo que el
+                    Sistema de Gestión de Seguridad y Salud en el Trabajo pide
+                    para el diagnóstico de condiciones de salud.
+                </Aviso>
+
+                <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <Selector
+                        v-model="form.perfil.estado_civil"
+                        etiqueta="Estado civil"
+                        opcional
+                        :opciones="opciones.estadosCiviles"
+                        :error="form.errors['perfil.estado_civil'] ?? ''"
+                    />
+
+                    <Selector
+                        v-model="form.perfil.nivel_educativo"
+                        etiqueta="Nivel educativo alcanzado"
+                        opcional
+                        :opciones="opciones.nivelesEducativos"
+                        :error="form.errors['perfil.nivel_educativo'] ?? ''"
+                    />
+
+                    <CampoTexto
+                        v-model="form.perfil.numero_hijos"
+                        etiqueta="Número de hijos"
+                        tipo="number"
+                        opcional
+                        :error="form.errors['perfil.numero_hijos'] ?? ''"
+                    />
+
+                    <CampoTexto
+                        v-model="form.perfil.personas_a_cargo"
+                        etiqueta="Número de personas a cargo"
+                        tipo="number"
+                        opcional
+                        :error="form.errors['perfil.personas_a_cargo'] ?? ''"
+                    />
+
+                    <Selector
+                        v-model="form.perfil.tipo_vivienda"
+                        etiqueta="Tipo de vivienda"
+                        opcional
+                        :opciones="opciones.tiposVivienda"
+                        :error="form.errors['perfil.tipo_vivienda'] ?? ''"
+                    />
+
+                    <Selector
+                        v-model="form.perfil.estrato"
+                        etiqueta="Estrato socioeconómico"
+                        opcional
+                        :opciones="opciones.estratos"
+                        :error="form.errors['perfil.estrato'] ?? ''"
+                    />
+
+                    <Selector
+                        v-model="form.perfil.medio_transporte"
+                        etiqueta="Medio de transporte al trabajo"
+                        opcional
+                        :opciones="opciones.mediosTransporte"
+                        :error="form.errors['perfil.medio_transporte'] ?? ''"
+                    />
+
+                    <Selector
+                        v-model="form.perfil.tiempo_desplazamiento"
+                        etiqueta="Tiempo de desplazamiento al trabajo"
+                        opcional
+                        :opciones="opciones.tiemposDesplazamiento"
+                        :error="form.errors['perfil.tiempo_desplazamiento'] ?? ''"
+                    />
+                </div>
+            </div>
+
+            <!-- Último paso · Resumen -->
             <div
                 v-show="esElResumen"
                 class="rounded-[var(--radius-caja)] border border-borde bg-superficie p-5"
@@ -578,6 +741,35 @@ const resumen = computed(() => [
                         </dd>
                     </div>
                 </dl>
+
+                <template v-if="perfilSociodemografico">
+                    <h3 class="mt-5 text-apoyo font-semibold text-texto">
+                        Perfil sociodemográfico
+                    </h3>
+
+                    <dl
+                        v-if="resumenDelPerfil.length > 0"
+                        class="mt-2 divide-y divide-borde"
+                    >
+                        <div
+                            v-for="linea in resumenDelPerfil"
+                            :key="linea.etiqueta"
+                            class="flex justify-between gap-4 py-2 text-tabla"
+                        >
+                            <dt class="text-texto-secundario">
+                                {{ linea.etiqueta }}
+                            </dt>
+                            <dd class="text-right font-medium text-texto">
+                                {{ linea.valor }}
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <p v-else class="mt-2 text-tabla text-texto-secundario">
+                        Sin diligenciar. Son campos opcionales: el empleado se
+                        guarda igual y se pueden completar después.
+                    </p>
+                </template>
 
                 <!--
                     Se repite en el resumen a propósito: aquí ya se sabe la

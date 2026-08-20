@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Contratacion\BloqueSociodemografico;
 use App\Contratacion\Genero;
 use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoDocumento;
@@ -53,6 +54,10 @@ class RegistrarEmpleado extends FormRequest
             ...$this->residencia(),
             ...$this->seguridadSocial(),
             ...$this->contrato(),
+
+            // El bloque opcional de 5.2. Ni uno de sus campos es obligatorio,
+            // aunque la empresa lo tenga habilitado.
+            ...BloqueSociodemografico::reglas(),
         ];
     }
 
@@ -101,6 +106,8 @@ class RegistrarEmpleado extends FormRequest
             'fecha_fin' => 'fecha de finalización',
             'salario' => 'salario mensual',
             'bonificacion' => 'bonificación',
+
+            ...BloqueSociodemografico::atributos(),
         ];
     }
 

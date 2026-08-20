@@ -6,6 +6,7 @@ use App\Autorizacion\Modulo;
 use App\Catalogos\Entidades;
 use App\Catalogos\Ubicaciones;
 use App\Contratacion\AdvertenciaDeReingreso;
+use App\Contratacion\BloqueSociodemografico;
 use App\Contratacion\EstadoVinculacion;
 use App\Contratacion\Genero;
 use App\Contratacion\ListadoDeEmpleados;
@@ -95,7 +96,8 @@ class EmpleadoController extends Controller
     }
 
     /**
-     * El asistente de cuatro pasos del documento 1, secciones 5.1 a 5.3.
+     * El asistente del documento 1, secciones 5.1 a 5.3. Tiene cuatro pasos, o
+     * cinco si la empresa habilitó el perfil sociodemográfico de 5.2.
      *
      * Las listas viajan enteras con la pantalla y no se piden paso a paso: son
      * catálogos de unos cientos de filas, y traerlas de una vez es lo que
@@ -123,7 +125,16 @@ class EmpleadoController extends Controller
                 'riesgos' => TipoRiesgo::paraElegir(),
                 'contratoConFechaFin' => TipoContrato::Fijo->value,
                 ...Entidades::paraFormulario(),
+                ...BloqueSociodemografico::opciones(),
             ],
+            /*
+             * El bloque opcional del documento 1, sección 5.2. Es el parámetro
+             * de la empresa el que decide si el asistente tiene cuatro pasos o
+             * cinco; la pantalla no lo elige ni lo puede cambiar, para eso está
+             * F1-12. Las listas viajan siempre, habilitado o no: son seis
+             * enumerados, no una consulta.
+             */
+            'perfilSociodemografico' => BloqueSociodemografico::habilitado(),
             'ubicaciones' => Ubicaciones::paraFormulario(),
         ]);
     }

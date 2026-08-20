@@ -161,12 +161,18 @@ del documento y del de la fecha de ingreso; el componente compartido `AvisoDeRei
 muestra en el paso 1 y otra vez en el resumen. El énfasis de los 30 días se mide contra
 `Vinculacion::fechaDeSalida()`, **provisional hasta F2-09**: hoy sale de `fecha_fin`.
 
-### [ ] F1-06 · Perfil sociodemográfico
+### [x] F1-06 · Perfil sociodemográfico
 
 Bloque opcional, activable por parámetro de empresa. Todos sus campos opcionales aunque el bloque
 esté activo. Al activarlo después, los empleados existentes quedan en blanco sin marcar error.
 **Hecho cuando:** activar y desactivar el parámetro muestra y oculta el bloque sin romper nada.
 **Fuente:** `docs/01-especificacion-funcional.md` 5.2
+
+Hecho: `BloqueSociodemografico` —el parámetro, las seis listas, las reglas y la escritura en un solo
+sitio—, los cuatro enumerados que faltaban (`EstadoCivil`, `NivelEducativo`, `MedioTransporte`,
+`TiempoDesplazamiento`) tomados del archivo de listas de Angela, el trait `OpcionesDeLista` y el paso
+del asistente, que se intercala antes del resumen solo si la empresa lo habilitó. Un perfil en blanco
+no crea fila: no hay diferencia entre un perfil vacío y uno que no existe.
 
 ### [ ] F1-07 · Ficha del empleado
 
