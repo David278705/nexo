@@ -315,6 +315,9 @@ describe('el acceso', function () {
         $this->actingAs($this->usuario)
             ->get('/empleados/'.$empleado->getKey())
             ->assertOk()
-            ->assertInertia(fn ($pagina) => $pagina->where('titulo', 'Ficha de Sebastián Ortiz')->etc());
+            ->assertInertia(fn ($pagina) => $pagina
+                ->component('Empleados/Ficha')
+                ->where('empleado.nombre', 'Sebastián Ortiz')
+                ->etc());
     });
 });

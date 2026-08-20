@@ -174,12 +174,18 @@ sitio—, los cuatro enumerados que faltaban (`EstadoCivil`, `NivelEducativo`, `
 del asistente, que se intercala antes del resumen solo si la empresa lo habilitó. Un perfil en blanco
 no crea fila: no hay diferencia entre un perfil vacío y uno que no existe.
 
-### [ ] F1-07 · Ficha del empleado
+### [x] F1-07 · Ficha del empleado
 
 Encabezado con saldo de vacaciones siempre visible y pestañas de datos, contrato, novedades y
 movimientos.
 **Hecho cuando:** las cuatro pestañas cargan y el saldo se ve arriba.
 **Fuente:** `docs/03-diseno-e-interfaz.md` 5.3
+
+Hecho: `FichaDeEmpleado` —el encabezado, el resumen de seis datos y el contenido de las cuatro
+pestañas—, la pantalla `Empleados/Ficha` y tres componentes compartidos: `Pestanas`, `ListaDeDatos` y
+`ResumenDeEmpleado`, que volverá a usarse en el modal grande de novedades. El saldo de vacaciones se
+ve arriba **diciendo que todavía no se puede calcular**: el motor es F2-02 y la regla 2 prohíbe
+guardarlo, así que cualquier número de hoy sería inventado.
 
 ### [ ] F1-08 · Listado y detalle de contratos
 

@@ -1,51 +1,51 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-19 · Tarea F1-06
+**Última sesión:** 2026-08-19 · Tarea F1-07
 **Verificación:** verde
-**Siguiente tarea:** F1-07 · Ficha del empleado
+**Siguiente tarea:** F1-08 · Listado y detalle de contratos
 
 ## Qué se hizo
 
-- **`App\Contratacion\BloqueSociodemografico`**, la sección 5.2 del documento 1 entera en un solo
-  sitio: si la empresa lo tiene habilitado, las seis listas para el formulario, las reglas de
-  validación y la escritura. El controlador, el `FormRequest` y `RegistroDeEmpleado` le preguntan a
-  él; ninguno de los tres decide nada del bloque.
-- **Los cuatro enumerados que faltaban**: `EstadoCivil`, `NivelEducativo`, `MedioTransporte` y
-  `TiempoDesplazamiento`, con las opciones **literales del archivo de listas de Angela**
-  (`plantillas/Listas_Desplegables_Formulario_Empleados.xlsx`), que es lo que cerró la decisión D.5.
-  No se inventó ninguna opción. `TipoVivienda` y el estrato ya existían desde F1-01.
-- **El trait `OpcionesDeLista`** con `paraElegir()` y `valores()`. Iban seis enumerados repitiendo
-  los mismos ocho renglones; los cuatro nuevos ya no los repiten.
-- **El quinto paso del asistente**, intercalado antes del resumen y solo cuando el parámetro está en
-  sí. Su lista de campos obligatorios está vacía a propósito. En el resumen se enseña únicamente lo
-  que se llenó, y si no se llenó nada se dice con palabras en vez de dejar ocho renglones vacíos.
-- **`PerfilSociodemograficoTest`** con 14 casos: el parámetro encendido y apagado, las ocho
-  respuestas guardadas, el bloque en blanco, encenderlo con la planta ya cargada, el reingreso que
-  actualiza el perfil existente y las listas que rechazan lo que no está en ellas. Siete casos
-  nuevos de Vitest en el asistente.
-- `composer verificar` en verde a la primera: 284 pruebas de Pest, PHPStan sin errores, build y 115
+- **`App\Contratacion\FichaDeEmpleado`**, que arma la pantalla entera: el encabezado, el resumen de
+  seis datos y el contenido de las cuatro pestañas. El controlador quedó en tres líneas y no formatea
+  ni calcula nada, igual que con `ListadoDeEmpleados`.
+- **La pantalla `Empleados/Ficha`**, con las pestañas de datos personales, contrato, novedades y
+  movimientos. Cambiar de pestaña no pide nada al servidor: el contenido de las cuatro ya viene en
+  las props.
+- **Tres componentes compartidos nuevos**: `Pestanas` (recorrible con flechas y con `role="tab"`),
+  `ListaDeDatos` (la tarjeta de pares etiqueta-valor, que se repetía cuatro veces en la sola pestaña
+  de datos) y `ResumenDeEmpleado`, la franja azul del prototipo.
+- **`TablaDatos` aprendió a no ser clicable.** El historial de periodos informa, no lleva a ninguna
+  parte, y una fila con `cursor-pointer` que no hace nada al pulsarla es peor que ninguna.
+- **Dos relaciones que faltaban en `Persona`**: `paisNacimiento()` y `paisExpedicion()`. La columna
+  guarda el código ISO y la ficha necesita el nombre.
+- **`FichaDeEmpleadoTest` con 19 casos** —el resumen completo, la antigüedad en cuatro escenarios, el
+  perfil sociodemográfico encendido, apagado y vacío, el historial con y sin prórroga, el tope legal
+  solo donde hay plazo— y 11 casos nuevos de Vitest.
+- `composer verificar` en verde a la primera: 305 pruebas de Pest, PHPStan sin errores, build y 126
   de Vitest.
 
 ## Decisiones tomadas
 
-- **Las opciones salen del archivo de listas, no de la plantilla de carga.** Las dos fuentes existen
-  y **no coinciden**: la plantilla `2 - Perfil sociodemografico (opcional).xlsx` dice «Primaria ·
-  Bachillerato · Técnico · Tecnólogo · Profesional · Posgrado» y rangos de desplazamiento distintos.
-  Se siguió el archivo de listas porque es posterior, porque es el que resolvió D.5 para las cinco
-  listas de entidades y porque la sesión pasada ya anunció que F1-06 se construiría así. **Queda una
-  pregunta abierta abajo: la plantilla de carga hay que alinearla antes de F5-01.**
-- **Un perfil vacío no se guarda.** Si el bloque está encendido y no se llena nada, no se crea la
-  fila. Una fila de ocho nulos y la ausencia de fila significan lo mismo, y solo la primera obliga a
-  explicar después por qué está ahí. Es además lo que hace que encender el parámetro con la planta
-  ya cargada no marque nada como error: no hay nada que reclamar.
-- **El bloque se valida siempre, encendido o apagado, pero solo se guarda encendido.** Rechazar el
-  envío con un `prohibited` castigaría a quien tenía el formulario abierto cuando cambiaron el
-  parámetro. Lo que llega con el bloque apagado se descarta en silencio.
-- **El perfil cuelga de la persona, no de la vinculación**, y por eso un reingreso **actualiza** el
-  perfil que ya existía en vez de crear un segundo. El estrato no cambia porque a alguien lo
-  recontraten, pero sí pudo cambiar mientras estuvo fuera.
-- **Los numéricos van con tope**: hijos y personas a cargo hasta 30, estrato del 1 al 6. El estrato
-  es el rango del documento; el 30 es una barrera contra el dedo torpe, no una regla legal.
+- **El saldo de vacaciones se enseña como un hueco con nombre, no como un cero.** Dice «Aún no
+  disponible» con una línea que explica de qué depende. Pintar «0,00 días» sería el único número
+  falso posible, y guardar una columna lo prohíbe la regla 2. Cuando exista F2-02 se cambia
+  `FichaDeEmpleado::saldoDeVacaciones()` y no cambia nada más: la pantalla ya lo trata como un dato
+  cualquiera del resumen.
+- **Las pestañas de novedades y movimientos cargan vacías y explican qué se verá ahí.** No dicen «no
+  hay datos» ni anuncian que falta un módulo: describen el contenido futuro, que además es cierto hoy
+  —esa persona no tiene ninguna registrada—. El día que exista el módulo solo se llena el arreglo.
+- **La antigüedad deja de correr cuando la persona sale.** Se mide hasta `fechaDeSalida()` si la hay
+  y hasta hoy si no. No es una cuenta laboral —no descuenta suspensiones— y por eso no vive en el
+  motor de cálculo: es la distancia entre dos fechas.
+- **El historial de periodos se enseña ya en la ficha, no solo en F1-08.** La tarjeta de contrato sin
+  él sería tres renglones. `FichaDeEmpleado::filasDelHistorial()` es pública y estática justamente
+  para que el detalle del contrato de F1-08 use la misma tabla y no una copia.
+- **El tope de cuatro años y la duración total solo aparecen donde hay plazo.** En un indefinido no
+  existe el tope, y enseñarlo vacío invita a preguntarse por qué está.
+- **Las fechas van en `d/m/Y`,** como el listado y la exportación, aunque el prototipo escriba «3 de
+  febrero de 2022» en este encabezado. Una sola forma de leer una fecha en todo el sistema pesa más
+  que el detalle de una pantalla.
 
 ## Preguntas para Angela
 
@@ -59,26 +59,34 @@
   Colfondos, Skandia, el Fondo Nacional del Ahorro y «Otro», pero **el fondo de cesantías no aparece
   en la sección 5.1 de la especificación funcional**. La pregunta concreta: **¿se agrega «fondo de
   cesantías» como campo obligatorio del formulario de empleado?** Si la respuesta es sí, es una tarea
-  nueva —tabla, columna, seeder y un campo más en el paso 2 del asistente, que ya está construido.
+  nueva —tabla, columna, seeder, un campo en el paso 2 del asistente y un renglón en la ficha, que ya
+  están construidos—.
 - Menor: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)» sin
   distinguir especialización, maestría y doctorado**, tal como los pediste. Separarlos después es
-  agregar casos al enumerado y nada más: lo guardado es texto legible, no un número de orden.
-- **D.1 sigue abierta: ¿se registra el tipo de prórroga?** No ha bloqueado nada todavía, pero la
-  respuesta cambia el formulario de «Renovar» de F1-09: o pregunta cuál de las dos es, o no pregunta.
+  agregar casos al enumerado y nada más.
+- **D.1 sigue abierta: ¿se registra el tipo de prórroga?** La respuesta cambia el formulario de
+  «Renovar» de F1-09: o pregunta cuál de las dos es, o no pregunta.
 - **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
   prolongado y la anticipación de la alerta de cercanía al tope de cuatro años.
 
 ## Decisiones para David
 
-- **La fecha de salida no existe todavía, y el énfasis de los 30 días de la advertencia de reingreso
-  depende de ella.** Hoy `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de una vinculación
-  inactiva. La advertencia se muestra siempre igual; lo único que se pierde es el énfasis. **Está
-  anotado en F2-09**, que es donde se corrige con un método de tres líneas.
+- **El texto del hueco del saldo se lee en pantalla y es tuyo.** Hoy dice «Aún no disponible» y, en
+  letra pequeña, «El saldo se calcula con las vacaciones disfrutadas y las suspensiones registradas.
+  Se verá aquí cuando el módulo de vacaciones esté disponible». Está en un solo sitio
+  (`FichaDeEmpleado::saldoDeVacaciones()`). Si prefieres otra frase para las demostraciones, se
+  cambia ahí.
+- **La ficha no tiene botón de «Editar».** El prototipo lo enseña y el documento 3 describe la
+  pantalla de edición, pero **no hay tarea de editar empleado en el backlog de la fase 1**. No se
+  puso un botón que lleve a una pantalla que no existe. Si la edición va en la fase 1, es una tarea
+  nueva; si va después, la ficha ya tiene su sitio libre.
+- **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de
+  una vinculación inactiva. Ahora de ella dependen dos cosas: el énfasis de los 30 días de la
+  advertencia de reingreso y **la antigüedad de quien ya salió**. Está anotado en F2-09.
 - **Contrastar las cuatro listas de seguridad social contra las fuentes oficiales antes de vender.**
   Lo advierte la propia hoja «Notas y fuentes» del archivo: hay nueve EPS intervenidas por la
-  Supersalud —siguen operando, por eso se cargaron— y el sector está en movimiento. Las fuentes son
-  Supersalud, Fasecolda, la Superintendencia del Subsidio Familiar y la Superintendencia Financiera.
-  **Es una lista global: si está mal, está mal para todos los clientes a la vez.**
+  Supersalud y el sector está en movimiento. **Es una lista global: si está mal, está mal para todos
+  los clientes a la vez.**
 - **Verificar el calendario de festivos antes de vender.** Cincuenta y tres fechas, quince minutos,
   mismo riesgo global que las EPS.
 - **Contrastar los 1.101 municipios contra el archivo del DANE.** Ese mismo cotejo trae los códigos
@@ -86,12 +94,11 @@
 - **B.3, ¿bloquear o advertir?**, deja de ser teórica en F1-09. La sugerencia del documento 6 es
   bloquear el tope de cuatro años y advertir con fuerza en la prórroga corta.
 - **Vigencia del enlace de invitación: siete días.** Abierta desde F0-07, en
-  `Invitaciones::DIAS_DE_VIGENCIA`, en un solo sitio. **Confírmalo o cámbialo.**
+  `Invitaciones::DIAS_DE_VIGENCIA`. **Confírmalo o cámbialo.**
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
-  falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Ya son cuatro las tablas de negocio que
-  dependen de ello.
-- Abierta de diecisiete sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+  falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
+- Abierta de dieciocho sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -102,20 +109,19 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-07 · Ficha del empleado**: encabezado con el saldo de vacaciones siempre
-  visible y cuatro pestañas —datos, contrato, novedades y movimientos—.
-- **El saldo de vacaciones no existe hasta F2-02.** La ficha tendrá que enseñar el encabezado con lo
-  que haya, sin inventar un cálculo ni guardar una columna: la regla 2 del proyecto lo prohíbe.
-  Decidir en esa tarea cómo se ve el hueco.
-- **La ruta y el controlador de la ficha ya existen** desde F1-03: `EmpleadoController::ficha()`
-  resuelve la vinculación de verdad y hoy pinta `SeccionPendiente`. Es cambiar el `Inertia::render`.
-- **El bloque sociodemográfico se enseña en la pestaña de datos solo si el parámetro está en sí**, y
-  `PerfilSociodemografico::estaVacio()` existe desde F1-01 justo para eso: enseñarlo como pendiente
-  en vez de como una lista de campos vacíos. `BloqueSociodemografico::habilitado()` y `::opciones()`
-  son lo que hace falta; la edición del perfil desde la ficha no es de esta tarea.
-- **Los parámetros de empresa siguen sin pantalla**: es F1-12. Hasta entonces el único modo de
-  encender el perfil sociodemográfico es tocando `tenants` a mano.
-- **`OpcionesDeLista` está solo en los cuatro enumerados nuevos.** `Genero`, `TipoDocumento`,
-  `TipoContrato`, `TipoRiesgo`, `TipoVivienda` y `EstadoVinculacion` siguen con los métodos
-  escritos a mano. Unificarlos es un rato y no rompe nada, pero no era de esta tarea.
+- La siguiente es **F1-08 · Listado y detalle de contratos**: vista por defecto de los que vencen en
+  90 días, detalle con el historial desde el periodo inicial y la fecha límite de preaviso visible.
+- **La tabla del historial ya está resuelta.** `FichaDeEmpleado::filasDelHistorial()` la arma y la
+  pestaña de contrato la enseña; el detalle de F1-08 la reutiliza tal cual y le agrega el preaviso y
+  los dos botones de acción. **No escribas una segunda.**
+- **`HistorialDeContrato` ya calcula todo lo que F1-08 necesita** menos el preaviso: prórrogas
+  acumuladas, vencimiento vigente, duración total y fecha del tope legal.
+- **El listado de contratos se parece mucho al de empleados.** `ListadoDeEmpleados` es el patrón a
+  seguir —filtros normalizados en el servidor, una sola consulta compartida con la exportación— y
+  `Paginacion`, `BarraFiltros` y `TablaDatos` ya existen.
+- **`ResumenDeEmpleado` está pensado para reaparecer** en el modal grande de novedades (documento 3,
+  5.5), que es F2-03. No lo dupliques allá.
+- **`OpcionesDeLista` sigue solo en los cuatro enumerados de F1-06.** `Genero`, `TipoDocumento`,
+  `TipoContrato`, `TipoRiesgo`, `TipoVivienda` y `EstadoVinculacion` mantienen sus métodos escritos a
+  mano. Unificarlos es un rato y no rompe nada.
 - **No queda ninguna tarea bloqueada en el backlog.**

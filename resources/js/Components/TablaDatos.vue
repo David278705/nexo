@@ -19,6 +19,13 @@ defineProps({
     filas: { type: Array, required: true },
     // Campo que identifica la fila. `id` en todos los módulos.
     clave: { type: String, default: "id" },
+    /*
+     * En los listados la fila completa lleva a la ficha, pero hay tablas que
+     * solo informan —el historial de periodos del contrato, por ejemplo—. Ahí
+     * la fila no se pinta como clicable ni se recorre con el tabulador, porque
+     * ofrecer un clic que no hace nada es peor que no ofrecerlo.
+     */
+    clicable: { type: Boolean, default: true },
     tituloVacio: { type: String, default: "Aún no hay registros" },
     descripcionVacio: { type: String, default: "" },
     // La columna por la que ya viene ordenada la página y en qué sentido.
@@ -90,11 +97,16 @@ function sentido(columna, ordenPor, ordenDireccion) {
                     <tr
                         v-for="fila in filas"
                         :key="fila[clave]"
-                        tabindex="0"
-                        class="h-fila cursor-pointer border-b border-borde hover:bg-superficie-resaltada"
-                        @click="emit('abrir', fila)"
-                        @keydown.enter="emit('abrir', fila)"
-                        @keydown.space.prevent="emit('abrir', fila)"
+                        :tabindex="clicable ? 0 : undefined"
+                        class="h-fila border-b border-borde"
+                        :class="
+                            clicable
+                                ? 'cursor-pointer hover:bg-superficie-resaltada'
+                                : ''
+                        "
+                        @click="clicable && emit('abrir', fila)"
+                        @keydown.enter="clicable && emit('abrir', fila)"
+                        @keydown.space.prevent="clicable && emit('abrir', fila)"
                     >
                         <td
                             v-for="columna in columnas"

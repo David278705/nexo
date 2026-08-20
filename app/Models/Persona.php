@@ -82,6 +82,30 @@ class Persona extends Model
     }
 
     /**
+     * El país de nacimiento y el de expedición del documento.
+     *
+     * La columna guarda el código ISO —`CO`, `VE`— y no el nombre, porque de él
+     * depende la regla 5.1.1: dentro de Colombia el departamento y la ciudad
+     * salen de listas encadenadas; fuera se digitan a mano. Estas relaciones
+     * son para enseñar el nombre en la ficha, no para decidir esa regla: para
+     * eso se compara contra `Pais::COLOMBIA`.
+     *
+     * @return BelongsTo<Pais, $this>
+     */
+    public function paisNacimiento(): BelongsTo
+    {
+        return $this->belongsTo(Pais::class, 'pais_nacimiento', 'codigo');
+    }
+
+    /**
+     * @return BelongsTo<Pais, $this>
+     */
+    public function paisExpedicion(): BelongsTo
+    {
+        return $this->belongsTo(Pais::class, 'pais_expedicion', 'codigo');
+    }
+
+    /**
      * @return BelongsTo<Ciudad, $this>
      */
     public function ciudadResidencia(): BelongsTo

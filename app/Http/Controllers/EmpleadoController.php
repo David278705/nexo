@@ -8,6 +8,7 @@ use App\Catalogos\Ubicaciones;
 use App\Contratacion\AdvertenciaDeReingreso;
 use App\Contratacion\BloqueSociodemografico;
 use App\Contratacion\EstadoVinculacion;
+use App\Contratacion\FichaDeEmpleado;
 use App\Contratacion\Genero;
 use App\Contratacion\ListadoDeEmpleados;
 use App\Contratacion\RegistroDeEmpleado;
@@ -81,18 +82,21 @@ class EmpleadoController extends Controller
     }
 
     /**
-     * La ficha del empleado, que llega completa en F1-07.
+     * La ficha del empleado (documento 3, sección 5.3).
      *
-     * Existe desde ya porque la fila completa de la tabla lleva a ella y un
-     * listado cuyas filas no llevan a ninguna parte no se puede probar. Resuelve
-     * la vinculación de verdad, así que la ficha de otra empresa responde 404
-     * desde hoy.
+     * La vinculación se resuelve por el enrutador y pasa por el global scope
+     * del trait, así que la ficha de otra empresa responde 404 sin que aquí se
+     * escriba una sola comprobación.
+     *
+     * Todo lo que se enseña lo arma `FichaDeEmpleado`; este método no formatea
+     * ni calcula nada.
      */
     public function ficha(Vinculacion $empleado): RespuestaInertia
     {
-        return Inertia::render('SeccionPendiente', [
-            'titulo' => 'Ficha de '.$empleado->persona->nombreCompleto(),
-        ]);
+        return Inertia::render(
+            'Empleados/Ficha',
+            FichaDeEmpleado::de($empleado)->paraLaPantalla(),
+        );
     }
 
     /**
