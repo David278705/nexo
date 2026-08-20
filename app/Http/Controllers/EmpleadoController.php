@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Autorizacion\Modulo;
 use App\Catalogos\Entidades;
 use App\Catalogos\Ubicaciones;
+use App\Contratacion\AdvertenciaDeReingreso;
 use App\Contratacion\EstadoVinculacion;
 use App\Contratacion\Genero;
 use App\Contratacion\ListadoDeEmpleados;
@@ -100,9 +101,21 @@ class EmpleadoController extends Controller
      * catálogos de unos cientos de filas, y traerlas de una vez es lo que
      * permite que el encadenamiento de departamento y ciudad sea instantáneo.
      */
-    public function nuevo(): RespuestaInertia
+    public function nuevo(Request $peticion): RespuestaInertia
     {
         return Inertia::render('Empleados/Nuevo', [
+            /*
+             * La advertencia de reingreso (documento 1, 5.6). Es una prop
+             * opcional: no se calcula en la carga de la pantalla, solo cuando el
+             * asistente la pide con `router.reload({ only: ['reingreso'] })` al
+             * salir del campo del documento. Así la comprobación vive en el
+             * servidor, que es el único que puede mirar las vinculaciones de la
+             * empresa, y sin una sola llamada de `axios`.
+             */
+            'reingreso' => Inertia::optional(fn (): ?array => AdvertenciaDeReingreso::para(
+                $this->consultado($peticion, 'numero_documento'),
+                $this->consultado($peticion, 'fecha_ingreso'),
+            )),
             'opciones' => [
                 'documentos' => TipoDocumento::paraElegir(),
                 'generos' => Genero::paraElegir(),
@@ -113,6 +126,20 @@ class EmpleadoController extends Controller
             ],
             'ubicaciones' => Ubicaciones::paraFormulario(),
         ]);
+    }
+
+    /**
+     * Un parámetro de la consulta, solo si llegó como texto.
+     *
+     * El asistente manda lo que haya escrito en el campo, y eso puede ser un
+     * arreglo si alguien manipula la dirección. Aquí se descarta sin ruido: la
+     * advertencia de reingreso es un aviso, no una validación.
+     */
+    private function consultado(Request $peticion, string $parametro): ?string
+    {
+        $valor = $peticion->query($parametro);
+
+        return is_string($valor) ? $valor : null;
     }
 
     /**

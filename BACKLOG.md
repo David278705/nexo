@@ -148,12 +148,18 @@ persona por su documento antes de crearla. Los enumerados `Genero` y `TipoRiesgo
 entidades en `Catalogos\Entidades`. El estado no se digita en ninguna parte: nace activo por el valor
 por defecto de la columna.
 
-### [ ] F1-05 · Advertencia de reingreso
+### [x] F1-05 · Advertencia de reingreso
 
 Al digitar un documento que ya tuvo vinculación en esa empresa, aviso en pantalla con el texto exacto
 del documento. Énfasis especial si el reingreso es dentro de los 30 días siguientes a la salida.
 **Hecho cuando:** el aviso aparece con el texto literal y hay prueba del caso de 30 días.
 **Fuente:** `docs/01-especificacion-funcional.md` 5.6
+
+Hecho: `AdvertenciaDeReingreso`, con los dos textos literales como constantes del servidor; la prop
+opcional `reingreso` que el asistente pide con `router.reload({ only: [...] })` al salir del campo
+del documento y del de la fecha de ingreso; el componente compartido `AvisoDeReingreso`, que se
+muestra en el paso 1 y otra vez en el resumen. El énfasis de los 30 días se mide contra
+`Vinculacion::fechaDeSalida()`, **provisional hasta F2-09**: hoy sale de `fecha_fin`.
 
 ### [ ] F1-06 · Perfil sociodemográfico
 
@@ -304,6 +310,10 @@ Módulo con los siete tipos de salida y los motivos dependientes. Autocompletado
 plazo y obra terminada. Categoría de rotación deducida.
 **Hecho cuando:** cambiar el tipo de salida recarga los motivos y el empleado pasa a inactivo.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 7
+
+Pendiente que dejó F1-05: al guardar la fecha de salida, **`Vinculacion::fechaDeSalida()` tiene que
+devolverla a ella** y no `fecha_fin`. Es un método de tres líneas y es de donde sale el énfasis de
+los 30 días de la advertencia de reingreso.
 
 ### [ ] F2-10 · Edición y borrado de novedades
 

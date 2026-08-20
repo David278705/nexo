@@ -190,6 +190,32 @@ class Vinculacion extends Model
     }
 
     /**
+     * Cuándo terminó esta vinculación, o `null` si sigue viva.
+     *
+     * **Es provisional, y está en un solo sitio a propósito.** La fecha de
+     * salida es un campo del módulo de terminaciones (documento 1, 7.1), que es
+     * la tarea F2-09: hoy una vinculación inactiva no guarda cuándo terminó. Lo
+     * único disponible es `fecha_fin`, que en un término fijo expirado es
+     * exactamente esa fecha, y en el indefinido y en la obra o labor es nula.
+     *
+     * Cuando F2-09 exista, este método devuelve la fecha de salida registrada y
+     * nadie más cambia. Lo único que hoy se pierde por devolver nulo es el
+     * énfasis de los 30 días en la advertencia de reingreso: el aviso se muestra
+     * igual, porque no depende de esta fecha sino de que haya una vinculación
+     * anterior.
+     */
+    public function fechaDeSalida(): ?Carbon
+    {
+        if ($this->estaActiva()) {
+            return null;
+        }
+
+        $fecha = $this->getAttribute('fecha_fin');
+
+        return $fecha instanceof Carbon ? $fecha : null;
+    }
+
+    /**
      * @param  Builder<$this>  $consulta
      * @return Builder<$this>
      */

@@ -1,8 +1,9 @@
 <script setup>
-import { Head, Link, useForm } from "@inertiajs/vue3";
+import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import Armazon from "@/Components/Armazon.vue";
 import Aviso from "@/Components/Aviso.vue";
+import AvisoDeReingreso from "@/Components/AvisoDeReingreso.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
@@ -35,6 +36,9 @@ import SelectorUbicacion from "@/Components/SelectorUbicacion.vue";
 const props = defineProps({
     opciones: { type: Object, required: true },
     ubicaciones: { type: Object, required: true },
+    // La advertencia de reingreso (documento 1, 5.6). Llega vacía con la
+    // pantalla y solo se llena cuando el servidor la calcula, en `consultar()`.
+    reingreso: { type: Object, default: null },
 });
 
 const colombia = props.ubicaciones.codigoDeColombia;
@@ -75,6 +79,37 @@ const form = useForm({
 const llevaFechaFin = computed(
     () => form.tipo_contrato === props.opciones.contratoConFechaFin,
 );
+
+/*
+ * La comprobación de reingreso (documento 1, 5.6).
+ *
+ * Se pregunta al servidor al salir del campo del documento, y otra vez al salir
+ * del de la fecha de ingreso, porque el énfasis de los 30 días depende de las
+ * dos cosas y la fecha se digita dos pasos después.
+ *
+ * Sin `axios` ni `fetch`: `router.reload` con `only` trae únicamente la prop
+ * `reingreso` y deja intacto lo que ya está escrito en el formulario.
+ */
+const ultimaConsulta = ref("");
+
+function consultar() {
+    const documento = form.numero_documento.trim();
+    const consulta = `${documento}|${form.fecha_ingreso}`;
+
+    if (documento === "" || consulta === ultimaConsulta.value) {
+        return;
+    }
+
+    ultimaConsulta.value = consulta;
+
+    router.reload({
+        only: ["reingreso"],
+        data: {
+            numero_documento: documento,
+            fecha_ingreso: form.fecha_ingreso,
+        },
+    });
+}
 
 /*
  * Qué campo obligatorio vive en qué paso. Sirve para las dos direcciones: no
@@ -285,6 +320,7 @@ const resumen = computed(() => [
                         etiqueta="Número de documento"
                         ayuda="Es la llave con la que se vincula toda la información de la persona."
                         :error="form.errors.numero_documento ?? ''"
+                        @salir="consultar"
                     />
 
                     <Selector
@@ -322,6 +358,12 @@ const resumen = computed(() => [
                         :error="form.errors.segundo_apellido ?? ''"
                     />
                 </div>
+
+                <!--
+                    El aviso va aquí, pegado al campo que lo dispara: quien
+                    digita el documento se entera en el sitio donde lo digitó.
+                -->
+                <AvisoDeReingreso :reingreso="reingreso" class="mt-4" />
 
                 <div class="mt-4 grid gap-4 sm:grid-cols-4">
                     <CampoFecha
@@ -478,6 +520,7 @@ const resumen = computed(() => [
                         etiqueta="Fecha de ingreso"
                         ayuda="Sobre ella se calculan las vacaciones y el periodo de prueba."
                         :error="form.errors.fecha_ingreso ?? ''"
+                        @salir="consultar"
                     />
 
                     <CampoFecha
@@ -535,6 +578,13 @@ const resumen = computed(() => [
                         </dd>
                     </div>
                 </dl>
+
+                <!--
+                    Se repite en el resumen a propósito: aquí ya se sabe la
+                    fecha de ingreso, así que es donde el énfasis de los 30 días
+                    puede aparecer, y es el último momento antes de guardar.
+                -->
+                <AvisoDeReingreso :reingreso="reingreso" class="mt-4" />
 
                 <Aviso class="mt-4">
                     El empleado quedará <strong>activo</strong> en cuanto se

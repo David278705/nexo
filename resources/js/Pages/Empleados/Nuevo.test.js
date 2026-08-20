@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 
 const pagina = {
@@ -14,10 +14,15 @@ const pagina = {
     },
 };
 
+// La recarga parcial que pide la advertencia de reingreso. Se espía en lugar de
+// ejecutarse: lo que importa es con qué se llama, no que jsdom navegue.
+const recargar = vi.fn();
+
 vi.mock("@inertiajs/vue3", async (importarOriginal) => ({
     ...(await importarOriginal()),
     Head: { name: "Head", template: "<span />" },
     usePage: () => pagina,
+    router: { reload: (...argumentos) => recargar(...argumentos) },
     Link: {
         name: "Link",
         props: ["href"],
@@ -65,8 +70,13 @@ const ubicaciones = {
     codigoDeColombia: "CO",
 };
 
-function montar() {
-    return mount(Nuevo, { props: { opciones, ubicaciones } });
+function montar(props = {}) {
+    return mount(Nuevo, { props: { opciones, ubicaciones, ...props } });
+}
+
+// El número de documento es el primer campo de texto del asistente.
+function campoDelDocumento(componente) {
+    return componente.findAll('input[type="text"]')[0];
 }
 
 // Todo lo obligatorio del primer paso, para poder comprobar que se avanza.
@@ -140,6 +150,77 @@ describe("Asistente de nuevo empleado", () => {
     it("no pide el país de la residencia, que siempre es Colombia", () => {
         expect(montar().text()).toContain(
             "La residencia es siempre en Colombia",
+        );
+    });
+});
+
+describe("Advertencia de reingreso", () => {
+    const reingreso = {
+        texto: "Esta persona ya tuvo una vinculación anterior con la empresa.",
+        nota: "Usted recibirá las alertas de periodo de prueba estipuladas.",
+        nombre: "Carolina Restrepo",
+        vinculaciones: 1,
+        reciente: true,
+        detalle: "El reingreso es 20 días después de la salida anterior.",
+    };
+
+    beforeEach(() => recargar.mockClear());
+
+    it("no advierte nada mientras el servidor no ha dicho nada", () => {
+        expect(montar().text()).not.toContain("ya tuvo una vinculación");
+    });
+
+    it("le pregunta al servidor al salir del campo del documento", async () => {
+        const componente = montar();
+
+        componente.vm.form.numero_documento = "1017245880";
+        await componente.vm.$nextTick();
+        await campoDelDocumento(componente).trigger("blur");
+
+        expect(recargar).toHaveBeenCalledWith({
+            only: ["reingreso"],
+            data: { numero_documento: "1017245880", fecha_ingreso: "" },
+        });
+    });
+
+    it("no pregunta con el documento vacío", async () => {
+        await campoDelDocumento(montar()).trigger("blur");
+
+        expect(recargar).not.toHaveBeenCalled();
+    });
+
+    it("no repite la misma pregunta dos veces", async () => {
+        const componente = montar();
+
+        componente.vm.form.numero_documento = "1017245880";
+        await componente.vm.$nextTick();
+        await campoDelDocumento(componente).trigger("blur");
+        await campoDelDocumento(componente).trigger("blur");
+
+        expect(recargar).toHaveBeenCalledTimes(1);
+    });
+
+    it("vuelve a preguntar cuando cambia la fecha de ingreso", async () => {
+        const componente = montar();
+
+        componente.vm.form.numero_documento = "1017245880";
+        await componente.vm.$nextTick();
+        await campoDelDocumento(componente).trigger("blur");
+
+        componente.vm.form.fecha_ingreso = "2026-08-20";
+        await componente.vm.$nextTick();
+        await campoDelDocumento(componente).trigger("blur");
+
+        expect(recargar).toHaveBeenCalledTimes(2);
+    });
+
+    it("muestra el aviso junto al documento en cuanto llega del servidor", () => {
+        const texto = montar({ reingreso }).text();
+
+        expect(texto).toContain(reingreso.texto);
+        expect(texto).toContain(reingreso.nota);
+        expect(texto).toContain(
+            "Reingreso dentro de los 30 días siguientes a la salida",
         );
     });
 });

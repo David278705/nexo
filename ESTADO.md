@@ -1,55 +1,44 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-19 · Tarea F1-04
+**Última sesión:** 2026-08-19 · Tarea F1-05
 **Verificación:** verde
-**Siguiente tarea:** F1-05 · Advertencia de reingreso
+**Siguiente tarea:** F1-06 · Perfil sociodemográfico
 
 ## Qué se hizo
 
-- **`resources/js/Pages/Empleados/Nuevo.vue`**, el asistente de cuatro pasos de las secciones 5.1 a
-  5.3 del documento 1: identificación, residencia y seguridad social, información contractual y
-  resumen. Los veintiséis campos de la especificación, ninguno de más y ninguno de menos.
-- **`PasosDelAsistente.vue`**, componente compartido nuevo: pinta el avance, deja retroceder a un
-  paso ya recorrido y no deja saltar hacia adelante. Vive en `Components/` porque el panel del
-  proveedor construye otro asistente igual en F1B-02.
-- **`App\Http\Requests\RegistrarEmpleado`**, toda la validación del formulario en el servidor,
-  incluida la regla 5.1.1 —la ciudad tiene que ser del departamento elegido— y la fecha de
-  finalización, que exige el término fijo y prohíbe el resto.
-- **`App\Contratacion\RegistroDeEmpleado`**, la escritura, en una transacción: busca la persona por
-  su documento antes de crearla y abre la vinculación. **En todo el archivo no aparece la palabra
-  «activo»**, y esa ausencia es la prueba de que el estado no lo digita nadie.
-- **`Genero` y `TipoRiesgo`**, los dos enumerados que la decisión D.5 dejó resueltos, y
-  **`App\Catalogos\Entidades`**, el único sitio donde se arman las cinco listas de entidades para un
-  formulario, como `Ubicaciones` lo es para la geografía.
-- **`EmpleadoController::nuevo()` y `::guardar()`**, con la ruta `POST /empleados`. El controlador no
-  decide nada: traduce props y elige a dónde va el usuario después.
-- **`Empleados/Index` muestra la confirmación** de lo que se acaba de guardar, leída de la sesión.
-- **`RegistroDeEmpleadoTest`** con 28 casos, más siete de Vitest para el asistente y cuatro para
-  `PasosDelAsistente`.
-- `composer verificar` en verde a la primera: 253 pruebas de Pest, PHPStan sin errores, build y 97 de
-  Vitest.
+- **`App\Contratacion\AdvertenciaDeReingreso`**, la sección 5.6 del documento 1. Los dos textos
+  —la advertencia y la nota— son **constantes del servidor**, no cadenas dentro de un componente
+  Vue, para que una prueba pueda compararlos carácter a carácter con el documento. Devuelve `null`
+  cuando no hay nada que advertir, y así el aviso no existe en lugar de existir vacío.
+- **La prop opcional `reingreso`** en `EmpleadoController::nuevo()`. No se calcula al abrir la
+  pantalla: solo cuando el asistente la pide. `Inertia::optional()` es exactamente eso.
+- **`AvisoDeReingreso.vue`**, componente compartido. Se muestra dos veces en el asistente: pegado al
+  campo del documento, que es donde se digita, y otra vez en el resumen, que es donde ya se conoce la
+  fecha de ingreso y donde es la última oportunidad antes de guardar.
+- **`Vinculacion::fechaDeSalida()`**, el único sitio del que sale la fecha de la salida anterior.
+- **`AdvertenciaDeReingresoTest`** con 17 casos, incluidos los dos lados de la ventana de 30 días
+  —día 30 dentro, día 31 fuera— y el aislamiento entre empresas. Seis casos nuevos de Vitest en el
+  asistente y cinco del componente.
+- `composer verificar` en verde: 270 pruebas de Pest, PHPStan sin errores, build y 108 de Vitest.
 
 ## Decisiones tomadas
 
-- **El asistente no guarda nada hasta el último paso.** Por eso se puede retroceder sin coste y por
-  eso no hay borradores a medias en la base de datos. El paso 4 es un resumen de repaso, no un
-  formulario más.
-- **Lo que valida Vue no es lo que valida el servidor.** El asistente solo impide avanzar con un
-  obligatorio vacío, que es más amable que descubrirlo al final; las reglas de verdad son las de
-  `RegistrarEmpleado`, y cuando una falla el asistente vuelve solo al paso donde está el error.
-- **Volver a registrar un documento que ya existe actualiza los datos personales de esa persona.**
-  Una persona tiene una sola versión de su nombre y su dirección; la vinculación nueva es la que se
-  crea aparte. Sin esto, el reingreso de F1-05 dejaría la dirección de hace cinco años.
-- **El número de documento se valida como texto, no como número.** El pasaporte trae letras y un
-  `numeric` convertiría «000123» en 123, que es otro documento. Hay prueba de ello.
-- **Las listas viajan enteras con la pantalla**, no paso a paso. Son unos cientos de filas y traerlas
-  de una vez es lo que hace instantáneo el encadenamiento de departamento y ciudad.
-- **La fecha de finalización desaparece cuando el contrato no es a término fijo**, no se
-  deshabilita: un valor escrito antes de cambiar de modalidad se quedaría dentro.
-- **El fondo de cesantías no se construyó.** No está en la sección 5.1 de la especificación y no se
-  inventa un campo obligatorio. Sigue siendo pregunta para Angela, abajo.
-- **Las pruebas no corren `CatalogosSeeder`**: crean las filas mínimas de catálogo que el formulario
-  exige. Traer los 1.101 municipios en cada caso costaría más que todo lo que se prueba.
+- **La comprobación es del servidor y viaja por Inertia**, no por `axios`. `router.reload({ only:
+  ['reingreso'] })` al salir del campo, con `preserveState`, así que el formulario a medio llenar no
+  se pierde. Es el único camino por el que el navegador puede saber si un documento ya estuvo
+  vinculado sin que se le entregue la lista de documentos de la empresa.
+- **La advertencia aparece aunque la vinculación anterior siga activa.** El documento dice «ya tuvo
+  un registro anterior», no «ya salió»: dos vinculaciones simultáneas de la misma persona son
+  igualmente algo que quien registra tiene que ver.
+- **El énfasis se pregunta dos veces.** En el paso 1 no existe todavía la fecha de ingreso, así que
+  el reingreso se mide contra hoy; al salir del campo de fecha de ingreso, en el paso 3, se vuelve a
+  preguntar y el aviso del resumen ya sale con la cuenta correcta.
+- **Un ingreso anterior a la salida no lleva énfasis.** Es un dato mal digitado, no un reingreso
+  cercano, y marcarlo en rojo enseñaría a ignorar el aviso.
+- **El tono es advertencia, nunca error.** Un reingreso es legítimo; lo que se pide es verificar. El
+  énfasis de los 30 días va **en palabras además de en negrilla** —cambia el título del aviso—,
+  porque el color no puede ser el único portador de la información.
+- **`fechaDeSalida()` es provisional y está en un solo método a propósito.** Ver abajo.
 
 ## Preguntas para Angela
 
@@ -68,12 +57,17 @@
 
 ## Decisiones para David
 
+- **La fecha de salida no existe todavía, y el énfasis de los 30 días depende de ella.** Es un campo
+  del módulo de terminaciones (documento 1, 7.1), que es F2-09. Hoy `Vinculacion::fechaDeSalida()`
+  devuelve `fecha_fin` de una vinculación inactiva, que en un término fijo expirado **es** la fecha
+  de salida y en las demás modalidades es nula. Consecuencia acotada a propósito: **la advertencia se
+  muestra siempre igual**; lo único que se pierde cuando no hay fecha es el énfasis. Cuando F2-09
+  registre la salida de verdad, se cambia ese método y nadie más se entera. **Está anotado en F2-09.**
 - **Contrastar las cuatro listas de seguridad social contra las fuentes oficiales antes de vender.**
   Lo advierte la propia hoja «Notas y fuentes» del archivo: hay nueve EPS intervenidas por la
   Supersalud —siguen operando, por eso se cargaron— y el sector está en movimiento. Las fuentes son
   Supersalud, Fasecolda, la Superintendencia del Subsidio Familiar y la Superintendencia Financiera.
-  **Es una lista global: si está mal, está mal para todos los clientes a la vez.** Desde hoy además
-  se eligen en el formulario de registro, así que el error entraría en los datos de los clientes.
+  **Es una lista global: si está mal, está mal para todos los clientes a la vez.**
 - **Verificar el calendario de festivos antes de vender.** Cincuenta y tres fechas, quince minutos,
   mismo riesgo global que las EPS.
 - **Contrastar los 1.101 municipios contra el archivo del DANE.** Ese mismo cotejo trae los códigos
@@ -86,8 +80,8 @@
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Ya son cuatro las tablas de negocio que
   dependen de ello.
-- Abierta de quince sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide 8.3+**.
-  `composer.json` quedó en `"php": "^8.2"`.
+- Abierta de dieciséis sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+  8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
   copiando `database/stubs/migracion-tabla-de-negocio.stub`, que nunca se llama a `fijarEmpresa()` a
@@ -97,21 +91,18 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-05 · Advertencia de reingreso**: al digitar en el paso 1 un documento que ya
-  tuvo vinculación en esa empresa, el aviso con el **texto literal de la sección 5.6 del documento
-  1**, con énfasis especial si el reingreso ocurre dentro de los 30 días siguientes a la salida.
-- **El sitio donde entra es el paso 1 de `Empleados/Nuevo.vue`**, bajo el campo de número de
-  documento, y su comprobación tiene que hacerse en el servidor: `Persona::conDocumento()` ya existe
-  y `RegistroDeEmpleado` ya reutiliza a la persona encontrada. Lo que falta es preguntarle al
-  servidor al salir del campo. **Nada de `axios` ni `fetch`**: la vía de este proyecto es
-  `router.reload({ only: [...] })` con el documento como parámetro, o una ruta que devuelva props.
-- **La fecha de salida todavía no existe.** El módulo de terminaciones es F2-09 y por ahora una
-  vinculación inactiva no guarda cuándo terminó. Para la regla de los 30 días habrá que decidir de
-  dónde sale esa fecha: lo más probable es `fecha_fin` cuando la haya, y si no, marcar la tarea `[!]`
-  antes que inventarlo.
-- **El asistente ya sabe volver al paso del error**: `guardar()` busca en qué paso vive el primer
-  campo que el servidor rechazó. Si F1-05 agrega campos, agréguelos también a la lista de ese paso.
-- **F1-06 intercala el perfil sociodemográfico antes del resumen**, y solo si la empresa lo tiene
-  habilitado. El asistente está escrito para eso: los pasos son un `computed`, no una lista fija.
+- La siguiente es **F1-06 · Perfil sociodemográfico**: bloque opcional activable por parámetro de
+  empresa, con **todos sus campos opcionales aunque el bloque esté activo**, y los empleados
+  existentes en blanco sin marcar error al activarlo después.
+- **El asistente está escrito para eso desde F1-04**: `pasos` es un `computed`, no una lista fija, y
+  el perfil se intercala **antes** del resumen. La tabla `perfil_sociodemografico` y su modelo ya
+  existen desde F1-01; lo que falta es el parámetro de empresa, el paso y la escritura.
+- **Los parámetros de empresa viven en `tenants`** y su pantalla es F1-12, que llega después. F1-06
+  solo necesita leer el parámetro, no editarlo.
+- **Si F1-06 agrega campos al asistente, hay que agregarlos a la lista de campos de su paso** en
+  `pasos`: de ahí sale tanto el «no avanzar con un obligatorio vacío» como el «volver al paso del
+  error» cuando el servidor rechaza algo. Con todo opcional, el paso nuevo llevará `campos: []`.
+- **`consultar()` del asistente ya sabe repreguntar.** Si el perfil mueve de sitio la fecha de
+  ingreso, el `@salir` que dispara la advertencia de reingreso tiene que ir con ella.
 - **La columna de saldo de vacaciones entra en el listado cuando exista F2-02**, no antes.
 - **No queda ninguna tarea bloqueada en el backlog.**
