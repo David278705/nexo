@@ -2,11 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Autorizacion\Modulo;
+use App\Catalogos\Entidades;
+use App\Catalogos\Ubicaciones;
 use App\Contratacion\EstadoVinculacion;
+use App\Contratacion\Genero;
 use App\Contratacion\ListadoDeEmpleados;
+use App\Contratacion\RegistroDeEmpleado;
 use App\Contratacion\TipoContrato;
+use App\Contratacion\TipoDocumento;
+use App\Contratacion\TipoRiesgo;
 use App\Exports\EmpleadosExport;
+use App\Http\Requests\RegistrarEmpleado;
 use App\Models\Vinculacion;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -85,13 +94,44 @@ class EmpleadoController extends Controller
     }
 
     /**
-     * El registro de empleado, que es el asistente de cuatro pasos de F1-04.
+     * El asistente de cuatro pasos del documento 1, secciones 5.1 a 5.3.
      *
-     * Mismo motivo que la ficha: el botón «Nuevo empleado» del encabezado y el
-     * del estado vacío tienen que llevar a algún sitio.
+     * Las listas viajan enteras con la pantalla y no se piden paso a paso: son
+     * catálogos de unos cientos de filas, y traerlas de una vez es lo que
+     * permite que el encadenamiento de departamento y ciudad sea instantáneo.
      */
     public function nuevo(): RespuestaInertia
     {
-        return Inertia::render('SeccionPendiente', ['titulo' => 'Nuevo empleado']);
+        return Inertia::render('Empleados/Nuevo', [
+            'opciones' => [
+                'documentos' => TipoDocumento::paraElegir(),
+                'generos' => Genero::paraElegir(),
+                'contratos' => TipoContrato::paraElegir(),
+                'riesgos' => TipoRiesgo::paraElegir(),
+                'contratoConFechaFin' => TipoContrato::Fijo->value,
+                ...Entidades::paraFormulario(),
+            ],
+            'ubicaciones' => Ubicaciones::paraFormulario(),
+        ]);
+    }
+
+    /**
+     * Guarda lo que el asistente reunió en sus cuatro pasos.
+     *
+     * El controlador no decide nada: la validación es `RegistrarEmpleado` y la
+     * escritura —buscar la persona antes de crearla y abrir la vinculación— es
+     * `RegistroDeEmpleado`. Aquí solo se elige a dónde va el usuario después.
+     *
+     * Va al listado a propósito, y no a la ficha: quien acaba de registrar a
+     * alguien casi siempre va a registrar a otro o a comprobar que el primero
+     * quedó, y el listado responde a las dos cosas.
+     */
+    public function guardar(RegistrarEmpleado $peticion, RegistroDeEmpleado $registro): RedirectResponse
+    {
+        $vinculacion = $registro->ejecutar($peticion->validated());
+
+        return redirect()
+            ->route(Modulo::Empleados->nombreDeRuta())
+            ->with('estado', $vinculacion->persona->nombreCompleto().' quedó registrado como empleado activo.');
     }
 }

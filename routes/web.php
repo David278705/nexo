@@ -69,6 +69,8 @@ Route::middleware('auth')->group(function () {
             ->name('empleados.exportar');
         Route::get('/empleados/nuevo', [EmpleadoController::class, 'nuevo'])
             ->name('empleados.nuevo');
+        Route::post('/empleados', [EmpleadoController::class, 'guardar'])
+            ->name('empleados.guardar');
         Route::get('/empleados/{empleado}', [EmpleadoController::class, 'ficha'])
             ->whereNumber('empleado')
             ->name('empleados.ficha');

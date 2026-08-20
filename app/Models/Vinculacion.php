@@ -6,6 +6,7 @@ use App\Contratacion\EstadoVinculacion;
 use App\Contratacion\EventoContractual;
 use App\Contratacion\HistorialDeContrato;
 use App\Contratacion\TipoContrato;
+use App\Contratacion\TipoRiesgo;
 use App\Multiempresa\PerteneceATenant;
 use Database\Factories\VinculacionFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -204,6 +205,7 @@ class Vinculacion extends Model
     {
         return [
             'tipo_contrato' => TipoContrato::class,
+            'tipo_riesgo' => TipoRiesgo::class,
             'estado' => EstadoVinculacion::class,
             'fecha_ingreso' => 'date',
             'fecha_fin' => 'date',

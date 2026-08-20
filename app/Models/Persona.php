@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contratacion\Genero;
 use App\Contratacion\TipoDocumento;
 use App\Multiempresa\PerteneceATenant;
 use Database\Factories\PersonaFactory;
@@ -153,6 +154,7 @@ class Persona extends Model
     {
         return [
             'tipo_documento' => TipoDocumento::class,
+            'genero' => Genero::class,
             'fecha_nacimiento' => 'date',
             'fecha_expedicion_documento' => 'date',
         ];

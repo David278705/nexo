@@ -1,76 +1,70 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-18 · Tarea F1-03
+**Última sesión:** 2026-08-19 · Tarea F1-04
 **Verificación:** verde
-**Siguiente tarea:** F1-04 · Registro de empleado
+**Siguiente tarea:** F1-05 · Advertencia de reingreso
 
 ## Qué se hizo
 
-- **`App\Contratacion\ListadoDeEmpleados`**, el único sitio donde se arma la consulta del listado:
-  los seis filtros del documento 3 sección 5.3 —búsqueda por nombre o documento, estado, tipo de
-  contrato, cargo y rango de fecha de ingreso—, el ordenamiento por las seis columnas y la
-  paginación de 25 con opción de 50 y 100. **Todo resuelto en el servidor.**
-- **`EmpleadoController`** con `index`, `exportar`, `ficha` y `nuevo`. No filtra ni cuenta nada: solo
-  traduce la petición en props.
-- **`App\Exports\EmpleadosExport`** con **Laravel Excel**, que se instaló en esta sesión
-  (`maatwebsite/excel ^3.1`). Recibe el mismo `ListadoDeEmpleados` que armó la pantalla, así que
-  trae exactamente lo filtrado. Columnas: documento, nombre completo, cargo, tipo de contrato, fecha
-  de ingreso y estado.
-- **`resources/js/Pages/Empleados/Index.vue`**: encabezado con la planta de la empresa, botones de
-  Exportar y Nuevo, barra de filtros con etiquetas removibles, tabla y paginación. Cada cambio de
-  filtro vuelve a pedir la página con los filtros en la dirección.
-- **`Paginacion.vue`**, componente compartido nuevo, y **`TablaDatos` aprendió a ordenar**: encabezado
-  pulsable, flecha y `aria-sort`. Ninguno de los dos ordena ni pagina por su cuenta; avisan y el
-  servidor responde.
-- **`EstadoVinculacion::paraElegir()` y `::valores()`**, como ya los tenía `TipoContrato`.
-- **Rutas reales de `/empleados`**, con `modulo:empleados`. Empleados salió del bucle de secciones
-  pendientes de `routes/web.php`.
-- **`SubstituteBindings` se movió detrás de `ResolverTenant`** en `bootstrap/app.php`. Ver abajo.
-- **`EmpleadosTest`** con 21 casos, **cinco casos de aislamiento por las rutas reales** en
-  `AislamientoTest`, un caso nuevo en `EstructuraTest` y pruebas de Vitest para la pantalla, la
-  paginación y el ordenamiento de la tabla.
-- `composer verificar` en verde: 225 pruebas de Pest, PHPStan sin errores, build y 86 de Vitest.
+- **`resources/js/Pages/Empleados/Nuevo.vue`**, el asistente de cuatro pasos de las secciones 5.1 a
+  5.3 del documento 1: identificación, residencia y seguridad social, información contractual y
+  resumen. Los veintiséis campos de la especificación, ninguno de más y ninguno de menos.
+- **`PasosDelAsistente.vue`**, componente compartido nuevo: pinta el avance, deja retroceder a un
+  paso ya recorrido y no deja saltar hacia adelante. Vive en `Components/` porque el panel del
+  proveedor construye otro asistente igual en F1B-02.
+- **`App\Http\Requests\RegistrarEmpleado`**, toda la validación del formulario en el servidor,
+  incluida la regla 5.1.1 —la ciudad tiene que ser del departamento elegido— y la fecha de
+  finalización, que exige el término fijo y prohíbe el resto.
+- **`App\Contratacion\RegistroDeEmpleado`**, la escritura, en una transacción: busca la persona por
+  su documento antes de crearla y abre la vinculación. **En todo el archivo no aparece la palabra
+  «activo»**, y esa ausencia es la prueba de que el estado no lo digita nadie.
+- **`Genero` y `TipoRiesgo`**, los dos enumerados que la decisión D.5 dejó resueltos, y
+  **`App\Catalogos\Entidades`**, el único sitio donde se arman las cinco listas de entidades para un
+  formulario, como `Ubicaciones` lo es para la geografía.
+- **`EmpleadoController::nuevo()` y `::guardar()`**, con la ruta `POST /empleados`. El controlador no
+  decide nada: traduce props y elige a dónde va el usuario después.
+- **`Empleados/Index` muestra la confirmación** de lo que se acaba de guardar, leída de la sesión.
+- **`RegistroDeEmpleadoTest`** con 28 casos, más siete de Vitest para el asistente y cuatro para
+  `PasosDelAsistente`.
+- `composer verificar` en verde a la primera: 253 pruebas de Pest, PHPStan sin errores, build y 97 de
+  Vitest.
 
 ## Decisiones tomadas
 
-- **La resolución de rutas corre ahora dentro del contexto de empresa.** `SubstituteBindings` venía
-  antes que `ResolverTenant` y resolvía `{empleado}` sin empresa fijada: **toda ficha respondía 404,
-  incluida la propia**. Se sacó de su sitio en el grupo `web` y se volvió a poner detrás. Afecta a
-  todas las fichas que se construyan de aquí en adelante, no solo a esta.
-- **El listado muestra solo a los activos mientras no se diga otra cosa**, y ese filtro sale como
-  etiqueta removible aunque sea el valor por defecto. Es lo que hace el prototipo; que no se viera
-  daría la impresión de que faltan empleados.
-- **Pantalla y exportación comparten la consulta**, no solo los filtros. Es lo único que garantiza
-  que «Exportar 43 registros filtrados» diga la verdad el día que se agregue un filtro.
-- **No hay columna de saldo de vacaciones**, aunque el prototipo la pinta. El saldo se calcula y el
-  motor es F2-02. Se agrega entonces, no antes con un número inventado.
-- **Un filtro que no encaja no es un error: no filtra.** `?contrato=prestacion_de_servicios` o
-  `?ingresoDesde=ayer` devuelven el listado entero en vez de una pantalla de error. Las listas
-  blancas también impiden que `?orden=salario` saque una columna que la pantalla no muestra.
-- **El ordenamiento por documento y nombre va por subconsulta, no por `join`**, para no tener que
-  calificar cada columna con su tabla en el resto de la consulta. Siempre desempata por `id`, o una
-  página podría repetir o saltarse una fila.
-- **`/empleados/nuevo` y `/empleados/{id}` existen ya como secciones pendientes.** El botón «Nuevo
-  empleado» y la fila completa tienen que llevar a algún sitio, y la ficha además resuelve la
-  vinculación de verdad, así que la de otra empresa responde 404 desde hoy. F1-04 y F1-07 solo
-  cambian el cuerpo del método.
+- **El asistente no guarda nada hasta el último paso.** Por eso se puede retroceder sin coste y por
+  eso no hay borradores a medias en la base de datos. El paso 4 es un resumen de repaso, no un
+  formulario más.
+- **Lo que valida Vue no es lo que valida el servidor.** El asistente solo impide avanzar con un
+  obligatorio vacío, que es más amable que descubrirlo al final; las reglas de verdad son las de
+  `RegistrarEmpleado`, y cuando una falla el asistente vuelve solo al paso donde está el error.
+- **Volver a registrar un documento que ya existe actualiza los datos personales de esa persona.**
+  Una persona tiene una sola versión de su nombre y su dirección; la vinculación nueva es la que se
+  crea aparte. Sin esto, el reingreso de F1-05 dejaría la dirección de hace cinco años.
+- **El número de documento se valida como texto, no como número.** El pasaporte trae letras y un
+  `numeric` convertiría «000123» en 123, que es otro documento. Hay prueba de ello.
+- **Las listas viajan enteras con la pantalla**, no paso a paso. Son unos cientos de filas y traerlas
+  de una vez es lo que hace instantáneo el encadenamiento de departamento y ciudad.
+- **La fecha de finalización desaparece cuando el contrato no es a término fijo**, no se
+  deshabilita: un valor escrito antes de cambiar de modalidad se quedaría dentro.
+- **El fondo de cesantías no se construyó.** No está en la sección 5.1 de la especificación y no se
+  inventa un campo obligatorio. Sigue siendo pregunta para Angela, abajo.
+- **Las pruebas no corren `CatalogosSeeder`**: crean las filas mínimas de catálogo que el formulario
+  exige. Traer los 1.101 municipios en cada caso costaría más que todo lo que se prueba.
 
 ## Preguntas para Angela
 
-- **La columna «Cesantías» del archivo de listas no tiene dónde ir.** Trae Porvenir, Protección,
+- **La columna «Cesantías» del archivo de listas sigue sin dónde ir.** Trae Porvenir, Protección,
   Colfondos, Skandia, el Fondo Nacional del Ahorro y «Otro», pero **el fondo de cesantías no aparece
-  en la sección 5.1 de la especificación funcional**, así que no hay columna en `vinculaciones` ni
-  tabla que lo reciba. La pregunta concreta: **¿se agrega «fondo de cesantías» como campo obligatorio
-  del formulario de empleado?** Si la respuesta es sí, es una tarea nueva —tabla, columna, seeder y
-  formulario— y **hay que resolverlo antes de F1-04, que es la próxima tarea y construye justamente
-  ese formulario.**
+  en la sección 5.1 de la especificación funcional**. La pregunta concreta: **¿se agrega «fondo de
+  cesantías» como campo obligatorio del formulario de empleado?** Si la respuesta es sí, es una tarea
+  nueva —tabla, columna, seeder y un campo más en el paso 2 del asistente, que ya está construido.
 - Menor, del mismo archivo: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y
   **«Posgraduado(a)» sin distinguir especialización, maestría y doctorado**. La propia hoja de notas
   dice que es fácil de separar después. Se construye así en F1-06 salvo aviso.
-- **Las opciones de género siguen sin decidirse (D.5).** La fábrica de personas deja el campo vacío a
-  propósito. F1-04 pide ese campo en el paso 1: **si no está resuelto, la tarea se bloquea ahí.**
-- **D.1 sigue abierta: ¿se registra el tipo de prórroga?** No ha bloqueado nada, pero la respuesta
-  cambia el formulario de «Renovar» de F1-09: o pregunta cuál de las dos es, o no pregunta.
+- **D.1 sigue abierta: ¿se registra el tipo de prórroga?** No ha bloqueado nada todavía, pero la
+  respuesta cambia el formulario de «Renovar» de F1-09: o pregunta cuál de las dos es, o no pregunta.
+- **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
+  prolongado y la anticipación de la alerta de cercanía al tope de cuatro años.
 
 ## Decisiones para David
 
@@ -78,7 +72,8 @@
   Lo advierte la propia hoja «Notas y fuentes» del archivo: hay nueve EPS intervenidas por la
   Supersalud —siguen operando, por eso se cargaron— y el sector está en movimiento. Las fuentes son
   Supersalud, Fasecolda, la Superintendencia del Subsidio Familiar y la Superintendencia Financiera.
-  **Es una lista global: si está mal, está mal para todos los clientes a la vez.**
+  **Es una lista global: si está mal, está mal para todos los clientes a la vez.** Desde hoy además
+  se eligen en el formulario de registro, así que el error entraría en los datos de los clientes.
 - **Verificar el calendario de festivos antes de vender.** Cincuenta y tres fechas, quince minutos,
   mismo riesgo global que las EPS.
 - **Contrastar los 1.101 municipios contra el archivo del DANE.** Ese mismo cotejo trae los códigos
@@ -91,7 +86,7 @@
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`. Ya son cuatro las tablas de negocio que
   dependen de ello.
-- Abierta de catorce sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide 8.3+**.
+- Abierta de quince sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide 8.3+**.
   `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -102,17 +97,21 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-04 · Registro de empleado**: el asistente de cuatro pasos de la sección 5.1 a
-  5.3 del documento 1. Reemplaza el cuerpo de `EmpleadoController::nuevo()`, que hoy pinta una
-  sección pendiente. **Antes de empezar, mira las dos preguntas para Angela de arriba: género (D.5) y
-  fondo de cesantías se piden los dos en ese formulario.**
-- **El registro nunca crea una persona a ciegas: primero `Persona::conDocumento()`.** El paso 1 es
-  además donde vive la advertencia de reingreso de F1-05. El formulario de ubicación ya está resuelto
-  con `SelectorUbicacion` más `Ubicaciones::paraFormulario()`.
-- **El listado ya está listo para recibir lo que se registre**: al guardar, redirigir a `/empleados`
-  deja al empleado nuevo en la tabla sin tocar nada más.
-- **Toda pantalla de listado nueva reutiliza `TablaDatos` con `ordenable`, `BarraFiltros` y
-  `Paginacion`**, y su controlador reutiliza el patrón de `ListadoDeEmpleados`: un objeto que lee la
-  petición, arma la consulta una vez y se la presta a la pantalla y a la exportación.
+- La siguiente es **F1-05 · Advertencia de reingreso**: al digitar en el paso 1 un documento que ya
+  tuvo vinculación en esa empresa, el aviso con el **texto literal de la sección 5.6 del documento
+  1**, con énfasis especial si el reingreso ocurre dentro de los 30 días siguientes a la salida.
+- **El sitio donde entra es el paso 1 de `Empleados/Nuevo.vue`**, bajo el campo de número de
+  documento, y su comprobación tiene que hacerse en el servidor: `Persona::conDocumento()` ya existe
+  y `RegistroDeEmpleado` ya reutiliza a la persona encontrada. Lo que falta es preguntarle al
+  servidor al salir del campo. **Nada de `axios` ni `fetch`**: la vía de este proyecto es
+  `router.reload({ only: [...] })` con el documento como parámetro, o una ruta que devuelva props.
+- **La fecha de salida todavía no existe.** El módulo de terminaciones es F2-09 y por ahora una
+  vinculación inactiva no guarda cuándo terminó. Para la regla de los 30 días habrá que decidir de
+  dónde sale esa fecha: lo más probable es `fecha_fin` cuando la haya, y si no, marcar la tarea `[!]`
+  antes que inventarlo.
+- **El asistente ya sabe volver al paso del error**: `guardar()` busca en qué paso vive el primer
+  campo que el servidor rechazó. Si F1-05 agrega campos, agréguelos también a la lista de ese paso.
+- **F1-06 intercala el perfil sociodemográfico antes del resumen**, y solo si la empresa lo tiene
+  habilitado. El asistente está escrito para eso: los pasos son un `computed`, no una lista fija.
 - **La columna de saldo de vacaciones entra en el listado cuando exista F2-02**, no antes.
 - **No queda ninguna tarea bloqueada en el backlog.**

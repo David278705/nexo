@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, router } from "@inertiajs/vue3";
+import { Head, Link, router, usePage } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import Armazon from "@/Components/Armazon.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
@@ -7,6 +7,7 @@ import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
 import Etiqueta from "@/Components/Etiqueta.vue";
+import Notificacion from "@/Components/Notificacion.vue";
 import Paginacion from "@/Components/Paginacion.vue";
 import Selector from "@/Components/Selector.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
@@ -133,12 +134,24 @@ const textoExportar = computed(() => {
 
     return `Exportar ${props.empleados.total} ${registros}${filtrados}`;
 });
+
+/*
+ * La confirmación de lo que se acaba de guardar en otra pantalla. Quien termina
+ * el registro de un empleado aterriza aquí, y sin esto la única señal de que
+ * salió bien sería encontrar la fila a ojo.
+ *
+ * Se lee de la sesión, que es donde la deja el controlador, y no de una prop
+ * propia: así cualquier acción que redirija al listado la aprovecha.
+ */
+const confirmacion = computed(() => usePage().props.estado ?? "");
 </script>
 
 <template>
     <Head title="Empleados" />
 
     <Armazon>
+        <Notificacion :mensaje="confirmacion" />
+
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <h1 class="text-titulo font-semibold text-texto">Empleados</h1>

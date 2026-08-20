@@ -134,12 +134,19 @@ Hecho: `ListadoDeEmpleados` —los seis filtros, el orden y la paginación, todo
 componente compartido `Paginacion`. Pantalla y exportación comparten la misma consulta, así que
 «Exportar N registros filtrados» no puede mentir.
 
-### [ ] F1-04 · Registro de empleado
+### [x] F1-04 · Registro de empleado
 
 Asistente de cuatro pasos. Regla de país, departamento y ciudad: listas encadenadas si es Colombia,
 texto libre si no. Segundo nombre y segundo apellido opcionales. Estado activo automático.
 **Hecho cuando:** se registra un empleado completo y el estado queda activo sin que nadie lo digite.
 **Fuente:** `docs/01-especificacion-funcional.md` 5.1 a 5.3
+
+Hecho: la pantalla `Empleados/Nuevo` con sus cuatro pasos —identificación, residencia y seguridad
+social, información contractual y resumen—, el componente compartido `PasosDelAsistente`, la
+validación completa en `RegistrarEmpleado` y la escritura en `RegistroDeEmpleado`, que busca la
+persona por su documento antes de crearla. Los enumerados `Genero` y `TipoRiesgo` y las listas de
+entidades en `Catalogos\Entidades`. El estado no se digita en ninguna parte: nace activo por el valor
+por defecto de la columna.
 
 ### [ ] F1-05 · Advertencia de reingreso
 
