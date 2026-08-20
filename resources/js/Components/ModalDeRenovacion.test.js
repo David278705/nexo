@@ -151,6 +151,48 @@ describe("el modal de renovación", () => {
         componente.unmount();
     });
 
+    it("deshabilita el registro cuando el servidor dice que está bloqueado", async () => {
+        const componente = montar({
+            proyeccion: {
+                tono: "error",
+                bloqueado: true,
+                lineas: [
+                    "No se puede registrar esta prórroga: con esta fecha el vínculo a término fijo superaría el tope legal de cuatro años.",
+                ],
+            },
+        });
+
+        const registrar = [...document.body.querySelectorAll("button")].at(-1);
+
+        expect(document.body.textContent).toContain(
+            "No se puede registrar esta prórroga",
+        );
+        expect(registrar.disabled).toBe(true);
+
+        registrar.dispatchEvent(new Event("click"));
+        await nextTick();
+
+        expect(post).not.toHaveBeenCalled();
+
+        componente.unmount();
+    });
+
+    it("deja registrar cuando la proyección solo advierte", () => {
+        const componente = montar({
+            proyeccion: {
+                tono: "advertencia",
+                bloqueado: false,
+                lineas: ["A partir de esta renovación el contrato no puede prorrogarse por menos de un año."],
+            },
+        });
+
+        expect(
+            [...document.body.querySelectorAll("button")].at(-1).disabled,
+        ).toBe(false);
+
+        componente.unmount();
+    });
+
     it("envía la prórroga a la dirección de renovar", async () => {
         const componente = montar();
 

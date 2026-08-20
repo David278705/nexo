@@ -8,6 +8,7 @@ use App\Models\Vinculacion;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Las reglas de la acción «Renovar contrato» (documento 1, 5.5).
@@ -27,9 +28,12 @@ use Illuminate\Validation\Rule;
  *   y si la fecha estaba mal digitada lo que corresponde es corregirla, que es
  *   otra acción.
  *
- * Lo que aquí **no** se valida es el tope de cuatro años ni el límite de
- * prórrogas cortas. El modal los enseña con todas las letras, pero convertirlos
- * en bloqueo es F1-10 y depende de las decisiones B.1 y B.3.
+ * Y encima de las tres, **las dos validaciones bloqueantes de 5.5**: el tope de
+ * cuatro años y la regla de prórroga mínima. No se comprueban aquí sino en
+ * `RenovacionDeContrato::impedimentos()`, que es quien ya sabe leer la propuesta
+ * y quien escribe el mensaje que enseña el modal. Este archivo solo decide
+ * *cuándo* se pregunta: después de las reglas de formato, porque una fecha que
+ * no es fecha no supera ningún tope.
  */
 class RenovarContrato extends FormRequest
 {
@@ -52,6 +56,43 @@ class RenovarContrato extends FormRequest
                 'date',
                 ...$vencimiento instanceof Carbon ? ['after:'.$vencimiento->toDateString()] : [],
             ],
+        ];
+    }
+
+    /**
+     * Las dos validaciones bloqueantes de 5.5, preguntadas una sola vez.
+     *
+     * Corren después de las reglas de formato y solo si estas pasaron: sin tipo
+     * de prórroga y sin una fecha posterior al vencimiento no hay prórroga que
+     * medir, y sumar un segundo error sobre el mismo campo escondería el
+     * primero.
+     *
+     * El mensaje es el mismo que el usuario ya estaba leyendo en el modal, no
+     * una segunda redacción de la misma regla.
+     *
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validador): void {
+                if ($validador->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $impedimentos = RenovacionDeContrato::de($this->contrato()->historial())
+                    ->impedimentos([
+                        'tipo' => $this->string('tipo')->toString(),
+                        // Ya pasó la regla `date`, así que se normaliza a ISO en
+                        // vez de confiar en que el navegador la mandó así.
+                        'fecha_fin' => Carbon::parse($this->string('fecha_fin')->toString())
+                            ->toDateString(),
+                    ]);
+
+                foreach ($impedimentos as $mensaje) {
+                    $validador->errors()->add('fecha_fin', $mensaje);
+                }
+            },
         ];
     }
 

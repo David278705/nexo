@@ -14,6 +14,9 @@ const props = defineProps({
     // El botón se deshabilita mientras envía, para evitar el doble registro
     // (documento 3, sección 6.2).
     enviando: { type: Boolean, default: false },
+    // Para la acción que no se puede ejecutar todavía, con el motivo visible al
+    // lado: un botón que se puede pulsar y luego falla no es una validación.
+    deshabilitado: { type: Boolean, default: false },
     ancho: { type: Boolean, default: false },
 });
 
@@ -34,7 +37,7 @@ const estilos = computed(
 <template>
     <button
         :type="tipo"
-        :disabled="enviando"
+        :disabled="enviando || deshabilitado"
         class="inline-flex h-control items-center justify-center gap-2 rounded-[var(--radius-caja)] border px-4 text-tabla font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45"
         :class="[estilos, ancho ? 'w-full' : '']"
     >

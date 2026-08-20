@@ -218,12 +218,21 @@ cuentas del modal se calculan en el servidor y llegan escritas; al cambiar la fe
 pantalla pide de nuevo solo la prop `renovacion`. El tope de cuatro años y el límite de prórrogas
 cortas se **advierten** y no bloquean: volverlos bloqueo es F1-10.
 
-### [ ] F1-10 · Validaciones de prórroga
+### [x] F1-10 · Validaciones de prórroga
 
 Bloqueo si la nueva fecha supera el tope legal, ofreciendo la acción de cambiar a indefinido.
 Advertencia fuerte si incumple la regla de prórroga mínima. Las dos configurables por estado.
 **Hecho cuando:** una prórroga que supera el tope no se puede guardar, y hay prueba.
 **Fuente:** `docs/01-especificacion-funcional.md` 5.5 · `docs/06-decisiones-pendientes.md` B.3
+
+Hecho: las dos validaciones viven en `RenovacionDeContrato::hallazgos()`, con un solo mensaje escrito
+por regla que sirve al aviso del modal y al error del servidor —`impedimentos()` es lo que consulta
+`RenovarContrato`—. **«Configurables por estado» se leyó como el estado de cada validación**, bloquea
+o advierte, en el nuevo `config/validaciones.php` y el enumerado `EstadoDeValidacion`, que decide
+también el color: rojo y bloqueado son la misma cosa. **El tope de cuatro años bloquea** y su mensaje
+nombra «Cambiar a término indefinido» —la acción es F1-11—; **la prórroga mínima advierte con fuerza y
+permite guardar**, que es lo que piden B.1 y B.3 mientras el asesor laboral confirme la regla. El
+botón del modal queda deshabilitado con la proyección bloqueada, como el prototipo.
 
 ### [ ] F1-11 · Cambiar a término indefinido
 

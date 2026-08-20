@@ -28,9 +28,11 @@ use Illuminate\Testing\TestResponse;
  * 4. **El modal calcula en el servidor**: duración de la prórroga, total
  *    acumulado y prórrogas restantes llegan escritas en las props.
  *
- * Lo que **no** se prueba aquí es el bloqueo del tope de cuatro años ni el de la
- * prórroga mínima: en esta tarea se advierten y sí se permite guardar. Volverlos
- * bloqueo es F1-10, y entonces estas pruebas cambian de expectativa a propósito.
+ * Y desde F1-10, las dos validaciones de 5.5: **el tope de cuatro años no se
+ * puede guardar** y la regla de prórroga mínima advierte con fuerza, cada una con
+ * el estado que dice `config/validaciones.php`. Las dos se prueban por el estado
+ * configurado y por el contrario, porque cambiar esa palabra es lo que va a pasar
+ * cuando el asesor laboral confirme la regla (documento 6, B.1 y B.3).
  *
  * `contratoFijo()`, `contratoSinPlazo()` y `detalleDeContrato()` viven en
  * `ContratosTest.php`, y `usuarioDe()` en `RolesYPermisosTest.php`: Pest carga
@@ -96,6 +98,53 @@ function proyeccionDe(Vinculacion $contrato, array $propuesta): string
     $proyeccion = renovacionDe($contrato, $propuesta)['proyeccion'];
 
     return $proyeccion === null ? '' : implode(' ', $proyeccion['lineas']);
+}
+
+/**
+ * Las cuatro prórrogas cortas pactadas que agotan el límite del artículo 46.
+ *
+ * @return list<array{0: string, 1: string}>
+ */
+function cuatroCortas(): array
+{
+    return [
+        ['2026-04-01', '2026-06-30'],
+        ['2026-07-01', '2026-09-30'],
+        ['2026-10-01', '2026-12-31'],
+        ['2027-01-01', '2027-03-31'],
+    ];
+}
+
+/**
+ * La que ya no cabe: la quinta corta de un contrato que agotó sus cuatro.
+ *
+ * @return array<string, string>
+ */
+function laQuintaCorta(): array
+{
+    return ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2027-06-30'];
+}
+
+/**
+ * Un historial de prórrogas automáticas, que tienen un cupo corto menos que las
+ * pactadas. `contratoFijo()` solo sabe crear pactadas.
+ *
+ * @param  list<array{0: string, 1: string}>  $tramos
+ */
+function conProrrogasAutomaticas(Vinculacion $contrato, array $tramos): Vinculacion
+{
+    return enLaEmpresa(function () use ($contrato, $tramos): Vinculacion {
+        foreach ($tramos as [$desde, $hasta]) {
+            $contrato->registrarPeriodo(
+                EventoContractual::ProrrogaAutomatica,
+                TipoContrato::Fijo,
+                Carbon::parse($desde),
+                Carbon::parse($hasta),
+            );
+        }
+
+        return $contrato->fresh();
+    });
 }
 
 describe('registrar la prórroga', function () {
@@ -365,29 +414,163 @@ describe('las tres cuentas de la proyección', function () {
             ->not->toContain('cortas');
     });
 
-    it('advierte del tope de cuatro años sin impedir el guardado', function () {
-        $contrato = contratoFijo('Topada', '2026-01-01', '2026-03-31');
-
-        $renovacion = renovacionDe($contrato, [
-            'tipo' => 'prorroga_pactada',
-            'fecha_fin' => '2030-06-30',
-        ]);
-
-        expect($renovacion['proyeccion']['tono'])->toBe('advertencia')
-            ->and(implode(' ', $renovacion['proyeccion']['lineas']))
-            ->toContain('superaría el tope legal');
-
-        // El bloqueo es F1-10. Hoy se advierte y se permite, que es lo que dice
-        // la tarea.
-        renovar($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2030-06-30'])
-            ->assertSessionHasNoErrors();
-    });
-
     it('devuelve lo digitado para que el modal no se vacíe al recalcular', function () {
         $contrato = contratoFijo('Persistente', '2026-01-01', '2026-03-31');
 
         expect(renovacionDe($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2026-06-30'])['propuesta'])
             ->toBe(['tipo' => 'prorroga_pactada', 'fecha_fin' => '2026-06-30']);
+    });
+});
+
+describe('el tope de cuatro años', function () {
+    // Con un contrato que arranca el 01/01/2026 el tope se cumple el 01/01/2030:
+    // una prórroga hasta junio de 2030 lo pasa, y una hasta diciembre de 2029 no.
+    $pasadoElTope = ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2030-06-30'];
+
+    it('no deja registrar la prórroga que lo supera', function () use ($pasadoElTope) {
+        $contrato = contratoFijo('Topada', '2026-01-01', '2026-03-31');
+
+        renovar($contrato, $pasadoElTope)->assertSessionHasErrors('fecha_fin');
+
+        expect(tramosDe($contrato))->toHaveCount(1);
+    });
+
+    it('el error dice por qué y ofrece la salida correcta', function () use ($pasadoElTope) {
+        $contrato = contratoFijo('Explicada', '2026-01-01', '2026-03-31');
+
+        renovar($contrato, $pasadoElTope)->assertSessionHasErrors([
+            'fecha_fin' => 'No se puede registrar esta prórroga: con esta fecha el vínculo a '
+                .'término fijo superaría el tope legal de cuatro años, y al superarlo el contrato '
+                .'se convierte en indefinido por ley. Usa la acción «Cambiar a término '
+                .'indefinido», que es la salida correcta y deja el contrato al día.',
+        ]);
+    });
+
+    it('el modal lo enseña en rojo y con el botón bloqueado', function () use ($pasadoElTope) {
+        $contrato = contratoFijo('Roja', '2026-01-01', '2026-03-31');
+
+        $proyeccion = renovacionDe($contrato, $pasadoElTope)['proyeccion'];
+
+        expect($proyeccion['tono'])->toBe('error')
+            ->and($proyeccion['bloqueado'])->toBeTrue()
+            ->and(implode(' ', $proyeccion['lineas']))
+            ->toContain('No se puede registrar esta prórroga')
+            ->and(implode(' ', $proyeccion['lineas']))
+            ->toContain('Cambiar a término indefinido');
+    });
+
+    it('la fecha que llega justo al tope sí se registra', function () {
+        $contrato = contratoFijo('Justa', '2026-01-01', '2026-03-31');
+
+        renovar($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2030-01-01'])
+            ->assertSessionHasNoErrors();
+
+        expect(tramosDe($contrato))->toHaveCount(2);
+    });
+
+    it('se puede volver advertencia por configuración, sin tocar código', function () use ($pasadoElTope) {
+        // Es la decisión B.3 del documento 6: mientras no esté cerrada, el estado
+        // de la validación es una palabra de `config/validaciones.php`.
+        config(['validaciones.renovacion_tope_termino_fijo' => 'advierte']);
+
+        $contrato = contratoFijo('Advertida', '2026-01-01', '2026-03-31');
+        $proyeccion = renovacionDe($contrato, $pasadoElTope)['proyeccion'];
+
+        expect($proyeccion['tono'])->toBe('advertencia')
+            ->and($proyeccion['bloqueado'])->toBeFalse()
+            ->and(implode(' ', $proyeccion['lineas']))
+            ->not->toContain('No se puede registrar');
+
+        renovar($contrato, $pasadoElTope)->assertSessionHasNoErrors();
+    });
+
+    it('bloquea si la configuración dice cualquier otra cosa', function () use ($pasadoElTope) {
+        // Ante una configuración equivocada, no registrar algo que puede ser
+        // ilegal es la opción segura.
+        config(['validaciones.renovacion_tope_termino_fijo' => 'lo que sea']);
+
+        renovar(contratoFijo('Rara', '2026-01-01', '2026-03-31'), $pasadoElTope)
+            ->assertSessionHasErrors('fecha_fin');
+    });
+});
+
+describe('la regla de prórroga mínima', function () {
+    it('advierte con fuerza pero permite registrar la prórroga corta de más', function () {
+        $contrato = contratoFijo('Agotada', '2026-01-01', '2026-03-31', cuatroCortas());
+
+        $renovacion = renovacionDe($contrato, laQuintaCorta());
+        $texto = implode(' ', $renovacion['proyeccion']['lineas']);
+
+        expect($renovacion['proyeccion']['tono'])->toBe('advertencia')
+            ->and($renovacion['proyeccion']['bloqueado'])->toBeFalse()
+            ->and($texto)->toContain('el contrato no puede prorrogarse por menos de un año')
+            ->and($texto)->toContain('Si ya está firmada puedes registrarla');
+
+        // Es la decisión B.1: aquí sí puede haber un contrato ya firmado que la
+        // empresa tenga que registrar, y bloquearlo la dejaría sin dónde hacerlo.
+        renovar($contrato, laQuintaCorta())->assertSessionHasNoErrors();
+
+        expect(tramosDe($contrato))->toHaveCount(6);
+    });
+
+    it('se vuelve bloqueo por configuración cuando el asesor lo confirme', function () {
+        config(['validaciones.renovacion_prorroga_minima' => 'bloquea']);
+
+        $contrato = contratoFijo('Bloqueada', '2026-01-01', '2026-03-31', cuatroCortas());
+
+        $proyeccion = renovacionDe($contrato, laQuintaCorta())['proyeccion'];
+
+        expect($proyeccion['tono'])->toBe('error')
+            ->and($proyeccion['bloqueado'])->toBeTrue();
+
+        renovar($contrato, laQuintaCorta())->assertSessionHasErrors([
+            'fecha_fin' => 'No se puede registrar esta prórroga: es inferior a un año y el '
+                .'contrato ya agotó las que la ley admite. A partir de esta renovación el '
+                .'contrato no puede prorrogarse por menos de un año.',
+        ]);
+
+        expect(tramosDe($contrato))->toHaveCount(5);
+    });
+
+    it('a la automática se le agota un cupo antes que a la pactada', function () {
+        config(['validaciones.renovacion_prorroga_minima' => 'bloquea']);
+
+        $contrato = conProrrogasAutomaticas(
+            contratoFijo('Silenciosa', '2026-01-01', '2026-03-31'),
+            [['2026-04-01', '2026-06-30'], ['2026-07-01', '2026-09-30'], ['2026-10-01', '2026-12-31']],
+        );
+
+        // Tres automáticas y la cuarta ya no cabe corta; con cuatro pactadas
+        // encima todavía cabría una quinta.
+        renovar($contrato, ['tipo' => 'prorroga_automatica', 'fecha_fin' => '2027-03-31'])
+            ->assertSessionHasErrors('fecha_fin');
+    });
+
+    it('la prórroga de un año o más se registra aunque los cupos estén agotados', function () {
+        config(['validaciones.renovacion_prorroga_minima' => 'bloquea']);
+
+        $contrato = contratoFijo('Anualizada', '2026-01-01', '2026-03-31', cuatroCortas());
+
+        renovar($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2028-03-31'])
+            ->assertSessionHasNoErrors();
+
+        expect(tramosDe($contrato))->toHaveCount(6);
+    });
+
+    it('no dice nada cuando el contrato inicial es de un año o más', function () {
+        config(['validaciones.renovacion_prorroga_minima' => 'bloquea']);
+
+        // La regla del artículo 46 solo aplica a los contratos inferiores a un
+        // año: uno de un año se prorroga por el plazo que quieran las partes.
+        $contrato = contratoFijo('Anual', '2027-01-01', '2027-12-31', [
+            ['2028-01-01', '2028-03-31'],
+            ['2028-04-01', '2028-06-30'],
+            ['2028-07-01', '2028-09-30'],
+            ['2028-10-01', '2028-12-31'],
+        ]);
+
+        renovar($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2029-03-31'])
+            ->assertSessionHasNoErrors();
     });
 });
 

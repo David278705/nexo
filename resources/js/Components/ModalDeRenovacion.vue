@@ -1,6 +1,6 @@
 <script setup>
 import { router, useForm } from "@inertiajs/vue3";
-import { watch } from "vue";
+import { computed, watch } from "vue";
 import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
@@ -21,6 +21,10 @@ import Selector from "@/Components/Selector.vue";
  * una recarga parcial. Un cálculo repetido en el navegador se separaría del del
  * servidor a la primera corrección, y el número que el usuario lee tiene que ser
  * el mismo que se va a guardar.
+ *
+ * Si la prórroga incumple una de las dos validaciones de 5.5, la proyección llega
+ * en rojo y con `bloqueado`, y el botón de registrar queda deshabilitado: es lo
+ * que hace el prototipo.
  *
  * El aviso de arriba es el del prototipo y explica la diferencia que la sección
  * 5.5 exige que se vea: renovar no es corregir la fecha.
@@ -75,7 +79,21 @@ watch(
     },
 );
 
+/*
+ * Si la prórroga no se puede registrar, el botón queda deshabilitado y el motivo
+ * se lee arriba, en el aviso rojo. Quién lo decide es el servidor, en
+ * `RenovacionDeContrato`: aquí no se sabe qué es un tope legal.
+ *
+ * El servidor vuelve a rechazarla si alguien envía el formulario de todos modos.
+ * Deshabilitar el botón es cortesía; la validación está en el otro lado.
+ */
+const bloqueado = computed(() => props.renovacion.proyeccion?.bloqueado === true);
+
 function registrar() {
+    if (bloqueado.value) {
+        return;
+    }
+
     form.post(`${props.url}/renovar`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -135,7 +153,12 @@ function registrar() {
             <Boton variante="texto" tipo="button" @click="emit('cerrar')">
                 Cancelar
             </Boton>
-            <Boton tipo="button" :enviando="form.processing" @click="registrar">
+            <Boton
+                tipo="button"
+                :enviando="form.processing"
+                :deshabilitado="bloqueado"
+                @click="registrar"
+            >
                 Registrar prórroga
             </Boton>
         </template>
