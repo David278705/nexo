@@ -110,7 +110,10 @@ enum SeccionDelPanel: string
     }
 
     /**
-     * Las ocho secciones que todavía no tienen contenido propio.
+     * Las secciones que todavía no tienen contenido propio.
+     *
+     * Van saliendo de aquí a medida que se construyen: `Inicio` nunca estuvo y
+     * `Empresas` salió con su listado y su ficha (F1B-03).
      *
      * @return list<self>
      */
@@ -118,7 +121,7 @@ enum SeccionDelPanel: string
     {
         return array_values(array_filter(
             self::cases(),
-            fn (self $seccion) => $seccion !== self::Inicio,
+            fn (self $seccion) => ! in_array($seccion, [self::Inicio, self::Empresas], true),
         ));
     }
 }

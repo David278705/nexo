@@ -286,7 +286,7 @@ Ningún usuario de empresa puede alcanzarla.
 **Hecho cuando:** un superadmin que intenta entrar recibe 403 y hay prueba.
 **Fuente:** `docs/04-panel-del-proveedor.md` cap. 2
 
-### [ ] F1B-02 · Crear empresa
+### [x] F1B-02 · Crear empresa
 
 Formulario de tres pasos: datos, parámetros, plan y cuenta del superadministrador. Resumen final de
 configuración copiable. Invitación por correo.
@@ -294,12 +294,33 @@ configuración copiable. Invitación por correo.
 la base de datos.
 **Fuente:** `docs/04-panel-del-proveedor.md` 4.2 · `prototipos/panel-proveedor.html`
 
-### [ ] F1B-03 · Listado y ficha de empresas
+Hecho: `CreacionDeEmpresa` —las reglas, la escritura y los textos del resumen en un solo sitio—,
+`EmpresaController`, `CrearEmpresa`, las cuatro rutas `proveedor.empresas.*` y las pantallas
+`Proveedor/CrearEmpresa` y `Proveedor/ResumenDeEmpresa`. **La empresa, su superadministrador y su
+invitación nacen dentro de la misma transacción**: si el correo ya estaba en uso no queda ninguna
+empresa a medias, y hay prueba. La ciudad dejó de ser texto y pasó a ser el municipio del catálogo.
+El plan se guarda como cuatro columnas de `tenants` —nombre y los dos números pactados— porque la
+tabla `planes` con sus precios depende de A.1, que sigue abierta. El resumen lo arma el servidor
+leyendo la empresa ya guardada, y el texto que se copia es exactamente el que se enseña.
+
+### [x] F1B-03 · Listado y ficha de empresas
 
 Listado con indicadores de salud de uso y de pago. Ficha con resumen, parámetros editables por el
 owner y gestión de usuarios de esa empresa.
 **Hecho cuando:** se ve el listado con datos reales y se edita un parámetro desde la ficha.
 **Fuente:** `docs/04-panel-del-proveedor.md` 4.1 y 4.3
+
+Hecho: `ListadoDeEmpresas` —los cuatro filtros, el orden, la paginación y las filas—, `FichaDeEmpresa`
+—las siete pestañas—, los enumerados `EstadoDeEmpresa` y `SaludDeUso`, y las pantallas
+`Proveedor/Empresas` y `Proveedor/FichaDeEmpresa`. **Los empleados de cada empresa se cuentan dentro
+de su contexto** con `ContextoTenant::paraTenant()`, no se leen del contador `empleados_cargados` que
+todavía no refresca nadie. **La salud de uso sale del último ingreso**, que ahora lo escribe el propio
+inicio de sesión en `RegistroDeAccesos`; sus umbrales viven en el nuevo `config/panel.php` porque son
+una decisión comercial que el documento no fija. **«Pago» se declara y no se inventa**: las
+suscripciones son F5-04, así que la columna lo dice y su filtro no se ofrece. Cuatro pestañas tienen
+contenido y tres dicen de qué tarea depende el suyo. Los parámetros se editan desde la ficha y el
+cambio queda en la auditoría **de esa empresa**, que es la que el cliente puede ver; las dos acciones
+sobre un usuario mandan enlaces a su buzón y **ninguna enseña una contraseña**.
 
 ### [ ] F1B-04 · Catálogos y constantes desde el panel
 

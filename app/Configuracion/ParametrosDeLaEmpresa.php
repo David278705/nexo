@@ -102,16 +102,47 @@ class ParametrosDeLaEmpresa
      */
     public function parametros(): array
     {
+        return array_map(fn (array $parametro) => [
+            ...$parametro,
+            'valor' => $this->activo($parametro['clave']) ? self::SI : self::NO,
+        ], self::opciones());
+    }
+
+    /**
+     * Los tres parámetros sin ningún valor: el título, la explicación y las dos
+     * opciones de cada uno.
+     *
+     * Existe aparte porque **la empresa que todavía no se ha creado también los
+     * pregunta**: el paso 2 de «crear empresa» del panel del proveedor (doc. 04,
+     * 4.2) ofrece exactamente estos tres selectores. Preguntarlos con las mismas
+     * palabras al crear y al editar no es cosmético: la explicación es lo que el
+     * cliente aprueba en la reunión de onboarding y lo que después reconoce en su
+     * propia pantalla de configuración.
+     *
+     * @return list<array{clave: string, titulo: string, explicacion: string, opciones: list<array{valor: string, texto: string}>}>
+     */
+    public static function opciones(): array
+    {
         return array_map(fn (string $campo) => [
             'clave' => $campo,
             'titulo' => self::TITULOS[$campo],
             'explicacion' => self::EXPLICACIONES[$campo],
-            'valor' => $this->activo($campo) ? self::SI : self::NO,
             'opciones' => [
                 ['valor' => self::SI, 'texto' => self::TEXTOS_DEL_SI[$campo]],
                 ['valor' => self::NO, 'texto' => self::TEXTOS_DEL_NO[$campo]],
             ],
         ], self::CAMPOS);
+    }
+
+    /**
+     * El texto elegido para un parámetro, tal como se lee en pantalla.
+     *
+     * Es lo que enseña el resumen que se le lee al cliente en voz alta: «No, la
+     * empresa no trabaja los sábados» dice lo que se acordó; un `false` no.
+     */
+    public static function texto(string $campo, bool $valor): string
+    {
+        return $valor ? self::TEXTOS_DEL_SI[$campo] : self::TEXTOS_DEL_NO[$campo];
     }
 
     /**
@@ -125,13 +156,29 @@ class ParametrosDeLaEmpresa
      */
     public function guardar(array $valores): void
     {
-        $this->empresa->update(array_combine(
+        $this->empresa->update(self::comoBooleanos($valores));
+    }
+
+    /**
+     * Los tres `si` y `no` del formulario convertidos a los tres booleanos de
+     * la tabla, en el único sitio donde esa conversión ocurre.
+     *
+     * Lo usan las dos escrituras: la de esta pantalla y la de «crear empresa»
+     * del panel del proveedor, que tiene que fijarlos antes de que la empresa
+     * exista y por eso no puede llamar a `guardar()`.
+     *
+     * @param  array<string, string>  $valores
+     * @return array<string, bool>
+     */
+    public static function comoBooleanos(array $valores): array
+    {
+        return array_combine(
             self::CAMPOS,
             array_map(
                 fn (string $campo) => ($valores[$campo] ?? self::NO) === self::SI,
                 self::CAMPOS,
             ),
-        ));
+        );
     }
 
     /**

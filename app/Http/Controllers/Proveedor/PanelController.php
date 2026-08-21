@@ -12,11 +12,11 @@ use Inertia\Response;
 /**
  * Las pantallas del panel del proveedor.
  *
- * De momento son el armazón y nada más: la barra lateral con las nueve
- * secciones, el encabezado y una pantalla por sección. El contenido llega en sus
- * tareas —`F1B-02` crear empresa, `F1B-03` listado y ficha, `F1B-04` catálogos, y
- * el resto en la fase 5—, pero las direcciones, la puerta del rol y el segundo
- * factor son los definitivos desde ya.
+ * Quedan aquí el inicio y las secciones que todavía no tienen contenido propio:
+ * `F1B-04` catálogos y el resto de la fase 5. «Empresas» ya no pasa por aquí
+ * —tiene su listado y su ficha en `EmpresaController`—, pero las direcciones, la
+ * puerta del rol y el segundo factor de las que faltan son los definitivos desde
+ * ya.
  *
  * Ninguna pantalla de aquí inventa indicadores. El capítulo 3 del documento 4
  * describe un inicio con clientes en riesgo, ingreso recurrente y correos del
@@ -32,6 +32,13 @@ class PanelController extends Controller
         ]);
     }
 
+    /**
+     * Una sección todavía sin contenido.
+     *
+     * Ya no recibe ninguna acción: la única que había era «crear empresa», que
+     * vivía aquí mientras «Empresas» no tenía listado. Ahora lo tiene, y el
+     * botón está donde le corresponde.
+     */
     public function seccion(SeccionDelPanel $seccion): Response
     {
         return Inertia::render('Proveedor/SeccionPendiente', [

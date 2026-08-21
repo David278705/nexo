@@ -23,8 +23,12 @@ defineProps({
     <Head :title="titulo" />
 
     <ArmazonProveedor>
-        <h1 class="text-titulo font-semibold text-texto">{{ titulo }}</h1>
-        <p class="mt-1 text-apoyo text-texto-secundario">{{ descripcion }}</p>
+        <div>
+            <h1 class="text-titulo font-semibold text-texto">{{ titulo }}</h1>
+            <p class="mt-1 text-apoyo text-texto-secundario">
+                {{ descripcion }}
+            </p>
+        </div>
 
         <div
             class="mt-4 rounded-[var(--radius-modal)] border border-borde bg-superficie"

@@ -10,6 +10,7 @@ use App\Http\Controllers\Acceso\SesionController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
+use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
 use App\Presentacion\Formato;
@@ -176,6 +177,49 @@ Route::middleware(['auth', 'proveedor'])
         Route::middleware('segundo-factor')->group(function () {
             Route::get('/', [PanelController::class, 'inicio'])
                 ->name(SeccionDelPanel::Inicio->nombreDeRuta());
+
+            /*
+             * Empresas (documento 4, capítulo 4): el listado, crear, la ficha y
+             * lo que cuelga de ella.
+             *
+             * `/empresas/nueva` va **antes** que `/empresas/{empresa}`: si no,
+             * `nueva` se leería como el identificador de una empresa. Por eso la
+             * ficha exige además que el suyo sea un número.
+             */
+            Route::get('/empresas', [EmpresaController::class, 'index'])
+                ->name(SeccionDelPanel::Empresas->nombreDeRuta());
+            Route::get('/empresas/nueva', [EmpresaController::class, 'nueva'])
+                ->name('proveedor.empresas.nueva');
+            Route::post('/empresas', [EmpresaController::class, 'crear'])
+                ->name('proveedor.empresas.crear');
+            Route::get('/empresas/{empresa}/resumen', [EmpresaController::class, 'resumen'])
+                ->name('proveedor.empresas.resumen');
+            Route::get('/empresas/{empresa}/certificado', [EmpresaController::class, 'certificado'])
+                ->name('proveedor.empresas.certificado');
+            Route::get('/empresas/{empresa}', [EmpresaController::class, 'ficha'])
+                ->whereNumber('empresa')
+                ->name('proveedor.empresas.ficha');
+
+            /*
+             * Editar los parámetros de una empresa desde su ficha (4.3). Es
+             * `PUT` por lo mismo que en el entorno del cliente: se reemplazan
+             * los tres valores que ya existen, no se crea un hecho nuevo.
+             */
+            Route::put('/empresas/{empresa}/parametros', [EmpresaController::class, 'guardarParametros'])
+                ->whereNumber('empresa')
+                ->name('proveedor.empresas.parametros');
+
+            /*
+             * Las dos acciones de la pestaña «Usuarios». Ninguna de las dos
+             * enseña una contraseña: una reenvía el enlace de la invitación y la
+             * otra manda el de restablecerla.
+             */
+            Route::post('/empresas/{empresa}/usuarios/{usuario}/invitacion', [EmpresaController::class, 'reenviarInvitacion'])
+                ->whereNumber(['empresa', 'usuario'])
+                ->name('proveedor.empresas.invitacion');
+            Route::post('/empresas/{empresa}/usuarios/{usuario}/contrasena', [EmpresaController::class, 'restablecerContrasena'])
+                ->whereNumber(['empresa', 'usuario'])
+                ->name('proveedor.empresas.contrasena');
 
             /*
              * Las ocho secciones restantes del capítulo 2. Existen desde ya,

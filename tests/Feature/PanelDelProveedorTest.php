@@ -188,11 +188,15 @@ it('abre el panel con el código correcto de la sesión', function () {
         ->assertRedirect('/proveedor');
 
     $this->get('/proveedor')->assertOk();
-    $this->get('/proveedor/empresas')
+    // Cualquier sección sirve para comprobar que el panel quedó abierto; se
+    // toma una de las que todavía no tienen contenido para que esta prueba no
+    // se rompa cada vez que una sección estrene el suyo.
+    $this->get('/proveedor/empresas')->assertOk();
+    $this->get('/proveedor/catalogos')
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina
             ->component('Proveedor/SeccionPendiente')
-            ->where('titulo', 'Empresas'));
+            ->where('titulo', 'Catálogos'));
 });
 
 it('no abre el panel con un código equivocado', function () {

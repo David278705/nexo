@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { usePage } from "@inertiajs/vue3";
 import BarraLateral from "@/Components/BarraLateral.vue";
 import EncabezadoApp from "@/Components/EncabezadoApp.vue";
+import Notificacion from "@/Components/Notificacion.vue";
 
 /*
  * El armazón del documento 3, sección 4.1: barra lateral fija a la izquierda y
@@ -29,6 +30,14 @@ const props = defineProps({
 const pagina = usePage();
 
 const usuario = computed(() => pagina.props.usuario);
+
+/*
+ * El mensaje que dejó la petición anterior (`->with('estado', …)`), pintado en
+ * un solo sitio para las dos aplicaciones. Sin esto, un `with('estado')` del
+ * servidor no se veía en ninguna parte y la respuesta a «guardé y no pasó nada
+ * visible» del documento 3, sección 2.5, quedaba a medias.
+ */
+const estado = computed(() => pagina.props.estado ?? "");
 const modulos = computed(() => props.secciones ?? usuario.value?.modulos ?? []);
 const urlActual = computed(() => pagina.url.split("?")[0]);
 
@@ -56,6 +65,8 @@ watch(urlActual, () => {
 
 <template>
     <div class="flex min-h-screen bg-fondo">
+        <Notificacion :mensaje="estado" />
+
         <!-- La barra fija, desde 1024px en adelante. -->
         <aside class="hidden w-[236px] shrink-0 lg:block">
             <div class="fixed inset-y-0 left-0 w-[236px]">

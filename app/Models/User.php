@@ -124,11 +124,25 @@ class User extends Authenticatable
     }
 
     /**
+     * Los módulos asignados, **en el orden del menú**.
+     *
+     * El orden sale de `Modulo::cases()` y no de las filas de `user_modulos`:
+     * PostgreSQL devuelve una tabla sin `order by` en el orden que le conviene,
+     * así que sin esto la lista de módulos de un usuario cambiaba de orden entre
+     * ejecuciones. Se nota en la pantalla de parámetros, que la escribe como
+     * texto —«Contratos · Vacaciones»—, y donde el orden de un texto que se lee
+     * no puede depender del almacenamiento.
+     *
      * @return Collection<int, Modulo>
      */
     public function modulosAsignados(): Collection
     {
-        return $this->modulos->map(fn (UserModulo $asignado) => $asignado->modulo);
+        $orden = Modulo::cases();
+
+        return $this->modulos
+            ->map(fn (UserModulo $asignado) => $asignado->modulo)
+            ->sortBy(fn (Modulo $modulo) => array_search($modulo, $orden, true))
+            ->values();
     }
 
     /**
