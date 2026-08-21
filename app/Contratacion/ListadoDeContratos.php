@@ -2,11 +2,10 @@
 
 namespace App\Contratacion;
 
+use App\Listados\Listado;
 use App\Models\PeriodoContractual;
-use App\Models\Persona;
 use App\Models\Vinculacion;
 use App\Presentacion\Formato;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,20 +23,16 @@ use Illuminate\Support\Carbon;
  * inactivas no aparecen —el contrato de quien ya salió no hay que gestionarlo—,
  * y por eso no hay filtro de estado del empleado.
  *
- * Escrito con el mismo patrón que `ListadoDeEmpleados` y por la misma razón: la
- * pantalla y la exportación arman una sola consulta, para que «Exportar 9
- * registros filtrados» no pueda mentir.
+ * El armazón —la dirección, el orden, la paginación y la consulta única que
+ * comparten la pantalla y la exportación— lo pone `Listado`, el mismo de
+ * `ListadoDeEmpleados`. Aquí queda solo lo propio: sus tres filtros, sus
+ * columnas ordenables y sus filas.
+ *
+ * @extends Listado<Vinculacion>
  */
-class ListadoDeContratos
+class ListadoDeContratos extends Listado
 {
-    public const TAMANOS_DE_PAGINA = [25, 50, 100];
-
-    public const POR_PAGINA_POR_DEFECTO = 25;
-
-    /**
-     * El valor que no filtra nada, en los filtros de lista.
-     */
-    public const TODOS = 'todos';
+    use OrdenaPorEmpleado;
 
     /**
      * El rango de vencimiento por defecto, en días.
@@ -71,20 +66,16 @@ class ListadoDeContratos
         ['valor' => self::TODOS, 'texto' => 'Cualquier número de prórrogas'],
     ];
 
-    /**
-     * Lista blanca de ordenamientos. Cualquier otro valor de la dirección se
-     * ignora, así que `?orden=salario` no saca una columna que no se muestra.
-     */
-    private const ORDENAMIENTOS = ['empleado', 'contrato', 'inicio', 'vence', 'prorrogas'];
-
-    private function __construct(
+    protected function __construct(
         public readonly string $vence,
         public readonly string $contrato,
         public readonly string $prorrogas,
-        public readonly string $orden,
-        public readonly string $direccion,
-        public readonly int $porPagina,
-    ) {}
+        string $orden,
+        string $direccion,
+        int $porPagina,
+    ) {
+        parent::__construct($orden, $direccion, $porPagina);
+    }
 
     /**
      * Lee los filtros de la petición y los deja normalizados.
@@ -92,52 +83,13 @@ class ListadoDeContratos
     public static function desde(Request $peticion): self
     {
         return new self(
-            vence: self::opcion($peticion, 'vence', self::valoresDe(self::RANGOS_DE_VENCIMIENTO), self::VENCE_POR_DEFECTO),
-            contrato: self::opcion($peticion, 'contrato', TipoContrato::valores(), self::TODOS),
-            prorrogas: self::opcion($peticion, 'prorrogas', self::valoresDe(self::RANGOS_DE_PRORROGAS), self::TODOS),
-            orden: self::opcion($peticion, 'orden', self::ORDENAMIENTOS, 'vence'),
-            direccion: self::opcion($peticion, 'direccion', ['asc', 'desc'], 'asc'),
+            vence: self::filtro($peticion, 'vence', self::valoresDe(self::RANGOS_DE_VENCIMIENTO), self::VENCE_POR_DEFECTO),
+            contrato: self::filtro($peticion, 'contrato', TipoContrato::valores()),
+            prorrogas: self::filtro($peticion, 'prorrogas', self::valoresDe(self::RANGOS_DE_PRORROGAS)),
+            orden: self::ordenPedido($peticion),
+            direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
         );
-    }
-
-    /**
-     * La consulta con los filtros aplicados, sin paginar. Es la de la pantalla
-     * y la de la exportación.
-     *
-     * @return Builder<Vinculacion>
-     */
-    public function consulta(): Builder
-    {
-        $consulta = Vinculacion::query()->activas()->with(['persona', 'periodos']);
-
-        $this->filtrarPorVencimiento($consulta);
-
-        if ($this->contrato !== self::TODOS) {
-            $consulta->where('tipo_contrato', $this->contrato);
-        }
-
-        $this->filtrarPorProrrogas($consulta);
-
-        return $this->ordenar($consulta);
-    }
-
-    /**
-     * @return LengthAwarePaginator<int, Vinculacion>
-     */
-    public function pagina(): LengthAwarePaginator
-    {
-        return $this->consulta()->paginate($this->porPagina)->withQueryString();
-    }
-
-    public function total(): int
-    {
-        return $this->consulta()->count();
-    }
-
-    public function tieneFiltros(): bool
-    {
-        return $this->aplicados() !== [];
     }
 
     /**
@@ -175,21 +127,6 @@ class ListadoDeContratos
         }
 
         return $etiquetas;
-    }
-
-    /**
-     * @return array<string, string|int>
-     */
-    public function paraLaInterfaz(): array
-    {
-        return [
-            'vence' => $this->vence,
-            'contrato' => $this->contrato,
-            'prorrogas' => $this->prorrogas,
-            'orden' => $this->orden,
-            'direccion' => $this->direccion,
-            'porPagina' => $this->porPagina,
-        ];
     }
 
     /**
@@ -262,6 +199,63 @@ class ListadoDeContratos
     }
 
     /**
+     * @return Builder<Vinculacion>
+     */
+    protected function base(): Builder
+    {
+        return Vinculacion::query()->activas()->with(['persona', 'periodos']);
+    }
+
+    /**
+     * @param  Builder<Vinculacion>  $consulta
+     */
+    protected function filtrar(Builder $consulta): void
+    {
+        $this->filtrarPorVencimiento($consulta);
+
+        if ($this->contrato !== self::TODOS) {
+            $consulta->where('tipo_contrato', $this->contrato);
+        }
+
+        $this->filtrarPorProrrogas($consulta);
+    }
+
+    /**
+     * @return array<string, callable(Builder<Vinculacion>, string): mixed>
+     */
+    protected static function columnasDeOrden(): array
+    {
+        return [
+            'empleado' => self::porNombreDeLaPersona(...),
+            'contrato' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('tipo_contrato', $sentido),
+            'inicio' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_ingreso', $sentido),
+            'prorrogas' => fn (Builder $consulta, string $sentido) => $consulta
+                ->orderBy(self::conteoDeProrrogas(), $sentido),
+            // Los que no vencen van al final en los dos sentidos: un contrato
+            // indefinido no es «el que vence primero» ni «el que vence último».
+            'vence' => fn (Builder $consulta, string $sentido) => $consulta
+                ->orderByRaw("fecha_fin {$sentido} nulls last"),
+        ];
+    }
+
+    protected static function ordenPorDefecto(): string
+    {
+        return 'vence';
+    }
+
+    /**
+     * @return array<string, string|int>
+     */
+    protected function filtrosParaLaInterfaz(): array
+    {
+        return [
+            'vence' => $this->vence,
+            'contrato' => $this->contrato,
+            'prorrogas' => $this->prorrogas,
+        ];
+    }
+
+    /**
      * El rango de vencimiento.
      *
      * Se filtra por `fecha_fin` de la vinculación, que es el vencimiento
@@ -325,90 +319,13 @@ class ListadoDeContratos
     }
 
     /**
-     * @param  Builder<Vinculacion>  $consulta
-     * @return Builder<Vinculacion>
-     */
-    private function ordenar(Builder $consulta): Builder
-    {
-        $sentido = $this->direccion === 'desc' ? 'desc' : 'asc';
-
-        match ($this->orden) {
-            'empleado' => $consulta
-                ->orderBy($this->dePersona('primer_apellido'), $sentido)
-                ->orderBy($this->dePersona('primer_nombre'), $sentido),
-            'contrato' => $consulta->orderBy('tipo_contrato', $sentido),
-            'inicio' => $consulta->orderBy('fecha_ingreso', $sentido),
-            'prorrogas' => $consulta->orderBy($this->conteoDeProrrogas(), $sentido),
-            // Los que no vencen van al final en los dos sentidos: un contrato
-            // indefinido no es «el que vence primero» ni «el que vence último».
-            default => $consulta->orderByRaw("fecha_fin {$sentido} nulls last"),
-        };
-
-        return $consulta->orderBy('id', 'asc');
-    }
-
-    /**
      * @return Builder<PeriodoContractual>
      */
-    private function conteoDeProrrogas(): Builder
+    private static function conteoDeProrrogas(): Builder
     {
         return PeriodoContractual::query()
             ->selectRaw('count(*)')
             ->prorrogas()
             ->whereColumn('periodos_contractuales.vinculacion_id', 'vinculaciones.id');
-    }
-
-    /**
-     * @return Builder<Persona>
-     */
-    private function dePersona(string $columna): Builder
-    {
-        return Persona::query()
-            ->select($columna)
-            ->whereColumn('personas.id', 'vinculaciones.persona_id');
-    }
-
-    /**
-     * @param  list<array{valor: string, texto: string}>  $opciones
-     * @return list<string>
-     */
-    private static function valoresDe(array $opciones): array
-    {
-        return array_map(fn (array $opcion): string => $opcion['valor'], $opciones);
-    }
-
-    /**
-     * @param  list<array{valor: string, texto: string}>  $opciones
-     */
-    private static function textoDe(array $opciones, string $valor): string
-    {
-        foreach ($opciones as $opcion) {
-            if ($opcion['valor'] === $valor) {
-                return $opcion['texto'];
-            }
-        }
-
-        return $valor;
-    }
-
-    /**
-     * @param  list<string>  $permitidos
-     */
-    private static function opcion(Request $peticion, string $clave, array $permitidos, string $porDefecto): string
-    {
-        $valor = (string) $peticion->query($clave, '');
-
-        if ($valor === self::TODOS) {
-            return self::TODOS;
-        }
-
-        return in_array($valor, $permitidos, true) ? $valor : $porDefecto;
-    }
-
-    private static function porPagina(Request $peticion): int
-    {
-        $valor = (int) $peticion->query('porPagina', 0);
-
-        return in_array($valor, self::TAMANOS_DE_PAGINA, true) ? $valor : self::POR_PAGINA_POR_DEFECTO;
     }
 }

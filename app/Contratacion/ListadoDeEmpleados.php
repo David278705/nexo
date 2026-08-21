@@ -2,14 +2,11 @@
 
 namespace App\Contratacion;
 
-use App\Models\Persona;
+use App\Listados\Listado;
 use App\Models\Vinculacion;
 use App\Presentacion\Formato;
-use Carbon\Exceptions\InvalidFormatException;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 /**
  * El listado de empleados (documento 3, sección 5.3) y sus filtros.
@@ -23,43 +20,30 @@ use Illuminate\Support\Carbon;
  * filtrados» diga la verdad depende de que ambos armen la misma consulta, y la
  * única forma de garantizarlo es que solo exista una.
  *
- * Todo el filtrado, el ordenamiento y la paginación se resuelven en el
- * servidor. Aquí no se escribe ni un `where('tenant_id', ...)`: lo pone el
- * trait `PerteneceATenant` de `Vinculacion`.
+ * El filtrado, el ordenamiento y la paginación se resuelven en el servidor, y
+ * el armazón —normalizar la dirección, ordenar, paginar— lo pone `Listado`.
+ * Aquí queda solo lo que es de este listado: sus seis filtros, sus columnas
+ * ordenables y sus filas.
+ *
+ * @extends Listado<Vinculacion>
  */
-class ListadoDeEmpleados
+class ListadoDeEmpleados extends Listado
 {
-    /**
-     * Los tamaños de página del documento 3, sección 6.1.
-     */
-    public const TAMANOS_DE_PAGINA = [25, 50, 100];
+    use OrdenaPorEmpleado;
 
-    public const POR_PAGINA_POR_DEFECTO = 25;
-
-    /**
-     * El valor del filtro de estado que no filtra nada.
-     */
-    public const TODOS = 'todos';
-
-    /**
-     * Las columnas por las que se puede ordenar, con el nombre que viaja en la
-     * dirección. Se lee como lista blanca: cualquier otro valor se ignora, así
-     * que `?orden=salario` no puede sacar una columna que la pantalla no
-     * muestra.
-     */
-    private const ORDENAMIENTOS = ['documento', 'nombre', 'cargo', 'contrato', 'ingreso', 'estado'];
-
-    private function __construct(
+    protected function __construct(
         public readonly string $buscar,
         public readonly string $estado,
         public readonly string $contrato,
         public readonly string $cargo,
         public readonly string $ingresoDesde,
         public readonly string $ingresoHasta,
-        public readonly string $orden,
-        public readonly string $direccion,
-        public readonly int $porPagina,
-    ) {}
+        string $orden,
+        string $direccion,
+        int $porPagina,
+    ) {
+        parent::__construct($orden, $direccion, $porPagina);
+    }
 
     /**
      * Lee los filtros de la petición y los deja normalizados.
@@ -72,89 +56,16 @@ class ListadoDeEmpleados
     public static function desde(Request $peticion): self
     {
         return new self(
-            buscar: trim((string) $peticion->query('buscar', '')),
-            estado: self::opcion($peticion, 'estado', EstadoVinculacion::valores(), EstadoVinculacion::Activo->value),
-            contrato: self::opcion($peticion, 'contrato', TipoContrato::valores(), self::TODOS),
-            cargo: trim((string) $peticion->query('cargo', '')),
+            buscar: self::texto($peticion, 'buscar'),
+            estado: self::filtro($peticion, 'estado', EstadoVinculacion::valores(), EstadoVinculacion::Activo->value),
+            contrato: self::filtro($peticion, 'contrato', TipoContrato::valores()),
+            cargo: self::texto($peticion, 'cargo'),
             ingresoDesde: self::fecha($peticion, 'ingresoDesde'),
             ingresoHasta: self::fecha($peticion, 'ingresoHasta'),
-            orden: self::opcion($peticion, 'orden', self::ORDENAMIENTOS, 'nombre'),
-            direccion: self::opcion($peticion, 'direccion', ['asc', 'desc'], 'asc'),
+            orden: self::ordenPedido($peticion),
+            direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
         );
-    }
-
-    /**
-     * La consulta con los filtros aplicados, sin paginar.
-     *
-     * Es la que usa la exportación, y la misma sobre la que la pantalla pide su
-     * página.
-     *
-     * @return Builder<Vinculacion>
-     */
-    public function consulta(): Builder
-    {
-        $consulta = Vinculacion::query()->with('persona');
-
-        if ($this->estado !== self::TODOS) {
-            $consulta->where('estado', $this->estado);
-        }
-
-        if ($this->contrato !== self::TODOS) {
-            $consulta->where('tipo_contrato', $this->contrato);
-        }
-
-        if ($this->cargo !== '') {
-            $consulta->where('cargo', $this->cargo);
-        }
-
-        if ($this->ingresoDesde !== '') {
-            $consulta->whereDate('fecha_ingreso', '>=', $this->ingresoDesde);
-        }
-
-        if ($this->ingresoHasta !== '') {
-            $consulta->whereDate('fecha_ingreso', '<=', $this->ingresoHasta);
-        }
-
-        if ($this->buscar !== '') {
-            $this->buscarPorNombreODocumento($consulta);
-        }
-
-        return $this->ordenar($consulta);
-    }
-
-    /**
-     * La página que pide la pantalla, con la dirección conservada.
-     *
-     * `withQueryString()` es lo que hace que al volver de la ficha los filtros
-     * y la página sigan donde estaban (documento 3, sección 6.1).
-     *
-     * @return LengthAwarePaginator<int, Vinculacion>
-     */
-    public function pagina(): LengthAwarePaginator
-    {
-        return $this->consulta()->paginate($this->porPagina)->withQueryString();
-    }
-
-    /**
-     * Cuántos registros trae la exportación. Es la cifra que el botón enseña
-     * antes de pulsarlo: «Exportar 43 registros filtrados».
-     */
-    public function total(): int
-    {
-        return $this->consulta()->count();
-    }
-
-    /**
-     * Si hay algún filtro puesto.
-     *
-     * Distingue las dos pantallas vacías del documento 3, sección 6.3: sin
-     * filtros, la empresa todavía no tiene empleados; con filtros, la búsqueda
-     * no encontró nada y lo que se ofrece es quitarlos.
-     */
-    public function tieneFiltros(): bool
-    {
-        return $this->aplicados() !== [];
     }
 
     /**
@@ -195,39 +106,18 @@ class ListadoDeEmpleados
         if ($this->ingresoDesde !== '') {
             $etiquetas[] = [
                 'clave' => 'ingresoDesde',
-                'texto' => 'Ingreso desde: '.$this->enFormatoColombiano($this->ingresoDesde),
+                'texto' => 'Ingreso desde: '.self::enFormatoColombiano($this->ingresoDesde),
             ];
         }
 
         if ($this->ingresoHasta !== '') {
             $etiquetas[] = [
                 'clave' => 'ingresoHasta',
-                'texto' => 'Ingreso hasta: '.$this->enFormatoColombiano($this->ingresoHasta),
+                'texto' => 'Ingreso hasta: '.self::enFormatoColombiano($this->ingresoHasta),
             ];
         }
 
         return $etiquetas;
-    }
-
-    /**
-     * Los filtros tal como los recibe la pantalla, para repintar los controles
-     * con lo que ya está puesto.
-     *
-     * @return array<string, string|int>
-     */
-    public function paraLaInterfaz(): array
-    {
-        return [
-            'buscar' => $this->buscar,
-            'estado' => $this->estado,
-            'contrato' => $this->contrato,
-            'cargo' => $this->cargo,
-            'ingresoDesde' => $this->ingresoDesde,
-            'ingresoHasta' => $this->ingresoHasta,
-            'orden' => $this->orden,
-            'direccion' => $this->direccion,
-            'porPagina' => $this->porPagina,
-        ];
     }
 
     /**
@@ -296,6 +186,80 @@ class ListadoDeEmpleados
     }
 
     /**
+     * @return Builder<Vinculacion>
+     */
+    protected function base(): Builder
+    {
+        return Vinculacion::query()->with('persona');
+    }
+
+    /**
+     * @param  Builder<Vinculacion>  $consulta
+     */
+    protected function filtrar(Builder $consulta): void
+    {
+        if ($this->estado !== self::TODOS) {
+            $consulta->where('estado', $this->estado);
+        }
+
+        if ($this->contrato !== self::TODOS) {
+            $consulta->where('tipo_contrato', $this->contrato);
+        }
+
+        if ($this->cargo !== '') {
+            $consulta->where('cargo', $this->cargo);
+        }
+
+        if ($this->ingresoDesde !== '') {
+            $consulta->whereDate('fecha_ingreso', '>=', $this->ingresoDesde);
+        }
+
+        if ($this->ingresoHasta !== '') {
+            $consulta->whereDate('fecha_ingreso', '<=', $this->ingresoHasta);
+        }
+
+        if ($this->buscar !== '') {
+            $this->buscarPorNombreODocumento($consulta);
+        }
+    }
+
+    /**
+     * @return array<string, callable(Builder<Vinculacion>, string): mixed>
+     */
+    protected static function columnasDeOrden(): array
+    {
+        return [
+            'documento' => fn (Builder $consulta, string $sentido) => $consulta
+                ->orderBy(self::dePersona('numero_documento'), $sentido),
+            'nombre' => self::porNombreDeLaPersona(...),
+            'cargo' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('cargo', $sentido),
+            'contrato' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('tipo_contrato', $sentido),
+            'ingreso' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_ingreso', $sentido),
+            'estado' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('estado', $sentido),
+        ];
+    }
+
+    protected static function ordenPorDefecto(): string
+    {
+        return 'nombre';
+    }
+
+    /**
+     * @return array<string, string|int>
+     */
+    protected function filtrosParaLaInterfaz(): array
+    {
+        return [
+            'buscar' => $this->buscar,
+            'estado' => $this->estado,
+            'contrato' => $this->contrato,
+            'cargo' => $this->cargo,
+            'ingresoDesde' => $this->ingresoDesde,
+            'ingresoHasta' => $this->ingresoHasta,
+        ];
+    }
+
+    /**
      * Busca por nombre o por documento en una sola caja.
      *
      * El nombre se compara concatenado para que «Juan Mejía» encuentre a quien
@@ -319,98 +283,5 @@ class ListadoDeEmpleados
                     ->orWhere('numero_documento', 'ilike', $termino);
             });
         });
-    }
-
-    /**
-     * El ordenamiento al pulsar el encabezado de columna.
-     *
-     * Documento y nombre viven en `personas`, así que se ordenan por subconsulta
-     * en vez de por `join`: un `join` duplicaría filas si mañana la relación
-     * dejara de ser una a una y, sobre todo, obligaría a calificar cada columna
-     * con su tabla en el resto de la consulta.
-     *
-     * @param  Builder<Vinculacion>  $consulta
-     * @return Builder<Vinculacion>
-     */
-    private function ordenar(Builder $consulta): Builder
-    {
-        $sentido = $this->direccion;
-
-        match ($this->orden) {
-            'documento' => $consulta->orderBy($this->dePersona('numero_documento'), $sentido),
-            'nombre' => $consulta
-                ->orderBy($this->dePersona('primer_apellido'), $sentido)
-                ->orderBy($this->dePersona('primer_nombre'), $sentido),
-            'cargo' => $consulta->orderBy('cargo', $sentido),
-            'contrato' => $consulta->orderBy('tipo_contrato', $sentido),
-            'estado' => $consulta->orderBy('estado', $sentido),
-            default => $consulta->orderBy('fecha_ingreso', $sentido),
-        };
-
-        // El desempate. Sin él, dos empleados con el mismo cargo pueden
-        // intercambiarse de sitio entre una página y la siguiente y aparecer
-        // dos veces o ninguna.
-        return $consulta->orderBy('id', 'asc');
-    }
-
-    /**
-     * @return Builder<Persona>
-     */
-    private function dePersona(string $columna): Builder
-    {
-        return Persona::query()
-            ->select($columna)
-            ->whereColumn('personas.id', 'vinculaciones.persona_id');
-    }
-
-    /**
-     * @param  list<string>  $permitidos
-     */
-    private static function opcion(Request $peticion, string $clave, array $permitidos, string $porDefecto): string
-    {
-        $valor = (string) $peticion->query($clave, '');
-
-        if ($valor === self::TODOS) {
-            return self::TODOS;
-        }
-
-        return in_array($valor, $permitidos, true) ? $valor : $porDefecto;
-    }
-
-    /**
-     * Una fecha de la dirección, en `AAAA-MM-DD` o nada.
-     */
-    private static function fecha(Request $peticion, string $clave): string
-    {
-        $valor = (string) $peticion->query($clave, '');
-
-        // Se exige el formato exacto en vez de dejar que Carbon adivine: «15»
-        // interpretado como año 2015 filtraría de verdad y el usuario nunca
-        // sabría por qué le faltan empleados.
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor) !== 1) {
-            return '';
-        }
-
-        try {
-            return Carbon::createFromFormat('Y-m-d', $valor)->format('Y-m-d');
-        } catch (InvalidFormatException) {
-            return '';
-        }
-    }
-
-    private static function porPagina(Request $peticion): int
-    {
-        $valor = (int) $peticion->query('porPagina', 0);
-
-        return in_array($valor, self::TAMANOS_DE_PAGINA, true) ? $valor : self::POR_PAGINA_POR_DEFECTO;
-    }
-
-    /**
-     * La fecha del filtro, que llega de la dirección como `AAAA-MM-DD` y se
-     * enseña en la etiqueta removible como la lee quien usa el sistema.
-     */
-    private function enFormatoColombiano(string $fecha): string
-    {
-        return Formato::fecha(Carbon::parse($fecha));
     }
 }

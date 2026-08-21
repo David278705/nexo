@@ -632,7 +632,7 @@ vender, tomándolo de `docs/06-decisiones-pendientes.md`.
 
 ## Tareas surgidas de revisiones
 
-### [ ] REV-01 · Un solo armazón de listado en el servidor
+### [x] REV-01 · Un solo armazón de listado en el servidor
 
 `ListadoDeEmpleados` y `ListadoDeContratos` tienen la misma estructura escrita dos veces:
 `opcion()`, `porPagina()`, `dePersona()`, `ordenar()`, `pagina()`, `total()`, `tieneFiltros()`,
@@ -648,6 +648,18 @@ siguen en verde sin tocarlas, y agregar un listado nuevo no vuelve a copiar `opc
 
 **Cuándo:** antes del primer listado de la fase 2 (F2-04). Hacerlo con dos ejemplos es barato;
 con cinco, ya no.
+
+Hecho: `App\Listados\Listado`, clase base abstracta y genérica sobre el modelo, con el armazón
+entero —`consulta()`, `pagina()`, `total()`, `tieneFiltros()`, `paraLaInterfaz()`, `ordenar()`, y los
+lectores `filtro()`, `opcion()`, `texto()`, `fecha()`, `porPagina()`, `valoresDe()`, `textoDe()`— más
+`TAMANOS_DE_PAGINA`, `POR_PAGINA_POR_DEFECTO` y `TODOS`. Cada listado declara solo lo suyo:
+`base()`, `filtrar()`, `columnasDeOrden()`, `ordenPorDefecto()`, `filtrosParaLaInterfaz()` y
+`aplicados()`. **La lista blanca y el mapa de columnas son una sola declaración**: el orden se valida
+contra las claves de `columnasDeOrden()`, así que no pueden separarse. Se migraron **los tres**
+listados que existen —empleados, contratos y empresas del panel—; el ordenamiento por persona, que
+empleados y contratos escribían igual, quedó en el trait `OrdenaPorEmpleado`. Las pruebas de
+empleados, contratos y del panel de empresas siguen en verde **sin tocarlas**, y `ListadosTest`
+prueba el armazón con un listado de mentira que declara dos filtros y nada más.
 
 ### [ ] REV-02 · Un solo armazón de listado en la interfaz
 

@@ -2,10 +2,10 @@
 
 namespace App\Proveedor;
 
+use App\Listados\Listado;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -33,52 +33,42 @@ use Illuminate\Http\Request;
  * una empresa se hace **entrando en su contexto** con `ContextoTenant`, que es
  * lo mismo que hace el recorrido de empresas del proceso diario: así el conteo
  * pasa por las dos capas de aislamiento en vez de saltárselas.
+ *
+ * El armazón es el mismo `Listado` de las pantallas del cliente, aunque el
+ * modelo sea `Tenant` y no una tabla de negocio: filtrar, ordenar y paginar se
+ * hacen igual en los dos lados del sistema.
+ *
+ * @extends Listado<Tenant>
  */
-class ListadoDeEmpresas
+class ListadoDeEmpresas extends Listado
 {
-    public const TAMANOS_DE_PAGINA = [25, 50, 100];
-
-    public const POR_PAGINA_POR_DEFECTO = 25;
-
-    public const TODOS = 'todos';
-
     /**
      * Lo que se enseña en la columna «Pago» mientras no existan las
      * suscripciones. Un hueco declarado antes que una cifra inventada.
      */
     public const PAGO_PENDIENTE = 'Sin cobros todavía';
 
-    /**
-     * Las columnas por las que se puede ordenar. Lista blanca: cualquier otro
-     * valor de la dirección se ignora.
-     *
-     * «Empleados» no está y no es un olvido: se cuenta empresa por empresa
-     * dentro de su contexto, así que la base de datos no puede ordenar por ese
-     * número sin sacarlo antes de su aislamiento.
-     *
-     * @var list<string>
-     */
-    private const ORDENAMIENTOS = ['empresa', 'plan', 'usuarios', 'ingreso', 'estado'];
-
-    private function __construct(
+    protected function __construct(
         public readonly string $buscar,
         public readonly string $estado,
         public readonly string $plan,
         public readonly string $salud,
-        public readonly string $orden,
-        public readonly string $direccion,
-        public readonly int $porPagina,
-    ) {}
+        string $orden,
+        string $direccion,
+        int $porPagina,
+    ) {
+        parent::__construct($orden, $direccion, $porPagina);
+    }
 
     public static function desde(Request $peticion): self
     {
         return new self(
-            buscar: trim((string) $peticion->query('buscar', '')),
-            estado: self::opcion($peticion, 'estado', EstadoDeEmpresa::valores()),
-            plan: trim((string) $peticion->query('plan', '')),
-            salud: self::opcion($peticion, 'salud', SaludDeUso::valores()),
-            orden: self::opcion($peticion, 'orden', self::ORDENAMIENTOS, 'empresa'),
-            direccion: self::opcion($peticion, 'direccion', ['asc', 'desc'], 'asc'),
+            buscar: self::texto($peticion, 'buscar'),
+            estado: self::filtro($peticion, 'estado', EstadoDeEmpresa::valores()),
+            plan: self::texto($peticion, 'plan'),
+            salud: self::filtro($peticion, 'salud', SaludDeUso::valores()),
+            orden: self::ordenPedido($peticion),
+            direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
         );
     }
@@ -86,10 +76,16 @@ class ListadoDeEmpresas
     /**
      * @return Builder<Tenant>
      */
-    public function consulta(): Builder
+    protected function base(): Builder
     {
-        $consulta = Tenant::query()->withCount('usuarios');
+        return Tenant::query()->withCount('usuarios');
+    }
 
+    /**
+     * @param  Builder<Tenant>  $consulta
+     */
+    protected function filtrar(Builder $consulta): void
+    {
         if ($this->estado !== self::TODOS) {
             $consulta->where('estado', $this->estado);
         }
@@ -109,21 +105,6 @@ class ListadoDeEmpresas
                 ->where('nombre', 'ilike', $termino)
                 ->orWhere('nit', 'ilike', $termino));
         }
-
-        return $this->ordenar($consulta);
-    }
-
-    /**
-     * @return LengthAwarePaginator<int, Tenant>
-     */
-    public function pagina(): LengthAwarePaginator
-    {
-        return $this->consulta()->paginate($this->porPagina)->withQueryString();
-    }
-
-    public function tieneFiltros(): bool
-    {
-        return $this->aplicados() !== [];
     }
 
     /**
@@ -161,16 +142,13 @@ class ListadoDeEmpresas
     /**
      * @return array<string, string|int>
      */
-    public function paraLaInterfaz(): array
+    protected function filtrosParaLaInterfaz(): array
     {
         return [
             'buscar' => $this->buscar,
             'estado' => $this->estado,
             'plan' => $this->plan,
             'salud' => $this->salud,
-            'orden' => $this->orden,
-            'direccion' => $this->direccion,
-            'porPagina' => $this->porPagina,
         ];
     }
 
@@ -271,45 +249,32 @@ class ListadoDeEmpresas
     }
 
     /**
-     * @param  Builder<Tenant>  $consulta
-     * @return Builder<Tenant>
+     * Las columnas por las que se puede ordenar, que son además la lista
+     * blanca.
+     *
+     * «Empleados» no está y no es un olvido: se cuenta empresa por empresa
+     * dentro de su contexto, así que la base de datos no puede ordenar por ese
+     * número sin sacarlo antes de su aislamiento.
+     *
+     * @return array<string, callable(Builder<Tenant>, string): mixed>
      */
-    private function ordenar(Builder $consulta): Builder
+    protected static function columnasDeOrden(): array
     {
-        $sentido = $this->direccion;
-
-        match ($this->orden) {
-            'plan' => $consulta->orderBy('plan_nombre', $sentido),
-            'usuarios' => $consulta->orderBy('usuarios_count', $sentido),
+        return [
+            'empresa' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('nombre', $sentido),
+            'plan' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('plan_nombre', $sentido),
+            'usuarios' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('usuarios_count', $sentido),
             // Las empresas en las que no ha entrado nadie van al final en los
             // dos sentidos: son el caso que hay que mirar, no una fecha vieja.
-            'ingreso' => $consulta->orderByRaw("ultimo_acceso_en {$sentido} nulls last"),
-            'estado' => $consulta->orderBy('estado', $sentido),
-            default => $consulta->orderBy('nombre', $sentido),
-        };
-
-        return $consulta->orderBy('id', 'asc');
+            'ingreso' => fn (Builder $consulta, string $sentido) => $consulta
+                ->orderByRaw("ultimo_acceso_en {$sentido} nulls last"),
+            'estado' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('estado', $sentido),
+        ];
     }
 
-    /**
-     * @param  list<string>  $permitidos
-     */
-    private static function opcion(
-        Request $peticion,
-        string $clave,
-        array $permitidos,
-        string $porDefecto = self::TODOS,
-    ): string {
-        $valor = (string) $peticion->query($clave, '');
-
-        return in_array($valor, $permitidos, true) ? $valor : $porDefecto;
-    }
-
-    private static function porPagina(Request $peticion): int
+    protected static function ordenPorDefecto(): string
     {
-        $valor = (int) $peticion->query('porPagina', 0);
-
-        return in_array($valor, self::TAMANOS_DE_PAGINA, true) ? $valor : self::POR_PAGINA_POR_DEFECTO;
+        return 'empresa';
     }
 
     private static function planDe(Tenant $empresa): string
