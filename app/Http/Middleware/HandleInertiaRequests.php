@@ -6,6 +6,7 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\PoliticaDeModulos;
 use App\Autorizacion\SeccionDelPanel;
 use App\Models\User;
+use App\Novedades\EmpleadoDeNovedad;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -31,6 +32,20 @@ class HandleInertiaRequests extends Middleware
             // Los mensajes de una petición a la siguiente. El de recuperar
             // contraseña es el primero que lo usa.
             'estado' => fn () => $request->session()->get('estado'),
+            /*
+             * El flujo compartido de novedades (documento 3, 5.5). Se comparte
+             * con todas las pantallas y no lo sirve cada controlador porque el
+             * flujo es **el mismo en los cinco módulos**: cinco búsquedas de
+             * empleado escritas por separado son cinco fichas que se separan a
+             * la primera corrección.
+             *
+             * `flujoDeNovedad` son cadenas fijas. `empleadoDeNovedad` es una
+             * prop opcional: no se resuelve en la carga de la pantalla, solo
+             * cuando el modal la pide al salir del campo del documento con
+             * `router.reload({ only: [...] })`.
+             */
+            'flujoDeNovedad' => fn (): array => EmpleadoDeNovedad::textos(),
+            EmpleadoDeNovedad::PROP => EmpleadoDeNovedad::prop($request),
         ];
     }
 

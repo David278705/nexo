@@ -118,6 +118,29 @@ class FichaDeEmpleado
     }
 
     /**
+     * El mismo resumen, recortado a lo que encabeza el modal grande de novedades
+     * (documento 3, 5.5, paso 4): nombre, documento, cargo, fecha de ingreso y
+     * saldo de vacaciones.
+     *
+     * Es un recorte y no otra ficha: lo pinta el mismo componente
+     * `ResumenDeEmpleado` y los valores salen de los mismos métodos. Lo que el
+     * modal no lleva es el salario ni la antigüedad, que no hacen falta para
+     * registrar una incapacidad y sí son un dato de más en pantalla.
+     *
+     * @return list<array{etiqueta: string, valor: string, pendiente: bool, nota: string}>
+     */
+    public function resumenParaNovedad(): array
+    {
+        return [
+            self::dato('Empleado', $this->persona->nombreCompleto()),
+            self::dato('Documento', $this->persona->numero_documento),
+            self::dato('Cargo', self::texto($this->vinculacion->getAttribute('cargo'))),
+            self::dato('Fecha de ingreso', Formato::fecha($this->vinculacion->fecha_ingreso)),
+            $this->saldoDeVacaciones(),
+        ];
+    }
+
+    /**
      * El saldo de vacaciones del encabezado, calculado a hoy.
      *
      * Sale del motor y no de ninguna columna, que es la regla 2. Aquí no se

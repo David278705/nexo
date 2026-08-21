@@ -1,75 +1,73 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-21 · Tarea F2-02 · Motor de cálculo
+**Última sesión:** 2026-08-21 · Tarea F2-03 · Flujo compartido de novedades
 **Verificación:** verde
-**Siguiente tarea:** F2-03 · Flujo compartido de novedades
+**Siguiente tarea:** REV-01 · Un solo armazón de listado en el servidor. **Su momento llegó**: dice
+«antes del primer listado de la fase 2 (F2-04)», y F2-04 es lo que sigue. Después REV-02, y luego
+F2-04 · Incapacidades.
 
 ## Qué se hizo
 
-- **Los diez casos obligatorios del motor pasan**, que es el «Hecho cuando» de la tarea, y pasan
-  **sin que se tocara una sola de las diez pruebas**: lo único que cambió en ese archivo fue el
-  comentario de cabecera, que decía que fallaban a propósito.
-- **`composer verificar` volvió a correr la suite entera.** Se quitó `--exclude-group=motor`, se
-  borró el script `composer motor` y se borró la clase `CalculoSinImplementar`, que se quedó sin
-  quien la lanzara. La exclusión temporal de F2-01 ya no existe.
-- **`MotorDeCalculo` tiene las tres reglas de conteo con nombres distintos**, como exige el
-  documento, más las cuatro funciones auxiliares que ya había decidido F2-01 y una quinta,
-  `diasComercialesDelMes()`, que es la que sabe de la base de treinta días.
-- **`SaldoDeVacaciones` suma mes calendario a mes calendario y solo los ya cerrados**, empezando el
-  día siguiente a la fecha de corte —o en la fecha de ingreso cuando no hay carga inicial—. No lee
-  ninguna columna de saldo, que es la regla 2.
-- **`PeriodoDePrueba` lee sus tres constantes de `config/reglas_laborales.php`** y distingue el
-  periodo del indefinido del tope del fijo, aunque hoy los dos valgan dos meses.
-- **Ya no queda ninguna cuenta laboral fuera de `app/Dominio/Calculo/`.** Los dos conteos de días
-  corridos escritos a mano —`HistorialDeContrato::duracionTotalEnDias()` y el privado de
-  `RenovacionDeContrato`— llaman al motor, y el privado desapareció.
-- **El saldo de la ficha del empleado dejó de ser un hueco**: enseña el número calculado. Para
-  escribirlo se agregó `Formato::diasDecimales()`, que es lo único que sabe poner «12,75 días».
-- **Ocho casos nuevos en la batería del motor**, en su propia sección y detrás de los diez: sábado no
-  laboral, novedad de un solo día, mes de veintiocho días cubierto entero, alerta en día de oficina,
-  alerta corrida por festivo entre semana, prorrateo del primer mes de quien entra a mitad de mes,
-  saldo que deja de crecer cuando la persona sale, y periodo de prueba del indefinido.
-- `composer verificar` en verde: Pint, PHPStan sin errores, **565** pruebas de Pest, build y **204**
+- **`ModalDeNovedad.vue` es el flujo entero de la sección 5.5 en un solo componente.** Los cinco
+  pasos: el listado lo abre, el modal pequeño pide **solo** el documento, la consulta sale **al salir
+  del campo** —no al pulsar Continuar—, el error del servidor se pinta debajo del campo y deja
+  Continuar deshabilitado, y cuando el empleado existe el modal pequeño **se reemplaza** por el
+  grande, con la ficha arriba y el formulario del módulo en un `slot`.
+- **La búsqueda del empleado la resuelve el servidor y es una sola.**
+  `App\Novedades\EmpleadoDeNovedad` la responde y se comparte desde `HandleInertiaRequests` como prop
+  opcional; el modal la pide con `router.reload({ only: ['empleadoDeNovedad'] })`. **Sin `axios` ni
+  `fetch`**, que es la regla de interfaz, y sin que el navegador tenga que conocer la lista de
+  empleados de la empresa.
+- **`App\Novedades\TipoDeNovedad` guarda los cinco títulos del prototipo** —«Nueva incapacidad»,
+  «Registrar vacaciones», «Nueva licencia o ausencia», «Nuevo movimiento salarial», «Registrar
+  terminación»— y el módulo de cada uno. Una prueba comprueba que no se les cambió una coma.
+- **La ficha del modal grande es `FichaDeEmpleado::resumenParaNovedad()`**: empleado, documento,
+  cargo, fecha de ingreso y saldo de vacaciones, los cinco de la sección 5.5. La pinta el mismo
+  `ResumenDeEmpleado` de la ficha del empleado, y el saldo sale del motor.
+- **El aislamiento y el permiso se comprueban en este camino también.** El mismo documento en dos
+  empresas devuelve el de cada una, y a quien no puede registrar **ninguna** de las cinco novedades
+  no se le resuelve la búsqueda: la ficha lleva cargo y saldo, y no es un dato público de la empresa.
+- **Dieciséis casos nuevos**: nueve de Pest en `tests/Feature/FlujoDeNovedadTest.php` y trece de
+  Vitest en `ModalDeNovedad.test.js`.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **580** pruebas de Pest, build y **216**
   de Vitest.
 
 ## Decisiones tomadas
 
-- **La base comercial de treinta días quedó con sus dos caras, y la segunda es una deducción.** La
-  primera —el día 31 no acumula— la fijó F2-01 leyendo los casos obligatorios. La segunda es que
-  **un mes cubierto entero son treinta días aunque tenga veintiocho**: sin ella, una licencia de todo
-  febrero dejaría dos días acumulando sin que nadie hubiera trabajado. Es la misma convención vista
-  por el otro extremo, pero **ningún documento la escribe**. Está probada y anotada en
-  `diasComercialesDelMes()`, y la pregunta está abajo.
-- **La fracción del mes del corte se mide contra los días con vínculo, no contra treinta.**
-  `acumulacionMes()` ya viene con los días sin vínculo descontados; volver a dividirlos por treinta
-  los descontaba dos veces y quien ingresaba el 16 de marzo acumulaba un cuarto de mes en vez de
-  medio. Lo encontró una de las pruebas nuevas, no una revisión.
-- **`diasComercialesDelMes()` es público y `diasSuspendidosDelMes()` lo llama.** Son la misma
-  aritmética —los días de un mes que caen dentro de un rango— y separarlas era copiar el conteo. El
-  nombre del documento se conserva porque es el que usa quien registra una licencia.
-- **Los días sin vínculo y los días de suspensión se suman antes de una sola llamada a
-  `acumulacionProporcional()`.** Son la misma reducción sobre la misma base, y tratarlas como dos
-  factores multiplicativos daría un número distinto y equivocado.
-- **`diaHabilAnteriorParaAlertas()` devuelve el mismo día si es hábil.** El documento 1, 9.1, solo
-  manda correr lo que cae en sábado, domingo o festivo.
-- **La quinta parte del periodo de prueba se trunca, no se redondea.** El artículo 78 dice que «no
-  puede exceder» esa fracción, así que medio día de más ya la excede.
-- **`al()` y `faltantePara()` redondean a cuatro decimales.** 1,25 y sus proporciones no son exactos
-  en coma flotante y un saldo de 12,749999999 no se puede comparar con nada. Los dos decimales de
-  pantalla los pone `Formato`, no el motor.
-- **La ficha enseña el saldo aunque falten módulos, y no es una aproximación.** Las vacaciones
-  disfrutadas son F2-05 y las suspensiones F2-07: hoy **no existe ni una fila** de ninguna de las
-  dos, así que el número que sale es el saldo completo. El día que existan, el saldo las descuenta
-  solo y la ficha no cambia una línea.
+- **La prop se comparte en el middleware y no la sirve cada controlador.** Es la decisión de fondo de
+  la tarea. El flujo es el mismo en los cinco módulos; cinco controladores armando la misma búsqueda
+  son cinco fichas que se separan a la primera corrección. `flujoDeNovedad` son cadenas fijas y
+  `empleadoDeNovedad` es `Inertia::optional()`: **no cuesta una consulta en la carga de ninguna
+  pantalla**, solo cuando el modal la pide. Hay una prueba que lo defiende.
+- **Como la prop la tiene toda pantalla del cliente, el permiso se comprueba dentro.** No basta con
+  el `modulo:` de la ruta, porque la ruta puede ser la de empleados. Se resuelve solo a quien pueda
+  entrar a alguno de los cinco módulos de novedades, preguntándole a `PoliticaDeModulos`, que es la
+  misma que responde al middleware.
+- **El paso 4 llega al pulsar Continuar, no automáticamente al encontrar al empleado.** El
+  documento dice «si existe, el modal pequeño se reemplaza por uno grande» sin decir cuándo; el
+  prototipo lo hace con el botón Continuar y se siguió el prototipo.
+- **El componente descarta una respuesta que ya no corresponde a lo que hay en el campo.** Sin eso,
+  borrar dos cifras del documento dejaba en pantalla la ficha del empleado anterior y dejaba
+  continuar con él. Tiene su prueba.
+- **La persona inactiva tiene mensaje propio.** El documento pide un solo mensaje —«si no existe o no
+  está activo»— y el prototipo solo escribe el de «no existe». Se separó porque decirle a quien
+  digita que la persona **sí** está en el sistema le ahorra volver a buscarla, y porque el remedio es
+  otro: registrar un ingreso nuevo, no corregir el número. Es un texto de interfaz, no una regla
+  legal.
+- **La novedad que usa el componente hoy es la de la prueba, y a propósito.** El «hecho cuando» pide
+  que «una novedad de prueba lo use»: la de Vitest registra una incapacidad de mentira por el `slot`,
+  con su empleado resuelto. **No se adelantó ni un pedazo de F2-04**: no hay tabla, ni listado, ni
+  guardado, y un modal que no puede guardar en una pantalla real habría sido peor que ninguno. El
+  primer llamador de producción es F2-04, y le cuesta dos líneas.
 
 ## Preguntas para Angela
 
-- **Los meses comerciales de treinta días siguen deducidos, no confirmados, y ahora tienen una cara
-  más.** La primera pregunta sigue igual: **¿la acumulación de vacaciones se calcula sobre meses de
-  treinta días, y el día 31 no acumula?** La segunda es nueva y la trajo febrero: **¿un mes de
-  veintiocho o veintinueve días cubierto entero por una licencia cuenta como treinta días de
-  suspensión —acumulación cero— o como veintiocho?** Se implementó lo primero, porque lo segundo
-  dejaría acumulando dos días que nadie trabajó. Cambiarlo es una línea y una prueba.
+- **Los meses comerciales de treinta días siguen deducidos, no confirmados, y tienen dos caras.** La
+  primera: **¿la acumulación de vacaciones se calcula sobre meses de treinta días, y el día 31 no
+  acumula?** La segunda la trajo febrero: **¿un mes de veintiocho o veintinueve días cubierto entero
+  por una licencia cuenta como treinta días de suspensión —acumulación cero— o como veintiocho?** Se
+  implementó lo primero, porque lo segundo dejaría acumulando dos días que nadie trabajó. Cambiarlo
+  es una línea y una prueba.
 - **El documento 1 y el documento 6 no dicen lo mismo sobre la prórroga mínima.** La sección 5.5 del
   documento 1 dice que **las dos** validaciones bloquean —«no son advertencias»— y la tabla 5.4 del
   documento 3 la sigue; B.1 y B.3 del documento 6, y el propio enunciado de F1-10, piden advertir con
@@ -91,18 +89,24 @@
   también **una entrada más en `CatalogosDelSistema::ENTIDADES`**, que es un renglón.
 - Menor: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)» sin
   distinguir especialización, maestría y doctorado**, tal como los pediste.
-- **B.1 sigue abierta y ahora tiene consecuencia visible.** El límite de prórrogas cortas advierte y
-  no bloquea porque así lo pide ese punto. **Confirmada la regla con el asesor laboral, pasa a
-  bloquear con una palabra.**
+- **B.1 sigue abierta y tiene consecuencia visible.** El límite de prórrogas cortas advierte y no
+  bloquea porque así lo pide ese punto. **Confirmada la regla con el asesor laboral, pasa a bloquear
+  con una palabra.**
 - **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
   prolongado y la anticipación de la alerta de cercanía al tope de cuatro años. **Ya tienen su sitio
   reservado**: son dos renglones de la pestaña «Umbrales» que hoy dicen «Sin decidir».
 
 ## Decisiones para David
 
-- **El saldo de vacaciones ya se ve en la ficha y es un número real.** Sale del motor y no de ninguna
-  columna. Conviene que lo mires contra un caso conocido antes de enseñarlo a un cliente: la cuenta
-  está probada, pero la carga inicial —saldo de corte y su fecha— todavía se digita a mano y es F5-02.
+- **El texto del empleado inactivo es nuevo y no sale de ningún documento.** Dice: «*Fulana* está
+  registrada en el sistema, pero su vinculación ya no está activa. No se registran novedades sobre
+  una persona inactiva; si volvió a la empresa, regístrala como un ingreso nuevo». Está en
+  `EmpleadoDeNovedad::INACTIVO`, con su prueba. **Si prefieres el mensaje único del prototipo, se
+  borra la constante y sobra una prueba.**
+- **El saldo de vacaciones ya se ve en la ficha del empleado y ahora también en el modal de
+  novedades.** Sale del motor y no de ninguna columna. Conviene mirarlo contra un caso conocido antes
+  de enseñarlo a un cliente: la carga inicial —saldo de corte y su fecha— todavía se digita a mano y
+  es F5-02.
 - **La pantalla de constantes legales quedó de solo lectura.** El prototipo la describe como el sitio
   donde se ajusta el sistema cuando cambia una ley; la regla del proyecto dice que esos números viven
   en `config/reglas_laborales.php`. **Se siguió la regla.** Si quieres que sean editables desde el
@@ -134,7 +138,7 @@
   a los correos. En la fase 3 deja de ser cosmético.**
 - **`User`, `Acceso` e `Invitacion` no llevan `SoftDeletes`.** Importará cuando exista «Usuarios y
   permisos».
-- **La fecha de salida no existe todavía, y ahora pesa más.** `Vinculacion::fechaDeSalida()` devuelve
+- **La fecha de salida no existe todavía, y pesa.** `Vinculacion::fechaDeSalida()` devuelve
   `fecha_fin` de una vinculación inactiva, y **el saldo de vacaciones ya la usa** para dejar de
   acumular. En un indefinido terminado devuelve nulo, así que hoy el saldo de esa persona seguiría
   creciendo. Se arregla en F2-09, que ya lo tiene anotado.
@@ -145,9 +149,8 @@
 - **Contrastar las cuatro listas de seguridad social contra las fuentes oficiales antes de vender.**
   Hay nueve EPS intervenidas por la Supersalud. Se editan desde la pestaña «EPS y entidades».
 - **Verificar el calendario de festivos antes de vender.** Cincuenta y tres fechas cargadas para
-  2025, 2026 y 2027, quince minutos, y se corrigen desde el panel. **Ya no es teoría**: el motor
-  cuenta los días hábiles de vacaciones leyendo esa tabla y corre las alertas al día hábil anterior
-  con ella.
+  2025, 2026 y 2027, quince minutos, y se corrigen desde el panel. El motor cuenta los días hábiles
+  de vacaciones leyendo esa tabla y corre las alertas al día hábil anterior con ella.
 - **Vigencia del enlace de invitación: siete días.** En `Invitaciones::DIAS_DE_VIGENCIA`, y también
   visible en la pestaña «Umbrales». **Confírmalo.**
 - **El rol de conexión de PostgreSQL.** `.env` se conecta como `postgres`, superusuario con
@@ -164,32 +167,40 @@
 
 ## Notas para la próxima sesión
 
-- **La siguiente es F2-03**, el flujo compartido de novedades: el modal de documento con validación
-  al salir del campo y el modal grande con la ficha del empleado, **un solo componente para los cinco
-  módulos** (documento 3, sección 5.5). `ResumenDeEmpleado` ya existe y es lo que va dentro del modal
-  grande: se escribió en F1-07 pensando en esto.
-- **REV-01 y REV-02 siguen pendientes y el plazo se acerca: antes de F2-04.** Es decir, después de
-  F2-03. Son el armazón de listado repetido, en el servidor y en la interfaz.
+- **La siguiente es REV-01**, y su propio enunciado dice que va **antes de F2-04**. Es extraer el
+  armazón común de `ListadoDeEmpleados` y `ListadoDeContratos`; REV-02 es lo mismo en la interfaz,
+  con `Pages/Empleados/Index.vue` y `Pages/Contratos/Index.vue`. Hacerlo con dos ejemplos es barato;
+  con cinco, ya no.
+- **Cómo enchufa un módulo el flujo de novedades, en dos líneas.** La pantalla del listado importa
+  `ModalDeNovedad`, le pasa `:titulo` del tipo, `:flujo="flujoDeNovedad"` y
+  `:empleado="empleadoDeNovedad"` —las dos props ya llegan compartidas, no hay que tocar el
+  controlador—, y mete sus campos en el `slot`, que recibe el empleado resuelto con el
+  `vinculacion` que va a guardar. El evento `guardar` es el del botón.
+- **Ninguna pantalla ni ningún modelo cuenta días.** El modal de novedades tampoco: los días de la
+  incapacidad y del disfrute los calcula el servidor y el módulo los pinta en su `slot`. Si aparece
+  una resta de fechas fuera de `app/Dominio/Calculo/`, es un error: hoy no queda ninguna.
 - **Lo que el motor deja preparado para los módulos que vienen.** F2-04 cuenta con
   `MotorDeCalculo::diasCorridos()`; F2-05 con `diasHabilesVacaciones()` y con
   `SaldoDeVacaciones::al()`; F2-06 con `faltantePara()`, que ya devuelve «1,25» en su caso
-  obligatorio; F2-07 con `acumulacionProporcional()`, que es la aritmética ya probada.
+  obligatorio; F2-07 con `acumulacionProporcional()`.
 - **F2-05 y F2-07 tienen su punto de entrada señalado con nombre y apellido.** El saldo descuenta las
   vacaciones disfrutadas en `SaldoDeVacaciones::acumulacionHasta()` y los días de suspensión en
   `MotorDeCalculo::diasDeSuspensionDelMes()`, que hoy devuelve cero y explica por qué. **El parámetro
   `suspensiones_afectan_vacaciones` se lee ahí dentro**, para que ninguna pantalla pueda olvidarse.
-- **Ninguna pantalla ni ningún modelo cuenta días.** Si aparece una resta de fechas fuera de
-  `app/Dominio/Calculo/`, es un error: hoy no queda ninguna.
 - **`App\Presentacion\Formato` es el único sitio donde se escribe una fecha, un número de días o un
-  peso.** El motor devuelve números; quien los pinta es `Formato`. Los días con fracción son
-  `diasDecimales()` y los enteros `dias()`: son dos porque «6,00 días» de una incapacidad se lee mal.
+  peso.** Los días con fracción son `diasDecimales()` y los enteros `dias()`.
 - **Los helpers de prueba están repartidos y Pest los comparte**: `enLaEmpresa()` en
   `PersonasYVinculacionesTest.php`, `usuarioDe()` en `RolesYPermisosTest.php`, `ownerVerificable()`
   en `PanelDelProveedorTest.php`, `ownerEnElPanel()` y `datosDeEmpresa()` en `CrearEmpresaTest.php`,
   `enEmpresa()` con `empresaConEmpleados()` en `PanelDeEmpresasTest.php`,
-  `departamentoConMunicipio()` en `PanelDeCatalogosTest.php` y `enLaEmpresaDelMotor()` con
-  `vinculacionConSaldoDeCorte()` en `MotorDeCalculoTest.php`. **Una prueba que se ejecute sola con
-  `--filter` no los encuentra: hay que correr la suite.**
+  `departamentoConMunicipio()` en `PanelDeCatalogosTest.php`, `enLaEmpresaDelMotor()` con
+  `vinculacionConSaldoDeCorte()` en `MotorDeCalculoTest.php` y `empleadoParaNovedad()` con
+  `empleadoDeNovedad()` en `FlujoDeNovedadTest.php`. **Una prueba que se ejecute sola con `--filter`
+  no los encuentra: hay que correr la suite.**
+- **Una recarga parcial en una prueba de Pest necesita las cuatro cabeceras**, incluida
+  `X-Inertia-Version` preguntada al middleware: si no coincide con el manifiesto compilado, Inertia
+  responde 409 y la prueba mide otra cosa. El molde está en `FlujoDeNovedadTest::consultarEmpleado()`
+  y en `AdvertenciaDeReingresoTest`.
 - **Todo parámetro nuevo de la empresa se agrega en `ParametrosDeLaEmpresa::CAMPOS`** y en las cuatro
   tablas de textos de ese archivo.
 - **Toda regla que dependa de una decisión abierta va a `config/`**, con su estado y el punto que la
@@ -200,4 +211,4 @@
 - **Toda pantalla nueva del panel se envuelve en `ArmazonProveedor`** y **su sección sale de
   `SeccionDelPanel::pendientes()`** el día que estrene contenido.
 - **La tabla del historial sigue sin las columnas «Duración» y «Registrado» del prototipo.**
-- **No queda ninguna tarea bloqueada en el backlog.** Sí quedan dos `REV-` al final.
+- **No queda ninguna tarea bloqueada en el backlog.** Sí quedan dos `REV-`, y la primera toca ahora.

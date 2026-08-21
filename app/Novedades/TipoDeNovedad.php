@@ -1,0 +1,92 @@
+<?php
+
+namespace App\Novedades;
+
+use App\Autorizacion\Modulo;
+
+/**
+ * Las cinco clases de novedad que comparten el flujo de registro (documento 3,
+ * sección 5.5 y tabla 5.6).
+ *
+ * Existe por una sola razón: que el flujo sea **idéntico en los cinco módulos**.
+ * El título del modal, el módulo sobre el que se pide permiso y el nombre con
+ * que se le habla al usuario viven aquí y en ningún otro sitio, así que ninguno
+ * de los cinco puede quedar diciendo algo distinto.
+ *
+ * Los cinco títulos son los literales de `prototipos/sistema.html` —la constante
+ * `TITULOS` de su flujo de novedad—, y una prueba comprueba que siguen siendo
+ * esos.
+ *
+ * No es un enumerado que se guarde en ninguna columna: las novedades se guardan
+ * cada una en su tabla, que es su módulo. Este enumerado es del flujo, no del
+ * dato.
+ */
+enum TipoDeNovedad: string
+{
+    case Incapacidad = 'incapacidad';
+
+    case Vacaciones = 'vacaciones';
+
+    case Licencia = 'licencia';
+
+    case Movimiento = 'movimiento';
+
+    case Terminacion = 'terminacion';
+
+    /**
+     * El módulo sobre el que se conceden los permisos de esta novedad.
+     */
+    public function modulo(): Modulo
+    {
+        return match ($this) {
+            self::Incapacidad => Modulo::Incapacidades,
+            self::Vacaciones => Modulo::Vacaciones,
+            self::Licencia => Modulo::Licencias,
+            self::Movimiento => Modulo::Movimientos,
+            self::Terminacion => Modulo::Terminaciones,
+        };
+    }
+
+    /**
+     * El título del modal, igual en el pequeño y en el grande: el flujo es uno
+     * solo y el usuario no cambió de tarea al pasar de un paso al otro.
+     */
+    public function tituloDelModal(): string
+    {
+        return match ($this) {
+            self::Incapacidad => 'Nueva incapacidad',
+            self::Vacaciones => 'Registrar vacaciones',
+            self::Licencia => 'Nueva licencia o ausencia',
+            self::Movimiento => 'Nuevo movimiento salarial',
+            self::Terminacion => 'Registrar terminación',
+        };
+    }
+
+    /**
+     * Los cinco módulos que registran novedades por este flujo.
+     *
+     * Es lo que decide si a un usuario se le puede resolver una búsqueda de
+     * empleado para novedad: quien no puede registrar ninguna de las cinco no
+     * tiene por qué consultar la ficha de nadie por este camino.
+     *
+     * @return list<Modulo>
+     */
+    public static function modulos(): array
+    {
+        return array_map(fn (self $tipo): Modulo => $tipo->modulo(), self::cases());
+    }
+
+    /**
+     * Lo que la interfaz necesita saber de un tipo de novedad.
+     *
+     * @return array{clave: string, titulo: string, modulo: string}
+     */
+    public function paraLaPantalla(): array
+    {
+        return [
+            'clave' => $this->value,
+            'titulo' => $this->tituloDelModal(),
+            'modulo' => $this->modulo()->value,
+        ];
+    }
+}

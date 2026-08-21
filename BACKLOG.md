@@ -382,12 +382,22 @@ motor y el privado de `RenovacionDeContrato` desapareció: **no queda ninguna cu
 calculado, con `Formato::diasDecimales()` nuevo para los días con fracción. Ocho casos más se
 sumaron a la batería, sin tocar los diez.
 
-### [ ] F2-03 · Flujo compartido de novedades
+### [x] F2-03 · Flujo compartido de novedades
 
 Modal de documento con validación al salir del campo, y modal grande con ficha del empleado. Un solo
 componente reutilizado por los cinco módulos.
 **Hecho cuando:** el componente existe y una novedad de prueba lo usa.
 **Fuente:** `docs/03-diseno-e-interfaz.md` 5.5
+
+Hecho: `resources/js/Components/ModalDeNovedad.vue` con los cinco pasos de la sección 5.5 —modal
+pequeño que pide solo el documento, consulta al servidor **al salir del campo**, error debajo del
+campo que no deja continuar, y modal grande con `ResumenDeEmpleado` arriba y el formulario del módulo
+en un `slot`—. La búsqueda la resuelve `App\Novedades\EmpleadoDeNovedad`, compartida desde
+`HandleInertiaRequests` como prop opcional y pedida con `router.reload({ only: [...] })`: **una sola
+búsqueda para los cinco módulos**, sin `axios`. `App\Novedades\TipoDeNovedad` guarda los cinco títulos
+del prototipo y su módulo. La ficha del modal es `FichaDeEmpleado::resumenParaNovedad()`, con el saldo
+del motor. La novedad de prueba que lo usa es la de `ModalDeNovedad.test.js`, que registra una
+incapacidad de mentira por el `slot`; **el primer módulo real que lo llame es F2-04**.
 
 ### [ ] F2-04 · Incapacidades
 
