@@ -59,6 +59,11 @@ class ObservadorDeAuditoria
         'token',
         'two_factor_secret',
         'two_factor_recovery_codes',
+
+        // El dato sensible de la sección 6.3: solo lo ve quien tiene el
+        // permiso del módulo de incapacidades, y la auditoría es de otro
+        // módulo —tiene su propio permiso— por donde no debe asomar.
+        'codigo_diagnostico',
     ];
 
     private const MARCADOR = '(oculto)';

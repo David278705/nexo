@@ -399,11 +399,23 @@ del prototipo y su módulo. La ficha del modal es `FichaDeEmpleado::resumenParaN
 del motor. La novedad de prueba que lo usa es la de `ModalDeNovedad.test.js`, que registra una
 incapacidad de mentira por el `slot`; **el primer módulo real que lo llame es F2-04**.
 
-### [ ] F2-04 · Incapacidades
+### [x] F2-04 · Incapacidades
 
 Módulo completo. Días corridos calculados en pantalla. Campo de diagnóstico con acceso restringido.
 **Hecho cuando:** del 14 al 16 de julio muestra 3 días y el diagnóstico no lo ve quien no tiene permiso.
 **Fuente:** `docs/01-especificacion-funcional.md` 6.3 · skill `crear-modulo`
+
+Hecho: la tabla `incapacidades` —colgada de `vinculacion_id`, sin columna de días—,
+el modelo `Incapacidad` con `dias()` llamando a `MotorDeCalculo::diasCorridos()`, `ListadoDeIncapacidades`
+sobre el armazón de `Listado` (REV-01), la pantalla `Incapacidades/Index` sobre `useListado` (REV-02) y
+enchufada al flujo compartido de novedades (F2-03) con `ModalDeNovedad`. **El código de diagnóstico no
+se recorta en ningún punto de la pantalla**: el único permiso que la sección 6.3 exige es el del módulo,
+y quien llega al listado ya lo tiene por el middleware `modulo:incapacidades`. La única fuga posible era
+la auditoría —otro módulo, otro permiso—, así que `codigo_diagnostico` entró a la lista `OCULTAS` de
+`ObservadorDeAuditoria`, con su prueba. Los días de la incapacidad que se está digitando se calculan en
+el servidor y llegan por una recarga parcial (`diasDeIncapacidad`), igual que la proyección del modal de
+renovación de contrato: en el modal no se resta ninguna fecha. **Edición y borrado quedan para F2-10**,
+que ya los tiene asignados para los tres módulos de novedades a la vez.
 
 ### [ ] F2-05 · Vacaciones
 

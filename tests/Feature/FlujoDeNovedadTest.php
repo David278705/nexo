@@ -60,17 +60,30 @@ function empleadoParaNovedad(array $persona = [], array $vinculacion = [], bool 
 }
 
 /**
+ * El componente que Inertia renderiza en cada dirección del flujo, para que la
+ * cabecera de la recarga parcial coincida con la pantalla de verdad. La única
+ * con contenido real es incapacidades (F2-04); las otras cuatro siguen siendo
+ * `SeccionPendiente` hasta que exista su módulo.
+ */
+function componenteDe(string $url): string
+{
+    return $url === Modulo::Incapacidades->url() ? 'Incapacidades/Index' : 'SeccionPendiente';
+}
+
+/**
  * Pide el empleado como lo hace el modal: una recarga parcial de la pantalla en
  * la que está el listado del módulo, trayendo solo la prop del flujo.
  */
 function consultarEmpleado(string $documento, ?string $url = null): TestResponse
 {
+    $url ??= '/incapacidades';
+
     return test()
         ->actingAs(test()->usuario)
-        ->get(($url ?? '/incapacidades').'?'.http_build_query(['documento' => $documento]), [
+        ->get($url.'?'.http_build_query(['documento' => $documento]), [
             'X-Inertia' => 'true',
             'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
-            'X-Inertia-Partial-Component' => 'SeccionPendiente',
+            'X-Inertia-Partial-Component' => componenteDe($url),
             'X-Inertia-Partial-Data' => EmpleadoDeNovedad::PROP,
         ]);
 }
@@ -209,7 +222,7 @@ describe('la validación al salir del campo', function () {
             ->get('/incapacidades?documento[]=43887201', [
                 'X-Inertia' => 'true',
                 'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
-                'X-Inertia-Partial-Component' => 'SeccionPendiente',
+                'X-Inertia-Partial-Component' => componenteDe('/incapacidades'),
                 'X-Inertia-Partial-Data' => EmpleadoDeNovedad::PROP,
             ]);
 

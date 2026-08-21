@@ -10,6 +10,7 @@ use App\Http\Controllers\Acceso\SesionController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
+use App\Http\Controllers\IncapacidadController;
 use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
@@ -119,6 +120,24 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
+     * Incapacidades (documento 1, 6.3). El primer módulo de novedades: el
+     * flujo compartido de `ModalDeNovedad` (F2-03) es lo que hace que solo
+     * haga falta una dirección para guardar, sin un paso previo de «nuevo»
+     * como en empleados.
+     *
+     * Como en empleados y contratos, la dirección literal de la exportación va
+     * antes de cualquiera que pudiera confundirse con un identificador.
+     */
+    Route::middleware('modulo:'.Modulo::Incapacidades->value)->group(function () {
+        Route::get('/incapacidades', [IncapacidadController::class, 'index'])
+            ->name(Modulo::Incapacidades->nombreDeRuta());
+        Route::get('/incapacidades/exportar', [IncapacidadController::class, 'exportar'])
+            ->name('incapacidades.exportar');
+        Route::post('/incapacidades', [IncapacidadController::class, 'guardar'])
+            ->name('incapacidades.guardar');
+    });
+
+    /*
      * Configuración (documento 3, sección 5.7). El módulo es solo del
      * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
      * declararlo como cualquier otro.
@@ -134,7 +153,7 @@ Route::middleware('auth')->group(function () {
     });
 
     foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Configuracion], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Configuracion], true)) {
             continue;
         }
 

@@ -211,6 +211,17 @@ class Vinculacion extends Model
     }
 
     /**
+     * Las incapacidades registradas sobre esta vinculación, la más reciente
+     * primero.
+     *
+     * @return HasMany<Incapacidad, $this>
+     */
+    public function incapacidades(): HasMany
+    {
+        return $this->hasMany(Incapacidad::class)->orderByDesc('fecha_inicio');
+    }
+
+    /**
      * @return BelongsTo<Eps, $this>
      */
     public function eps(): BelongsTo

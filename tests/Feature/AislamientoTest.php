@@ -4,6 +4,9 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
 use App\Exports\ContratosExport;
 use App\Exports\EmpleadosExport;
+use App\Exports\IncapacidadesExport;
+use App\Models\Eps;
+use App\Models\Incapacidad;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
@@ -464,6 +467,85 @@ describe('contratos, por sus rutas reales', function () {
         Excel::assertDownloaded(
             'contratos-'.now()->format('Y-m-d').'.xlsx',
             fn (ContratosExport $exportacion) => $exportacion->collection()->count() === 1
+        );
+    });
+});
+
+/**
+ * El listado de incapacidades, por sus rutas de verdad (F2-04). El primer
+ * módulo de novedades, y el primero que se registra por `POST` en vez de
+ * heredar la fila de otra tabla.
+ */
+describe('incapacidades, por sus rutas reales', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->incapacidadDeLaA = $this->contexto->paraTenant($this->empresaA, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create(['primer_nombre' => 'Confidencial', 'primer_apellido' => 'DeLaEmpresaA']))
+                ->create(['cargo' => SECRETO_DE_LA_A]);
+
+            $eps = Eps::query()->create(['nombre' => 'Sura EPS', 'activo' => true]);
+
+            return Incapacidad::factory()->de($vinculacion)->del14al16DeJulio()->create(['eps_id' => $eps->id]);
+        });
+
+        $this->usuarioB = usuarioDe($this->empresaB, Rol::Administrador, Modulo::Incapacidades);
+    });
+
+    it('no lista incapacidades de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/incapacidades');
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['incapacidades']['filas'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('no incluye incapacidades de otra empresa en la exportación', function () {
+        Excel::fake();
+
+        $this->actingAs($this->usuarioB)->get('/incapacidades/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'incapacidades-'.now()->format('Y-m-d').'.xlsx',
+            fn (IncapacidadesExport $exportacion) => $exportacion->collection()->isEmpty()
+        );
+    });
+
+    it('no registra una incapacidad sobre el empleado de otra empresa', function () {
+        $this->actingAs($this->usuarioB)->post('/incapacidades', [
+            'vinculacion_id' => $this->incapacidadDeLaA->vinculacion_id,
+            'fecha_inicio' => '2026-07-14',
+            'fecha_fin' => '2026-07-16',
+            'codigo_diagnostico' => 'J06.9',
+            'es_prorroga' => 'no',
+            'eps_id' => $this->incapacidadDeLaA->eps_id,
+            'origen' => 'comun',
+        ])->assertSessionHasErrors('vinculacion_id');
+
+        expect($this->contexto->paraTenant(
+            $this->empresaA,
+            fn () => Incapacidad::query()->count()
+        ))->toBe(1);
+    });
+
+    it('la empresa dueña sí ve su incapacidad por los dos caminos', function () {
+        Excel::fake();
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Incapacidades);
+
+        $listado = $this->actingAs($usuarioA)->get('/incapacidades');
+        $listado->assertOk();
+
+        expect($listado->viewData('page')['props']['incapacidades']['filas'])->toHaveCount(1);
+
+        $this->actingAs($usuarioA)->get('/incapacidades/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'incapacidades-'.now()->format('Y-m-d').'.xlsx',
+            fn (IncapacidadesExport $exportacion) => $exportacion->collection()->count() === 1
         );
     });
 });

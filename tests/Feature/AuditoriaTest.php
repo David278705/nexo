@@ -4,9 +4,12 @@ use App\Auditoria\AccionAuditada;
 use App\Auditoria\AuditoriaInmutable;
 use App\Models\Acceso;
 use App\Models\Auditoria;
+use App\Models\Eps;
+use App\Models\Incapacidad;
 use App\Models\Invitacion;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Schema\Blueprint;
@@ -152,6 +155,33 @@ it('nunca copia la contraseña a la auditoría', function () {
 
     // `$2y$` es el prefijo de todo hash de bcrypt. No hay ninguno en la tabla.
     expect($todas)->not->toContain('$2y$');
+});
+
+it('nunca copia el código de diagnóstico de una incapacidad a la auditoría', function () {
+    // Es el dato sensible de la sección 6.3: solo lo ve quien tiene el
+    // permiso del módulo de incapacidades, y la auditoría es de otro módulo.
+    $vinculacion = Vinculacion::factory()->create();
+
+    $incapacidad = Incapacidad::create([
+        'vinculacion_id' => $vinculacion->id,
+        'fecha_inicio' => '2026-07-14',
+        'fecha_fin' => '2026-07-16',
+        'codigo_diagnostico' => 'J06.9',
+        'es_prorroga' => false,
+        'eps_id' => Eps::query()->create(['nombre' => 'Sura EPS', 'activo' => true])->id,
+        'origen' => 'comun',
+    ]);
+
+    $creacion = Auditoria::query()
+        ->where('modelo', Incapacidad::class)
+        ->where('registro_id', (string) $incapacidad->id)
+        ->firstOrFail();
+
+    expect($creacion->valores_nuevos['codigo_diagnostico'])->toBe('(oculto)');
+
+    $todas = DB::table('auditoria')->pluck('valores_nuevos')->implode(' ');
+
+    expect($todas)->not->toContain('J06.9');
 });
 
 it('no audita el registro de accesos ni las invitaciones', function () {
