@@ -661,7 +661,7 @@ empleados y contratos escribían igual, quedó en el trait `OrdenaPorEmpleado`. 
 empleados, contratos y del panel de empresas siguen en verde **sin tocarlas**, y `ListadosTest`
 prueba el armazón con un listado de mentira que declara dos filtros y nada más.
 
-### [ ] REV-02 · Un solo armazón de listado en la interfaz
+### [x] REV-02 · Un solo armazón de listado en la interfaz
 
 `Pages/Empleados/Index.vue` y `Pages/Contratos/Index.vue` repiten `pedir()`, `ordenar()`,
 `quitar()`, `limpiar()`, `urlExportar` y `textoExportar` casi carácter por carácter. Extrae un
@@ -674,3 +674,13 @@ separan solas.
 
 **Hecho cuando:** las dos pantallas usan el *composable*, sus pruebas de Vitest siguen en verde y
 el *composable* tiene las suyas.
+
+Hecho: `resources/js/Utilidades/useListado.js`, el gemelo en la interfaz de `App\Listados\Listado`.
+Devuelve las nueve cosas que las pantallas repetían —`busqueda`, `buscar()` con su espera,
+`pedir()`, `ordenar()`, `quitar()`, `limpiar()`, `abrir()`, `urlExportar` y `textoExportar`— y cada
+pantalla declara solo lo suyo: `ruta`, `filtros`, `pagina`, `tieneFiltros` y `deLista`. Se migraron
+**las tres** pantallas que existen —empleados, contratos y empresas del panel—, igual que en el
+servidor. Las tres perdieron 179 líneas y ganaron 46. **`textoExportar` está escrito una sola vez**,
+que era el agravante de esta tarea. Diecinueve casos nuevos en
+`resources/js/Utilidades/useListado.test.js`, tres de ellos leyendo los `.vue` para comprobar que
+ninguna pantalla conserva su copia; ninguna prueba existente se tocó.

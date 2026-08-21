@@ -1,6 +1,7 @@
 <script setup>
-import { Head, router } from "@inertiajs/vue3";
+import { Head } from "@inertiajs/vue3";
 import { computed } from "vue";
+import { TODOS, useListado } from "@/Utilidades/useListado";
 import Armazon from "@/Components/Armazon.vue";
 import Aviso from "@/Components/Aviso.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
@@ -28,8 +29,6 @@ const props = defineProps({
     conteos: { type: Object, required: true },
 });
 
-const TODOS = "todos";
-
 const columnas = [
     { clave: "empleado", titulo: "Empleado", ordenable: true },
     { clave: "contrato", titulo: "Tipo", ordenable: true },
@@ -40,34 +39,17 @@ const columnas = [
     { clave: "estado", titulo: "Estado" },
 ];
 
-function pedir(cambios) {
-    router.get(
-        "/contratos",
-        { ...props.filtros, ...cambios },
-        { preserveState: true, preserveScroll: true, replace: true },
-    );
-}
-
-function ordenar(clave) {
-    const mismaColumna = props.filtros.orden === clave;
-    const direccion =
-        mismaColumna && props.filtros.direccion === "asc" ? "desc" : "asc";
-
-    pedir({ orden: clave, direccion, page: 1 });
-}
-
-// Los tres filtros son de lista, así que quitarlos los devuelve a «todos».
-function quitar(clave) {
-    pedir({ [clave]: TODOS, page: 1 });
-}
-
-function limpiar() {
-    router.get("/contratos", {}, { preserveScroll: true, replace: true });
-}
-
-function abrir(fila) {
-    router.visit(`/contratos/${fila.id}`);
-}
+const { pedir, ordenar, quitar, limpiar, abrir, urlExportar, textoExportar } =
+    useListado({
+        ruta: "/contratos",
+        filtros: () => props.filtros,
+        pagina: () => props.contratos,
+        tieneFiltros: () => props.tieneFiltros,
+        // Los tres filtros son de lista, así que quitarlos los devuelve a
+        // «todos». El de vencimiento hace falta declararlo: llega por defecto
+        // en «los próximos 90 días».
+        deLista: ["vence", "contrato", "prorrogas"],
+    });
 
 // No se llama `contratos` a propósito: esa es la prop con las filas, y una
 // computada del mismo nombre la taparía en la plantilla sin avisar.
@@ -75,26 +57,6 @@ const tiposDeContrato = computed(() => [
     { valor: TODOS, texto: "Todos los contratos" },
     ...props.opciones.contratos,
 ]);
-
-const urlExportar = computed(() => {
-    const parametros = new URLSearchParams();
-
-    Object.entries(props.filtros).forEach(([clave, valor]) => {
-        if (valor !== "" && valor !== null && clave !== "porPagina") {
-            parametros.append(clave, valor);
-        }
-    });
-
-    return `/contratos/exportar?${parametros.toString()}`;
-});
-
-const textoExportar = computed(() => {
-    const uno = props.contratos.total === 1;
-    const registros = uno ? "registro" : "registros";
-    const filtrados = props.tieneFiltros ? (uno ? " filtrado" : " filtrados") : "";
-
-    return `Exportar ${props.contratos.total} ${registros}${filtrados}`;
-});
 
 // El aviso del prototipo: un contrato que venció sin preaviso quedó prorrogado
 // solo, y el sistema no puede reflejarlo si nadie lo registra.

@@ -1,6 +1,7 @@
 <script setup>
-import { Head, Link, router } from "@inertiajs/vue3";
-import { computed, ref, watch } from "vue";
+import { Head, Link } from "@inertiajs/vue3";
+import { computed } from "vue";
+import { TODOS, useListado } from "@/Utilidades/useListado";
 import ArmazonProveedor from "@/Components/Proveedor/ArmazonProveedor.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
 import Boton from "@/Components/Boton.vue";
@@ -33,8 +34,6 @@ const props = defineProps({
     accion: { type: Object, required: true },
 });
 
-const TODOS = "todos";
-
 const columnas = [
     { clave: "empresa", titulo: "Empresa", ordenable: true },
     { clave: "plan", titulo: "Plan", ordenable: true },
@@ -46,49 +45,14 @@ const columnas = [
     { clave: "estado", titulo: "Estado", ordenable: true },
 ];
 
-const busqueda = ref(props.filtros.buscar);
-
-watch(
-    () => props.filtros.buscar,
-    (valor) => {
-        busqueda.value = valor;
-    },
-);
-
-let temporizador = null;
-
-function buscar(valor) {
-    clearTimeout(temporizador);
-    temporizador = setTimeout(() => pedir({ buscar: valor, page: 1 }), 400);
-}
-
-function pedir(cambios) {
-    router.get(
-        "/proveedor/empresas",
-        { ...props.filtros, ...cambios },
-        { preserveState: true, preserveScroll: true, replace: true },
-    );
-}
-
-function ordenar(clave) {
-    const mismaColumna = props.filtros.orden === clave;
-    const direccion =
-        mismaColumna && props.filtros.direccion === "asc" ? "desc" : "asc";
-
-    pedir({ orden: clave, direccion, page: 1 });
-}
-
-function quitar(clave) {
-    pedir({ [clave]: clave === "plan" ? "" : TODOS, page: 1 });
-}
-
-function limpiar() {
-    router.get("/proveedor/empresas", {}, { preserveScroll: true, replace: true });
-}
-
-function abrir(fila) {
-    router.visit(`/proveedor/empresas/${fila.id}`);
-}
+// Esta pantalla no declara `pagina` porque no tiene exportación: el documento 4
+// no la pide, y el composable no le arma una dirección que no existe.
+const { busqueda, buscar, pedir, ordenar, quitar, limpiar, abrir } = useListado({
+    ruta: "/proveedor/empresas",
+    filtros: () => props.filtros,
+    // El plan es texto libre —el nombre del plan—, así que ese vuelve a vacío.
+    deLista: ["estado", "salud"],
+});
 
 const estados = computed(() => [
     { valor: TODOS, texto: "Todos los estados" },

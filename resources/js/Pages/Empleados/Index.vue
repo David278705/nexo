@@ -1,6 +1,7 @@
 <script setup>
-import { Head, Link, router, usePage } from "@inertiajs/vue3";
-import { computed, ref, watch } from "vue";
+import { Head, Link, usePage } from "@inertiajs/vue3";
+import { computed } from "vue";
+import { TODOS, useListado } from "@/Utilidades/useListado";
 import Armazon from "@/Components/Armazon.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
 import Boton from "@/Components/Boton.vue";
@@ -31,8 +32,6 @@ const props = defineProps({
     conteos: { type: Object, required: true },
 });
 
-const TODOS = "todos";
-
 const columnas = [
     { clave: "documento", titulo: "Documento", ordenable: true },
     { clave: "nombre", titulo: "Nombre", ordenable: true },
@@ -42,59 +41,25 @@ const columnas = [
     { clave: "estado", titulo: "Estado", ordenable: true },
 ];
 
-// La caja de búsqueda escribe sola; el resto de controles disparan al cambiar.
-const busqueda = ref(props.filtros.buscar);
-
-watch(
-    () => props.filtros.buscar,
-    (valor) => {
-        busqueda.value = valor;
-    },
-);
-
-let temporizador = null;
-
-function buscar(valor) {
-    clearTimeout(temporizador);
-    // Medio segundo de espera: pedir la página en cada tecla castiga al
-    // servidor y hace parpadear la tabla mientras se escribe un apellido.
-    temporizador = setTimeout(() => pedir({ buscar: valor, page: 1 }), 400);
-}
-
-/*
- * Vuelve a pedir el listado con los filtros cambiados. `preserveState` mantiene
- * el foco y lo escrito; `replace` evita que cada tecla deje una entrada en el
- * historial del navegador.
- */
-function pedir(cambios) {
-    router.get(
-        "/empleados",
-        { ...props.filtros, ...cambios },
-        { preserveState: true, preserveScroll: true, replace: true },
-    );
-}
-
-function ordenar(clave) {
-    const mismaColumna = props.filtros.orden === clave;
-    const direccion =
-        mismaColumna && props.filtros.direccion === "asc" ? "desc" : "asc";
-
-    pedir({ orden: clave, direccion, page: 1 });
-}
-
-// Quitar un filtro lo devuelve a su valor de reposo: los de lista, a «todos»;
-// los de texto y fecha, a vacío.
-function quitar(clave) {
-    pedir({ [clave]: clave === "estado" || clave === "contrato" ? TODOS : "", page: 1 });
-}
-
-function limpiar() {
-    router.get("/empleados", {}, { preserveScroll: true, replace: true });
-}
-
-function abrir(fila) {
-    router.visit(`/empleados/${fila.id}`);
-}
+const {
+    busqueda,
+    buscar,
+    pedir,
+    ordenar,
+    quitar,
+    limpiar,
+    abrir,
+    urlExportar,
+    textoExportar,
+} = useListado({
+    ruta: "/empleados",
+    filtros: () => props.filtros,
+    pagina: () => props.empleados,
+    tieneFiltros: () => props.tieneFiltros,
+    // El estado llega por defecto en «activo», así que quitarlo tiene que
+    // mandar «todos» y no vacío.
+    deLista: ["estado", "contrato"],
+});
 
 const estados = computed(() => [
     { valor: TODOS, texto: "Todos los estados" },
@@ -110,30 +75,6 @@ const cargos = computed(() => [
     { valor: "", texto: "Todos los cargos" },
     ...props.opciones.cargos.map((cargo) => ({ valor: cargo, texto: cargo })),
 ]);
-
-// La dirección de la exportación lleva los mismos filtros que la pantalla, para
-// que el archivo traiga exactamente lo que se está viendo.
-const urlExportar = computed(() => {
-    const parametros = new URLSearchParams();
-
-    Object.entries(props.filtros).forEach(([clave, valor]) => {
-        if (valor !== "" && valor !== null && clave !== "porPagina") {
-            parametros.append(clave, valor);
-        }
-    });
-
-    return `/empleados/exportar?${parametros.toString()}`;
-});
-
-// «Exportar 43 registros filtrados» (documento 3, sección 6.1): el botón dice
-// cuántos se lleva y que son los de los filtros puestos, no todos.
-const textoExportar = computed(() => {
-    const uno = props.empleados.total === 1;
-    const registros = uno ? "registro" : "registros";
-    const filtrados = props.tieneFiltros ? (uno ? " filtrado" : " filtrados") : "";
-
-    return `Exportar ${props.empleados.total} ${registros}${filtrados}`;
-});
 
 /*
  * La confirmación de lo que se acaba de guardar en otra pantalla. Quien termina
