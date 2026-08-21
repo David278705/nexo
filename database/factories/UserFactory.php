@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Autenticacion\SegundoFactor;
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
 use App\Models\User;
@@ -46,6 +47,21 @@ class UserFactory extends Factory
         return $this->state(fn () => [
             'rol' => Rol::Owner->value,
             'tenant_id' => null,
+        ]);
+    }
+
+    /**
+     * Con el segundo factor ya activo.
+     *
+     * El secreto se emite de verdad, no es un texto de mentira: así la prueba
+     * puede leerlo y calcular el código de este momento, que es la única forma
+     * de comprobar el flujo completo sin fingir el algoritmo.
+     */
+    public function conSegundoFactor(): static
+    {
+        return $this->state(fn () => [
+            'segundo_factor_secreto' => app(SegundoFactor::class)->secretoNuevo(),
+            'segundo_factor_confirmado_en' => now(),
         ]);
     }
 

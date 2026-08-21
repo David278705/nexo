@@ -28,6 +28,17 @@ it('pone una raya donde no hay fecha larga', function () {
     expect(Formato::fechaLarga(null))->toBe('—');
 });
 
+it('escribe el día con su nombre delante y en mayúscula', function () {
+    // El 25 de diciembre de 2026 es viernes. La mayúscula inicial es lo que la
+    // distingue de una fecha metida en mitad de una frase.
+    expect(Formato::diaCompleto(Carbon::parse('2026-12-25')))
+        ->toBe('Viernes, 25 de diciembre de 2026');
+});
+
+it('pone una raya donde no hay día completo', function () {
+    expect(Formato::diaCompleto(null))->toBe('—');
+});
+
 it('dice «1 día» en singular y «2 días» en plural', function () {
     expect(Formato::dias(1))->toBe('1 día')
         ->and(Formato::dias(0))->toBe('0 días')

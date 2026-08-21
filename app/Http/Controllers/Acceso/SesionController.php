@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Acceso;
 
 use App\Autenticacion\LimitadorDeIntentos;
 use App\Autenticacion\RegistroDeAccesos;
+use App\Autorizacion\SeccionDelPanel;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -60,7 +61,7 @@ class SesionController extends Controller
             $this->registro->bloqueado($peticion, $correo, $usuario);
 
             throw ValidationException::withMessages([
-                'correo' => $this->mensajeDeEspera($espera),
+                'correo' => $this->limitador->mensajeDeEspera($espera),
             ]);
         }
 
@@ -72,7 +73,7 @@ class SesionController extends Controller
 
             throw ValidationException::withMessages([
                 'correo' => $espera > 0
-                    ? 'Correo o contraseña incorrectos. '.$this->mensajeDeEspera($espera)
+                    ? 'Correo o contraseña incorrectos. '.$this->limitador->mensajeDeEspera($espera)
                     : 'Correo o contraseña incorrectos.',
             ]);
         }
@@ -84,7 +85,7 @@ class SesionController extends Controller
         $this->limitador->limpiar($correo, $ip);
         $this->registro->exitoso($peticion, $autenticado);
 
-        return redirect()->intended(route('inicio'));
+        return redirect()->intended($this->destino($autenticado));
     }
 
     public function salir(Request $peticion): RedirectResponse
@@ -98,21 +99,16 @@ class SesionController extends Controller
     }
 
     /**
-     * La espera dicha en la unidad en que se entiende.
+     * A dónde va cada quien después de entrar.
      *
-     * «Espera 180 segundos» obliga a dividir mentalmente; «espera 3 minutos»,
-     * no. Por debajo del minuto sí se dicen segundos, que es la única forma de
-     * no redondear a «1 minuto» algo que dura veinte segundos.
+     * El `owner` no tiene nada que hacer en el entorno del cliente —ahí recibe
+     * 403 en todas las secciones— y su sitio es el panel del proveedor. Mandarlo
+     * al inicio del cliente sería mandarlo a un 403 recién iniciada la sesión.
      */
-    private function mensajeDeEspera(int $segundos): string
+    private function destino(User $usuario): string
     {
-        if ($segundos < 60) {
-            return "Demasiados intentos fallidos. Espera {$segundos} segundos e inténtalo de nuevo.";
-        }
-
-        $minutos = (int) ceil($segundos / 60);
-        $unidad = $minutos === 1 ? 'minuto' : 'minutos';
-
-        return "Demasiados intentos fallidos. Espera {$minutos} {$unidad} e inténtalo de nuevo.";
+        return $usuario->esOwner()
+            ? route(SeccionDelPanel::Inicio->nombreDeRuta())
+            : route('inicio');
     }
 }

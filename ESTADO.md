@@ -1,49 +1,62 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-20 · Tarea F1-13 (punto de control, skill `revisar`)
+**Última sesión:** 2026-08-20 · Tarea F1B-01 · Base del panel del proveedor
 **Verificación:** verde
-**Siguiente tarea:** F1B-01 · Base del panel del proveedor
+**Siguiente tarea:** F1B-02 · Crear empresa
 
 ## Qué se hizo
 
-- **La revisión completa de la fase 1**, con el informe en `bitacora/revision-2026-08-20.md`. Se
-  recorrieron los cinco frentes del skill: aislamiento, motor de cálculo, interfaz, seguridad y datos,
-  y deuda.
-- **Aislamiento, interfaz, seguridad y datos: sin hallazgos.** Un solo `where('tenant_id', …)` a mano
-  en todo el código —el de `Auditoria`, justificado y documentado—, las cinco tablas de negocio con
-  trait, política RLS y caso de aislamiento, ni un color literal en un componente, ni un borrado
-  físico, toda ruta bajo `auth` y `modulo:`, y la auditoría escrita en un solo sitio por el observador.
-- **Un hallazgo de deuda, arreglado**: `fecha()` estaba copiada palabra por palabra en **cinco**
-  clases y la pluralización de días en **cinco** sitios. Ahora existe **`App\Presentacion\Formato`**
-  con `fecha()`, `fechaLarga()`, `dias()`, `dinero()` y la constante `VACIO`; los diez sitios que
-  formateaban `d/m/Y` a mano la llaman, se borraron cinco métodos privados y quedó
-  `tests/Unit/FormatoTest.php` con nueve casos.
-- **Dos tareas nuevas**, `REV-01` y `REV-02`: el armazón de los listados está escrito dos veces, en el
-  servidor y en la interfaz. No se extrajo ahora a propósito (ver decisiones).
-- **Una nota añadida a F2-02**: los dos conteos de días corridos escritos a mano —
-  `HistorialDeContrato::duracionTotalEnDias()` y `RenovacionDeContrato::diasCorridos()`— pasan a
-  llamar al motor cuando exista, y la tarea no se da por terminada dejándolos.
-- `composer verificar` en verde: Pint, PHPStan sin errores, **448** pruebas de Pest (nueve más), build
-  y 171 de Vitest.
+- **El panel del proveedor está de pie**, bajo su propio prefijo `/proveedor`, con las **nueve
+  secciones** del capítulo 2 del documento 4 (`SeccionDelPanel`), su barra lateral, su franja
+  superior y una pantalla por sección. Trece rutas, todas con nombre `proveedor.*`.
+- **Solo entra el rol `owner`.** El middleware `SoloProveedor` responde **403** a cualquier usuario de
+  empresa, superadministrador incluido, en las nueve direcciones y también en las cuatro del segundo
+  factor. Es el criterio de terminado de la tarea y tiene prueba.
+- **Segundo factor obligatorio**, con TOTP escrito en el proyecto (`App\Autenticacion\SegundoFactor`,
+  RFC 6238) y comprobado con los **vectores de prueba del propio RFC**. Quien no lo tiene activo no ve
+  el panel: se le desvía a activarlo; quien lo tiene escribe su código una vez por sesión.
+- El secreto se guarda **cifrado** en `users.segundo_factor_secreto` y la fecha de confirmación aparte,
+  porque emitido no es activo.
+- **Los intentos del código se cuentan aparte de los de la contraseña** (`LimitadorDeIntentos` ahora
+  tiene ámbito). Compartirlos habría dejado un agujero real: entrar bien con la contraseña llama a
+  `limpiar()` y habría borrado los fallos del código.
+- **El `owner` que entra va al panel**, no al inicio del cliente, donde recibe 403 en todo.
+- **Reutilización, no copia**: `Armazon` y `BarraLateral` sirven ahora a las dos aplicaciones con props
+  de rótulo, secciones y tono. `ArmazonProveedor` son doce líneas. El resaltado del menú pasó a elegir
+  **la coincidencia más específica**, que es lo que hace posible que la raíz del panel sea `/proveedor`
+  y las demás secciones sean hijas suyas.
+- `Formato::diaCompleto()` recoge la fecha del encabezado de las **dos** pantallas de inicio.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **489** pruebas de Pest (41 más), build y
+  **177** de Vitest (6 más).
 
 ## Decisiones tomadas
 
-- **Se arregló la duplicación pequeña y se convirtió en tarea la grande.** Los formateadores eran
-  copias idénticas de tres líneas: extraerlos es mecánico y las pruebas existentes lo comprueban sin
-  tocarlas. El armazón de listado es un refactor de estructura, y un armazón diseñado con dos ejemplos
-  y estrenado con el tercero sale mejor que uno inventado hoy sobre los mismos dos. **`REV-01` va
-  antes de F2-04**, que es el primer listado nuevo.
-- **`Formato` vive en `App\Presentacion` y no en `App\Contratacion`.** Los cinco duplicados estaban
-  todos en contratación por casualidad —es el único módulo construido—; las novedades de la fase 2
-  van a pedir las mismas fechas y el mismo dinero.
-- **`Formato::VACIO` es una constante y no la raya escrita a mano.** Aparece en una docena de sitios
-  como valor de un dato que no existe, y la raya larga y el guión corto se confunden a la vista.
-- **`Formato` no cuenta ni un día.** Es presentación: convierte una cuenta ya hecha en un texto. El
-  conteo es del motor de cálculo, y meter `diasCorridos()` aquí habría sido crear un segundo motor con
-  otro nombre.
-- **La aritmética de fechas que no es regla laboral se queda donde está.** Antigüedad, vigencia del
-  enlace de invitación y los rangos de los filtros son distancias de calendario, no reglas del CST, y
-  cada clase explica por qué no vive en el motor. Solo los dos conteos de días corridos se mueven.
+- **El TOTP se escribió, no se trajo.** Setenta líneas contra una dependencia más en la puerta de
+  entrada del sistema. El algoritmo no cambia y sus propios vectores de prueba lo comprueban. Si algún
+  día hace falta un código QR o llaves de seguridad, ahí sí conviene una biblioteca.
+- **No hay código QR.** Dibujarlo pediría una dependencia para el mismo dato que ya va en el enlace
+  `otpauth://` y en la clave escrita en grupos de cuatro, que es lo que aceptan todas las
+  aplicaciones.
+- **El secreto se guarda al enseñarlo y no al confirmarlo.** Si se guardara al confirmar habría que
+  llevarlo y traerlo por el formulario, y un secreto que vuelve desde el navegador es un secreto que
+  el navegador puede cambiar. Lo que decide si está activo es la fecha de confirmación.
+- **La verificación dura lo que dura la sesión.** No se inventó una caducidad de horas: el documento no
+  la fija, y `session()->invalidate()` al salir la borra. Está en un solo sitio,
+  `SegundoFactorDeLaSesion`, con el identificador del usuario dentro para que falle cerrado.
+- **`proveedor` va antes que `segundo-factor` en la cadena.** Al contrario, un superadministrador
+  recibiría un desvío a activar un segundo factor que no le corresponde en lugar del 403 que sí.
+- **El panel no es un módulo de `PoliticaDeModulos`.** Esa política responde qué ve un usuario dentro
+  de su empresa y su primera línea es que el `owner` no ve nada de eso. El panel es la pregunta
+  simétrica y se contesta en su propio middleware.
+- **Dentro del panel no hay permisos por sección.** Se entra a todo o no se entra. Los dos niveles
+  internos del equipo —completo y soporte sin datos de empleados ni facturación— son del capítulo 10 y
+  llegan con la sección «Equipo»; cuando existan, el filtro va en `SeccionDelPanel`.
+- **El inicio del panel no enseña ni un número.** Las seis tarjetas de atención y los siete
+  indicadores del capítulo 3 se alimentan de suscripciones, consola de envíos y métricas de uso, que
+  no existen. Un indicador inventado en el panel del negocio es peor que un hueco declarado, porque
+  ese panel se revisa cada mes para decidir con él.
+- **La barra lateral del panel va en el azul oscuro de la marca**, como su prototipo. No es adorno:
+  quien tiene las dos aplicaciones abiertas necesita distinguirlas de un vistazo.
 
 ## Preguntas para Angela
 
@@ -73,18 +86,36 @@
   bloquear con una palabra.**
 - **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
   prolongado y la anticipación de la alerta de cercanía al tope de cuatro años.
+- **Los planes de F1B-02 necesitan nombres y cifras.** El paso 3 de «crear empresa» pide nivel
+  contratado, empleados y usuarios incluidos, y A.1 del documento 6 dice que la tabla de precios no
+  existe todavía. **F1B-02 se puede construir con el plan como texto libre y los dos números a mano**;
+  si se prefiere una tabla `planes` con niveles cerrados, hacen falta los niveles.
 
 ## Decisiones para David
 
+- **La escalera de mora sigue sin números.** El capítulo 6 del documento 4 propone aviso a los 5 días,
+  segundo aviso a los 15 y suspensión a los 30, y dice expresamente que «los números son una decisión
+  de ustedes». Bloquea la sección «Suscripciones», que es de la fase 5, no F1B-02.
+- **El panel no tiene todavía dónde enseñar un mensaje de confirmación.** El armazón del cliente
+  tampoco: `Notificacion` existe como componente pero ningún armazón pinta la prop compartida
+  `estado`. Por eso la activación del segundo factor no deja mensaje, solo lleva al panel. **Cuando
+  F1B-02 confirme «empresa creada», hace falta resolverlo**, y conviene resolverlo en `Armazon`, una
+  vez para las dos aplicaciones.
+- **Un código de segundo factor fallido no queda en la tabla `accesos`.** Ahí solo queda el acceso con
+  contraseña, que sí se registra. `ResultadoDeAcceso` tiene tres valores —exitoso, fallido,
+  bloqueado— y meter el fallo del código como «fallido» diría que falló la contraseña. Si interesa el
+  rastro, es un valor nuevo del enumerado.
+- **No hay forma de reemitir un segundo factor perdido.** Hoy se arregla borrando las dos columnas del
+  usuario en la base de datos. Con una sola cuenta de proveedor es aceptable; **con equipo, no**, y
+  entra en la sección «Equipo» del capítulo 10.
 - **La regla de «la fecha entre paréntesis» está escrita más ancha de lo que la sostiene el
   documento, y hay que acotarla o cumplirla.** `.claude/rules/30-interfaz.md` la enuncia para toda la
   interfaz; su fuente —documento 1, sección 9.1— la enuncia **solo para los mensajes de las alertas**.
   En pantalla no se cumple del todo y el prototipo tampoco la cumple: el encabezado del detalle del
-  contrato dice «Vence en 26 días» sin fecha, igual que `prototipos/sistema.html` línea 449. **No se
-  cambió nada**, porque sería contradecir el prototipo por una lectura mía de una regla derivada.
-  **Se recomienda acotar la regla del archivo a los correos** y dejar para pantalla la versión débil:
-  una referencia relativa necesita su fecha absoluta visible, en el mismo sitio o al lado. **En la
-  fase 3 deja de ser cosmético**: en los correos la regla es literal y no hay ninguna columna al lado.
+  contrato dice «Vence en 26 días» sin fecha, igual que `prototipos/sistema.html` línea 449. **Se
+  recomienda acotar la regla del archivo a los correos** y dejar para pantalla la versión débil: una
+  referencia relativa necesita su fecha absoluta visible, en el mismo sitio o al lado. **En la fase 3
+  deja de ser cosmético**: en los correos la regla es literal y no hay ninguna columna al lado.
 - **`User`, `Acceso` e `Invitacion` no llevan `SoftDeletes`.** Hoy no importa, porque nada los borra.
   Importará cuando exista «Usuarios y permisos»: dar de baja a un usuario tiene que ser lógico, o se
   pierde de quién eran las líneas de auditoría que él escribió.
@@ -97,8 +128,6 @@
   administradores antes de vender, es una tarea nueva.
 - **Sigue sin existir «Editar contrato».** El aviso del modal de renovación dice «edita el contrato»
   sin enlazar a ninguna parte. Cuando exista, el aviso lleva un enlace.
-- **B.3 quedó resuelta como la sugiere el documento 6**: bloquear el tope de cuatro años, advertir con
-  fuerza la prórroga corta. Los dos estados son configurables en `config/validaciones.php`.
 - **El texto del hueco del saldo de vacaciones se lee en pantalla y sigue siendo tuyo.** Está en
   `FichaDeEmpleado::saldoDeVacaciones()`, en un solo sitio.
 - **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de una
@@ -117,7 +146,7 @@
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Abierta de veinticuatro sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Abierta de veinticinco sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -128,19 +157,30 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1B-01, la base del panel del proveedor**: aplicación separada bajo su propia
-  ruta, solo para el rol `owner`, con segundo factor obligatorio. Antes de construirla, abre
-  `prototipos/panel-proveedor.html` y lee el capítulo 2 del documento 4.
+- La siguiente es **F1B-02, crear empresa**: tres pasos —datos, parámetros, plan y cuenta— con resumen
+  final copiable e invitación por correo. Todas las piezas existen ya: `PasosDelAsistente`,
+  `ParametrosDeLaEmpresa::CAMPOS`, `Invitaciones` y el registro de empleado como ejemplo de asistente.
+  Lee 4.2 del documento 4 y abre `prototipos/panel-proveedor.html`.
+- **Toda pantalla nueva del panel se envuelve en `ArmazonProveedor`**, nunca en `Armazon` a pelo: el
+  rótulo, las secciones y el tono oscuro están ahí en un solo sitio.
+- **`SeccionDelPanel::PREFIJO` es el único sitio donde está escrito `proveedor`.** Si algún día el
+  panel se muda a un subdominio, se cambia ahí y en el grupo de rutas.
+- **El armazón y la barra lateral son de las dos aplicaciones.** Si una necesita algo que la otra no,
+  es una prop con el valor del cliente por defecto, no un componente nuevo.
 - **`App\Presentacion\Formato` es el único sitio donde se escribe una fecha, un número de días o un
-  peso.** No escribas `format('d/m/Y')` en ninguna parte; si hace falta un formato nuevo, se agrega
-  ahí con su caso en `FormatoTest`.
+  peso.** No escribas `format('d/m/Y')` ni `translatedFormat` en ninguna parte; si hace falta un
+  formato nuevo, se agrega ahí con su caso en `FormatoTest`.
 - **`REV-01` va antes de F2-04.** Es el armazón de listado del servidor, y F2-04 es el primer listado
-  nuevo: hacerlo después significa copiar `opcion()` una tercera vez.
+  nuevo: hacerlo después significa copiar `opcion()` una tercera vez. **El listado de empresas de
+  F1B-03 es el tercer listado del proyecto**, así que conviene mirar `REV-01` antes de escribirlo.
 - **Todo parámetro nuevo de la empresa se agrega en `ParametrosDeLaEmpresa::CAMPOS`** y en las cuatro
   tablas de textos de ese archivo. La pantalla, la validación y el guardado lo recogen solos; lo único
   que hace falta aparte es la columna.
 - **Los parámetros se leen de `tenant_actual()`, nunca de una copia.** Es lo que hace cierta la
-  promesa de que un cambio se refleja de inmediato.
+  promesa de que un cambio se refleja de inmediato. **En el panel del proveedor no hay
+  `tenant_actual()`**: el `owner` no tiene empresa y `ResolverTenant` no le fija ninguna, así que
+  cuando F1B-03 edite los parámetros de una empresa desde el panel habrá que entrar a su contexto con
+  `ContextoTenant::paraTenant()`.
 - **`CambioAIndefinido` es el sitio de cualquier cosa sobre el cambio de modalidad**,
   `RenovacionDeContrato` el de una prórroga propuesta y `VigenciaDelContrato` el de las cuentas sobre
   un contrato existente. No escribas una cuarta.
@@ -150,13 +190,14 @@
 - **Toda regla que dependa de una decisión abierta va a `config/validaciones.php`**, con su estado y
   el punto del documento 6 que la sostiene. No se escriben ramas «por ahora advierte» dentro de la
   lógica.
-- **El helper `enLaEmpresa()` de las pruebas vive en `PersonasYVinculacionesTest.php`** y Pest lo
-  comparte con todos los archivos. Sin él, cualquier consulta hecha desde una prueba fuera de una
-  petición HTTP devuelve vacío, porque el global scope falla cerrado.
+- **El helper `enLaEmpresa()` de las pruebas vive en `PersonasYVinculacionesTest.php`** y `usuarioDe()`
+  en `RolesYPermisosTest.php`; Pest los comparte con todos los archivos. Sin el primero, cualquier
+  consulta hecha desde una prueba fuera de una petición HTTP devuelve vacío, porque el global scope
+  falla cerrado.
 - **La tabla del historial sigue sin las columnas «Duración» y «Registrado» del prototipo.** La arma
   `FichaDeEmpleado::filasDelHistorial()` y la enseñan las dos pantallas, así que agregarlas es un solo
   sitio.
 - **`OpcionesDeLista` sigue solo en los cuatro enumerados de F1-06.** `Genero`, `TipoDocumento`,
-  `TipoContrato`, `TipoRiesgo`, `TipoVivienda`, `EstadoVinculacion` y `EventoContractual` mantienen
-  sus métodos escritos a mano. Unificarlos es un rato y no rompe nada.
+  `TipoContrato`, `TipoRiesgo`, `TipoVivienda`, `EstadoVinculacion`, `EventoContractual` y ahora
+  `SeccionDelPanel` mantienen sus métodos escritos a mano. Unificarlos es un rato y no rompe nada.
 - **No queda ninguna tarea bloqueada en el backlog.** Sí quedan dos `REV-` al final.

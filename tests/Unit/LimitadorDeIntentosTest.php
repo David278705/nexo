@@ -72,6 +72,31 @@ it('olvida los fallos cuando por fin se entra', function () {
         ->and($limitador->registrarFallo('ana@empresa.test', '10.0.0.1'))->toBe(0);
 });
 
+it('cuenta por separado la contraseña y el segundo factor', function () {
+    $limitador = limitador();
+
+    foreach (range(1, 3) as $intento) {
+        $limitador->registrarFallo(
+            'ana@empresa.test',
+            '10.0.0.1',
+            LimitadorDeIntentos::SEGUNDO_FACTOR,
+        );
+    }
+
+    expect($limitador->estaBloqueado('ana@empresa.test', '10.0.0.1', LimitadorDeIntentos::SEGUNDO_FACTOR))
+        ->toBeTrue()
+        // La espera del código no bloquea la contraseña…
+        ->and($limitador->estaBloqueado('ana@empresa.test', '10.0.0.1'))->toBeFalse();
+
+    // …y entrar bien con la contraseña —que llama a `limpiar()`— no borra los
+    // fallos del código. Si los borrara, quien tuviera la contraseña podría
+    // probar códigos de a tres sin límite.
+    $limitador->limpiar('ana@empresa.test', '10.0.0.1');
+
+    expect($limitador->estaBloqueado('ana@empresa.test', '10.0.0.1', LimitadorDeIntentos::SEGUNDO_FACTOR))
+        ->toBeTrue();
+});
+
 it('no distingue mayúsculas en el correo', function () {
     $limitador = limitador();
 

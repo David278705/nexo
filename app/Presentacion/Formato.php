@@ -3,6 +3,7 @@
 namespace App\Presentacion;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Cómo se escriben las fechas, las cantidades de días y el dinero en pantalla.
@@ -48,6 +49,23 @@ final class Formato
         return $fecha instanceof Carbon
             ? $fecha->translatedFormat('j \d\e F \d\e Y')
             : self::VACIO;
+    }
+
+    /**
+     * El día con su nombre delante: «Lunes, 17 de agosto de 2026».
+     *
+     * Es la fecha que encabeza las dos pantallas de inicio, la del cliente
+     * (documento 3, sección 5.2) y la del panel del proveedor. Se arma en el
+     * servidor y no en el navegador para que salga en la zona horaria de la
+     * aplicación —`America/Bogota`— y no en la del reloj de quien mira.
+     */
+    public static function diaCompleto(mixed $fecha): string
+    {
+        if (! $fecha instanceof Carbon) {
+            return self::VACIO;
+        }
+
+        return Str::ucfirst($fecha->translatedFormat('l').', '.self::fechaLarga($fecha));
     }
 
     /**

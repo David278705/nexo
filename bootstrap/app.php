@@ -1,11 +1,15 @@
 <?php
 
+use App\Autorizacion\SeccionDelPanel;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolverTenant;
+use App\Http\Middleware\SegundoFactorVerificado;
+use App\Http\Middleware\SoloProveedor;
 use App\Http\Middleware\VerificarModulo;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -31,15 +35,29 @@ return Application::configure(basePath: dirname(__DIR__))
             ],
         );
 
-        // Se declara en cada ruta de módulo: `->middleware('modulo:vacaciones')`.
+        // `modulo` se declara en cada ruta del cliente:
+        // `->middleware('modulo:vacaciones')`. Los otros dos son la puerta del
+        // panel del proveedor y siempre van en ese orden: primero quién es,
+        // después qué le falta.
         $middleware->alias([
             'modulo' => VerificarModulo::class,
+            'proveedor' => SoloProveedor::class,
+            'segundo-factor' => SegundoFactorVerificado::class,
         ]);
 
         // Las dos direcciones del acceso. Sin esto, Laravel busca la ruta
         // `login`, que en este proyecto se llama `acceso` y está en español.
         $middleware->redirectGuestsTo('/acceso');
-        $middleware->redirectUsersTo('/');
+
+        // A dónde va quien ya tiene sesión y vuelve a pedir la pantalla de
+        // acceso. El `owner` va al panel del proveedor: en el entorno del
+        // cliente recibe 403 en todas las secciones, así que mandarlo a la raíz
+        // sería mandarlo a un 403.
+        $middleware->redirectUsersTo(
+            fn (Request $peticion) => $peticion->user()?->esOwner() === true
+                ? '/'.SeccionDelPanel::PREFIJO
+                : '/',
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

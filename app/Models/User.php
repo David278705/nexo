@@ -12,11 +12,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * @property int|null $tenant_id
  * @property Rol $rol
+ * @property string|null $segundo_factor_secreto
+ * @property Carbon|null $segundo_factor_confirmado_en
  */
 class User extends Authenticatable
 {
@@ -44,6 +47,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'segundo_factor_secreto',
     ];
 
     /**
@@ -57,7 +61,24 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'rol' => Rol::class,
+            // Cifrado y no con hash: para calcular el código de este momento hay
+            // que poder leer el secreto. No es una contraseña.
+            'segundo_factor_secreto' => 'encrypted',
+            'segundo_factor_confirmado_en' => 'datetime',
         ];
+    }
+
+    /**
+     * Si el segundo factor está activo, que no es lo mismo que emitido.
+     *
+     * El secreto se guarda en el momento de enseñarlo, antes de saber si la
+     * aplicación del usuario lo registró bien. Lo que demuestra que quedó
+     * activado es la fecha de confirmación, y por eso es ella la que se
+     * pregunta: un secreto emitido y nunca confirmado dejaría a su dueño fuera.
+     */
+    public function tieneSegundoFactor(): bool
+    {
+        return $this->segundo_factor_confirmado_en !== null;
     }
 
     public function esOwner(): bool

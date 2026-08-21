@@ -11,11 +11,25 @@ import EncabezadoApp from "@/Components/EncabezadoApp.vue";
  * Toda pantalla del sistema se envuelve aquí. Lo que pinta el menú —la empresa,
  * el usuario y los módulos— llega en la prop compartida `usuario`, que sale de
  * la misma política que responde 403. Este componente no decide nada.
+ *
+ * El panel del proveedor tiene la misma forma con otras secciones y otro
+ * rótulo, así que usa este mismo armazón pasándole las suyas. Sin las props, el
+ * armazón es el del cliente: eso es lo que ve toda pantalla ya construida.
  */
+const props = defineProps({
+    // Las secciones del menú. Si no llegan, son los módulos del usuario.
+    secciones: { type: Array, default: null },
+    titulo: { type: String, default: undefined },
+    subtitulo: { type: String, default: undefined },
+    // El texto de la franja superior. Si no llega, es la empresa del usuario.
+    encabezado: { type: String, default: null },
+    oscuro: { type: Boolean, default: false },
+});
+
 const pagina = usePage();
 
 const usuario = computed(() => pagina.props.usuario);
-const modulos = computed(() => usuario.value?.modulos ?? []);
+const modulos = computed(() => props.secciones ?? usuario.value?.modulos ?? []);
 const urlActual = computed(() => pagina.url.split("?")[0]);
 
 /*
@@ -45,7 +59,13 @@ watch(urlActual, () => {
         <!-- La barra fija, desde 1024px en adelante. -->
         <aside class="hidden w-[236px] shrink-0 lg:block">
             <div class="fixed inset-y-0 left-0 w-[236px]">
-                <BarraLateral :modulos="modulos" :url-actual="urlActual" />
+                <BarraLateral
+                    :modulos="modulos"
+                    :url-actual="urlActual"
+                    :titulo="titulo"
+                    :subtitulo="subtitulo"
+                    :oscuro="oscuro"
+                />
             </div>
         </aside>
 
@@ -60,6 +80,9 @@ watch(urlActual, () => {
                 <BarraLateral
                     :modulos="modulos"
                     :url-actual="urlActual"
+                    :titulo="titulo"
+                    :subtitulo="subtitulo"
+                    :oscuro="oscuro"
                     @navegar="menuAbierto = false"
                 />
             </div>
@@ -77,8 +100,8 @@ watch(urlActual, () => {
         <div class="flex min-w-0 flex-1 flex-col">
             <EncabezadoApp
                 v-if="usuario"
-                :empresa="usuario.empresa ?? ''"
-                :nit="usuario.nit ?? ''"
+                :empresa="encabezado ?? usuario.empresa ?? ''"
+                :nit="encabezado ? '' : (usuario.nit ?? '')"
                 :usuario="usuario"
                 @abrir-menu="menuAbierto = true"
             />

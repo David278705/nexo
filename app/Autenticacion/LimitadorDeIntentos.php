@@ -29,6 +29,12 @@ use Illuminate\Support\Carbon;
  *
  * Vive en la caché y no en la base de datos porque es información efímera: el
  * rastro permanente de los intentos es la tabla `accesos`, que se escribe igual.
+ *
+ * El **ámbito** separa cuentas distintas de la misma persona. La contraseña y el
+ * código del segundo factor se cuentan aparte, y no por gusto: si compartieran
+ * la cuenta, entrar bien con la contraseña —que llama a `limpiar()`— borraría
+ * los fallos del código, y quien tuviera la contraseña podría probar códigos sin
+ * límite volviendo a entrar cada tres intentos.
  */
 class LimitadorDeIntentos
 {
@@ -52,14 +58,24 @@ class LimitadorDeIntentos
      */
     public const MEMORIA = 86400;
 
+    /**
+     * El ámbito de la contraseña, que es el que se usa si no se dice otro.
+     */
+    public const ACCESO = 'acceso';
+
+    /**
+     * El ámbito del código del segundo factor.
+     */
+    public const SEGUNDO_FACTOR = 'segundo-factor';
+
     public function __construct(private readonly Cache $cache) {}
 
     /**
      * Los segundos que faltan para poder intentarlo otra vez. Cero si se puede.
      */
-    public function segundosDeEspera(string $correo, ?string $ip): int
+    public function segundosDeEspera(string $correo, ?string $ip, string $ambito = self::ACCESO): int
     {
-        $intento = $this->intentos($correo, $ip);
+        $intento = $this->intentos($correo, $ip, $ambito);
 
         if ($intento['disponible_en'] === null) {
             return 0;
@@ -68,20 +84,20 @@ class LimitadorDeIntentos
         return max(0, $intento['disponible_en'] - Carbon::now()->getTimestamp());
     }
 
-    public function estaBloqueado(string $correo, ?string $ip): bool
+    public function estaBloqueado(string $correo, ?string $ip, string $ambito = self::ACCESO): bool
     {
-        return $this->segundosDeEspera($correo, $ip) > 0;
+        return $this->segundosDeEspera($correo, $ip, $ambito) > 0;
     }
 
     /**
      * Anota un fallo y devuelve la espera que le corresponde.
      */
-    public function registrarFallo(string $correo, ?string $ip): int
+    public function registrarFallo(string $correo, ?string $ip, string $ambito = self::ACCESO): int
     {
-        $fallos = $this->intentos($correo, $ip)['fallos'] + 1;
+        $fallos = $this->intentos($correo, $ip, $ambito)['fallos'] + 1;
         $espera = $this->esperaPara($fallos);
 
-        $this->cache->put($this->clave($correo, $ip), [
+        $this->cache->put($this->clave($correo, $ip, $ambito), [
             'fallos' => $fallos,
             'disponible_en' => $espera === 0
                 ? null
@@ -95,9 +111,31 @@ class LimitadorDeIntentos
      * Se llama al entrar bien: quien recordó su contraseña vuelve a empezar de
      * cero, o arrastraría la espera de ayer.
      */
-    public function limpiar(string $correo, ?string $ip): void
+    public function limpiar(string $correo, ?string $ip, string $ambito = self::ACCESO): void
     {
-        $this->cache->forget($this->clave($correo, $ip));
+        $this->cache->forget($this->clave($correo, $ip, $ambito));
+    }
+
+    /**
+     * La espera dicha en la unidad en que se entiende.
+     *
+     * «Espera 180 segundos» obliga a dividir mentalmente; «espera 3 minutos»,
+     * no. Por debajo del minuto sí se dicen segundos, que es la única forma de
+     * no redondear a «1 minuto» algo que dura veinte segundos.
+     *
+     * El texto vive aquí, junto a la cuenta que lo produce, porque lo dicen dos
+     * pantallas: la contraseña y el código del segundo factor.
+     */
+    public function mensajeDeEspera(int $segundos): string
+    {
+        if ($segundos < 60) {
+            return "Demasiados intentos fallidos. Espera {$segundos} segundos e inténtalo de nuevo.";
+        }
+
+        $minutos = (int) ceil($segundos / 60);
+        $unidad = $minutos === 1 ? 'minuto' : 'minutos';
+
+        return "Demasiados intentos fallidos. Espera {$minutos} {$unidad} e inténtalo de nuevo.";
     }
 
     private function esperaPara(int $fallos): int
@@ -114,16 +152,16 @@ class LimitadorDeIntentos
     /**
      * @return array{fallos: int, disponible_en: int|null}
      */
-    private function intentos(string $correo, ?string $ip): array
+    private function intentos(string $correo, ?string $ip, string $ambito): array
     {
         /** @var array{fallos: int, disponible_en: int|null}|null $guardado */
-        $guardado = $this->cache->get($this->clave($correo, $ip));
+        $guardado = $this->cache->get($this->clave($correo, $ip, $ambito));
 
         return $guardado ?? ['fallos' => 0, 'disponible_en' => null];
     }
 
-    private function clave(string $correo, ?string $ip): string
+    private function clave(string $correo, ?string $ip, string $ambito): string
     {
-        return 'acceso:intentos:'.sha1(mb_strtolower($correo).'|'.($ip ?? 'sin-ip'));
+        return $ambito.':intentos:'.sha1(mb_strtolower($correo).'|'.($ip ?? 'sin-ip'));
     }
 }

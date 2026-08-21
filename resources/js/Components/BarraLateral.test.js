@@ -81,6 +81,26 @@ describe("BarraLateral", () => {
         expect(activos[0].attributes("href")).toBe("/contratos");
     });
 
+    it("resalta la sección más específica cuando la raíz no es «/»", () => {
+        // Es el caso del panel del proveedor: su inicio es `/proveedor` y las
+        // demás secciones son direcciones hijas suyas.
+        const activos = montar({
+            modulos: [
+                { clave: "inicio", etiqueta: "Inicio", grupo: null, url: "/proveedor" },
+                {
+                    clave: "empresas",
+                    etiqueta: "Empresas",
+                    grupo: "Clientes",
+                    url: "/proveedor/empresas",
+                },
+            ],
+            urlActual: "/proveedor/empresas",
+        }).findAll('[aria-current="page"]');
+
+        expect(activos).toHaveLength(1);
+        expect(activos[0].attributes("href")).toBe("/proveedor/empresas");
+    });
+
     it("avisa al navegar, para que el menú desplegado se cierre", async () => {
         const componente = montar();
 

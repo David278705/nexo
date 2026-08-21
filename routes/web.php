@@ -1,6 +1,7 @@
 <?php
 
 use App\Autorizacion\Modulo;
+use App\Autorizacion\SeccionDelPanel;
 use App\Catalogos\Ubicaciones;
 use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
@@ -9,8 +10,10 @@ use App\Http\Controllers\Acceso\SesionController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
+use App\Http\Controllers\Proveedor\PanelController;
+use App\Http\Controllers\Proveedor\SegundoFactorController;
+use App\Presentacion\Formato;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 /*
@@ -47,7 +50,7 @@ Route::middleware('auth')->group(function () {
      * no en la del navegador de quien mira.
      */
     Route::get('/', fn () => Inertia::render('Inicio', [
-        'fecha' => Str::ucfirst(now()->translatedFormat('l, j \d\e F \d\e Y')),
+        'fecha' => Formato::diaCompleto(now()),
     ]))->name('inicio');
 
     /*
@@ -140,6 +143,52 @@ Route::middleware('auth')->group(function () {
             ->name($modulo->nombreDeRuta());
     }
 });
+
+/*
+ * El panel del proveedor (documento 4, capítulos 1 y 2). Es una aplicación
+ * aparte de la que ve el cliente: vive bajo su propio prefijo, no comparte ni
+ * el armazón ni el menú, y entra solo el rol `owner`.
+ *
+ * El orden de los tres middleware es el orden de las tres preguntas, y no se
+ * puede cambiar:
+ *
+ * 1. `auth` — ¿hay sesión?
+ * 2. `proveedor` — ¿es el `owner`? Si no, 403. Va antes del segundo factor para
+ *    que a un usuario de empresa se le responda 403 y no se le desvíe a activar
+ *    un segundo factor que no le corresponde.
+ * 3. `segundo-factor` — ¿ya escribió su código? Solo envuelve las nueve
+ *    secciones; las cuatro direcciones de activar y verificar quedan fuera,
+ *    porque son las que hay que poder ver sin haberlo verificado.
+ */
+Route::middleware(['auth', 'proveedor'])
+    ->prefix(SeccionDelPanel::PREFIJO)
+    ->group(function () {
+        Route::get('/segundo-factor', [SegundoFactorController::class, 'activar'])
+            ->name('proveedor.segundo-factor');
+        Route::post('/segundo-factor', [SegundoFactorController::class, 'confirmar'])
+            ->name('proveedor.segundo-factor.confirmar');
+
+        Route::get('/verificacion', [SegundoFactorController::class, 'verificar'])
+            ->name('proveedor.verificacion');
+        Route::post('/verificacion', [SegundoFactorController::class, 'comprobar'])
+            ->name('proveedor.verificacion.comprobar');
+
+        Route::middleware('segundo-factor')->group(function () {
+            Route::get('/', [PanelController::class, 'inicio'])
+                ->name(SeccionDelPanel::Inicio->nombreDeRuta());
+
+            /*
+             * Las ocho secciones restantes del capítulo 2. Existen desde ya,
+             * como en el armazón del cliente, para que el menú del panel se
+             * pueda recorrer entero: la dirección, el nombre de ruta y el
+             * resaltado son los definitivos y solo falta el contenido.
+             */
+            foreach (SeccionDelPanel::pendientes() as $seccion) {
+                Route::get('/'.$seccion->value, fn () => app(PanelController::class)->seccion($seccion))
+                    ->name($seccion->nombreDeRuta());
+            }
+        });
+    });
 
 /*
  * El catálogo del sistema de diseño. No es una pantalla del producto —no lleva

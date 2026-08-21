@@ -279,7 +279,7 @@ quedaron `REV-01` y `REV-02` por el armazón de listado repetido en el servidor 
 
 ## Fase 1B — Panel del proveedor, mínimo
 
-### [ ] F1B-01 · Base del panel
+### [x] F1B-01 · Base del panel
 
 Aplicación separada bajo su propia ruta, solo para el rol `owner`, con segundo factor obligatorio.
 Ningún usuario de empresa puede alcanzarla.
