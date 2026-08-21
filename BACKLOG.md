@@ -348,11 +348,19 @@ inventarlos.
 
 ## Fase 2 — Motor de cálculo y novedades
 
-### [ ] F2-01 · Pruebas del motor, primero
+### [x] F2-01 · Pruebas del motor, primero
 
 Escribe los diez casos obligatorios. Todos fallan, que es lo esperado.
 **Hecho cuando:** los diez existen y fallan por falta de implementación, no por error de sintaxis.
 **Fuente:** `docs/02-arquitectura-y-datos.md` 4.2
+
+Hecho: `tests/Feature/MotorDeCalculoTest.php` con los diez casos de la sección 4.2, y las firmas del
+motor en `app/Dominio/Calculo/` —`MotorDeCalculo`, `SaldoDeVacaciones`, `PeriodoDePrueba`—, donde cada
+método lanza `CalculoSinImplementar`. **Los diez fallan con esa excepción**, es decir por falta de
+implementación y no por sintaxis ni por una clase que no existe. Van en el grupo `motor`, que
+`composer verificar` excluye para no dejar la verificación en rojo; `composer motor` los corre y los
+enseña en rojo. Dos reglas salieron de leer los casos entre ellos y están anotadas: la acumulación va
+en **meses comerciales de treinta días** y **el mes se causa completo al cerrarse**, no día a día.
 
 ### [ ] F2-02 · Motor de cálculo
 
@@ -360,6 +368,13 @@ Las tres funciones de conteo con sus nombres explícitos y el cálculo de saldo 
 columna.
 **Hecho cuando:** los diez casos pasan.
 **Fuente:** `.claude/rules/20-calculo-y-reglas-legales.md`
+
+Lo primero de esta tarea, antes de escribir una línea de cálculo: **quitar `--exclude-group=motor`
+del script `verificar` de `composer.json` y borrar el script `motor`**. Los diez casos de F2-01 están
+escritos y en rojo; esa exclusión es lo único que hoy los deja fuera de la verificación, y se va con
+la primera implementación. Las firmas ya existen en `app/Dominio/Calculo/`: F2-02 sustituye cada
+`throw CalculoSinImplementar` por su cuenta, **sin tocar el archivo de pruebas**, y borra esa clase
+cuando se quede sin quien la lance.
 
 Pendiente que dejó la revisión F1-13: **hoy hay dos conteos de días corridos escritos a mano**, uno
 en `HistorialDeContrato::duracionTotalEnDias()` y otro en `RenovacionDeContrato::diasCorridos()`,

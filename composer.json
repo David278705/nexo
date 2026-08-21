@@ -57,11 +57,15 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "motor": [
+            "@php artisan config:clear --ansi",
+            "@php vendor/bin/pest --group=motor"
+        ],
         "verificar": [
             "@php vendor/bin/pint --test",
             "@php vendor/bin/phpstan analyse --memory-limit=1G",
             "@php artisan config:clear --ansi",
-            "@php vendor/bin/pest",
+            "@php vendor/bin/pest --exclude-group=motor",
             "npm run build",
             "npm run test"
         ],
