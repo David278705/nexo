@@ -9,6 +9,7 @@ use App\Exports\ContratosExport;
 use App\Http\Requests\CambiarATerminoIndefinido;
 use App\Http\Requests\RenovarContrato;
 use App\Models\Vinculacion;
+use App\Presentacion\Formato;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -111,7 +112,7 @@ class ContratoController extends Controller
         return redirect()
             ->route('contratos.detalle', $contrato)
             ->with('estado', 'Se registró la '.mb_strtolower($periodo->evento->etiqueta(), 'UTF-8')
-                .'. El contrato vence ahora el '.$peticion->hasta()->format('d/m/Y').'.');
+                .'. El contrato vence ahora el '.Formato::fecha($peticion->hasta()).'.');
     }
 
     /**
@@ -131,6 +132,6 @@ class ContratoController extends Controller
         return redirect()
             ->route('contratos.detalle', $contrato)
             ->with('estado', 'El contrato quedó a término indefinido desde el '
-                .$periodo->fecha_inicio->format('d/m/Y').'. La fecha de ingreso no cambió.');
+                .Formato::fecha($periodo->fecha_inicio).'. La fecha de ingreso no cambió.');
     }
 }

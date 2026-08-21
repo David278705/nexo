@@ -5,6 +5,7 @@ namespace App\Contratacion;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
 use App\Models\Vinculacion;
+use App\Presentacion\Formato;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -216,12 +217,12 @@ class ListadoDeContratos
             'documento' => (string) $persona->numero_documento,
             'cargo' => (string) $vinculacion->getAttribute('cargo'),
             'contrato' => ($historial->tipoDeContratoVigente() ?? $vinculacion->tipo_contrato)->etiqueta(),
-            'inicio' => self::fecha(
+            'inicio' => Formato::fecha(
                 $vigente instanceof PeriodoContractual ? $vigente->fecha_inicio : $vinculacion->fecha_ingreso
             ),
-            'vence' => self::fecha($vigencia->fechaDeVencimiento()),
+            'vence' => Formato::fecha($vigencia->fechaDeVencimiento()),
             'prorrogas' => $historial->prorrogasAcumuladas(),
-            'preaviso' => self::fecha($vigencia->fechaLimiteDePreaviso()),
+            'preaviso' => Formato::fecha($vigencia->fechaLimiteDePreaviso()),
             'estado' => $vigencia->estado(),
             'tono' => $vigencia->tono(),
         ];
@@ -409,11 +410,5 @@ class ListadoDeContratos
         $valor = (int) $peticion->query('porPagina', 0);
 
         return in_array($valor, self::TAMANOS_DE_PAGINA, true) ? $valor : self::POR_PAGINA_POR_DEFECTO;
-    }
-
-    private static function fecha(mixed $fecha): string
-    {
-        // En formato colombiano, el mismo de la ficha y del listado de empleados.
-        return $fecha instanceof Carbon ? $fecha->format('d/m/Y') : '—';
     }
 }

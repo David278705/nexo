@@ -7,6 +7,7 @@ use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
 use App\Models\Vinculacion;
+use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 use UnitEnum;
 
@@ -109,10 +110,10 @@ class FichaDeEmpleado
     {
         return [
             self::dato('Documento', $this->persona->numero_documento),
-            self::dato('Fecha de ingreso', self::fecha($this->vinculacion->fecha_ingreso)),
+            self::dato('Fecha de ingreso', Formato::fecha($this->vinculacion->fecha_ingreso)),
             self::dato('Antigüedad', $this->antiguedad()),
             self::dato('Tipo de contrato', self::texto($this->vinculacion->tipo_contrato)),
-            self::dato('Salario', self::dinero($this->vinculacion->getAttribute('salario'))),
+            self::dato('Salario', Formato::dinero($this->vinculacion->getAttribute('salario'))),
             $this->saldoDeVacaciones(),
         ];
     }
@@ -180,9 +181,9 @@ class FichaDeEmpleado
             self::bloque('Identificación', [
                 'Tipo de documento' => self::texto($this->persona->getAttribute('tipo_documento')),
                 'Número de documento' => $this->persona->numero_documento,
-                'Fecha de expedición' => self::fecha($this->persona->getAttribute('fecha_expedicion_documento')),
+                'Fecha de expedición' => Formato::fecha($this->persona->getAttribute('fecha_expedicion_documento')),
                 'Lugar de expedición' => $this->lugar('expedicion'),
-                'Fecha de nacimiento' => self::fecha($this->persona->getAttribute('fecha_nacimiento')),
+                'Fecha de nacimiento' => Formato::fecha($this->persona->getAttribute('fecha_nacimiento')),
                 'Lugar de nacimiento' => $this->lugar('nacimiento'),
                 'Género' => self::texto($this->persona->getAttribute('genero')),
             ]),
@@ -224,11 +225,11 @@ class FichaDeEmpleado
 
         $campos = [
             'Tipo de contrato' => self::texto($tipo),
-            'Fecha de ingreso' => self::fecha($this->vinculacion->fecha_ingreso),
-            'Fecha de vencimiento' => self::fecha($historial->fechaDeVencimiento()),
+            'Fecha de ingreso' => Formato::fecha($this->vinculacion->fecha_ingreso),
+            'Fecha de vencimiento' => Formato::fecha($historial->fechaDeVencimiento()),
             'Prórrogas acumuladas' => (string) $historial->prorrogasAcumuladas(),
-            'Salario' => self::dinero($this->vinculacion->getAttribute('salario')),
-            'Bonificación' => self::dinero($this->vinculacion->getAttribute('bonificacion')),
+            'Salario' => Formato::dinero($this->vinculacion->getAttribute('salario')),
+            'Bonificación' => Formato::dinero($this->vinculacion->getAttribute('bonificacion')),
         ];
 
         // Las dos cuentas del tope legal solo tienen sentido donde hay plazo
@@ -237,9 +238,9 @@ class FichaDeEmpleado
             $duracion = $historial->duracionTotalEnDias();
 
             $campos['Duración total del vínculo'] = $duracion === null
-                ? '—'
-                : $duracion.($duracion === 1 ? ' día' : ' días');
-            $campos['Tope legal de cuatro años'] = self::fecha($historial->fechaDelTopeLegal());
+                ? Formato::VACIO
+                : Formato::dias($duracion);
+            $campos['Tope legal de cuatro años'] = Formato::fecha($historial->fechaDelTopeLegal());
         }
 
         return [
@@ -265,8 +266,8 @@ class FichaDeEmpleado
                 'orden' => (int) $tramo->getAttribute('orden'),
                 'evento' => self::texto($tramo->evento),
                 'contrato' => self::texto($tramo->tipo_contrato),
-                'desde' => self::fecha($tramo->fecha_inicio),
-                'hasta' => self::fecha($tramo->fecha_fin),
+                'desde' => Formato::fecha($tramo->fecha_inicio),
+                'hasta' => Formato::fecha($tramo->fecha_fin),
             ])
             ->values()
             ->all();
@@ -411,27 +412,5 @@ class FichaDeEmpleado
         $texto = trim((string) ($valor ?? ''));
 
         return $texto === '' ? '—' : $texto;
-    }
-
-    private static function fecha(mixed $fecha): string
-    {
-        // En formato colombiano, el mismo del listado y de la exportación.
-        return $fecha instanceof Carbon ? $fecha->format('d/m/Y') : '—';
-    }
-
-    /**
-     * El dinero como se lee en Colombia: punto de miles y coma decimal, y sin
-     * centavos cuando no los hay, que es casi siempre.
-     */
-    private static function dinero(mixed $valor): string
-    {
-        if ($valor === null || $valor === '') {
-            return '—';
-        }
-
-        $numero = (float) $valor;
-        $decimales = fmod($numero, 1.0) === 0.0 ? 0 : 2;
-
-        return '$ '.number_format($numero, $decimales, ',', '.');
     }
 }

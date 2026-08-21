@@ -266,10 +266,14 @@ así que cambiar un parámetro se refleja en la petición siguiente —se prueba
 sociodemográfico, el único parámetro con consumidor construido hasta la fase 2—. Sí y No viajan como
 texto `si`/`no` para que la cadena «false» no pueda colarse como verdadera.
 
-### [ ] F1-13 · PUNTO DE CONTROL — revisión
+### [x] F1-13 · PUNTO DE CONTROL — revisión
 
 Ejecuta el skill `revisar`.
 **Hecho cuando:** existe el informe en `bitacora/` y lo encontrado está arreglado o convertido en tareas `REV-`.
+
+Informe en `bitacora/revision-2026-08-20.md`. Aislamiento, motor, interfaz, seguridad y datos sin
+hallazgos. Se arregló la duplicación de los textos de presentación —`App\Presentacion\Formato`— y
+quedaron `REV-01` y `REV-02` por el armazón de listado repetido en el servidor y en la interfaz.
 
 ---
 
@@ -320,6 +324,12 @@ Las tres funciones de conteo con sus nombres explícitos y el cálculo de saldo 
 columna.
 **Hecho cuando:** los diez casos pasan.
 **Fuente:** `.claude/rules/20-calculo-y-reglas-legales.md`
+
+Pendiente que dejó la revisión F1-13: **hoy hay dos conteos de días corridos escritos a mano**, uno
+en `HistorialDeContrato::duracionTotalEnDias()` y otro en `RenovacionDeContrato::diasCorridos()`,
+idénticos y los dos anotados. Cuando exista `diasCorridos()` en el motor, **los dos pasan a
+llamarlo y el privado de `RenovacionDeContrato` desaparece**. Es la única cuenta laboral que hoy
+vive fuera de `app/Dominio/Calculo/`.
 
 ### [ ] F2-03 · Flujo compartido de novedades
 
@@ -561,4 +571,33 @@ vender, tomándolo de `docs/06-decisiones-pendientes.md`.
 
 ## Tareas surgidas de revisiones
 
-_(las tareas `REV-` se agregan aquí)_
+### [ ] REV-01 · Un solo armazón de listado en el servidor
+
+`ListadoDeEmpleados` y `ListadoDeContratos` tienen la misma estructura escrita dos veces:
+`opcion()`, `porPagina()`, `dePersona()`, `ordenar()`, `pagina()`, `total()`, `tieneFiltros()`,
+`paraLaInterfaz()`, la constante `TODOS`, `TAMANOS_DE_PAGINA` y la lista blanca de ordenamientos.
+Extrae lo común —clase base abstracta o *trait*, con la lista blanca y el mapa de columnas como
+declaración de cada listado—, dejando en cada clase solo sus filtros y sus filas.
+
+**Motivo:** hoy son dos, pero el documento 3 cuenta **siete** pantallas de listado. Con el patrón
+copiado, el día que la paginación o el orden cambien hay que acordarse de siete sitios.
+
+**Hecho cuando:** los dos listados comparten el armazón, las pruebas de empleados y de contratos
+siguen en verde sin tocarlas, y agregar un listado nuevo no vuelve a copiar `opcion()`.
+
+**Cuándo:** antes del primer listado de la fase 2 (F2-04). Hacerlo con dos ejemplos es barato;
+con cinco, ya no.
+
+### [ ] REV-02 · Un solo armazón de listado en la interfaz
+
+`Pages/Empleados/Index.vue` y `Pages/Contratos/Index.vue` repiten `pedir()`, `ordenar()`,
+`quitar()`, `limpiar()`, `urlExportar` y `textoExportar` casi carácter por carácter. Extrae un
+*composable* —`resources/js/Utilidades/useListado.js`— que reciba la ruta base y las props de
+filtros y devuelva las seis cosas.
+
+**Motivo:** el mismo de REV-01, y con un agravante: `textoExportar` arma la frase «Exportar 43
+registros filtrados» que la regla de interfaz exige, y dos copias de una frase obligatoria se
+separan solas.
+
+**Hecho cuando:** las dos pantallas usan el *composable*, sus pruebas de Vitest siguen en verde y
+el *composable* tiene las suyas.

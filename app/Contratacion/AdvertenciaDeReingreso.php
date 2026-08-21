@@ -4,6 +4,7 @@ namespace App\Contratacion;
 
 use App\Models\Persona;
 use App\Models\Vinculacion;
+use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 
 /**
@@ -146,7 +147,7 @@ final class AdvertenciaDeReingreso
             return null;
         }
 
-        $fecha = $salida->translatedFormat('j \d\e F \d\e Y');
+        $fecha = Formato::fechaLarga($salida);
 
         if (! $reciente) {
             return "La vinculación anterior terminó el {$fecha}.";
@@ -156,8 +157,8 @@ final class AdvertenciaDeReingreso
             return "El reingreso es el mismo día de la salida anterior ({$fecha}).";
         }
 
-        $plural = $dias === 1 ? 'día' : 'días';
+        $cuantos = Formato::dias((int) $dias);
 
-        return "El reingreso es {$dias} {$plural} después de la salida anterior ({$fecha}), dentro de los ".self::DIAS_DE_ENFASIS.' días siguientes.';
+        return "El reingreso es {$cuantos} después de la salida anterior ({$fecha}), dentro de los ".self::DIAS_DE_ENFASIS.' días siguientes.';
     }
 }

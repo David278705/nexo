@@ -2,6 +2,7 @@
 
 namespace App\Contratacion;
 
+use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 
 /**
@@ -115,8 +116,8 @@ class VigenciaDelContrato
         }
 
         return $dias > 0
-            ? 'Vence en '.self::dias($dias)
-            : 'Vencido hace '.self::dias(-$dias);
+            ? 'Vence en '.Formato::dias($dias)
+            : 'Vencido hace '.Formato::dias(-$dias);
     }
 
     /**
@@ -157,12 +158,7 @@ class VigenciaDelContrato
         }
 
         return $dias > 0
-            ? 'Quedan '.self::dias($dias)
-            : 'El plazo se pasó hace '.self::dias(-$dias);
-    }
-
-    private static function dias(int $cantidad): string
-    {
-        return $cantidad.($cantidad === 1 ? ' día' : ' días');
+            ? 'Quedan '.Formato::dias($dias)
+            : 'El plazo se pasó hace '.Formato::dias(-$dias);
     }
 }

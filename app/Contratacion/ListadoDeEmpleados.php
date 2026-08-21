@@ -4,6 +4,7 @@ namespace App\Contratacion;
 
 use App\Models\Persona;
 use App\Models\Vinculacion;
+use App\Presentacion\Formato;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -250,7 +251,7 @@ class ListadoDeEmpleados
             'cargo' => (string) $vinculacion->getAttribute('cargo'),
             'contrato' => $vinculacion->tipo_contrato->etiqueta(),
             // En formato colombiano, que es como lo lee quien usa el sistema.
-            'ingreso' => $vinculacion->fecha_ingreso->format('d/m/Y'),
+            'ingreso' => Formato::fecha($vinculacion->fecha_ingreso),
             'estado' => $estado instanceof EstadoVinculacion ? $estado->etiqueta() : '',
             'activo' => $vinculacion->estaActiva() ? 1 : 0,
         ];
@@ -404,8 +405,12 @@ class ListadoDeEmpleados
         return in_array($valor, self::TAMANOS_DE_PAGINA, true) ? $valor : self::POR_PAGINA_POR_DEFECTO;
     }
 
+    /**
+     * La fecha del filtro, que llega de la dirección como `AAAA-MM-DD` y se
+     * enseña en la etiqueta removible como la lee quien usa el sistema.
+     */
     private function enFormatoColombiano(string $fecha): string
     {
-        return Carbon::parse($fecha)->format('d/m/Y');
+        return Formato::fecha(Carbon::parse($fecha));
     }
 }

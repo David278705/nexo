@@ -3,6 +3,7 @@
 namespace App\Contratacion;
 
 use App\Models\Vinculacion;
+use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 
 /**
@@ -114,7 +115,7 @@ class DetalleDelContrato
             return [
                 self::tarjeta((string) $prorrogas, 'Prórrogas acumuladas'),
                 self::tarjeta(
-                    self::fecha($this->historial->inicial()?->fecha_inicio),
+                    Formato::fecha($this->historial->inicial()?->fecha_inicio),
                     'Inicio del contrato',
                     'Este contrato no termina en una fecha conocida.',
                 ),
@@ -123,13 +124,13 @@ class DetalleDelContrato
 
         return [
             self::tarjeta(
-                self::fecha($this->vigencia->fechaDeVencimiento()),
+                Formato::fecha($this->vigencia->fechaDeVencimiento()),
                 'Fecha de vencimiento',
                 $this->vigencia->estado(),
                 $this->vigencia->tono() === 'exito' ? '' : $this->vigencia->tono(),
             ),
             self::tarjeta(
-                self::fecha($this->vigencia->fechaLimiteDePreaviso()),
+                Formato::fecha($this->vigencia->fechaLimiteDePreaviso()),
                 'Límite de preaviso',
                 $this->vigencia->notaDePreaviso(),
                 ($this->vigencia->diasParaElPreaviso() ?? 1) <= 0 ? 'advertencia' : '',
@@ -154,14 +155,14 @@ class DetalleDelContrato
             'Documento' => (string) $this->vinculacion->persona->numero_documento,
             'Cargo' => (string) $this->vinculacion->getAttribute('cargo'),
             'Tipo de contrato' => $tipo->etiqueta(),
-            'Fecha de ingreso' => self::fecha($this->vinculacion->fecha_ingreso),
-            'Inicio del periodo vigente' => self::fecha($this->historial->vigente()?->fecha_inicio),
+            'Fecha de ingreso' => Formato::fecha($this->vinculacion->fecha_ingreso),
+            'Inicio del periodo vigente' => Formato::fecha($this->historial->vigente()?->fecha_inicio),
         ];
 
         if ($tipo->exigeFechaFin()) {
-            $campos['Fecha de vencimiento'] = self::fecha($this->vigencia->fechaDeVencimiento());
-            $campos['Fecha límite de preaviso'] = self::fecha($this->vigencia->fechaLimiteDePreaviso());
-            $campos['Tope legal de cuatro años'] = self::fecha($this->historial->fechaDelTopeLegal());
+            $campos['Fecha de vencimiento'] = Formato::fecha($this->vigencia->fechaDeVencimiento());
+            $campos['Fecha límite de preaviso'] = Formato::fecha($this->vigencia->fechaLimiteDePreaviso());
+            $campos['Tope legal de cuatro años'] = Formato::fecha($this->historial->fechaDelTopeLegal());
         }
 
         return array_map(
@@ -180,7 +181,7 @@ class DetalleDelContrato
     {
         $dias = $this->historial->duracionTotalEnDias();
 
-        return $dias === null ? '—' : $dias.($dias === 1 ? ' día' : ' días');
+        return $dias === null ? Formato::VACIO : Formato::dias($dias);
     }
 
     private function notaDelTope(): string
@@ -188,7 +189,7 @@ class DetalleDelContrato
         $tope = $this->historial->fechaDelTopeLegal();
 
         return $tope instanceof Carbon
-            ? 'Tope legal de cuatro años: '.$tope->format('d/m/Y')
+            ? 'Tope legal de cuatro años: '.Formato::fecha($tope)
             : '';
     }
 
@@ -198,10 +199,5 @@ class DetalleDelContrato
     private static function tarjeta(string $valor, string $etiqueta, string $nota = '', string $tono = ''): array
     {
         return ['valor' => $valor, 'etiqueta' => $etiqueta, 'nota' => $nota, 'tono' => $tono];
-    }
-
-    private static function fecha(mixed $fecha): string
-    {
-        return $fecha instanceof Carbon ? $fecha->format('d/m/Y') : '—';
     }
 }

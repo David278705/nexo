@@ -1,58 +1,49 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-20 · Tarea F1-12
+**Última sesión:** 2026-08-20 · Tarea F1-13 (punto de control, skill `revisar`)
 **Verificación:** verde
-**Siguiente tarea:** F1-13 · PUNTO DE CONTROL — revisión (ejecuta el skill `revisar`)
+**Siguiente tarea:** F1B-01 · Base del panel del proveedor
 
 ## Qué se hizo
 
-- **`ParametrosDeLaEmpresa`**, el objeto de la pantalla: los cuatro parámetros del capítulo 4 del
-  documento 1 con su título, su explicación en lenguaje claro, sus dos opciones dichas con palabras,
-  sus reglas de validación y la escritura. Todo en un archivo.
-- **Tres parámetros se guardan y el cuarto se deduce.** Sábado laboral, efecto de las suspensiones y
-  perfil sociodemográfico son columnas de `tenants`, que ya existían desde F0-03. «Correos que reciben
-  las alertas» no es columna de nada: el capítulo 4 dice que sus opciones son «administradores con
-  acceso a cada módulo», así que la lista sale de los usuarios y de sus permisos.
-- **`ConfiguracionController`** con las dos acciones, `GuardarParametros` con las reglas, y las rutas
-  `GET /configuracion` y `PUT /configuracion/parametros` bajo `modulo:configuracion`.
-- **`Tenant::usuarios()`**, la relación que faltaba. `User` no lleva el trait a propósito, y sin la
-  relación la lista de destinatarios habría necesitado el `where('tenant_id', …)` que la regla de
-  aislamiento prohíbe.
-- **La pantalla `Configuracion/Parametros`** con las cuatro pestañas del prototipo. «Parámetros» es un
-  solo formulario con un solo botón; «Datos de la empresa» es de solo lectura con la nota de que los
-  cambia el proveedor; las otras dos dicen que llegan en su propia tarea.
-- **El aviso del capítulo 4 aparece solo al activar**, con el número de empleados ya registrados
-  escrito por el servidor, y desaparece cuando el bloque ya estaba habilitado.
-- `ParametrosDeLaEmpresaTest` con 26 casos: quién entra, los cuatro parámetros en pantalla, guardar,
-  la validación, la auditoría, el efecto inmediato, el aviso, los destinatarios y el aislamiento.
-  Nueve casos de Vitest de la pantalla.
-- `composer verificar` en verde a la primera: Pint, PHPStan sin errores, 439 pruebas de Pest, build y
-  171 de Vitest.
+- **La revisión completa de la fase 1**, con el informe en `bitacora/revision-2026-08-20.md`. Se
+  recorrieron los cinco frentes del skill: aislamiento, motor de cálculo, interfaz, seguridad y datos,
+  y deuda.
+- **Aislamiento, interfaz, seguridad y datos: sin hallazgos.** Un solo `where('tenant_id', …)` a mano
+  en todo el código —el de `Auditoria`, justificado y documentado—, las cinco tablas de negocio con
+  trait, política RLS y caso de aislamiento, ni un color literal en un componente, ni un borrado
+  físico, toda ruta bajo `auth` y `modulo:`, y la auditoría escrita en un solo sitio por el observador.
+- **Un hallazgo de deuda, arreglado**: `fecha()` estaba copiada palabra por palabra en **cinco**
+  clases y la pluralización de días en **cinco** sitios. Ahora existe **`App\Presentacion\Formato`**
+  con `fecha()`, `fechaLarga()`, `dias()`, `dinero()` y la constante `VACIO`; los diez sitios que
+  formateaban `d/m/Y` a mano la llaman, se borraron cinco métodos privados y quedó
+  `tests/Unit/FormatoTest.php` con nueve casos.
+- **Dos tareas nuevas**, `REV-01` y `REV-02`: el armazón de los listados está escrito dos veces, en el
+  servidor y en la interfaz. No se extrajo ahora a propósito (ver decisiones).
+- **Una nota añadida a F2-02**: los dos conteos de días corridos escritos a mano —
+  `HistorialDeContrato::duracionTotalEnDias()` y `RenovacionDeContrato::diasCorridos()`— pasan a
+  llamar al motor cuando exista, y la tarea no se da por terminada dejándolos.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **448** pruebas de Pest (nueve más), build
+  y 171 de Vitest.
 
 ## Decisiones tomadas
 
-- **«Correos que reciben las alertas» no se guarda en ninguna parte.** Es de solo lectura y se cambia
-  dando o quitando módulos en Usuarios y permisos. Guardar aparte una lista de correos sería una
-  segunda fuente para la misma pregunta, y las dos se separarían la primera vez que un usuario cause
-  baja: se seguiría enviando a alguien que ya no tiene acceso.
-- **Un administrador sin módulos también aparece en la lista, diciendo que no recibe ninguna alerta.**
-  Esconderlo dejaría al superadministrador buscando al usuario que acaba de crear.
-- **Sí y No viajan como el texto `si` y `no`, no como booleanos.** Un `select` de HTML manda cadenas y
-  la cadena «false» es verdadera en PHP: es el error clásico de un booleano en un formulario. La
-  conversión ocurre en un solo sitio, en `guardar()`.
-- **Los tres parámetros son un solo formulario y un solo botón**, no tres interruptores que guardan
-  solos. Cambiar cómo se cuentan las vacaciones de toda la empresa se confirma a propósito, y así
-  queda **una** línea de auditoría con lo que cambió y no una por selector.
-- **Guardar es `PUT`.** Se reemplazan tres valores que ya existen; no se crea ningún hecho nuevo.
-- **`GuardarParametros::authorize()` vuelve a preguntar por el módulo** aunque la ruta ya lo exija.
-  `Configuracion` es el único módulo que no se puede asignar a nadie y esta es la única acción del
-  entorno del cliente que escribe en `tenants`: si un día la ruta pierde su middleware por una edición
-  distraída, sigue respondiendo 403.
-- **El aviso del perfil devuelve nulo en la empresa sin empleados.** Sin nadie registrado no advierte
-  de nada, y es justo cuando el parámetro se activa sin consecuencias: en el onboarding.
-- **La pestaña «Datos de la empresa» se construyó, de solo lectura.** No tiene tarea propia en el
-  backlog y la sección 5.7 del documento 3 la define completa en una línea; dejarla como pestaña
-  muerta al lado de la de parámetros era peor que las dos etiquetas y la nota que costó.
+- **Se arregló la duplicación pequeña y se convirtió en tarea la grande.** Los formateadores eran
+  copias idénticas de tres líneas: extraerlos es mecánico y las pruebas existentes lo comprueban sin
+  tocarlas. El armazón de listado es un refactor de estructura, y un armazón diseñado con dos ejemplos
+  y estrenado con el tercero sale mejor que uno inventado hoy sobre los mismos dos. **`REV-01` va
+  antes de F2-04**, que es el primer listado nuevo.
+- **`Formato` vive en `App\Presentacion` y no en `App\Contratacion`.** Los cinco duplicados estaban
+  todos en contratación por casualidad —es el único módulo construido—; las novedades de la fase 2
+  van a pedir las mismas fechas y el mismo dinero.
+- **`Formato::VACIO` es una constante y no la raya escrita a mano.** Aparece en una docena de sitios
+  como valor de un dato que no existe, y la raya larga y el guión corto se confunden a la vista.
+- **`Formato` no cuenta ni un día.** Es presentación: convierte una cuenta ya hecha en un texto. El
+  conteo es del motor de cálculo, y meter `diasCorridos()` aquí habría sido crear un segundo motor con
+  otro nombre.
+- **La aritmética de fechas que no es regla laboral se queda donde está.** Antigüedad, vigencia del
+  enlace de invitación y los rangos de los filtros son distancias de calendario, no reglas del CST, y
+  cada clase explica por qué no vive en el motor. Solo los dos conteos de días corridos se mueven.
 
 ## Preguntas para Angela
 
@@ -85,10 +76,21 @@
 
 ## Decisiones para David
 
+- **La regla de «la fecha entre paréntesis» está escrita más ancha de lo que la sostiene el
+  documento, y hay que acotarla o cumplirla.** `.claude/rules/30-interfaz.md` la enuncia para toda la
+  interfaz; su fuente —documento 1, sección 9.1— la enuncia **solo para los mensajes de las alertas**.
+  En pantalla no se cumple del todo y el prototipo tampoco la cumple: el encabezado del detalle del
+  contrato dice «Vence en 26 días» sin fecha, igual que `prototipos/sistema.html` línea 449. **No se
+  cambió nada**, porque sería contradecir el prototipo por una lectura mía de una regla derivada.
+  **Se recomienda acotar la regla del archivo a los correos** y dejar para pantalla la versión débil:
+  una referencia relativa necesita su fecha absoluta visible, en el mismo sitio o al lado. **En la
+  fase 3 deja de ser cosmético**: en los correos la regla es literal y no hay ninguna columna al lado.
+- **`User`, `Acceso` e `Invitacion` no llevan `SoftDeletes`.** Hoy no importa, porque nada los borra.
+  Importará cuando exista «Usuarios y permisos»: dar de baja a un usuario tiene que ser lógico, o se
+  pierde de quién eran las líneas de auditoría que él escribió.
 - **Los parámetros de cálculo todavía no tienen quien los lea.** Sábado laboral y efecto de las
   suspensiones ya se guardan y ya se pueden cambiar, pero **el único consumidor construido es el del
-  perfil sociodemográfico**: el motor que los usará es F2-02. El criterio de terminado se probó con
-  ese, y las pruebas de los otros dos comprueban que el valor viaja, no que un saldo cambie.
+  perfil sociodemográfico**: el motor que los usará es F2-02.
 - **El menú del cliente no tiene «Usuarios y permisos» ni «Facturación» todavía.** Son dos de las
   cuatro pestañas de Configuración y **ninguna tiene tarea en el backlog**. Crear usuarios se puede
   hacer hoy solo desde el panel del proveedor (F1B-02). Si el cliente debe poder crear a sus propios
@@ -115,7 +117,7 @@
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Abierta de veintitrés sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Abierta de veinticuatro sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -126,15 +128,19 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-13, el punto de control de la fase 1**: se ejecuta el skill `revisar`, el
-  informe va a `bitacora/` y lo que salga se arregla o se convierte en tareas `REV-` al final del
-  backlog. Con la fase 1 completa hay doce tareas que mirar de una vez.
+- La siguiente es **F1B-01, la base del panel del proveedor**: aplicación separada bajo su propia
+  ruta, solo para el rol `owner`, con segundo factor obligatorio. Antes de construirla, abre
+  `prototipos/panel-proveedor.html` y lee el capítulo 2 del documento 4.
+- **`App\Presentacion\Formato` es el único sitio donde se escribe una fecha, un número de días o un
+  peso.** No escribas `format('d/m/Y')` en ninguna parte; si hace falta un formato nuevo, se agrega
+  ahí con su caso en `FormatoTest`.
+- **`REV-01` va antes de F2-04.** Es el armazón de listado del servidor, y F2-04 es el primer listado
+  nuevo: hacerlo después significa copiar `opcion()` una tercera vez.
 - **Todo parámetro nuevo de la empresa se agrega en `ParametrosDeLaEmpresa::CAMPOS`** y en las cuatro
   tablas de textos de ese archivo. La pantalla, la validación y el guardado lo recogen solos; lo único
   que hace falta aparte es la columna.
 - **Los parámetros se leen de `tenant_actual()`, nunca de una copia.** Es lo que hace cierta la
-  promesa de que un cambio se refleja de inmediato. Si algún día un cálculo necesita cachearlos, el
-  criterio de terminado de F1-12 deja de cumplirse.
+  promesa de que un cambio se refleja de inmediato.
 - **`CambioAIndefinido` es el sitio de cualquier cosa sobre el cambio de modalidad**,
   `RenovacionDeContrato` el de una prórroga propuesta y `VigenciaDelContrato` el de las cuentas sobre
   un contrato existente. No escribas una cuarta.
@@ -153,4 +159,4 @@
 - **`OpcionesDeLista` sigue solo en los cuatro enumerados de F1-06.** `Genero`, `TipoDocumento`,
   `TipoContrato`, `TipoRiesgo`, `TipoVivienda`, `EstadoVinculacion` y `EventoContractual` mantienen
   sus métodos escritos a mano. Unificarlos es un rato y no rompe nada.
-- **No queda ninguna tarea bloqueada en el backlog.**
+- **No queda ninguna tarea bloqueada en el backlog.** Sí quedan dos `REV-` al final.

@@ -2,6 +2,7 @@
 
 namespace App\Contratacion;
 
+use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 
 /**
@@ -87,7 +88,7 @@ class RenovacionDeContrato
 
         return [
             'disponible' => $this->disponible(),
-            'inicio' => self::fecha($inicio),
+            'inicio' => Formato::fecha($inicio),
             'minimo' => $inicio instanceof Carbon ? $inicio->toDateString() : '',
             'resumen' => $this->resumen(),
             'tipos' => EventoContractual::prorrogasParaElegir(),
@@ -113,7 +114,7 @@ class RenovacionDeContrato
         return [
             [
                 'etiqueta' => 'Periodo vigente',
-                'valor' => self::fecha($vigente?->fecha_inicio).' — '.self::fecha($vigente?->fecha_fin),
+                'valor' => Formato::fecha($vigente?->fecha_inicio).' — '.Formato::fecha($vigente?->fecha_fin),
             ],
             [
                 'etiqueta' => 'Prórrogas acumuladas',
@@ -121,7 +122,7 @@ class RenovacionDeContrato
             ],
             [
                 'etiqueta' => 'Duración total del vínculo',
-                'valor' => $duracion === null ? '—' : self::dias($duracion),
+                'valor' => $duracion === null ? '—' : Formato::dias($duracion),
             ],
         ];
     }
@@ -218,8 +219,8 @@ class RenovacionDeContrato
         $hallazgos = $this->hallazgos($prorroga, $inicio, $hasta);
 
         $lineas = [
-            'Prórroga de '.self::dias(self::diasCorridos($inicio, $hasta))
-                .', del '.self::fecha($inicio).' al '.self::fecha($hasta).'.',
+            'Prórroga de '.Formato::dias(self::diasCorridos($inicio, $hasta))
+                .', del '.Formato::fecha($inicio).' al '.Formato::fecha($hasta).'.',
             $this->lineaDelVinculo($hasta),
             $this->lineaDeLaProrroga($prorroga, $inicio, $hasta),
             ...array_map(fn (array $hallazgo): string => $hallazgo['mensaje'], $hallazgos),
@@ -302,8 +303,8 @@ class RenovacionDeContrato
             return '';
         }
 
-        return 'El vínculo quedaría en '.self::dias($total).' de los cuatro años permitidos, '
-            .'que se cumplen el '.self::fecha($tope).'.';
+        return 'El vínculo quedaría en '.Formato::dias($total).' de los cuatro años permitidos, '
+            .'que se cumplen el '.Formato::fecha($tope).'.';
     }
 
     /**
@@ -389,15 +390,5 @@ class RenovacionDeContrato
     private static function diasCorridos(Carbon $desde, Carbon $hasta): int
     {
         return (int) $desde->copy()->startOfDay()->diffInDays($hasta->copy()->startOfDay()) + 1;
-    }
-
-    private static function dias(int $cantidad): string
-    {
-        return $cantidad.($cantidad === 1 ? ' día' : ' días');
-    }
-
-    private static function fecha(mixed $fecha): string
-    {
-        return $fecha instanceof Carbon ? $fecha->format('d/m/Y') : '—';
     }
 }

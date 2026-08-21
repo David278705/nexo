@@ -3,6 +3,7 @@
 namespace App\Contratacion;
 
 use App\Models\Vinculacion;
+use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 
 /**
@@ -104,7 +105,7 @@ class CambioAIndefinido
      */
     private function implicaciones(): array
     {
-        $ingreso = self::fecha($this->vinculacion->fecha_ingreso);
+        $ingreso = Formato::fecha($this->vinculacion->fecha_ingreso);
 
         return [
             'El vínculo continúa. No hay salida ni liquidación.',
@@ -112,12 +113,7 @@ class CambioAIndefinido
             'La antigüedad y el saldo de vacaciones siguen corriendo desde esa fecha.',
             'Dejarán de generarse las alertas de vencimiento y renovación.',
             'El cambio queda registrado en el historial con la fecha de hoy ('
-                .self::fecha($this->fechaDelCambio()).') y en la auditoría.',
+                .Formato::fecha($this->fechaDelCambio()).') y en la auditoría.',
         ];
-    }
-
-    private static function fecha(mixed $fecha): string
-    {
-        return $fecha instanceof Carbon ? $fecha->format('d/m/Y') : '—';
     }
 }
