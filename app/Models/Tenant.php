@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\TenantFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -55,5 +56,21 @@ class Tenant extends Model
     public function estaActiva(): bool
     {
         return $this->estado === self::ESTADO_ACTIVA;
+    }
+
+    /**
+     * Los usuarios de esta empresa.
+     *
+     * `User` no lleva `PerteneceATenant` a propósito —el inicio de sesión tiene
+     * que encontrar a alguien por su correo antes de saber de qué empresa es—,
+     * así que quien necesite los usuarios de una empresa los pide por aquí. Es
+     * lo que evita el `where('tenant_id', ...)` escrito a mano que la regla de
+     * aislamiento prohíbe.
+     *
+     * @return HasMany<User, $this>
+     */
+    public function usuarios(): HasMany
+    {
+        return $this->hasMany(User::class);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
 use App\Http\Controllers\Acceso\SesionController;
+use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
 use Illuminate\Support\Facades\Route;
@@ -112,8 +113,23 @@ Route::middleware('auth')->group(function () {
             ->name('contratos.indefinido');
     });
 
+    /*
+     * Configuración (documento 3, sección 5.7). El módulo es solo del
+     * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
+     * declararlo como cualquier otro.
+     *
+     * Guardar es `PUT` y no `POST`: cambiar los parámetros de la empresa es
+     * reemplazar los tres valores que ya existen, no crear un hecho nuevo.
+     */
+    Route::middleware('modulo:'.Modulo::Configuracion->value)->group(function () {
+        Route::get('/configuracion', [ConfiguracionController::class, 'parametros'])
+            ->name(Modulo::Configuracion->nombreDeRuta());
+        Route::put('/configuracion/parametros', [ConfiguracionController::class, 'guardarParametros'])
+            ->name('configuracion.parametros');
+    });
+
     foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Configuracion], true)) {
             continue;
         }
 

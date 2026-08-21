@@ -110,9 +110,9 @@ it('navega a la sección de cada módulo que el usuario tiene', function () {
     $usuario = usuarioDe($empresa, Rol::Superadministrador);
 
     foreach (Modulo::cases() as $modulo) {
-        // Inicio, Empleados y Contratos ya tienen pantalla propia; el resto
-        // siguen siendo secciones pendientes hasta su tarea.
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos], true)) {
+        // Inicio, Empleados, Contratos y Configuración ya tienen pantalla
+        // propia; el resto siguen siendo secciones pendientes hasta su tarea.
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Configuracion], true)) {
             continue;
         }
 

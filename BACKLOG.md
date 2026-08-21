@@ -249,12 +249,22 @@ tramo inicial no se tocan**, así que la antigüedad sigue contando desde la fec
 una confirmación sin campos y `CambiarATerminoIndefinido` responde 403 fuera del término fijo: el
 cambio inverso no existe y por eso no hay ruta que lo haga.
 
-### [ ] F1-12 · Parámetros de la empresa
+### [x] F1-12 · Parámetros de la empresa
 
 Pantalla con los cuatro parámetros y su explicación en lenguaje claro. Aviso al activar el perfil
 sociodemográfico.
 **Hecho cuando:** cambiar un parámetro se refleja de inmediato en los cálculos.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 4
+
+Hecho: `ParametrosDeLaEmpresa` —los cuatro parámetros, sus explicaciones en lenguaje claro, sus reglas
+y la escritura, en un solo sitio—, `ConfiguracionController`, `GuardarParametros`, las rutas
+`GET /configuracion` y `PUT /configuracion/parametros`, y la pantalla `Configuracion/Parametros` con
+las cuatro pestañas del prototipo. **Tres parámetros se guardan y el cuarto se deduce**: «correos que
+reciben las alertas» sale de los usuarios y de sus módulos, porque eso es lo que dice el capítulo 4, y
+se cambia en Usuarios y permisos. Nada se guarda en caché: el valor se lee de la empresa en contexto,
+así que cambiar un parámetro se refleja en la petición siguiente —se prueba con el bloque
+sociodemográfico, el único parámetro con consumidor construido hasta la fase 2—. Sí y No viajan como
+texto `si`/`no` para que la cadena «false» no pueda colarse como verdadera.
 
 ### [ ] F1-13 · PUNTO DE CONTROL — revisión
 

@@ -1,56 +1,58 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-20 · Tarea F1-11
+**Última sesión:** 2026-08-20 · Tarea F1-12
 **Verificación:** verde
-**Siguiente tarea:** F1-12 · Parámetros de la empresa
+**Siguiente tarea:** F1-13 · PUNTO DE CONTROL — revisión (ejecuta el skill `revisar`)
 
 ## Qué se hizo
 
-- **`CambioAIndefinido`**, el objeto de la acción. Responde solo dos cosas: **si la acción existe en
-  ese contrato** —solo el término fijo, documento 1, 5.5— y **qué implica el cambio**. No escribe nada
-  y no cuenta nada del historial.
-- **Las cinco frases del prototipo se escriben en el servidor**, no en el componente. Cada una afirma
-  algo que el sistema después cumple, y la misma prueba que comprueba el efecto lee el texto. En el
-  navegador, la pantalla podría prometer una cosa y el servidor hacer otra.
-- **`Vinculacion::cambiarATerminoIndefinido()`** pasa por `registrarPeriodo()` como cualquier otro
-  hecho contractual: una fila nueva en el historial y lo vigente movido en la misma transacción.
-- **El tramo nuevo no lleva fecha de fin.** Un indefinido no vence, así que `fecha_fin` de la
-  vinculación queda en nulo y con ella desaparecen el vencimiento, el límite de preaviso y las alertas
-  de renovación. El contrato sale del listado de los que vencen, que es lo que se prueba.
-- **La fecha de ingreso no se toca, y el tramo inicial tampoco.** Es el criterio de terminado: la
-  antigüedad de la ficha da lo mismo antes y después del cambio. Reescribir el tramo inicial borraría
-  la trazabilidad que el cambio pretende dejar.
-- **`CambiarATerminoIndefinido` es una petición sin reglas de datos**, porque no llega ninguno: la
-  única regla está en `authorize()` y responde 403 en indefinido y en obra o labor. Después del cambio
-  el propio contrato deja de admitirlo, así que el inverso está cerrado por el mismo camino.
-- **`ModalDeCambioAIndefinido`** es una confirmación sin ni un campo: la entrada, las implicaciones y
-  la advertencia llegan como props. El botón «Cambiar a término indefinido» va a la izquierda del de
-  renovar, en secundario, como en el prototipo.
-- `CambioAIndefinidoTest` con 16 casos: cuándo se ofrece, qué enseña el modal, el efecto en el
-  historial, en lo vigente, en la antigüedad, en el detalle, en el listado y en la auditoría, y el
-  aislamiento entre empresas. Seis casos de Vitest del modal y dos de la pantalla.
-- `composer verificar` en verde: Pint, PHPStan sin errores, 413 pruebas de Pest, build y 162 de Vitest.
+- **`ParametrosDeLaEmpresa`**, el objeto de la pantalla: los cuatro parámetros del capítulo 4 del
+  documento 1 con su título, su explicación en lenguaje claro, sus dos opciones dichas con palabras,
+  sus reglas de validación y la escritura. Todo en un archivo.
+- **Tres parámetros se guardan y el cuarto se deduce.** Sábado laboral, efecto de las suspensiones y
+  perfil sociodemográfico son columnas de `tenants`, que ya existían desde F0-03. «Correos que reciben
+  las alertas» no es columna de nada: el capítulo 4 dice que sus opciones son «administradores con
+  acceso a cada módulo», así que la lista sale de los usuarios y de sus permisos.
+- **`ConfiguracionController`** con las dos acciones, `GuardarParametros` con las reglas, y las rutas
+  `GET /configuracion` y `PUT /configuracion/parametros` bajo `modulo:configuracion`.
+- **`Tenant::usuarios()`**, la relación que faltaba. `User` no lleva el trait a propósito, y sin la
+  relación la lista de destinatarios habría necesitado el `where('tenant_id', …)` que la regla de
+  aislamiento prohíbe.
+- **La pantalla `Configuracion/Parametros`** con las cuatro pestañas del prototipo. «Parámetros» es un
+  solo formulario con un solo botón; «Datos de la empresa» es de solo lectura con la nota de que los
+  cambia el proveedor; las otras dos dicen que llegan en su propia tarea.
+- **El aviso del capítulo 4 aparece solo al activar**, con el número de empleados ya registrados
+  escrito por el servidor, y desaparece cuando el bloque ya estaba habilitado.
+- `ParametrosDeLaEmpresaTest` con 26 casos: quién entra, los cuatro parámetros en pantalla, guardar,
+  la validación, la auditoría, el efecto inmediato, el aviso, los destinatarios y el aislamiento.
+  Nueve casos de Vitest de la pantalla.
+- `composer verificar` en verde a la primera: Pint, PHPStan sin errores, 439 pruebas de Pest, build y
+  171 de Vitest.
 
 ## Decisiones tomadas
 
-- **El tramo indefinido empieza el día en que se hace el cambio**, no en la fecha de ingreso ni en el
-  vencimiento del tramo anterior. Lo pide el documento 1, 5.5: el cambio «queda registrado con la
-  fecha en que se hizo, para efectos de trazabilidad y reportes». Un contrato se vuelve indefinido
-  desde que las partes lo acuerdan, no desde que habría vencido.
-- **El único ajuste a esa fecha es de coherencia del historial, no de derecho laboral**: en un
-  contrato que todavía no ha empezado, el tramo nuevo arranca el mismo día que el vigente. Un tramo
-  que empezara antes que el anterior deja el historial en un orden imposible de leer.
-- **La confirmación explica la consecuencia calculada y no pregunta «¿está seguro?»**, que es la regla
-  del documento 3, sección 6.2, para lo irreversible. Por eso el modal nombra la fecha de ingreso y la
-  fecha del cambio con sus valores, y no una frase genérica.
-- **La disponibilidad se lee del historial y no de la columna de la vinculación.** Es la misma fuente
-  que usa `RenovacionDeContrato::disponible()`, y la que decide qué tipo de contrato está vigente
-  ahora. Dos fuentes para la misma pregunta se separan a la primera corrección.
-- **El botón de renovar y el de cambiar a indefinido leen banderas distintas.** Las dos exigen término
-  fijo, pero renovar exige además un vencimiento del que colgar la prórroga. Una sola bandera para las
-  dos habría pintado un botón que no lleva a ninguna parte.
-- **La acción no valida el tope de cuatro años ni nada parecido.** Es voluntaria y también es la salida
-  del bloqueo de F1-10 (documento 1, 5.5): pasar a indefinido nunca puede ser lo que se impida.
+- **«Correos que reciben las alertas» no se guarda en ninguna parte.** Es de solo lectura y se cambia
+  dando o quitando módulos en Usuarios y permisos. Guardar aparte una lista de correos sería una
+  segunda fuente para la misma pregunta, y las dos se separarían la primera vez que un usuario cause
+  baja: se seguiría enviando a alguien que ya no tiene acceso.
+- **Un administrador sin módulos también aparece en la lista, diciendo que no recibe ninguna alerta.**
+  Esconderlo dejaría al superadministrador buscando al usuario que acaba de crear.
+- **Sí y No viajan como el texto `si` y `no`, no como booleanos.** Un `select` de HTML manda cadenas y
+  la cadena «false» es verdadera en PHP: es el error clásico de un booleano en un formulario. La
+  conversión ocurre en un solo sitio, en `guardar()`.
+- **Los tres parámetros son un solo formulario y un solo botón**, no tres interruptores que guardan
+  solos. Cambiar cómo se cuentan las vacaciones de toda la empresa se confirma a propósito, y así
+  queda **una** línea de auditoría con lo que cambió y no una por selector.
+- **Guardar es `PUT`.** Se reemplazan tres valores que ya existen; no se crea ningún hecho nuevo.
+- **`GuardarParametros::authorize()` vuelve a preguntar por el módulo** aunque la ruta ya lo exija.
+  `Configuracion` es el único módulo que no se puede asignar a nadie y esta es la única acción del
+  entorno del cliente que escribe en `tenants`: si un día la ruta pierde su middleware por una edición
+  distraída, sigue respondiendo 403.
+- **El aviso del perfil devuelve nulo en la empresa sin empleados.** Sin nadie registrado no advierte
+  de nada, y es justo cuando el parámetro se activa sin consecuencias: en el onboarding.
+- **La pestaña «Datos de la empresa» se construyó, de solo lectura.** No tiene tarea propia en el
+  backlog y la sección 5.7 del documento 3 la define completa en una línea; dejarla como pestaña
+  muerta al lado de la de parámetros era peor que las dos etiquetas y la nota que costó.
 
 ## Preguntas para Angela
 
@@ -83,8 +85,14 @@
 
 ## Decisiones para David
 
-- **La salida que nombraba el bloqueo del tope ya existe y se puede pulsar.** El mensaje de F1-10 dice
-  «Cambiar a término indefinido» y ahora hay un botón con ese texto exacto al lado del de renovar.
+- **Los parámetros de cálculo todavía no tienen quien los lea.** Sábado laboral y efecto de las
+  suspensiones ya se guardan y ya se pueden cambiar, pero **el único consumidor construido es el del
+  perfil sociodemográfico**: el motor que los usará es F2-02. El criterio de terminado se probó con
+  ese, y las pruebas de los otros dos comprueban que el valor viaja, no que un saldo cambie.
+- **El menú del cliente no tiene «Usuarios y permisos» ni «Facturación» todavía.** Son dos de las
+  cuatro pestañas de Configuración y **ninguna tiene tarea en el backlog**. Crear usuarios se puede
+  hacer hoy solo desde el panel del proveedor (F1B-02). Si el cliente debe poder crear a sus propios
+  administradores antes de vender, es una tarea nueva.
 - **Sigue sin existir «Editar contrato».** El aviso del modal de renovación dice «edita el contrato»
   sin enlazar a ninguna parte. Cuando exista, el aviso lleva un enlace.
 - **B.3 quedó resuelta como la sugiere el documento 6**: bloquear el tope de cuatro años, advertir con
@@ -107,7 +115,7 @@
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Abierta de veintidós sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Abierta de veintitrés sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -118,12 +126,15 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-12 · Parámetros de la empresa**: la pantalla con los cuatro parámetros del
-  capítulo 4 del documento 1 y su explicación en lenguaje claro. **Dos de ellos ya se leen desde el
-  código construido** —el perfil sociodemográfico opcional (F1-06) y lo que consulte el motor de
-  alertas—, así que la pantalla es sobre todo darles un sitio donde cambiarlos, no inventarlos. El
-  aviso al activar el perfil sociodemográfico es el que ya explica la ficha: los empleados que ya
-  existían quedan en blanco y eso no es un error.
+- La siguiente es **F1-13, el punto de control de la fase 1**: se ejecuta el skill `revisar`, el
+  informe va a `bitacora/` y lo que salga se arregla o se convierte en tareas `REV-` al final del
+  backlog. Con la fase 1 completa hay doce tareas que mirar de una vez.
+- **Todo parámetro nuevo de la empresa se agrega en `ParametrosDeLaEmpresa::CAMPOS`** y en las cuatro
+  tablas de textos de ese archivo. La pantalla, la validación y el guardado lo recogen solos; lo único
+  que hace falta aparte es la columna.
+- **Los parámetros se leen de `tenant_actual()`, nunca de una copia.** Es lo que hace cierta la
+  promesa de que un cambio se refleja de inmediato. Si algún día un cálculo necesita cachearlos, el
+  criterio de terminado de F1-12 deja de cumplirse.
 - **`CambioAIndefinido` es el sitio de cualquier cosa sobre el cambio de modalidad**,
   `RenovacionDeContrato` el de una prórroga propuesta y `VigenciaDelContrato` el de las cuentas sobre
   un contrato existente. No escribas una cuarta.
