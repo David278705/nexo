@@ -21,9 +21,9 @@ use Illuminate\Support\Carbon;
  * Lo que se defiende aquí, en orden de importancia:
  *
  * 1. **Las cuatro pestañas cargan y el saldo se ve arriba**, que es el «hecho
- *    cuando» de la tarea. El saldo se ve diciendo que todavía no se puede
- *    calcular: el motor es F2-02 y la regla 2 prohíbe guardarlo en una columna,
- *    así que cualquier número que apareciera hoy sería inventado.
+ *    cuando» de la tarea. Desde F2-02 el saldo se ve con su número, calculado
+ *    por el motor: la regla 2 prohíbe guardarlo en una columna, así que la ficha
+ *    lo pide y lo escribe, y no lo lee de ninguna parte.
  * 2. **La ficha enseña lo que hay, no lo que falta.** Un campo sin llenar se
  *    dice con una raya, y el perfil sociodemográfico sin diligenciar con una
  *    frase, no con ocho renglones vacíos.
@@ -121,18 +121,20 @@ describe('el encabezado', function () {
     });
 
     /*
-     * La regla 2 del proyecto: el saldo se calcula, no se guarda. Mientras el
-     * motor de cálculo no exista, el único número honesto es ninguno. Cuando
-     * F2-02 esté, esta prueba se cambia por la del saldo de verdad.
+     * La regla 2 del proyecto: el saldo se calcula, no se guarda. Lo calcula el
+     * motor de F2-02 y la ficha solo lo escribe; que la cuenta esté bien lo
+     * comprueban los diez casos obligatorios, no esta prueba.
      */
-    it('dice que el saldo de vacaciones todavía no se puede calcular, en vez de enseñar un cero', function () {
-        $props = fichaDe(empleadoDe());
+    it('enseña el saldo de vacaciones calculado, sin leer ninguna columna de saldo', function () {
+        Carbon::setTestNow('2026-08-19');
+
+        // Diez meses cumplidos desde el ingreso, a 1,25 días cada uno.
+        $props = fichaDe(empleadoDe([], ['fecha_ingreso' => '2025-10-01']));
 
         $saldo = datoDelResumen($props, 'Saldo de vacaciones');
 
-        expect($saldo['pendiente'])->toBeTrue()
-            ->and($saldo['valor'])->not->toContain('0')
-            ->and($saldo['nota'])->not->toBe('');
+        expect($saldo['pendiente'])->toBeFalse()
+            ->and($saldo['valor'])->toBe('12,50 días');
     });
 
     it('cuenta la antigüedad en años y meses cumplidos desde el ingreso', function () {

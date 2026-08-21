@@ -362,25 +362,25 @@ implementación y no por sintaxis ni por una clase que no existe. Van en el grup
 enseña en rojo. Dos reglas salieron de leer los casos entre ellos y están anotadas: la acumulación va
 en **meses comerciales de treinta días** y **el mes se causa completo al cerrarse**, no día a día.
 
-### [ ] F2-02 · Motor de cálculo
+### [x] F2-02 · Motor de cálculo
 
 Las tres funciones de conteo con sus nombres explícitos y el cálculo de saldo como función, no como
 columna.
 **Hecho cuando:** los diez casos pasan.
 **Fuente:** `.claude/rules/20-calculo-y-reglas-legales.md`
 
-Lo primero de esta tarea, antes de escribir una línea de cálculo: **quitar `--exclude-group=motor`
-del script `verificar` de `composer.json` y borrar el script `motor`**. Los diez casos de F2-01 están
-escritos y en rojo; esa exclusión es lo único que hoy los deja fuera de la verificación, y se va con
-la primera implementación. Las firmas ya existen en `app/Dominio/Calculo/`: F2-02 sustituye cada
-`throw CalculoSinImplementar` por su cuenta, **sin tocar el archivo de pruebas**, y borra esa clase
-cuando se quede sin quien la lance.
-
-Pendiente que dejó la revisión F1-13: **hoy hay dos conteos de días corridos escritos a mano**, uno
-en `HistorialDeContrato::duracionTotalEnDias()` y otro en `RenovacionDeContrato::diasCorridos()`,
-idénticos y los dos anotados. Cuando exista `diasCorridos()` en el motor, **los dos pasan a
-llamarlo y el privado de `RenovacionDeContrato` desaparece**. Es la única cuenta laboral que hoy
-vive fuera de `app/Dominio/Calculo/`.
+Hecho: los diez casos obligatorios pasan y `composer verificar` los corre sin exclusiones —el script
+`motor` y `--exclude-group=motor` se fueron, y `CalculoSinImplementar` se borró—. `MotorDeCalculo`
+tiene las tres reglas de conteo con sus nombres distintos más `diasComercialesDelMes()`,
+`cumpleMesesEl()`, `diaHabilAnteriorParaAlertas()` y `diasDeAnticipacion()`; `SaldoDeVacaciones`
+suma mes calendario a mes calendario, **solo los ya cerrados**, y `PeriodoDePrueba` lee sus tres
+constantes de `config/reglas_laborales.php`. **La base comercial quedó con sus dos caras**: el día 31
+no cuenta y un mes cubierto entero son treinta días aunque tenga veintiocho —lo segundo se dedujo, y
+la pregunta está en `ESTADO.md`—. Los dos conteos de días corridos escritos a mano ahora llaman al
+motor y el privado de `RenovacionDeContrato` desapareció: **no queda ninguna cuenta laboral fuera de
+`app/Dominio/Calculo/`**. El saldo de la ficha del empleado dejó de ser un hueco y enseña el número
+calculado, con `Formato::diasDecimales()` nuevo para los días con fracción. Ocho casos más se
+sumaron a la batería, sin tocar los diez.
 
 ### [ ] F2-03 · Flujo compartido de novedades
 

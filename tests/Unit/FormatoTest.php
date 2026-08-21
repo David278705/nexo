@@ -46,6 +46,15 @@ it('dice «1 día» en singular y «2 días» en plural', function () {
         ->and(Formato::dias(1461))->toBe('1461 días');
 });
 
+it('escribe los días con fracción con coma decimal, y sin decimales cuando no los hay', function () {
+    // Es el saldo de vacaciones, que sale del motor con decimales.
+    expect(Formato::diasDecimales(12.75))->toBe('12,75 días')
+        ->and(Formato::diasDecimales(1.25))->toBe('1,25 días')
+        ->and(Formato::diasDecimales(13.0))->toBe('13 días')
+        ->and(Formato::diasDecimales(1.0))->toBe('1 día')
+        ->and(Formato::diasDecimales(0.0))->toBe('0 días');
+});
+
 it('escribe el dinero con punto de miles y sin centavos cuando no los hay', function () {
     expect(Formato::dinero(2_500_000))->toBe('$ 2.500.000')
         ->and(Formato::dinero('1423500.00'))->toBe('$ 1.423.500');

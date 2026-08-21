@@ -4,6 +4,7 @@ namespace App\Dominio\Calculo;
 
 use App\Models\Vinculacion;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 
 /**
  * El saldo de vacaciones de una vinculación a una fecha (regla 2 del proyecto).
@@ -19,8 +20,11 @@ use Carbon\CarbonInterface;
  * que hace que corregir la fecha de ingreso recalcule todo solo y que eliminar
  * unas vacaciones restituya el saldo sin operación inversa.
  *
- * Como el resto del motor, aquí todavía no hay cálculo: F2-01 escribe la firma y
- * los casos; F2-02 escribe la cuenta.
+ * Los dos últimos sumandos todavía valen cero y se dice dónde: las vacaciones
+ * disfrutadas son el módulo F2-05 y la reducción por suspensiones vive en
+ * `MotorDeCalculo::acumulacionMes()`, a la espera de la tabla de F2-07. Hoy
+ * ninguna de las dos tiene de dónde leer un solo día, así que el saldo que sale
+ * de aquí es completo y no una aproximación.
  */
 class SaldoDeVacaciones
 {
@@ -41,7 +45,12 @@ class SaldoDeVacaciones
      */
     public function al(CarbonInterface $fecha): float
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        $saldo = $this->saldoInicial() + $this->acumulacionHasta(Carbon::parse($fecha->toDateString()));
+
+        // Cuatro decimales: 1,25 y sus proporciones no son exactos en coma
+        // flotante y un saldo de 12,749999999 no se puede comparar con nada.
+        // Quien lo escribe en pantalla lo redondea a dos, y eso es `Formato`.
+        return round($saldo, 4);
     }
 
     /**
@@ -55,6 +64,92 @@ class SaldoDeVacaciones
      */
     public function faltantePara(float $dias, CarbonInterface $fecha): float
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        return round(max(0.0, $dias - $this->al($fecha)), 4);
+    }
+
+    /**
+     * Lo que trajo la carga inicial, que solo se lee y nunca se suma ni se resta.
+     */
+    private function saldoInicial(): float
+    {
+        return (float) $this->vinculacion->getAttribute('saldo_inicial_vacaciones');
+    }
+
+    /**
+     * Lo acumulado desde el primer día que no cubre el saldo inicial hasta la
+     * fecha consultada, mes calendario por mes calendario.
+     *
+     * Solo entran los meses **ya cerrados** a esa fecha, que es la regla de
+     * arriba. Cada mes acumula lo que dice `MotorDeCalculo::acumulacionMes()`
+     * —que ya descuenta los días sin vínculo y los de suspensión—, reducido a la
+     * parte del mes que queda después de la fecha de corte. Esa fracción vale
+     * uno en todos los meses salvo, como mucho, en el del corte.
+     */
+    private function acumulacionHasta(Carbon $fecha): float
+    {
+        $inicio = $this->inicioDeLaAcumulacion();
+
+        if ($inicio->greaterThan($fecha)) {
+            return 0.0;
+        }
+
+        $acumulado = 0.0;
+
+        for ($mes = $inicio->copy()->startOfMonth(); ; $mes->addMonth()) {
+            // Sin hora en los dos lados: el último día del mes son las 23:59:59
+            // y la fecha consultada las 00:00, y el 31 de julio se quedaría
+            // fuera de su propio mes.
+            if ($mes->copy()->endOfMonth()->startOfDay()->greaterThan($fecha)) {
+                break;
+            }
+
+            $acumulado += MotorDeCalculo::acumulacionMes($this->vinculacion, $mes)
+                * $this->fraccionPosteriorAlCorte($inicio, $mes);
+        }
+
+        return $acumulado;
+    }
+
+    /**
+     * El primer día que todavía no está contado en el saldo inicial.
+     *
+     * Es el día siguiente a la fecha de corte cuando la vinculación viene de una
+     * carga inicial, y la fecha de ingreso cuando no: sin corte, el saldo
+     * inicial es cero y la acumulación corre desde el primer día trabajado.
+     */
+    private function inicioDeLaAcumulacion(): Carbon
+    {
+        $corte = $this->vinculacion->getAttribute('fecha_corte_saldo');
+
+        return $corte instanceof Carbon
+            ? $corte->copy()->addDay()->startOfDay()
+            : $this->vinculacion->fecha_ingreso->copy()->startOfDay();
+    }
+
+    /**
+     * Qué parte de la acumulación de ese mes es posterior al corte.
+     *
+     * Uno en los meses completamente posteriores, cero en los anteriores, y la
+     * proporción comercial en el mes del corte, que es lo que pide la fórmula
+     * del documento 2: «1,25 días por mes completo trabajado, prorrateada para
+     * los meses parciales».
+     *
+     * **Se mide contra los días que ese mes ya tenía vínculo, no contra treinta.**
+     * `acumulacionMes()` viene descontados los días sin vínculo, y volver a
+     * dividirlos por treinta los descontaría dos veces: quien ingresa el 16 de
+     * marzo sin carga inicial acumularía un cuarto de mes en lugar de medio.
+     */
+    private function fraccionPosteriorAlCorte(Carbon $inicio, Carbon $mes): float
+    {
+        $salida = $this->vinculacion->fechaDeSalida();
+
+        $conVinculo = MotorDeCalculo::diasComercialesDelMes($this->vinculacion->fecha_ingreso, $salida, $mes);
+
+        if ($conVinculo === 0) {
+            return 0.0;
+        }
+
+        return MotorDeCalculo::diasComercialesDelMes($inicio->max($this->vinculacion->fecha_ingreso), $salida, $mes)
+            / $conVinculo;
     }
 }

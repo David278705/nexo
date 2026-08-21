@@ -77,6 +77,25 @@ final class Formato
     }
 
     /**
+     * Los días que vienen con fracción: «12,75 días», «1,25 días», «3 días».
+     *
+     * Es el saldo de vacaciones y todo lo que sale del motor con decimales. Va
+     * aparte de `dias()` porque esa recibe un entero y la mitad del sistema
+     * cuenta en enteros —días corridos, días hábiles, duración de una prórroga—;
+     * escribir «6,00 días» de una incapacidad sería peor que no formatear.
+     *
+     * La coma decimal es la de Colombia, y los decimales solo aparecen cuando
+     * los hay: un saldo de trece días redondos se lee «13 días».
+     */
+    public static function diasDecimales(float $cantidad): string
+    {
+        $decimales = fmod($cantidad, 1.0) === 0.0 ? 0 : 2;
+
+        return number_format($cantidad, $decimales, ',', '.')
+            .($cantidad === 1.0 ? ' día' : ' días');
+    }
+
+    /**
      * El dinero como se lee en Colombia: punto de miles y coma decimal, y sin
      * centavos cuando no los hay, que es casi siempre.
      */

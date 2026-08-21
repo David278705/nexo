@@ -2,6 +2,7 @@
 
 namespace App\Contratacion;
 
+use App\Dominio\Calculo\MotorDeCalculo;
 use App\Models\PeriodoContractual;
 use App\Models\Vinculacion;
 use Illuminate\Support\Carbon;
@@ -216,9 +217,7 @@ class HistorialDeContrato
      * defecto es el vencimiento vigente. Devuelve nulo cuando no hay contra qué
      * medir: un indefinido no tiene fecha de finalización.
      *
-     * El conteo de días corridos se formaliza en el motor de cálculo (F2-02).
-     * Cuando exista `diasCorridos()`, este método lo llama en lugar de restar
-     * fechas aquí.
+     * El conteo lo hace el motor de cálculo: aquí no se resta ni una fecha.
      */
     public function duracionTotalEnDias(?Carbon $hasta = null): ?int
     {
@@ -229,7 +228,7 @@ class HistorialDeContrato
             return null;
         }
 
-        return (int) $desde->startOfDay()->diffInDays($hasta->copy()->startOfDay()) + 1;
+        return MotorDeCalculo::diasCorridos($desde, $hasta);
     }
 
     /**

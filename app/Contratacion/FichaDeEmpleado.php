@@ -2,6 +2,7 @@
 
 namespace App\Contratacion;
 
+use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Models\Ciudad;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
@@ -23,12 +24,11 @@ use UnitEnum;
  *
  * ## El saldo de vacaciones
  *
- * El encabezado lo lleva siempre, pero **hoy no hay saldo que enseñar**. El
- * motor de cálculo es F2-02 y la regla 2 del proyecto prohíbe guardar el saldo
- * en una columna, así que no hay de dónde sacarlo sin inventárselo. Lo que se
- * hace es decirlo con palabras —`saldoPendiente()`— en vez de pintar un cero,
- * que es el único número que sería mentira. Cuando el motor exista, cambia
- * `saldo()` y no cambia nada más.
+ * El encabezado lo lleva siempre y desde F2-02 lleva el número: lo calcula
+ * `SaldoDeVacaciones`, que es la regla 2 del proyecto —el saldo se calcula, no
+ * se guarda— y no hay ninguna columna que leer. Cuando existan las vacaciones
+ * disfrutadas (F2-05) y las suspensiones (F2-07), el número las descuenta solo
+ * y aquí no cambia una línea.
  *
  * ## Lo que aquí no está
  *
@@ -101,8 +101,7 @@ class FichaDeEmpleado
     /**
      * Los seis datos que se ven siempre, por encima de las pestañas.
      *
-     * El saldo de vacaciones va de último y marcado como pendiente: es el
-     * único de los seis que todavía no se puede calcular.
+     * El saldo de vacaciones va de último, que es donde lo pone el prototipo.
      *
      * @return list<array{etiqueta: string, valor: string, pendiente: bool, nota: string}>
      */
@@ -119,20 +118,22 @@ class FichaDeEmpleado
     }
 
     /**
-     * El saldo de vacaciones del encabezado.
+     * El saldo de vacaciones del encabezado, calculado a hoy.
      *
-     * Devuelve el hueco a propósito. Ver la nota de la cabecera de la clase:
-     * el saldo se calcula (regla 2) y el motor es F2-02.
+     * Sale del motor y no de ninguna columna, que es la regla 2. Aquí no se
+     * cuenta ni un día: se pide y se escribe.
      *
      * @return array{etiqueta: string, valor: string, pendiente: bool, nota: string}
      */
     public function saldoDeVacaciones(): array
     {
+        $saldo = SaldoDeVacaciones::de($this->vinculacion)->al(Carbon::today());
+
         return [
             'etiqueta' => 'Saldo de vacaciones',
-            'valor' => 'Aún no disponible',
-            'pendiente' => true,
-            'nota' => 'El saldo se calcula con las vacaciones disfrutadas y las suspensiones registradas. Se verá aquí cuando el módulo de vacaciones esté disponible.',
+            'valor' => Formato::diasDecimales($saldo),
+            'pendiente' => false,
+            'nota' => 'Calculado a hoy: 1,25 días por cada mes cumplido desde el ingreso, o desde la fecha de corte si el saldo vino de la carga inicial.',
         ];
     }
 

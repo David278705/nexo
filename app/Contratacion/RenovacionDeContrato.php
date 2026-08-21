@@ -2,6 +2,7 @@
 
 namespace App\Contratacion;
 
+use App\Dominio\Calculo\MotorDeCalculo;
 use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 
@@ -219,7 +220,7 @@ class RenovacionDeContrato
         $hallazgos = $this->hallazgos($prorroga, $inicio, $hasta);
 
         $lineas = [
-            'Prórroga de '.Formato::dias(self::diasCorridos($inicio, $hasta))
+            'Prórroga de '.Formato::dias(MotorDeCalculo::diasCorridos($inicio, $hasta))
                 .', del '.Formato::fecha($inicio).' al '.Formato::fecha($hasta).'.',
             $this->lineaDelVinculo($hasta),
             $this->lineaDeLaProrroga($prorroga, $inicio, $hasta),
@@ -378,17 +379,5 @@ class RenovacionDeContrato
     private static function esInferiorAUnAnio(Carbon $inicio, Carbon $hasta): bool
     {
         return $hasta->lessThan($inicio->copy()->addYear()->subDay());
-    }
-
-    /**
-     * Días corridos contando los dos extremos.
-     *
-     * Se formaliza en el motor de cálculo (F2-02) igual que en
-     * `HistorialDeContrato::duracionTotalEnDias()`. Cuando exista
-     * `diasCorridos()`, este método lo llama en lugar de restar fechas.
-     */
-    private static function diasCorridos(Carbon $desde, Carbon $hasta): int
-    {
-        return (int) $desde->copy()->startOfDay()->diffInDays($hasta->copy()->startOfDay()) + 1;
     }
 }

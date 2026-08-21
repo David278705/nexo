@@ -2,29 +2,47 @@
 
 namespace App\Dominio\Calculo;
 
+use App\Models\Festivo;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 
 /**
  * El motor de cálculo del sistema (documento 2, capítulo 4).
  *
- * **Aquí todavía no hay cálculo: hay firmas.** Esta clase la abre F2-01, cuya
- * única tarea es escribir los diez casos obligatorios de la sección 4.2 y verlos
- * fallar. Cada método lanza `CalculoSinImplementar`, de modo que los diez fallan
- * por falta de implementación —que es lo que la tarea pide demostrar— y no por
- * un error de sintaxis ni por una clase que no existe. F2-02 sustituye cada
- * `throw` por su cuenta y los diez pasan.
+ * Es el corazón del producto: un error aquí no rompe una pantalla, produce
+ * números equivocados en todos los clientes a la vez y el cliente puede haber
+ * liquidado a alguien con ese número. Por eso la prueba va primero —los diez
+ * casos obligatorios de la sección 4.2 están en
+ * `tests/Feature/MotorDeCalculoTest.php`, escritos por F2-01— y por eso ningún
+ * conteo de días vive fuera de `app/Dominio/Calculo/`.
  *
  * Las tres reglas de conteo son **tres funciones con nombres distintos**, nunca
  * una con un parámetro que se pueda pasar mal. Confundirlas es el error más
  * probable del proyecto: un día corrido de más en unas vacaciones es plata mal
- * liquidada en todos los clientes a la vez.
+ * liquidada.
  *
  * Ningún número legal se escribe aquí: salen de `config/reglas_laborales.php`.
+ *
+ * **La base comercial de treinta días.** La acumulación de vacaciones no se
+ * prorratea sobre la duración real del mes sino sobre treinta días. No es una
+ * regla inventada aquí: la fijan dos de los diez casos obligatorios leídos
+ * juntos —el de los cuatro días de licencia, que pide «proporcional a 26 días,
+ * no a 30», y el de la licencia del 16 de marzo al 15 de abril, que pide media
+ * acumulación en los dos meses—. Está anotada en `diasComercialesDelMes()`.
  */
 class MotorDeCalculo
 {
+    /**
+     * Los días que tiene un mes para la acumulación de vacaciones.
+     *
+     * Es la base comercial del párrafo de arriba, no la duración real del mes.
+     * Vive aquí como constante y no como un treinta suelto dentro de las
+     * cuentas porque aparece en tres de ellas.
+     */
+    public const DIAS_DEL_MES_COMERCIAL = 30;
+
     /**
      * Días hábiles de vacaciones entre dos fechas, ambas incluidas.
      *
@@ -32,11 +50,41 @@ class MotorDeCalculo
      * los tiene como laborales, que es el parámetro `sabado_laboral`. Es la única
      * de las tres reglas que depende de la empresa, y por eso la recibe.
      *
+     * Un festivo que cae en sábado no cuenta ni siquiera con el sábado laboral:
+     * ese día no se trabaja en ninguna empresa, y es uno de los diez casos.
+     *
      * Se usa en: vacaciones.
      */
     public static function diasHabilesVacaciones(CarbonInterface $inicio, CarbonInterface $fin, Tenant $empresa): int
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        $desde = self::dia($inicio);
+        $hasta = self::dia($fin);
+
+        if ($hasta->lessThan($desde)) {
+            return 0;
+        }
+
+        $festivos = self::festivosEntre($desde, $hasta);
+        $sabadoLaboral = (bool) $empresa->getAttribute('sabado_laboral');
+        $habiles = 0;
+
+        for ($dia = $desde->copy(); $dia->lessThanOrEqualTo($hasta); $dia->addDay()) {
+            if ($dia->isSunday()) {
+                continue;
+            }
+
+            if ($dia->isSaturday() && ! $sabadoLaboral) {
+                continue;
+            }
+
+            if (in_array($dia->toDateString(), $festivos, true)) {
+                continue;
+            }
+
+            $habiles++;
+        }
+
+        return $habiles;
     }
 
     /**
@@ -49,49 +97,108 @@ class MotorDeCalculo
      */
     public static function diasCorridos(CarbonInterface $inicio, CarbonInterface $fin): int
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        $desde = self::dia($inicio);
+        $hasta = self::dia($fin);
+
+        if ($hasta->lessThan($desde)) {
+            return 0;
+        }
+
+        return (int) $desde->diffInDays($hasta) + 1;
     }
 
     /**
      * Los días de vacaciones que causa una vinculación en un mes calendario.
      *
-     * Son 1,25 días (artículo 186 del CST), reducidos en proporción a los días
-     * de suspensión de ese mes si la empresa tiene activo el parámetro
-     * `suspensiones_afectan_vacaciones`. De dónde salen esos días de suspensión
-     * es cosa de F2-02: aquí solo está la firma que fija el documento.
+     * Son 1,25 días (artículo 186 del CST) reducidos por dos cosas: los días del
+     * mes en que la persona todavía no estaba vinculada o ya se había ido, y los
+     * días de suspensión de ese mes si la empresa tiene activo el parámetro
+     * `suspensiones_afectan_vacaciones`. Las dos reducciones son la misma
+     * aritmética —días que no acumulan sobre una base de treinta— y por eso se
+     * suman antes de una única llamada a `acumulacionProporcional()`.
      *
      * Se usa en: saldo de vacaciones.
      */
     public static function acumulacionMes(Vinculacion $vinculacion, CarbonInterface $mes): float
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        $cubiertos = self::diasComercialesDelMes(
+            $vinculacion->fecha_ingreso,
+            $vinculacion->fechaDeSalida(),
+            $mes,
+        );
+
+        $noAcumulan = self::DIAS_DEL_MES_COMERCIAL - $cubiertos + self::diasDeSuspensionDelMes($vinculacion, $mes);
+
+        return self::acumulacionProporcional($noAcumulan);
     }
 
     /**
      * Los días de un mes que quedan cubiertos por una suspensión, en base
      * comercial de treinta días.
      *
-     * La base es 30 y no la duración real del mes: lo fija el caso obligatorio
-     * de los cuatro días de licencia —«acumulación proporcional a 26 días, no a
-     * 30»— y lo confirma el de la licencia del 16 de marzo al 15 de abril, que
-     * debe dar media acumulación en los dos meses. Del 16 al 31 de marzo son
-     * dieciséis días naturales; solo son quince si el día 31 no cuenta.
+     * Es exactamente `diasComercialesDelMes()` con las dos fechas obligatorias;
+     * existe con nombre propio porque es como lo nombra el documento y porque
+     * quien registra una licencia o una suspensión pregunta esto y no otra cosa.
      */
     public static function diasSuspendidosDelMes(CarbonInterface $inicio, CarbonInterface $fin, CarbonInterface $mes): int
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        return self::diasComercialesDelMes($inicio, $fin, $mes);
     }
 
     /**
-     * La acumulación de un mes con esos días suspendidos: 1,25 × (30 − días) / 30.
+     * Los días de un mes, en base comercial de treinta, que caen dentro de un
+     * rango. Un `fin` nulo significa «y de ahí en adelante».
+     *
+     * **La base es 30 y no la duración real del mes.** Lo fija el caso
+     * obligatorio de los cuatro días de licencia —«acumulación proporcional a 26
+     * días, no a 30»— y lo confirma el de la licencia del 16 de marzo al 15 de
+     * abril, que debe dar media acumulación en los dos meses: del 16 al 31 de
+     * marzo son dieciséis días naturales y solo son quince si el día 31 no
+     * cuenta.
+     *
+     * De ahí las dos reglas de la base comercial, que son la misma vista por sus
+     * dos extremos: **el día 31 no cuenta**, y **un mes cubierto entero son
+     * treinta días** aunque tenga veintiocho. Sin la segunda, una licencia de
+     * todo febrero dejaría dos días acumulando sin que nadie trabajara.
+     */
+    public static function diasComercialesDelMes(CarbonInterface $inicio, ?CarbonInterface $fin, CarbonInterface $mes): int
+    {
+        $primero = self::dia($mes)->startOfMonth();
+        // Sin hora: `endOfMonth()` deja las 23:59:59 y ninguna fecha del motor
+        // llega con hora, así que el último día nunca sería igual a sí mismo.
+        $ultimo = $primero->copy()->endOfMonth()->startOfDay();
+
+        $desde = self::dia($inicio)->max($primero);
+        $hasta = $fin === null ? $ultimo : self::dia($fin)->min($ultimo);
+
+        if ($hasta->lessThan($desde)) {
+            return 0;
+        }
+
+        if ($desde->equalTo($primero) && $hasta->equalTo($ultimo)) {
+            return self::DIAS_DEL_MES_COMERCIAL;
+        }
+
+        // Fuera del mes completo, el día 31 no existe para la base comercial.
+        $hasta = $hasta->min($primero->copy()->addDays(self::DIAS_DEL_MES_COMERCIAL - 1));
+
+        return self::diasCorridos($desde, $hasta);
+    }
+
+    /**
+     * La acumulación de un mes con esos días sin acumular: 1,25 × (30 − días) / 30.
      *
      * Está separada de `acumulacionMes()` porque es la aritmética pura y es lo
      * que miden dos de los diez casos obligatorios. `acumulacionMes()` es quien
-     * sabe leer las suspensiones de la vinculación y termina llamando aquí.
+     * sabe leer la vinculación y sus suspensiones, y termina llamando aquí.
      */
     public static function acumulacionProporcional(int $diasSuspendidos): float
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        $acumulan = self::DIAS_DEL_MES_COMERCIAL - max(0, min(self::DIAS_DEL_MES_COMERCIAL, $diasSuspendidos));
+
+        $porMes = (float) config('reglas_laborales.dias_vacaciones_por_mes');
+
+        return $porMes * $acumulan / self::DIAS_DEL_MES_COMERCIAL;
     }
 
     /**
@@ -104,21 +211,28 @@ class MotorDeCalculo
      */
     public static function cumpleMesesEl(CarbonInterface $ingreso, int $meses): CarbonInterface
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        return self::dia($ingreso)->addMonthsNoOverflow($meses)->subDay();
     }
 
     /**
      * El día en que se envía una alerta programada para esa fecha.
      *
      * Si cae en sábado, domingo o festivo se corre al día hábil anterior
-     * (documento 1, 9.1). **Aquí el sábado nunca es hábil**, tenga la empresa el
-     * sábado laboral o no: el correo lo lee una persona de gestión humana un día
-     * de oficina. Por eso el nombre dice «para alertas» y no se puede confundir
-     * con el conteo de vacaciones, que sí mira el parámetro de la empresa.
+     * (documento 1, 9.1); si es un día de oficina se envía ese mismo día.
+     * **Aquí el sábado nunca es hábil**, tenga la empresa el sábado laboral o
+     * no: el correo lo lee una persona de gestión humana un día de oficina. Por
+     * eso el nombre dice «para alertas» y no se puede confundir con el conteo de
+     * vacaciones, que sí mira el parámetro de la empresa.
      */
     public static function diaHabilAnteriorParaAlertas(CarbonInterface $fecha): CarbonInterface
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        $dia = self::dia($fecha);
+
+        while ($dia->isSaturday() || $dia->isSunday() || Festivo::esFestivo($dia)) {
+            $dia->subDay();
+        }
+
+        return $dia;
     }
 
     /**
@@ -132,6 +246,59 @@ class MotorDeCalculo
      */
     public static function diasDeAnticipacion(CarbonInterface $envio, CarbonInterface $hecho): int
     {
-        throw CalculoSinImplementar::en(__METHOD__);
+        return (int) self::dia($envio)->diffInDays(self::dia($hecho));
+    }
+
+    /**
+     * Los días de suspensión de un mes que reducen la acumulación.
+     *
+     * **Devuelve cero y todavía no es un cálculo.** Las licencias no
+     * remuneradas, las ausencias injustificadas y las suspensiones son el módulo
+     * F2-07 y su tabla no existe: hoy no hay de dónde leer un solo día. Cuando
+     * exista, aquí se suman los días de ese mes con `diasSuspendidosDelMes()`,
+     * y solo si la empresa tiene activo `suspensiones_afectan_vacaciones` —el
+     * parámetro se lee ahí y no en quien llama, para que ninguna pantalla pueda
+     * olvidarse de mirarlo—.
+     *
+     * La aritmética de la proporción sí está escrita y probada: es
+     * `acumulacionProporcional()`, y por eso F2-07 no tiene que tocar el saldo.
+     */
+    private static function diasDeSuspensionDelMes(Vinculacion $vinculacion, CarbonInterface $mes): int
+    {
+        return 0;
+    }
+
+    /**
+     * Las fechas festivas del rango, como cadenas `Y-m-d`.
+     *
+     * Se leen por año y de una sola vez: preguntar por cada día del rango serían
+     * quince consultas para unas vacaciones de quince días.
+     *
+     * @return list<string>
+     */
+    private static function festivosEntre(Carbon $desde, Carbon $hasta): array
+    {
+        $festivos = [];
+
+        for ($anio = $desde->year; $anio <= $hasta->year; $anio++) {
+            $festivos = [...$festivos, ...Festivo::fechasDelAnio($anio)];
+        }
+
+        return $festivos;
+    }
+
+    /**
+     * La fecha sin hora y como objeto propio.
+     *
+     * Todo lo que entra al motor pasa por aquí, por dos motivos. El primero es
+     * el error clásico de zona horaria: un servidor en UTC interpreta el 1 de
+     * agosto como el 31 de julio a las 19:00 y el conteo sale con un día menos.
+     * El segundo es que las fechas llegan como `CarbonInterface` —que puede ser
+     * inmutable o no— y el motor las recorre con `addDay()`: sin la copia, un
+     * `Carbon` mutable de quien llama se movería solo.
+     */
+    private static function dia(CarbonInterface $fecha): Carbon
+    {
+        return Carbon::parse($fecha->toDateString());
     }
 }
