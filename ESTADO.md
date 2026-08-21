@@ -1,61 +1,56 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-19 · Tarea F1-10
+**Última sesión:** 2026-08-20 · Tarea F1-11
 **Verificación:** verde
-**Siguiente tarea:** F1-11 · Cambiar a término indefinido
+**Siguiente tarea:** F1-12 · Parámetros de la empresa
 
 ## Qué se hizo
 
-- **`RenovacionDeContrato::hallazgos()`**, el sitio único de las dos validaciones de 5.5: el tope de
-  cuatro años y la regla de prórroga mínima. Cada una escribe **un solo mensaje**, y ese mismo texto
-  es el que se lee en el aviso del modal y el que sale como error del servidor. Un modal que dice una
-  cosa y un servidor que dice otra son dos reglas, y una de las dos está mal.
-- **`impedimentos()`** es lo que consulta la validación: devuelve los mensajes de las reglas que sí
-  impiden guardar, y vacío si falta un dato o si la regla está configurada como advertencia.
-- **`config/validaciones.php` y el enumerado `EstadoDeValidacion`**, que es la lectura de
-  «configurables por estado»: el estado de cada validación —`bloquea` o `advierte`— es una palabra de
-  la configuración, no una rama escrita dentro de la lógica. El enumerado decide también el color,
-  porque son la misma decisión: rojo y bloqueado son lo mismo por definición.
-- **El tope de cuatro años bloquea.** El mensaje dice que no se puede registrar, por qué —pasado el
-  tope el contrato es indefinido por ley— y nombra la salida: «Cambiar a término indefinido». La
-  fecha que llega justo al tope sí se registra.
-- **La prórroga mínima advierte con fuerza y permite guardar**, y su mensaje añade que si la prórroga
-  ya está firmada puede registrarse y queda documentada en la auditoría. Con una palabra de la
-  configuración se vuelve bloqueo, y el mensaje cambia solo.
-- **`RenovarContrato::after()`** pregunta las dos reglas **después** de las de formato y solo si
-  pasaron: una fecha que no es fecha no supera ningún tope, y un segundo error sobre `fecha_fin`
-  escondería el primero.
-- **El modal deshabilita «Registrar prórroga»** cuando la proyección llega con `bloqueado`, que es lo
-  que hace el prototipo. `Boton` tiene ahora la prop `deshabilitado`, separada de `enviando`.
-- `RenovacionTest` creció con dos bloques —seis casos del tope y cinco de la prórroga mínima, cada
-  regla probada en su estado configurado **y en el contrario**— y se reescribió el caso que antes
-  permitía pasarse del tope. `EstadoDeValidacionTest` cubre el enumerado y los dos valores de fábrica.
-  Dos casos de Vitest más: el botón deshabilitado con la proyección bloqueada y habilitado cuando solo
-  advierte.
-- `composer verificar` en verde: 396 pruebas de Pest, PHPStan sin errores, build y 154 de Vitest.
+- **`CambioAIndefinido`**, el objeto de la acción. Responde solo dos cosas: **si la acción existe en
+  ese contrato** —solo el término fijo, documento 1, 5.5— y **qué implica el cambio**. No escribe nada
+  y no cuenta nada del historial.
+- **Las cinco frases del prototipo se escriben en el servidor**, no en el componente. Cada una afirma
+  algo que el sistema después cumple, y la misma prueba que comprueba el efecto lee el texto. En el
+  navegador, la pantalla podría prometer una cosa y el servidor hacer otra.
+- **`Vinculacion::cambiarATerminoIndefinido()`** pasa por `registrarPeriodo()` como cualquier otro
+  hecho contractual: una fila nueva en el historial y lo vigente movido en la misma transacción.
+- **El tramo nuevo no lleva fecha de fin.** Un indefinido no vence, así que `fecha_fin` de la
+  vinculación queda en nulo y con ella desaparecen el vencimiento, el límite de preaviso y las alertas
+  de renovación. El contrato sale del listado de los que vencen, que es lo que se prueba.
+- **La fecha de ingreso no se toca, y el tramo inicial tampoco.** Es el criterio de terminado: la
+  antigüedad de la ficha da lo mismo antes y después del cambio. Reescribir el tramo inicial borraría
+  la trazabilidad que el cambio pretende dejar.
+- **`CambiarATerminoIndefinido` es una petición sin reglas de datos**, porque no llega ninguno: la
+  única regla está en `authorize()` y responde 403 en indefinido y en obra o labor. Después del cambio
+  el propio contrato deja de admitirlo, así que el inverso está cerrado por el mismo camino.
+- **`ModalDeCambioAIndefinido`** es una confirmación sin ni un campo: la entrada, las implicaciones y
+  la advertencia llegan como props. El botón «Cambiar a término indefinido» va a la izquierda del de
+  renovar, en secundario, como en el prototipo.
+- `CambioAIndefinidoTest` con 16 casos: cuándo se ofrece, qué enseña el modal, el efecto en el
+  historial, en lo vigente, en la antigüedad, en el detalle, en el listado y en la auditoría, y el
+  aislamiento entre empresas. Seis casos de Vitest del modal y dos de la pantalla.
+- `composer verificar` en verde: Pint, PHPStan sin errores, 413 pruebas de Pest, build y 162 de Vitest.
 
 ## Decisiones tomadas
 
-- **«Las dos configurables por estado» se leyó como el estado de cada validación: bloquea o
-  advierte.** Es lo que hace que la promesa de B.1 —«convertir la advertencia en bloqueo es un cambio
-  de una línea»— sea cierta de verdad. La alternativa, un parámetro por empresa, se descartó: el
-  capítulo 4 del documento 1 lista los parámetros que el cliente configura y este no está, y dejar
-  que una empresa desactive un bloqueo legal es exactamente lo que el bloqueo existe para evitar.
-- **El estado vive en `config/validaciones.php` y no en `reglas_laborales.php`.** Ese archivo son
-  constantes legales —números y fechas de una norma— y estas dos palabras son una decisión de
-  producto sobre cómo se aplica la norma. Además hay una prueba que cuenta las diez constantes
-  legales, y sumarle valores que no lo son la volvería una prueba que no dice nada.
-- **Una configuración equivocada bloquea.** Si el valor no es ninguno de los dos, `EstadoDeValidacion`
-  devuelve `Bloquea`: ante una configuración mal escrita, no registrar algo que puede ser ilegal es la
-  opción segura.
-- **El mensaje cambia con el estado, no solo el color.** Un bloqueo empieza por «No se puede registrar
-  esta prórroga» y una advertencia dice la consecuencia a secas. Decirle a alguien que no puede
-  guardar y luego dejarlo guardar es peor que no avisarle.
-- **«Gasta el último cupo corto» sigue siendo ámbar y no es un hallazgo.** Todavía no incumple nada
-  —la prórroga cabe— pero la siguiente ya no podrá ser corta. Es la distinción que separa lo que hay
-  que saber de lo que no se puede hacer.
-- **El bloqueo se comprueba en el servidor y el botón deshabilitado es cortesía.** El modal no sabe
-  qué es un tope legal: recibe la bandera y obedece. Enviar el formulario a mano vuelve a fallar.
+- **El tramo indefinido empieza el día en que se hace el cambio**, no en la fecha de ingreso ni en el
+  vencimiento del tramo anterior. Lo pide el documento 1, 5.5: el cambio «queda registrado con la
+  fecha en que se hizo, para efectos de trazabilidad y reportes». Un contrato se vuelve indefinido
+  desde que las partes lo acuerdan, no desde que habría vencido.
+- **El único ajuste a esa fecha es de coherencia del historial, no de derecho laboral**: en un
+  contrato que todavía no ha empezado, el tramo nuevo arranca el mismo día que el vigente. Un tramo
+  que empezara antes que el anterior deja el historial en un orden imposible de leer.
+- **La confirmación explica la consecuencia calculada y no pregunta «¿está seguro?»**, que es la regla
+  del documento 3, sección 6.2, para lo irreversible. Por eso el modal nombra la fecha de ingreso y la
+  fecha del cambio con sus valores, y no una frase genérica.
+- **La disponibilidad se lee del historial y no de la columna de la vinculación.** Es la misma fuente
+  que usa `RenovacionDeContrato::disponible()`, y la que decide qué tipo de contrato está vigente
+  ahora. Dos fuentes para la misma pregunta se separan a la primera corrección.
+- **El botón de renovar y el de cambiar a indefinido leen banderas distintas.** Las dos exigen término
+  fijo, pero renovar exige además un vencimiento del que colgar la prórroga. Una sola bandera para las
+  dos habría pintado un botón que no lleva a ninguna parte.
+- **La acción no valida el tope de cuatro años ni nada parecido.** Es voluntaria y también es la salida
+  del bloqueo de F1-10 (documento 1, 5.5): pasar a indefinido nunca puede ser lo que se impida.
 
 ## Preguntas para Angela
 
@@ -63,10 +58,9 @@
   documento 1 dice que **las dos** validaciones bloquean —«no son advertencias»— y la tabla 5.4 del
   documento 3 la sigue; B.1 y B.3 del documento 6, y el propio enunciado de F1-10, piden advertir con
   fuerza en la prórroga corta hasta que el asesor laboral confirme la aplicación práctica. **Se
-  siguió el documento 6**, porque es el que registra lo que aún no está cerrado y porque bloquear una
-  prórroga que en realidad es legal deja al cliente sin dónde registrar un contrato ya firmado. **La
-  pregunta concreta: ¿se confirma esa lectura y se corrige la sección 5.5, o la prórroga mínima
-  también debe bloquear?** Si es lo segundo, es cambiar una palabra en `config/validaciones.php`.
+  siguió el documento 6.** **La pregunta concreta: ¿se confirma esa lectura y se corrige la sección
+  5.5, o la prórroga mínima también debe bloquear?** Si es lo segundo, es cambiar una palabra en
+  `config/validaciones.php`.
 - **La plantilla de carga y el formulario ya no dicen lo mismo.** `plantillas/2 - Perfil
   sociodemografico (opcional).xlsx` ofrece «Primaria · Bachillerato · Técnico · Tecnólogo ·
   Profesional · Posgrado» y los rangos «Menos de 30 min · De 30 min a 1 hora · De 1 a 2 horas · Más
@@ -80,11 +74,7 @@
   nueva —tabla, columna, seeder, un campo en el paso 2 del asistente y un renglón en la ficha, que ya
   están construidos—.
 - Menor: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)» sin
-  distinguir especialización, maestría y doctorado**, tal como los pediste. Separarlos después es
-  agregar casos al enumerado y nada más.
-- **D.1 ya no bloquea.** El modal pregunta el tipo de prórroga, con los textos del prototipo:
-  «Pactada por escrito» y «Automática por silencio». Si prefieres otro par de textos, se cambian en
-  `EventoContractual::prorrogasParaElegir()`.
+  distinguir especialización, maestría y doctorado**, tal como los pediste.
 - **B.1 sigue abierta y ahora tiene consecuencia visible.** El límite de prórrogas cortas advierte y
   no bloquea porque así lo pide ese punto. **Confirmada la regla con el asesor laboral, pasa a
   bloquear con una palabra.**
@@ -93,14 +83,12 @@
 
 ## Decisiones para David
 
+- **La salida que nombraba el bloqueo del tope ya existe y se puede pulsar.** El mensaje de F1-10 dice
+  «Cambiar a término indefinido» y ahora hay un botón con ese texto exacto al lado del de renovar.
+- **Sigue sin existir «Editar contrato».** El aviso del modal de renovación dice «edita el contrato»
+  sin enlazar a ninguna parte. Cuando exista, el aviso lleva un enlace.
 - **B.3 quedó resuelta como la sugiere el documento 6**: bloquear el tope de cuatro años, advertir con
-  fuerza la prórroga corta. Está construido así y los dos estados son configurables, así que cambiar
-  de opinión no cuesta código. **Confírmalo o cámbialo en `config/validaciones.php`.**
-- **El mensaje del tope nombra «Cambiar a término indefinido» y esa acción todavía no existe.** Es
-  F1-11, la siguiente tarea, y el sitio está libre al lado del botón de renovar. Hasta entonces el
-  texto nombra una salida que el usuario no puede pulsar.
-- **Tampoco existe «Editar contrato».** El aviso del modal dice «edita el contrato» sin enlazar a
-  ninguna parte. Cuando exista, el aviso lleva un enlace.
+  fuerza la prórroga corta. Los dos estados son configurables en `config/validaciones.php`.
 - **El texto del hueco del saldo de vacaciones se lee en pantalla y sigue siendo tuyo.** Está en
   `FichaDeEmpleado::saldoDeVacaciones()`, en un solo sitio.
 - **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de una
@@ -119,7 +107,7 @@
 - **El rol de conexión de PostgreSQL.** Abierta desde F0-04: `.env` se conecta como `postgres`,
   superusuario con `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace
   falta un rol corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Abierta de veintiuna sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Abierta de veintidós sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -130,18 +118,21 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1-11 · Cambiar a término indefinido**, y es la salida que el mensaje del tope ya
-  nombra por su nombre. Casi todo está: `registrarPeriodo()` deja el historial y lo vigente alineados
-  en la misma transacción, así que basta llamarlo con `EventoContractual::CambioAIndefinido` y
-  `TipoContrato::Indefinido` **sin fecha de fin**. La fecha de ingreso no se toca, que es el criterio
-  de terminado. El modal es el mismo componente `Modal` y el botón va al lado del de renovar.
+- La siguiente es **F1-12 · Parámetros de la empresa**: la pantalla con los cuatro parámetros del
+  capítulo 4 del documento 1 y su explicación en lenguaje claro. **Dos de ellos ya se leen desde el
+  código construido** —el perfil sociodemográfico opcional (F1-06) y lo que consulte el motor de
+  alertas—, así que la pantalla es sobre todo darles un sitio donde cambiarlos, no inventarlos. El
+  aviso al activar el perfil sociodemográfico es el que ya explica la ficha: los empleados que ya
+  existían quedan en blanco y eso no es un error.
+- **`CambioAIndefinido` es el sitio de cualquier cosa sobre el cambio de modalidad**,
+  `RenovacionDeContrato` el de una prórroga propuesta y `VigenciaDelContrato` el de las cuentas sobre
+  un contrato existente. No escribas una cuarta.
+- **Las frases que la pantalla promete se escriben donde vive el efecto.** Si una confirmación afirma
+  algo que el servidor hace, el texto va en el servidor: así una prueba puede comprobar las dos cosas
+  a la vez.
 - **Toda regla que dependa de una decisión abierta va a `config/validaciones.php`**, con su estado y
   el punto del documento 6 que la sostiene. No se escriben ramas «por ahora advierte» dentro de la
   lógica.
-- **`RenovacionDeContrato` es el sitio de cualquier cuenta o regla sobre una prórroga propuesta**, y
-  `VigenciaDelContrato` el de las cuentas sobre un contrato existente. No escribas una tercera.
-- **Los mensajes de las reglas se escriben una vez.** Si una validación nueva necesita un texto para
-  la pantalla y otro para el error, es que están en dos sitios y van a divergir.
 - **El helper `enLaEmpresa()` de las pruebas vive en `PersonasYVinculacionesTest.php`** y Pest lo
   comparte con todos los archivos. Sin él, cualquier consulta hecha desde una prueba fuera de una
   petición HTTP devuelve vacío, porque el global scope falla cerrado.

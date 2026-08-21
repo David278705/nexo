@@ -6,6 +6,7 @@ use App\Contratacion\DetalleDelContrato;
 use App\Contratacion\ListadoDeContratos;
 use App\Contratacion\TipoContrato;
 use App\Exports\ContratosExport;
+use App\Http\Requests\CambiarATerminoIndefinido;
 use App\Http\Requests\RenovarContrato;
 use App\Models\Vinculacion;
 use Illuminate\Http\RedirectResponse;
@@ -111,5 +112,25 @@ class ContratoController extends Controller
             ->route('contratos.detalle', $contrato)
             ->with('estado', 'Se registró la '.mb_strtolower($periodo->evento->etiqueta(), 'UTF-8')
                 .'. El contrato vence ahora el '.$peticion->hasta()->format('d/m/Y').'.');
+    }
+
+    /**
+     * Convierte el contrato a término indefinido (documento 1, 5.5).
+     *
+     * Es una confirmación y no un formulario: no llega ningún dato, así que aquí
+     * no se lee ninguno. Que la acción exista en ese contrato lo comprueba
+     * `CambiarATerminoIndefinido`, y el tramo lo escribe
+     * `Vinculacion::cambiarATerminoIndefinido()`.
+     */
+    public function cambiarAIndefinido(
+        CambiarATerminoIndefinido $peticion,
+        Vinculacion $contrato,
+    ): RedirectResponse {
+        $periodo = $contrato->cambiarATerminoIndefinido();
+
+        return redirect()
+            ->route('contratos.detalle', $contrato)
+            ->with('estado', 'El contrato quedó a término indefinido desde el '
+                .$periodo->fecha_inicio->format('d/m/Y').'. La fecha de ingreso no cambió.');
     }
 }

@@ -5,6 +5,7 @@ import Armazon from "@/Components/Armazon.vue";
 import Boton from "@/Components/Boton.vue";
 import Etiqueta from "@/Components/Etiqueta.vue";
 import ListaDeDatos from "@/Components/ListaDeDatos.vue";
+import ModalDeCambioAIndefinido from "@/Components/ModalDeCambioAIndefinido.vue";
 import ModalDeRenovacion from "@/Components/ModalDeRenovacion.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
 import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
@@ -27,14 +28,17 @@ const props = defineProps({
     campos: { type: Array, default: () => [] },
     historial: { type: Array, default: () => [] },
     renovacion: { type: Object, default: () => ({}) },
+    cambioAIndefinido: { type: Object, default: () => ({}) },
 });
 
 /*
- * «Renovar contrato» solo existe en el término fijo (documento 1, 5.5). El botón
- * de «Cambiar a término indefinido» va al lado y llega con F1-11: no se pone un
- * botón que no lleve a ninguna parte.
+ * Las dos acciones del contrato solo existen en el término fijo (documento 1,
+ * 5.5), y quién decide es el servidor: la pantalla lee la bandera y no razona
+ * sobre modalidades. «Cambiar a término indefinido» es la secundaria porque es
+ * irreversible, y va a la izquierda como en el prototipo.
  */
 const renovando = ref(false);
+const cambiandoAIndefinido = ref(false);
 
 const urlDelContrato = `/contratos/${props.contrato.empleadoId}`;
 
@@ -79,6 +83,15 @@ const columnasHistorial = [
                 >
                     Ver la ficha del empleado
                 </Link>
+
+                <Boton
+                    v-if="cambioAIndefinido.disponible"
+                    variante="secundario"
+                    tipo="button"
+                    @click="cambiandoAIndefinido = true"
+                >
+                    Cambiar a término indefinido
+                </Boton>
 
                 <Boton
                     v-if="contrato.admiteRenovacion && renovacion.disponible"
@@ -129,6 +142,14 @@ const columnasHistorial = [
             :url="urlDelContrato"
             :renovacion="renovacion"
             @cerrar="renovando = false"
+        />
+
+        <ModalDeCambioAIndefinido
+            v-if="cambioAIndefinido.disponible"
+            :abierto="cambiandoAIndefinido"
+            :url="urlDelContrato"
+            :cambio="cambioAIndefinido"
+            @cerrar="cambiandoAIndefinido = false"
         />
     </Armazon>
 </template>

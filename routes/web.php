@@ -101,6 +101,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/contratos/{contrato}/renovar', [ContratoController::class, 'renovar'])
             ->whereNumber('contrato')
             ->name('contratos.renovar');
+        /*
+         * «Cambiar a término indefinido» también tiene su propia dirección y su
+         * propio verbo. Es la salida que ofrece el bloqueo del tope de cuatro
+         * años, y es irreversible: el cambio inverso no existe y por eso no hay
+         * ninguna ruta que lo haga.
+         */
+        Route::post('/contratos/{contrato}/indefinido', [ContratoController::class, 'cambiarAIndefinido'])
+            ->whereNumber('contrato')
+            ->name('contratos.indefinido');
     });
 
     foreach (Modulo::cases() as $modulo) {

@@ -104,6 +104,14 @@ const props = {
             hasta: "12/09/2026",
         },
     ],
+    cambioAIndefinido: {
+        disponible: true,
+        entrada:
+            "Vas a cambiar el contrato de Juan Pablo Mejía Ochoa de término fijo a término indefinido.",
+        titulo: "Qué implica este cambio",
+        implicaciones: ["El vínculo continúa. No hay salida ni liquidación."],
+        advertencia: "Este cambio no se puede revertir desde el sistema.",
+    },
 };
 
 /*
@@ -113,7 +121,9 @@ const props = {
 function montar(cambios = {}) {
     return mount(Detalle, {
         props: { ...props, ...cambios },
-        global: { stubs: { ModalDeRenovacion: true } },
+        global: {
+            stubs: { ModalDeRenovacion: true, ModalDeCambioAIndefinido: true },
+        },
     });
 }
 
@@ -172,6 +182,18 @@ describe("el detalle del contrato", function () {
         expect(pantalla.text()).not.toContain("Renovar contrato");
     });
 
+    it("ofrece cambiar a término indefinido cuando el servidor dice que se puede", function () {
+        expect(montar().text()).toContain("Cambiar a término indefinido");
+    });
+
+    it("no ofrece el cambio a indefinido donde la acción no existe", function () {
+        const pantalla = montar({
+            cambioAIndefinido: { disponible: false },
+        });
+
+        expect(pantalla.text()).not.toContain("Cambiar a término indefinido");
+    });
+
     it("deja solo las tarjetas que existen en un contrato sin plazo", function () {
         const pantalla = montar({
             contrato: { ...props.contrato, tipo: "Término indefinido", estado: "Vigente", tono: "exito", admiteRenovacion: false },
@@ -184,6 +206,7 @@ describe("el detalle del contrato", function () {
                     tono: "",
                 },
             ],
+            cambioAIndefinido: { disponible: false },
         });
 
         expect(pantalla.text()).not.toContain("Límite de preaviso");

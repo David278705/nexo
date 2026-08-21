@@ -234,11 +234,20 @@ nombra «Cambiar a término indefinido» —la acción es F1-11—; **la prórro
 permite guardar**, que es lo que piden B.1 y B.3 mientras el asesor laboral confirme la regla. El
 botón del modal queda deshabilitado con la proyección bloqueada, como el prototipo.
 
-### [ ] F1-11 · Cambiar a término indefinido
+### [x] F1-11 · Cambiar a término indefinido
 
 Solo en contratos a término fijo. La fecha de ingreso no cambia. Queda registrado en el historial.
 **Hecho cuando:** tras el cambio, la antigüedad y el saldo siguen contando desde la fecha original.
 **Fuente:** `docs/01-especificacion-funcional.md` 5.5
+
+Hecho: `CambioAIndefinido` responde las dos únicas preguntas de la acción —**si existe en ese
+contrato** y **qué implica**—, y las cinco frases del prototipo se escriben allí y no en el
+componente, para que la misma prueba que comprueba el efecto lea el texto. El tramo lo agrega
+`Vinculacion::cambiarATerminoIndefinido()` pasando por `registrarPeriodo()`, **sin fecha de fin**: con
+ella desaparecen el vencimiento, el preaviso y las alertas de renovación. **La fecha de ingreso y el
+tramo inicial no se tocan**, así que la antigüedad sigue contando desde la fecha original. El modal es
+una confirmación sin campos y `CambiarATerminoIndefinido` responde 403 fuera del término fijo: el
+cambio inverso no existe y por eso no hay ruta que lo haga.
 
 ### [ ] F1-12 · Parámetros de la empresa
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contratacion\CambioAIndefinido;
 use App\Contratacion\EstadoVinculacion;
 use App\Contratacion\EventoContractual;
 use App\Contratacion\HistorialDeContrato;
@@ -181,6 +182,32 @@ class Vinculacion extends Model
         }
 
         return $this->registrarPeriodo($prorroga, TipoContrato::Fijo, $inicio, $fechaFin);
+    }
+
+    /**
+     * Convierte el contrato a término indefinido (documento 1, 5.5).
+     *
+     * El tramo nuevo empieza el día en que se hace el cambio y **no lleva fecha
+     * de fin**: un indefinido no vence, así que `registrarPeriodo()` deja también
+     * `fecha_fin` de la vinculación en nulo y con ella desaparecen el preaviso y
+     * las alertas de vencimiento.
+     *
+     * **La fecha de ingreso no se toca**, que es el criterio de la tarea: el
+     * vínculo es el mismo y solo cambia su modalidad, así que la antigüedad y la
+     * acumulación de vacaciones siguen corriendo desde la fecha original. Por eso
+     * el tramo inicial también se deja intacto: es lo que se pactó, y reescribirlo
+     * borraría la trazabilidad que el cambio pretende dejar.
+     *
+     * Aquí no se valida: que el contrato sea a término fijo lo comprueba
+     * `CambiarATerminoIndefinido`.
+     */
+    public function cambiarATerminoIndefinido(): PeriodoContractual
+    {
+        return $this->registrarPeriodo(
+            EventoContractual::CambioAIndefinido,
+            TipoContrato::Indefinido,
+            CambioAIndefinido::de($this)->fechaDelCambio(),
+        );
     }
 
     /**

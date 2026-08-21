@@ -60,6 +60,14 @@ class DetalleDelContrato
              * de nuevo solo esta prop y no calcula nada por su cuenta.
              */
             'renovacion' => RenovacionDeContrato::de($this->historial)->paraLaPantalla($propuesta),
+            /*
+             * El modal de «Cambiar a término indefinido» (F1-11). No pide ningún
+             * dato: es la confirmación de un cambio que no se puede deshacer, y
+             * lo que enseña son sus consecuencias, escritas también en el
+             * servidor.
+             */
+            'cambioAIndefinido' => CambioAIndefinido::de($this->vinculacion, $this->historial)
+                ->paraLaPantalla(),
         ];
     }
 
@@ -82,8 +90,8 @@ class DetalleDelContrato
             'tono' => $this->vigencia->tono(),
             /*
              * Renovar y cambiar a indefinido son exclusivas del término fijo
-             * (documento 1, 5.5). El botón de renovar ya existe (F1-09); el de
-             * cambiar a indefinido llega con F1-11.
+             * (documento 1, 5.5). Cada botón lee su propia bandera: la de
+             * renovar exige además un vencimiento del que colgar la prórroga.
              */
             'admiteRenovacion' => $tipo->admiteRenovacion(),
         ];
