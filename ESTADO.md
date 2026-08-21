@@ -1,73 +1,65 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-21 · Tarea F1B-03 · Listado y ficha de empresas
+**Última sesión:** 2026-08-21 · Tarea F1B-04 · Catálogos y constantes desde el panel
 **Verificación:** verde
-**Siguiente tarea:** F1B-04 · Catálogos y constantes desde el panel
+**Siguiente tarea:** F2-01 · Pruebas del motor, primero
 
 ## Qué se hizo
 
-- **El panel ya enseña el negocio entero.** `Proveedor/Empresas` es el listado del documento 4,
-  sección 4.1, con sus ocho columnas, sus filtros, su orden y su paginación resueltos en el servidor,
-  como los del entorno del cliente.
-- **Los empleados de cada empresa se cuentan de verdad.** No salen de `tenants.empleados_cargados`
-  —ese contador lo refresca el proceso diario, que es F3-01, y hoy diría que todos los clientes tienen
-  cero—: se cuentan **dentro del contexto de cada empresa**, con `ContextoTenant::paraTenant()`, que
-  es lo mismo que hará el recorrido de empresas del proceso diario. Así el conteo pasa por las dos
-  capas de aislamiento en vez de saltárselas.
-- **El indicador de salud de uso existe y es real.** Sale del último ingreso de cualquier usuario de
-  la empresa, que es lo que el capítulo 16 llama «la señal más temprana de cancelación». La columna
-  `ultimo_acceso_en` **la escribe ahora el propio inicio de sesión**, en `RegistroDeAccesos`, que es
-  cuando el hecho ocurre; no espera a un proceso nocturno que todavía no existe.
-- **«Pago» se declara en vez de inventarse.** Las suscripciones son F5-04, así que la columna dice
-  «Sin cobros todavía» y **su filtro no se ofrece**: un filtro que no puede distinguir nada estorba
-  más de lo que ayuda. Es el mismo criterio del inicio del panel.
-- **El resaltado de «es una conversación de venta»** cuando los empleados cargados superan los del
-  plan, con palabras además del color, lo decide el servidor.
-- **La ficha de la empresa, con sus siete pestañas.** Cuatro con contenido —Resumen, Parámetros,
-  Usuarios y Uso— y tres que dicen de qué tarea depende lo suyo: Suscripción (F5-04), Alertas (fase 3)
-  y Bitácora (F5-07).
-- **Los parámetros se editan desde el panel** y el cambio queda en la auditoría **de esa empresa**,
-  con el `owner` como autor: es la «constancia del cambio» que pide 4.3 y es lo que el cliente puede
-  ver en su propia auditoría. Hay prueba de las dos cosas.
-- **Nadie ve una contraseña, y no porque la pantalla no la pinte: porque no existe nada que la
-  devuelva.** Las dos acciones sobre un usuario son reenviar la invitación y mandarle el enlace de
-  restablecer. Las dos comprueban que el usuario sea de esa empresa y responden 404 si no lo es.
-- **El certificado de Cámara de Comercio ya tiene dónde consultarse**: la pestaña Resumen de la ficha,
-  que era el pendiente que dejó F1B-02.
-- `EstadoDeEmpresa` y `SaludDeUso` son los enumerados nuevos. Las tres constantes de estado de
-  `Tenant` ahora salen del enumerado, así que la lista de estados posibles está escrita una sola vez.
-- `composer verificar` en verde: Pint, PHPStan sin errores, **519** pruebas de Pest (16 más), build y
-  **197** de Vitest (11 más).
+- **Agregar una EPS ya no requiere desplegar código**, que era el «Hecho cuando» de la tarea. Se da
+  de alta desde el panel y se ofrece en el formulario de empleado de **todas** las empresas en la
+  petición siguiente, porque `Entidades::paraFormulario()` lee la tabla y no una copia. Hay prueba de
+  ese camino completo.
+- **La pantalla `Proveedor/Catalogos` tiene las cinco pestañas del prototipo**: constantes legales,
+  festivos, EPS y entidades, ciudades y umbrales. Tres escriben y dos solo leen.
+- **Las cinco listas de entidades se administran igual y con el mismo código.** `CatalogosDelSistema::ENTIDADES`
+  es el único sitio donde está escrito qué listas hay; la pantalla, la validación y las tres acciones
+  salen de ahí, así que una lista nueva es un renglón.
+- **Nada se borra.** En entidades y municipios la acción es «desactivar»: dejan de ofrecerse y siguen
+  leyéndose en los empleados que ya los tenían. Los festivos estrenaron `deleted_at` —eran la única
+  tabla de catálogo sin borrado lógico— y **volver a cargar una fecha quitada revive su fila** en vez
+  de chocar con el índice único de `fecha`. Lo resuelve `Festivo::registrar()`, el único camino por
+  el que la aplicación escribe esa tabla.
+- **El calendario avisa a tiempo:** desde octubre si falta el año siguiente, como pide el capítulo 8,
+  y en cualquier mes si falta el del año en curso, que es peor. Los festivos que caen en sábado van
+  marcados en la tabla: son los que más se olvidan y los únicos que solo cambian el cálculo en las
+  empresas con sábado laboral.
+- **Los municipios se miran de a un departamento**, como se eligen en el formulario de empleado.
+- **La constancia la escribe sola la auditoría**: el observador ya audita cualquier modelo, así que
+  cada alta, corrección y desactivación de catálogo queda con su autor y **sin `tenant_id`**, porque
+  son datos globales. Hay prueba.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **546** pruebas de Pest (27 más), build y
+  **204** de Vitest (7 más).
 
 ## Decisiones tomadas
 
-- **Los umbrales de la salud de uso van a `config/panel.php`, no dentro de la lógica.** El documento
-  nombra los tres estados y **no dice a cuántos días empieza cada uno**. Como no es una regla legal
-  que se pueda consultar sino una decisión comercial, se sigue el patrón de `config/validaciones.php`:
-  una propuesta escrita con su porqué, en un solo sitio, y anotada abajo para David. **Siete días
-  para «activa», treinta para «sin uso».**
-- **«Nunca ha entrado nadie» es «sin uso» y no un cuarto estado.** Para la conversación de venta, la
-  empresa que no ha entrado nunca y la que lleva dos meses sin entrar necesitan la misma llamada. Lo
-  que las distingue se lee en la columna de al lado, que dice «Nunca».
-- **El último ingreso se escribe al iniciar sesión, no en un proceso nocturno.** La migración creó la
-  columna para que la refrescara el proceso diario; escribirla donde ocurre el hecho es exacto, cuesta
-  una consulta y **hace que el panel no enseñe nunca un dato de ayer**. Va con `update()` del
-  constructor de consultas para no dejar una línea de auditoría por cada entrada de cada usuario: eso
-  ya lo cuenta la tabla `accesos`.
-- **Los empleados se cuentan y los usuarios también; el contador guardado no se usa.** La diferencia
-  con el último ingreso es deliberada: el ingreso es un hecho con **un solo escritor**, así que
-  anotarlo es exacto; los empleados cambian por muchos caminos y un contador que alguno olvide
-  actualizar miente sin que nadie lo note.
-- **El filtro de pago no se construye.** Está en el documento, pero no hay dos valores distintos que
-  ofrecer hasta F5-04.
-- **La ficha no ordena por «Empleados».** Ese número se cuenta empresa por empresa dentro de su
-  contexto, así que la base de datos no podría ordenarlo sin sacar el dato de su aislamiento.
-- **Las empresas sin ningún ingreso van al final del orden por «Último ingreso», en los dos
-  sentidos.** Son el caso que hay que mirar, no una fecha vieja.
-- **El singular y el plural de los estados se escriben en el enumerado.** «1 suspendidas» delata una
-  frase armada con una concatenación, y «en prueba» no lleva ese.
-- **La ficha usa `ContextoTenant::paraTenant()` para el aviso del perfil sociodemográfico**, que
-  necesita contar los empleados ya cargados. En el panel no hay `tenant_actual()` y no lo va a haber.
+- **Las constantes legales se leen y no se editan.** El prototipo describe esa pestaña como «donde se
+  ajusta el sistema cuando cambia una ley», pero `.claude/rules/20-calculo-y-reglas-legales.md` dice
+  que esos números viven en `config/reglas_laborales.php`. Editarlos desde una pantalla los sacaría
+  de ahí, dejaría el archivo mintiendo y quitaría del camino la revisión que hoy pasa cualquier
+  cambio de un número legal. **La pantalla lo dice en su propia nota**, no lo calla. Está abajo para
+  David.
+- **La norma y la fecha de verificación se declararon en `App\Proveedor\ConstantesLegales`.** En el
+  archivo de configuración están en comentarios, que sirven a quien abre el código y no a quien abre
+  el panel. **Los valores no se copiaron**: se leen de `config()`, y hay prueba de que cambiar la
+  configuración cambia lo que la pantalla enseña.
+- **La pestaña «Umbrales» declara y no inventa.** El capítulo 8 lista cuatro y **ninguno de los
+  cuatro está decidido**: la anticipación de la alerta de tope (D.3), el contrato de obra prolongado
+  (D.2), la vigencia del usuario de demostración y los días de mora. La tabla enseña los umbrales que
+  ya existen con el archivo en el que viven, y los que faltan con la decisión de la que dependen.
+- **Los festivos pasaron a borrado lógico.** La regla 4 no admite excepciones y hasta hoy nadie podía
+  tocar esa tabla. Un festivo que se quita cambia el conteo de días hábiles de todas las empresas a
+  la vez: tiene que quedar rastro.
+- **Aquí no hay listado paginado y es a propósito.** Las tres listas se miran de a una —una entidad
+  de las cinco, un departamento de los treinta y tres, un año de festivos— y ninguna pasa de unas
+  decenas de filas. Copiar por cuarta vez el armazón de filtros, orden y paginación antes de que
+  `REV-01` lo unifique habría hecho esa tarea más cara, no más barata.
+- **El año de un festivo se deduce de la fecha, no se pregunta.** Preguntarlo dejaría escribir un
+  festivo de julio archivado en el año anterior, y ese error no se nota hasta que un conteo sale mal
+  meses después.
+- **La unicidad del nombre de una entidad ignora si está desactivada.** Una EPS liquidada sigue en la
+  tabla; darla de alta otra vez dejaría dos filas con el mismo nombre el día que alguien reactive la
+  vieja. El mensaje de error dice que se active en vez de agregarla.
 
 ## Preguntas para Angela
 
@@ -88,76 +80,73 @@
   Colfondos, Skandia, el Fondo Nacional del Ahorro y «Otro», pero **el fondo de cesantías no aparece
   en la sección 5.1 de la especificación funcional**. La pregunta concreta: **¿se agrega «fondo de
   cesantías» como campo obligatorio del formulario de empleado?** Si la respuesta es sí, es una tarea
-  nueva —tabla, columna, seeder, un campo en el paso 2 del asistente y un renglón en la ficha, que ya
-  están construidos—.
+  nueva —tabla, columna, seeder, un campo en el paso 2 del asistente y un renglón en la ficha—, y
+  ahora también **una entrada más en `CatalogosDelSistema::ENTIDADES`**, que es un renglón.
 - Menor: nivel educativo quedó con **«Técnico / Tecnólogo» unidos** y **«Posgraduado(a)» sin
   distinguir especialización, maestría y doctorado**, tal como los pediste.
 - **B.1 sigue abierta y ahora tiene consecuencia visible.** El límite de prórrogas cortas advierte y
   no bloquea porque así lo pide ese punto. **Confirmada la regla con el asesor laboral, pasa a
   bloquear con una palabra.**
 - **D.2 y D.3 se vuelven bloqueantes en la fase 3**: el umbral del contrato de obra o labor
-  prolongado y la anticipación de la alerta de cercanía al tope de cuatro años.
+  prolongado y la anticipación de la alerta de cercanía al tope de cuatro años. **Ya tienen su sitio
+  reservado**: son dos renglones de la pestaña «Umbrales» que hoy dicen «Sin decidir».
 
 ## Decisiones para David
 
-- **Los umbrales de la salud de uso son una propuesta tuya de confirmar.** Están en
-  `config/panel.php`: **siete días** para que una empresa siga contando como «activa» y **treinta**
-  para pasarla a «sin uso». El documento pide los tres estados y no da los números. Confirmarlos o
-  cambiarlos es editar ese archivo y nada más: ni la consulta, ni el filtro, ni la pantalla cambian.
+- **La pantalla de constantes legales quedó de solo lectura.** El prototipo la describe como el sitio
+  donde se ajusta el sistema cuando cambia una ley; la regla del proyecto dice que esos números viven
+  en `config/reglas_laborales.php`. **Se siguió la regla.** Si quieres que sean editables desde el
+  panel, es una tarea nueva —tabla, migración y un lector que sustituya a `config()`— y hay que
+  decidir antes quién puede tocarlos y qué revisión pasan: hoy pasan por un `git diff`.
+- **Los umbrales de la salud de uso siguen siendo una propuesta tuya de confirmar.** Están en
+  `config/panel.php`: **siete días** para «activa» y **treinta** para «sin uso». Ahora se leen además
+  en la pestaña «Umbrales» del panel, marcados como «Propuesto, sin confirmar».
+- **Los cuatro umbrales del capítulo 8 siguen sin números** y la pestaña lo dice fila por fila. Los
+  dos primeros los decide Angela con el asesor laboral (D.2 y D.3); **la vigencia del usuario de
+  demostración y los días de mora son tuyos**.
 - **A.1 sigue abierta.** El plan de una empresa son hoy `plan_nombre`, `plan_empleados_incluidos`,
   `plan_usuarios_incluidos` y `plan_inicia_el`, todas en `tenants`. **El día que existan los niveles
-  con su precio, esas cuatro columnas se sustituyen por `plan_id` y la suscripción.** El filtro de
-  plan del listado nuevo se alimenta hoy de los nombres que se han usado, así que ese día también
-  cambia de fuente —es una línea—.
-- **La escalera de mora sigue sin números** y ahora tiene una columna esperándola: «Pago» dice «Sin
-  cobros todavía» en todas las filas. El capítulo 6 propone aviso a los 5 días, segundo aviso a los 15
-  y suspensión a los 30, y dice que «los números son una decisión de ustedes».
+  con su precio, esas cuatro columnas se sustituyen por `plan_id` y la suscripción.**
+- **La escalera de mora sigue sin números.** El capítulo 6 propone aviso a los 5 días, segundo aviso
+  a los 15 y suspensión a los 30, y dice que «los números son una decisión de ustedes».
 - **El prototipo pide dos campos que el documento no lista y no se construyeron**: «valor mensual»
-  —precio, A.1— y «número de empleados declarado», que **es otra cosa que los empleados incluidos en
-  el plan**: es lo que el cliente dice que tiene, y es de lo que se alimentaría la tarjeta «clientes
-  sin arrancar» del capítulo 3. Si hace falta, es una columna y un campo.
-- **`empleados_cargados` y `ultima_novedad_en` siguen sin escritor.** La primera ya no hace falta para
-  el listado —se cuenta—, y la segunda no puede tenerlo hasta que existan las novedades. Cuando F3-01
-  construya el proceso diario, decide si se quedan como caché o se borran: **hoy son dos columnas que
-  nadie llena y de las que nadie depende**.
-- **Un código de segundo factor fallido no queda en la tabla `accesos`.** Ahí solo queda el acceso con
-  contraseña, que sí se registra. Si interesa el rastro, es un valor nuevo de `ResultadoDeAcceso`.
-- **No hay forma de reemitir un segundo factor perdido.** Hoy se arregla borrando las dos columnas del
-  usuario en la base de datos. Con una sola cuenta de proveedor es aceptable; **con equipo, no**.
+  —precio, A.1— y «número de empleados declarado».
+- **`empleados_cargados` y `ultima_novedad_en` siguen sin escritor.** Cuando F3-01 construya el
+  proceso diario, decide si se quedan como caché o se borran.
+- **Los códigos DANE de los municipios siguen nulos.** Ahora **se pueden completar uno por uno desde
+  el panel**, pero cotejar los 1.101 contra el archivo del DANE a mano no es razonable: si quieres
+  hacerlo de una vez, es una carga masiva y es una tarea nueva. La pantalla lo dice.
+- **Un código de segundo factor fallido no queda en la tabla `accesos`.**
+- **No hay forma de reemitir un segundo factor perdido.** Hoy se arregla borrando las dos columnas
+  del usuario en la base de datos.
 - **La regla de «la fecha entre paréntesis» está escrita más ancha de lo que la sostiene el
   documento.** `.claude/rules/30-interfaz.md` la enuncia para toda la interfaz; su fuente —documento
-  1, sección 9.1— solo para los mensajes de las alertas. **Se recomienda acotar la regla del archivo a
-  los correos. En la fase 3 deja de ser cosmético.**
+  1, sección 9.1— solo para los mensajes de las alertas. **Se recomienda acotar la regla del archivo
+  a los correos. En la fase 3 deja de ser cosmético.**
 - **`User`, `Acceso` e `Invitacion` no llevan `SoftDeletes`.** Importará cuando exista «Usuarios y
-  permisos»: dar de baja a un usuario tiene que ser lógico, o se pierde de quién eran las líneas de
-  auditoría que él escribió. **La pestaña «Usuarios» de la ficha ya enseña a todos los usuarios de una
-  empresa, así que ahí se vería primero.**
-- **Los parámetros de cálculo todavía no tienen quien los lea.** Ya se pueden cambiar desde los dos
-  lados —el cliente y el panel—, pero **el único consumidor construido es el del perfil
-  sociodemográfico**: el motor que los usará es F2-02.
+  permisos». **`Festivo` ya no está en esa lista: lo estrenó en esta tarea.**
+- **Los parámetros de cálculo todavía no tienen quien los lea.** El motor que los usará es F2-02, que
+  es justo lo que empieza la sesión siguiente.
 - **El menú del cliente no tiene «Usuarios y permisos» ni «Facturación», y ninguna tiene tarea en el
-  backlog.** Crear el superadministrador ya se puede desde el panel; **crear sus administradores,
-  todavía no desde ninguna parte**. Si el cliente debe poder hacerlo antes de vender, es una tarea
-  nueva.
+  backlog.** Crear sus administradores no se puede desde ninguna parte.
 - **Sigue sin existir «Editar contrato».** El aviso del modal de renovación dice «edita el contrato»
   sin enlazar a ninguna parte.
 - **El texto del hueco del saldo de vacaciones se lee en pantalla y sigue siendo tuyo.** Está en
-  `FichaDeEmpleado::saldoDeVacaciones()`.
-- **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de una
-  vinculación inactiva. Está anotado en F2-09.
+  `FichaDeEmpleado::saldoDeVacaciones()` y **deja de ser un hueco en F2-02**.
+- **La fecha de salida no existe todavía.** `Vinculacion::fechaDeSalida()` devuelve `fecha_fin` de
+  una vinculación inactiva. Está anotado en F2-09.
 - **Contrastar las cuatro listas de seguridad social contra las fuentes oficiales antes de vender.**
-  Hay nueve EPS intervenidas por la Supersalud. **Es una lista global: si está mal, está mal para
-  todos los clientes a la vez.**
-- **Verificar el calendario de festivos antes de vender.** Cincuenta y tres fechas, quince minutos,
-  mismo riesgo global que las EPS.
-- **Contrastar los 1.101 municipios contra el archivo del DANE.** Ese mismo cotejo trae los códigos
-  DANE que hoy están nulos.
-- **Vigencia del enlace de invitación: siete días.** En `Invitaciones::DIAS_DE_VIGENCIA`. Ahora se lee
-  en dos sitios: la confirmación de «empresa creada» y la de «invitación reenviada». **Confírmalo.**
+  Hay nueve EPS intervenidas por la Supersalud. **Ya no hace falta desplegar para corregirlas**: se
+  editan desde la pestaña «EPS y entidades». Sigue siendo una lista global: si está mal, está mal
+  para todos los clientes a la vez.
+- **Verificar el calendario de festivos antes de vender.** Cincuenta y tres fechas cargadas para
+  2025, 2026 y 2027, quince minutos, y **ahora se corrigen desde el panel**.
+- **Vigencia del enlace de invitación: siete días.** En `Invitaciones::DIAS_DE_VIGENCIA`, y ahora
+  también visible en la pestaña «Umbrales». **Confírmalo.**
 - **El rol de conexión de PostgreSQL.** `.env` se conecta como `postgres`, superusuario con
   `BYPASSRLS`, así que **en local la capa 2 no se aplica nunca**. En producción hace falta un rol
   corriente con `SELECT, INSERT, UPDATE, DELETE`.
-- Abierta de veintisiete sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
+- Abierta de veintiocho sesiones atrás: **la máquina tiene PHP 8.2.12 (XAMPP) y `CLAUDE.md` pide
   8.3+**. `composer.json` quedó en `"php": "^8.2"`.
 - **`.claude/rules/10-multiempresa.md` no se pudo editar** (el entorno lo trata como archivo
   sensible). Faltan tres líneas en «Capa 2»: que la migración llama a `PoliticaRls::activarEn()`
@@ -168,49 +157,49 @@
 
 ## Notas para la próxima sesión
 
-- La siguiente es **F1B-04, catálogos y constantes desde el panel**: capítulo 8 del documento 4. Las
-  tablas y sus datos ya existen desde F0-11 y **`docs/06-decisiones-pendientes.md` lo nombra
-  expresamente** en su línea 328: hasta esa tarea, las listas se actualizan recargando el seeder.
-- **REV-01 y REV-02 siguen pendientes y ahora hay un tercer listado.** `ListadoDeEmpresas` volvió a
-  escribir `opcion()`, `porPagina()`, `pagina()`, `tieneFiltros()`, `paraLaInterfaz()`, `TODOS` y
-  `TAMANOS_DE_PAGINA`, y `Proveedor/Empresas.vue` volvió a escribir `pedir()`, `ordenar()`, `quitar()`
-  y `limpiar()`. **Se hizo así a propósito: extraer el armazón es una tarea del backlog y mezclarla
-  con esta habría dejado un cambio imposible de revisar.** El plazo que fijó la revisión sigue en pie:
-  **antes de F2-04**, y ahora con tres ejemplos en vez de dos, que es mejor material para decidir qué
-  es común de verdad.
-- **`SaludDeUso` tiene la regla escrita dos veces a propósito** —`segunElUltimoIngreso()` clasifica una
-  fila y `filtrar()` filtra muchas—, y por eso viven pegadas la una a la otra en el mismo archivo. Si
-  cambia una, cambia la otra, o el filtro «sin uso» devolverá empresas que la tabla pinta en verde.
-- **`ListadoDeEmpresas::empleadosDe()` es el único sitio donde se cuentan los empleados de otra
-  empresa.** Cualquier cifra nueva del panel que mire tablas de negocio se pide igual, dentro de
-  `paraTenant()`.
-- **Toda pestaña nueva de la ficha se declara en `FichaDeEmpresa::PESTANAS`** y, si todavía no tiene
-  contenido, en `PENDIENTES` con la tarea de la que depende.
-- **`CreacionDeEmpresa` es el sitio de cualquier cosa sobre dar de alta un cliente** y
-  **`FichaDeEmpresa` el de cualquier cosa que la ficha enseñe.** No escribas una tercera.
-- **Toda pantalla nueva del panel se envuelve en `ArmazonProveedor`**, nunca en `Armazon` a pelo.
+- **La siguiente es F2-01 y arranca la fase 2: los diez casos obligatorios del motor, que tienen que
+  fallar.** Están en `docs/02-arquitectura-y-datos.md`, sección 4.2. La regla es explícita: **la
+  prueba va primero** y los diez fallan por falta de implementación, no por error de sintaxis.
+- **Hay dos conteos de días corridos escritos a mano esperando al motor**, uno en
+  `HistorialDeContrato::duracionTotalEnDias()` y otro en `RenovacionDeContrato::diasCorridos()`,
+  idénticos y los dos anotados. Cuando exista `diasCorridos()`, los dos pasan a llamarlo.
+- **El motor va a leer `Festivo`, y `Festivo` ya tiene borrado lógico.** `esFestivo()` y
+  `fechasDelAnio()` excluyen solos a los quitados, así que no hace falta acordarse en cada consulta.
+- **`Festivo::registrar()` es el único camino por el que se escribe el calendario.** Cualquier carga
+  nueva —el seeder de un año, la carga masiva del DANE si algún día llega— pasa por ahí o se choca
+  con el índice único de `fecha`.
+- **REV-01 y REV-02 siguen pendientes, y esta tarea no agregó un cuarto listado a propósito.** El
+  plazo que fijó la revisión sigue en pie: **antes de F2-04**.
+- **`CatalogosDelSistema` es el sitio de cualquier cosa que la pantalla de catálogos enseñe** y
+  **`ConstantesLegales` el de la tabla de constantes.** Una lista nueva es un renglón de
+  `CatalogosDelSistema::ENTIDADES` y nada más: la pantalla, la validación y las tres acciones salen
+  de ahí.
+- **`TablaDeCatalogo` y `ModalDeCatalogo` son de las tres pestañas que escriben.** La tabla es la
+  misma para entidades y municipios; el modal, el mismo para las tres altas, con los campos
+  declarados desde la pantalla.
+- **Toda pestaña nueva de la ficha de empresa se declara en `FichaDeEmpresa::PESTANAS`** y, si
+  todavía no tiene contenido, en `PENDIENTES` con la tarea de la que depende.
+- **Toda pantalla nueva del panel se envuelve en `ArmazonProveedor`**, nunca en `Armazon` a pelo, y
+  **su sección sale de `SeccionDelPanel::pendientes()`** el día que estrene contenido, como acaba de
+  salir «Catálogos».
 - **`Armazon` ya pinta la prop compartida `estado`.** Un `->with('estado', …)` del servidor se ve
-  solo, en las dos aplicaciones. No agregues una `Notificacion` por pantalla.
-- **`SeccionDelPanel::PREFIJO` es el único sitio donde está escrito `proveedor`** —salvo las rutas de
-  empresas, que lo llevan en su nombre de ruta—. Una sección que estrene contenido sale de
-  `SeccionDelPanel::pendientes()`, como acaba de salir «Empresas».
+  solo, en las dos aplicaciones.
 - **`App\Presentacion\Formato` es el único sitio donde se escribe una fecha, un número de días o un
   peso.**
 - **Todo parámetro nuevo de la empresa se agrega en `ParametrosDeLaEmpresa::CAMPOS`** y en las cuatro
-  tablas de textos de ese archivo. Las **dos** pantallas que los editan —la del cliente y la de la
-  ficha del panel—, la validación y el guardado lo recogen solos; lo único aparte es la columna.
-- **`CambioAIndefinido` es el sitio de cualquier cosa sobre el cambio de modalidad**,
-  `RenovacionDeContrato` el de una prórroga propuesta y `VigenciaDelContrato` el de las cuentas sobre
-  un contrato existente.
-- **Las frases que la pantalla promete se escriben donde vive el efecto.**
+  tablas de textos de ese archivo.
 - **Toda regla que dependa de una decisión abierta va a `config/`**, con su estado y el punto que la
-  sostiene: `validaciones.php` para las legales, `panel.php` para las comerciales.
+  sostiene: `validaciones.php` para las legales, `panel.php` para las comerciales. **Y ahora se
+  enseña sola en la pestaña «Umbrales»** si se le agrega su renglón.
+- **Las frases que la pantalla promete se escriben donde vive el efecto.**
 - **Los helpers de prueba están repartidos y Pest los comparte**: `enLaEmpresa()` en
-  `PersonasYVinculacionesTest.php`, `usuarioDe()` en `RolesYPermisosTest.php`, `ownerVerificable()` en
-  `PanelDelProveedorTest.php`, `ownerEnElPanel()` y `datosDeEmpresa()` en `CrearEmpresaTest.php`, y
-  `enEmpresa()` con `empresaConEmpleados()` en `PanelDeEmpresasTest.php`. **Una prueba que se ejecute
-  sola con `--filter` no los encuentra: hay que correr la suite.**
-- **La tabla del historial sigue sin las columnas «Duración» y «Registrado» del prototipo.** La arma
-  `FichaDeEmpleado::filasDelHistorial()`.
-- **`OpcionesDeLista` lo usan ahora seis enumerados**, los cuatro de F1-06 y los dos del panel.
+  `PersonasYVinculacionesTest.php`, `usuarioDe()` en `RolesYPermisosTest.php`, `ownerVerificable()`
+  en `PanelDelProveedorTest.php`, `ownerEnElPanel()` y `datosDeEmpresa()` en `CrearEmpresaTest.php`,
+  `enEmpresa()` con `empresaConEmpleados()` en `PanelDeEmpresasTest.php` y
+  `departamentoConMunicipio()` en `PanelDeCatalogosTest.php`. **Una prueba que se ejecute sola con
+  `--filter` no los encuentra: hay que correr la suite.**
+- **La prueba del segundo factor del panel ya no usa «Catálogos» como sección vacía**: ahora usa
+  «Salud del sistema». La siguiente sección que estrene contenido tendrá que mover esa línea otra
+  vez.
+- **La tabla del historial sigue sin las columnas «Duración» y «Registrado» del prototipo.**
 - **No queda ninguna tarea bloqueada en el backlog.** Sí quedan dos `REV-` al final.

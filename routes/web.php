@@ -10,6 +10,7 @@ use App\Http\Controllers\Acceso\SesionController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
+use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
@@ -222,7 +223,46 @@ Route::middleware(['auth', 'proveedor'])
                 ->name('proveedor.empresas.contrasena');
 
             /*
-             * Las ocho secciones restantes del capítulo 2. Existen desde ya,
+             * Catálogos (documento 4, capítulo 8). Una pantalla con cinco
+             * pestañas y siete acciones de escritura.
+             *
+             * Ninguna de las siete es un `DELETE` salvo la de los festivos, y
+             * esa es un borrado lógico: en las entidades y en las ciudades,
+             * «desactivar» es la acción y por eso se llama `estado` y no
+             * `eliminar`. Un catálogo del que un empleado depende no se borra.
+             *
+             * Las direcciones llevan la lista y el identificador por separado,
+             * así que el controlador comprueba que el segundo sea de la primera.
+             */
+            Route::get('/catalogos', [CatalogoController::class, 'index'])
+                ->name(SeccionDelPanel::Catalogos->nombreDeRuta());
+
+            Route::post('/catalogos/entidades/{catalogo}', [CatalogoController::class, 'crearEntidad'])
+                ->name('proveedor.catalogos.entidades.crear');
+            Route::put('/catalogos/entidades/{catalogo}/{entidad}', [CatalogoController::class, 'editarEntidad'])
+                ->whereNumber('entidad')
+                ->name('proveedor.catalogos.entidades.editar');
+            Route::post('/catalogos/entidades/{catalogo}/{entidad}/estado', [CatalogoController::class, 'alternarEntidad'])
+                ->whereNumber('entidad')
+                ->name('proveedor.catalogos.entidades.estado');
+
+            Route::post('/catalogos/ciudades', [CatalogoController::class, 'crearCiudad'])
+                ->name('proveedor.catalogos.ciudades.crear');
+            Route::put('/catalogos/ciudades/{ciudad}', [CatalogoController::class, 'editarCiudad'])
+                ->whereNumber('ciudad')
+                ->name('proveedor.catalogos.ciudades.editar');
+            Route::post('/catalogos/ciudades/{ciudad}/estado', [CatalogoController::class, 'alternarCiudad'])
+                ->whereNumber('ciudad')
+                ->name('proveedor.catalogos.ciudades.estado');
+
+            Route::post('/catalogos/festivos', [CatalogoController::class, 'crearFestivo'])
+                ->name('proveedor.catalogos.festivos.crear');
+            Route::delete('/catalogos/festivos/{festivo}', [CatalogoController::class, 'quitarFestivo'])
+                ->whereNumber('festivo')
+                ->name('proveedor.catalogos.festivos.quitar');
+
+            /*
+             * Las siete secciones restantes del capítulo 2. Existen desde ya,
              * como en el armazón del cliente, para que el menú del panel se
              * pueda recorrer entero: la dirección, el nombre de ruta y el
              * resaltado son los definitivos y solo falta el contenido.

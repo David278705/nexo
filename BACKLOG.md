@@ -322,12 +322,27 @@ contenido y tres dicen de qué tarea depende el suyo. Los parámetros se editan 
 cambio queda en la auditoría **de esa empresa**, que es la que el cliente puede ver; las dos acciones
 sobre un usuario mandan enlaces a su buzón y **ninguna enseña una contraseña**.
 
-### [ ] F1B-04 · Catálogos y constantes desde el panel
+### [x] F1B-04 · Catálogos y constantes desde el panel
 
 Administración de EPS, fondos, ARL, cajas, bancos y ciudades. Calendario de festivos por año con
 aviso si falta el siguiente. Pantalla de constantes legales con su norma.
 **Hecho cuando:** agregar una EPS no requiere desplegar código.
 **Fuente:** `docs/04-panel-del-proveedor.md` cap. 8
+
+Hecho: `CatalogosDelSistema` —las cinco pestañas del prototipo, lo que enseña cada una y las frases
+de cada acción—, `ConstantesLegales`, `CatalogoController` con sus siete acciones de escritura, los
+tres `FormRequest` y la pantalla `Proveedor/Catalogos`, con los componentes compartidos
+`TablaDeCatalogo` y `ModalDeCatalogo`. **Agregar una EPS desde el panel la ofrece en el formulario de
+empleado de todas las empresas en la petición siguiente**, y hay prueba. **Nada se borra:** las
+entidades y los municipios se desactivan —dejan de ofrecerse y siguen leyéndose en quien ya los
+tenía— y los festivos estrenaron `deleted_at`, que era la única tabla de catálogo sin borrado
+lógico; volver a cargar una fecha quitada revive su fila en vez de chocar con el índice único. El
+aviso del calendario sale **desde octubre** si falta el año siguiente, y en cualquier mes si falta el
+del año en curso. **Constantes legales y umbrales son de solo lectura y es una decisión, no una
+tarea a medias**: los números legales viven en `config/reglas_laborales.php` porque así lo exige la
+regla del motor, y los cuatro umbrales que pide el capítulo 8 dependen de decisiones abiertas —D.2,
+D.3, la demostración y la mora—, así que la pestaña dice de cuál depende cada uno en vez de
+inventarlos.
 
 ---
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -19,8 +20,43 @@ use Illuminate\Support\Carbon;
  */
 class Festivo extends Model
 {
+    use SoftDeletes;
+
     /** @var list<string> */
     protected $fillable = ['fecha', 'nombre', 'anio'];
+
+    /**
+     * Agrega un festivo al calendario, o revive el que ya estuvo en esa fecha.
+     *
+     * Es el único camino por el que la aplicación escribe esta tabla, y existe
+     * por una razón muy concreta: `fecha` es única y el borrado es lógico, así
+     * que un festivo quitado sigue ocupando su fecha. Sin esto, volver a cargar
+     * el 20 de julio después de haberlo quitado fallaría con un error de base de
+     * datos delante de quien solo quiso corregirse.
+     *
+     * El año no se pregunta: se deduce de la fecha. Preguntarlo abriría la
+     * puerta a un festivo de julio archivado en el año anterior, que es un error
+     * invisible hasta que el conteo de días hábiles sale mal.
+     */
+    public static function registrar(CarbonInterface $fecha, string $nombre): self
+    {
+        $festivo = static::withTrashed()
+            ->where('fecha', $fecha->toDateString())
+            ->first();
+
+        if ($festivo instanceof self) {
+            $festivo->restore();
+            $festivo->update(['nombre' => $nombre, 'anio' => $fecha->year]);
+
+            return $festivo;
+        }
+
+        return static::create([
+            'fecha' => $fecha->toDateString(),
+            'nombre' => $nombre,
+            'anio' => $fecha->year,
+        ]);
+    }
 
     /**
      * Si esa fecha es festiva. Una sola consulta, sin cargar el año entero.

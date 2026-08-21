@@ -13,6 +13,12 @@
 | Estos valores producen números iguales para todos los clientes a la vez.
 | Un error aquí no rompe una pantalla: liquida mal a una persona real.
 |
+| El panel del proveedor los enseña en su pestaña «Constantes legales», de
+| solo lectura, con la norma y la fecha de verificación de cada uno. Esos dos
+| textos están además declarados en `App\Proveedor\ConstantesLegales`, porque
+| un comentario no se puede pintar en una pantalla: si una norma cambia,
+| cambian el valor de aquí y la norma de allá, y son el mismo cambio.
+|
 | Fuentes: Código Sustantivo del Trabajo · Ley 2466 de 2025 ·
 | Concepto MinTrabajo 08SE2026120300000006157 del 18 de febrero de 2026.
 |

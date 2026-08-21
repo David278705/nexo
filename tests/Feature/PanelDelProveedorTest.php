@@ -192,11 +192,11 @@ it('abre el panel con el código correcto de la sesión', function () {
     // toma una de las que todavía no tienen contenido para que esta prueba no
     // se rompa cada vez que una sección estrene el suyo.
     $this->get('/proveedor/empresas')->assertOk();
-    $this->get('/proveedor/catalogos')
+    $this->get('/proveedor/salud')
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina
             ->component('Proveedor/SeccionPendiente')
-            ->where('titulo', 'Catálogos'));
+            ->where('titulo', 'Salud del sistema'));
 });
 
 it('no abre el panel con un código equivocado', function () {

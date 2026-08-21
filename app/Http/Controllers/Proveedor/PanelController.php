@@ -12,11 +12,11 @@ use Inertia\Response;
 /**
  * Las pantallas del panel del proveedor.
  *
- * Quedan aquí el inicio y las secciones que todavía no tienen contenido propio:
- * `F1B-04` catálogos y el resto de la fase 5. «Empresas» ya no pasa por aquí
- * —tiene su listado y su ficha en `EmpresaController`—, pero las direcciones, la
- * puerta del rol y el segundo factor de las que faltan son los definitivos desde
- * ya.
+ * Quedan aquí el inicio y las secciones que todavía no tienen contenido propio,
+ * que son las de la fase 5. «Empresas» ya no pasa por aquí —tiene su listado y
+ * su ficha en `EmpresaController`— ni «Catálogos» —los tiene en
+ * `CatalogoController`—, pero las direcciones, la puerta del rol y el segundo
+ * factor de las que faltan son los definitivos desde ya.
  *
  * Ninguna pantalla de aquí inventa indicadores. El capítulo 3 del documento 4
  * describe un inicio con clientes en riesgo, ingreso recurrente y correos del
