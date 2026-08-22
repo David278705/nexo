@@ -10,10 +10,10 @@ use App\Http\Requests\RegistrarVacacion;
 use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Novedades\DetalleDeNovedad;
+use App\Novedades\PeriodoDigitado;
 use App\Presentacion\Formato;
 use App\Vacaciones\AdvertenciaDeSaldo;
 use App\Vacaciones\ListadoDeVacaciones;
-use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -33,23 +33,12 @@ class VacacionController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeVacaciones::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Vacaciones/Index', [
-            'vacaciones' => [
-                'filas' => array_map(
-                    fn (Vacacion $vacacion) => ListadoDeVacaciones::fila($vacacion),
-                    $pagina->items(),
-                ),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'total' => $pagina->total(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'vacaciones',
+                fn (Vacacion $vacacion): array => ListadoDeVacaciones::fila($vacacion),
+            ),
             'opciones' => [
                 'tamanos' => ListadoDeVacaciones::TAMANOS_DE_PAGINA,
             ],
@@ -155,7 +144,7 @@ class VacacionController extends Controller
     private static function diasDeVacaciones(Request $peticion): ?string
     {
         $empresa = tenant_actual();
-        $periodo = self::periodoDigitado($peticion);
+        $periodo = PeriodoDigitado::de($peticion);
 
         if ($empresa === null || $periodo === null) {
             return null;
@@ -191,7 +180,7 @@ class VacacionController extends Controller
         }
 
         $empresa = tenant_actual();
-        $periodo = $empresa === null ? null : self::periodoDigitado($peticion);
+        $periodo = $empresa === null ? null : PeriodoDigitado::de($peticion);
 
         if ($periodo === null) {
             return AdvertenciaDeSaldo::paraLaPantalla($vinculacion, null, null);
@@ -204,30 +193,5 @@ class VacacionController extends Controller
             MotorDeCalculo::diasHabilesVacaciones($desde, $hasta, $empresa),
             $hasta,
         );
-    }
-
-    /**
-     * Las dos fechas digitadas, convertidas y en orden, o nulo mientras no
-     * lleguen las dos o no tengan sentido.
-     *
-     * @return array{0: Carbon, 1: Carbon}|null
-     */
-    private static function periodoDigitado(Request $peticion): ?array
-    {
-        $inicio = $peticion->query('fecha_inicio');
-        $fin = $peticion->query('fecha_fin');
-
-        if (! is_string($inicio) || ! is_string($fin) || $inicio === '' || $fin === '') {
-            return null;
-        }
-
-        try {
-            $desde = Carbon::parse($inicio);
-            $hasta = Carbon::parse($fin);
-        } catch (Exception) {
-            return null;
-        }
-
-        return $hasta->lessThan($desde) ? null : [$desde, $hasta];
     }
 }

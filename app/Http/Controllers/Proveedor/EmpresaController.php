@@ -50,23 +50,12 @@ class EmpresaController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeEmpresas::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Proveedor/Empresas', [
-            'empresas' => [
-                'filas' => array_map(
-                    fn (Tenant $empresa) => ListadoDeEmpresas::fila($empresa),
-                    $pagina->items(),
-                ),
-                'total' => $pagina->total(),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'empresas',
+                fn (Tenant $empresa): array => ListadoDeEmpresas::fila($empresa),
+            ),
             'opciones' => [
                 'estados' => EstadoDeEmpresa::paraElegir(),
                 'saludes' => SaludDeUso::paraElegir(),

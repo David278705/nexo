@@ -540,9 +540,18 @@ consecuencia ya calculada—, `DetalleDeNovedad` —la prop `novedad`, gemela de
 `ModalDeNovedad` estrenó modo edición: el mismo modal, sin el paso del documento. **Movimientos y
 terminaciones quedaron fuera a propósito y su decisión está en `REV-03`.**
 
-### [ ] F2-11 · PUNTO DE CONTROL — revisión
+### [x] F2-11 · PUNTO DE CONTROL — revisión
 
 Ejecuta el skill `revisar`.
+
+Informe en `bitacora/revision-2026-08-22.md`. Aislamiento, motor, interfaz y seguridad sin hallazgos:
+las diez tablas de negocio con trait, RLS y caso propio; los diez casos obligatorios del motor
+pasando y ningún conteo laboral fuera de `app/Dominio/Calculo/`; ninguna confirmación que pregunte
+«¿está seguro?». Se arreglaron tres duplicaciones —el bloque de paginación copiado **ocho** veces, ya
+extraído a `Listado::paraLaPantalla()`; la lectura de las dos fechas digitadas copiada **tres** veces,
+ya en `App\Novedades\PeriodoDigitado`; y la guardia `PANTALLAS` de `useListado.test.js`, que cubría
+seis de las ocho pantallas—. Quedó `REV-04` por la pantalla de auditoría, que no tiene tarea en
+ninguna fase.
 
 ---
 
@@ -794,3 +803,28 @@ concretas están en `ESTADO.md`.
 **Hecho cuando:** las dos preguntas están respondidas, los dos módulos tienen sus acciones con la
 consecuencia escrita antes de ejecutarla, y `TipoDeNovedad::tituloDeEdicion()` deja de devolver nulo
 para ellos.
+
+### [ ] REV-04 · Pantalla de auditoría
+
+El módulo `Auditoria` está en el menú, la tabla y el observador existen desde F0-08, y **ninguna tarea
+del backlog le da pantalla**: es el último `SeccionPendiente` del entorno del cliente y no hay nada en
+las fases 3 a 6 que lo cambie.
+
+Listado de lo registrado con filtros por módulo, usuario, acción y rango de fechas, y el detalle con
+el valor anterior y el nuevo. De solo lectura: la tabla no es editable ni borrable desde la
+aplicación, y eso no cambia por tener pantalla.
+
+**Motivo:** F2-10 dejó las novedades editables y eliminables sin límite de antigüedad, así que hoy el
+único sitio donde consta quién corrigió o borró un registro es una tabla que nadie puede mirar. Es la
+contrapartida de esa libertad. Además F5-07 da por hecha esta pantalla —el acceso del owner queda
+«registrado en la auditoría de esa empresa **y visible para ella**»— sin que exista.
+
+**Cuidado:** `codigo_diagnostico` está en la lista `OCULTAS` del observador justamente porque la
+auditoría es otro módulo con otro permiso. Al darle pantalla hay que comprobar que sigue sin salir.
+
+**Hecho cuando:** editar y eliminar una vacación se ven en la pantalla con su autor, su fecha y el
+valor anterior; el módulo sale de las cuatro listas de exclusión compartidas —`routes/web.php`,
+`EstructuraTest.php`, `componenteDe()` en `FlujoDeNovedadTest.php` y `PANTALLAS` en
+`useListado.test.js`—; y hay prueba de que el código de diagnóstico no aparece.
+
+**Fuente:** `docs/02-arquitectura-y-datos.md` 7.2 · `docs/03-diseno-e-interfaz.md` cap. 4

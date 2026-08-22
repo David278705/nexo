@@ -32,23 +32,12 @@ class TerminacionController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeTerminaciones::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Terminaciones/Index', [
-            'terminaciones' => [
-                'filas' => array_map(
-                    fn (Terminacion $terminacion) => ListadoDeTerminaciones::fila($terminacion),
-                    $pagina->items(),
-                ),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'total' => $pagina->total(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'terminaciones',
+                fn (Terminacion $terminacion): array => ListadoDeTerminaciones::fila($terminacion),
+            ),
             'opciones' => [
                 'tipos' => TipoDeSalida::paraElegir(),
                 /*

@@ -35,23 +35,12 @@ class ContratoController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeContratos::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Contratos/Index', [
-            'contratos' => [
-                'filas' => array_map(
-                    fn (Vinculacion $vinculacion) => ListadoDeContratos::fila($vinculacion),
-                    $pagina->items(),
-                ),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'total' => $pagina->total(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'contratos',
+                fn (Vinculacion $vinculacion): array => ListadoDeContratos::fila($vinculacion),
+            ),
             'opciones' => [
                 'vencimientos' => ListadoDeContratos::RANGOS_DE_VENCIMIENTO,
                 'contratos' => TipoContrato::paraElegir(),

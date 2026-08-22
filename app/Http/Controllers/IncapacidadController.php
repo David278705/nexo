@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Autorizacion\Modulo;
-use App\Dominio\Calculo\MotorDeCalculo;
 use App\Exports\IncapacidadesExport;
 use App\Http\Requests\EditarIncapacidad;
 use App\Http\Requests\RegistrarIncapacidad;
@@ -11,8 +10,7 @@ use App\Incapacidades\ListadoDeIncapacidades;
 use App\Incapacidades\OrigenIncapacidad;
 use App\Models\Incapacidad;
 use App\Novedades\DetalleDeNovedad;
-use App\Presentacion\Formato;
-use Exception;
+use App\Novedades\PeriodoDigitado;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -33,23 +31,12 @@ class IncapacidadController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeIncapacidades::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Incapacidades/Index', [
-            'incapacidades' => [
-                'filas' => array_map(
-                    fn (Incapacidad $incapacidad) => ListadoDeIncapacidades::fila($incapacidad),
-                    $pagina->items(),
-                ),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'total' => $pagina->total(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'incapacidades',
+                fn (Incapacidad $incapacidad): array => ListadoDeIncapacidades::fila($incapacidad),
+            ),
             'opciones' => [
                 'origenes' => OrigenIncapacidad::paraElegir(),
                 'eps' => ListadoDeIncapacidades::opcionesDeEps(),
@@ -61,7 +48,7 @@ class IncapacidadController extends Controller
              * nuevo con una recarga parcial cada vez que cambia una fecha; aquí
              * no se resta nada.
              */
-            'diasDeIncapacidad' => Inertia::optional(fn (): ?string => self::diasDeIncapacidad($peticion)),
+            'diasDeIncapacidad' => Inertia::optional(fn (): ?string => PeriodoDigitado::diasCorridos($peticion)),
             /*
              * La incapacidad que se está editando o que se va a eliminar
              * (F2-10). La pantalla la pide al pulsar Editar o Eliminar.
@@ -145,32 +132,5 @@ class IncapacidadController extends Controller
         return redirect()
             ->route(Modulo::Incapacidades->nombreDeRuta())
             ->with('estado', 'Incapacidad eliminada.');
-    }
-
-    /**
-     * Los días de la incapacidad que se está digitando, o nulo mientras las dos
-     * fechas no lleguen o no tengan sentido.
-     */
-    private static function diasDeIncapacidad(Request $peticion): ?string
-    {
-        $inicio = $peticion->query('fecha_inicio');
-        $fin = $peticion->query('fecha_fin');
-
-        if (! is_string($inicio) || ! is_string($fin) || $inicio === '' || $fin === '') {
-            return null;
-        }
-
-        try {
-            $desde = Carbon::parse($inicio);
-            $hasta = Carbon::parse($fin);
-        } catch (Exception) {
-            return null;
-        }
-
-        if ($hasta->lessThan($desde)) {
-            return null;
-        }
-
-        return Formato::dias(MotorDeCalculo::diasCorridos($desde, $hasta));
     }
 }

@@ -41,23 +41,12 @@ class EmpleadoController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeEmpleados::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Empleados/Index', [
-            'empleados' => [
-                'filas' => array_map(
-                    fn (Vinculacion $vinculacion) => ListadoDeEmpleados::fila($vinculacion),
-                    $pagina->items(),
-                ),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'total' => $pagina->total(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'empleados',
+                fn (Vinculacion $vinculacion): array => ListadoDeEmpleados::fila($vinculacion),
+            ),
             'opciones' => [
                 'estados' => EstadoVinculacion::paraElegir(),
                 'contratos' => TipoContrato::paraElegir(),

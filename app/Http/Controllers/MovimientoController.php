@@ -34,23 +34,12 @@ class MovimientoController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeMovimientos::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Movimientos/Index', [
-            'movimientos' => [
-                'filas' => array_map(
-                    fn (Movimiento $movimiento) => ListadoDeMovimientos::fila($movimiento),
-                    $pagina->items(),
-                ),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'total' => $pagina->total(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'movimientos',
+                fn (Movimiento $movimiento): array => ListadoDeMovimientos::fila($movimiento),
+            ),
             'opciones' => [
                 'tipos' => TipoDeMovimiento::paraElegir(),
                 'tiposDelFormulario' => TipoDeMovimiento::paraElFormulario(),

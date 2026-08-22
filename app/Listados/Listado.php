@@ -158,6 +158,50 @@ abstract class Listado
     }
 
     /**
+     * Las props que toda pantalla de listado recibe: la página con sus filas ya
+     * escritas y los tres bloques de filtros.
+     *
+     * Los ocho controladores de listado armaban este mismo literal a mano
+     * —`filas`, `pagina`, `paginas`, `total`, `desde`, `hasta`, y debajo
+     * `filtros`, `aplicados` y `tieneFiltros`—, palabra por palabra. Ocho copias
+     * de la forma de una prop es la forma más fácil de que la pantalla y el
+     * componente `Paginacion` dejen de entenderse en una sola de ellas.
+     *
+     * Se usa esparcida entre las props propias de cada pantalla:
+     *
+     *     return Inertia::render('Vacaciones/Index', [
+     *         ...$listado->paraLaPantalla('vacaciones', ListadoDeVacaciones::fila(...)),
+     *         'opciones' => [...],
+     *     ]);
+     *
+     * `fila()` sigue sin heredarse —cada listado tiene sus columnas— y por eso
+     * llega como argumento y no como método abstracto.
+     *
+     * @param  string  $clave  El nombre de la prop con la página, que es el del
+     *                         módulo en plural: `empleados`, `vacaciones`…
+     * @param  callable(TModelo): array<string, mixed>  $fila
+     * @return array<string, mixed>
+     */
+    public function paraLaPantalla(string $clave, callable $fila): array
+    {
+        $pagina = $this->pagina();
+
+        return [
+            $clave => [
+                'filas' => array_map($fila, $pagina->items()),
+                'pagina' => $pagina->currentPage(),
+                'paginas' => $pagina->lastPage(),
+                'total' => $pagina->total(),
+                'desde' => $pagina->firstItem(),
+                'hasta' => $pagina->lastItem(),
+            ],
+            'filtros' => $this->paraLaInterfaz(),
+            'aplicados' => $this->aplicados(),
+            'tieneFiltros' => $this->tieneFiltros(),
+        ];
+    }
+
+    /**
      * Los filtros del listado más los tres que comparten todos.
      *
      * @return array<string, string|int>

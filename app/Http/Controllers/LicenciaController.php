@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Autorizacion\Modulo;
-use App\Dominio\Calculo\MotorDeCalculo;
 use App\Exports\LicenciasExport;
 use App\Http\Requests\EditarLicencia;
 use App\Http\Requests\RegistrarLicencia;
@@ -11,8 +10,7 @@ use App\Licencias\ListadoDeLicencias;
 use App\Licencias\TipoDeLicencia;
 use App\Models\Licencia;
 use App\Novedades\DetalleDeNovedad;
-use App\Presentacion\Formato;
-use Exception;
+use App\Novedades\PeriodoDigitado;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -32,23 +30,12 @@ class LicenciaController extends Controller
     public function index(Request $peticion): RespuestaInertia
     {
         $listado = ListadoDeLicencias::desde($peticion);
-        $pagina = $listado->pagina();
 
         return Inertia::render('Licencias/Index', [
-            'licencias' => [
-                'filas' => array_map(
-                    fn (Licencia $licencia) => ListadoDeLicencias::fila($licencia),
-                    $pagina->items(),
-                ),
-                'pagina' => $pagina->currentPage(),
-                'paginas' => $pagina->lastPage(),
-                'total' => $pagina->total(),
-                'desde' => $pagina->firstItem(),
-                'hasta' => $pagina->lastItem(),
-            ],
-            'filtros' => $listado->paraLaInterfaz(),
-            'aplicados' => $listado->aplicados(),
-            'tieneFiltros' => $listado->tieneFiltros(),
+            ...$listado->paraLaPantalla(
+                'licencias',
+                fn (Licencia $licencia): array => ListadoDeLicencias::fila($licencia),
+            ),
             'opciones' => [
                 'tipos' => TipoDeLicencia::paraElegir(),
                 'tamanos' => ListadoDeLicencias::TAMANOS_DE_PAGINA,
@@ -59,7 +46,7 @@ class LicenciaController extends Controller
              * los pide de nuevo con una recarga parcial cada vez que cambia
              * una fecha; aquí no se resta ningún día en el navegador.
              */
-            'diasDeLicencia' => Inertia::optional(fn (): ?string => self::diasDeLicencia($peticion)),
+            'diasDeLicencia' => Inertia::optional(fn (): ?string => PeriodoDigitado::diasCorridos($peticion)),
             /*
              * La novedad que se está editando o que se va a eliminar (F2-10).
              * La pantalla la pide al pulsar Editar o Eliminar.
@@ -140,32 +127,5 @@ class LicenciaController extends Controller
         return redirect()
             ->route(Modulo::Licencias->nombreDeRuta())
             ->with('estado', 'Novedad eliminada.');
-    }
-
-    /**
-     * Los días corridos de la novedad que se está digitando, o nulo mientras
-     * las dos fechas no lleguen o no tengan sentido.
-     */
-    private static function diasDeLicencia(Request $peticion): ?string
-    {
-        $inicio = $peticion->query('fecha_inicio');
-        $fin = $peticion->query('fecha_fin');
-
-        if (! is_string($inicio) || ! is_string($fin) || $inicio === '' || $fin === '') {
-            return null;
-        }
-
-        try {
-            $desde = Carbon::parse($inicio);
-            $hasta = Carbon::parse($fin);
-        } catch (Exception) {
-            return null;
-        }
-
-        if ($hasta->lessThan($desde)) {
-            return null;
-        }
-
-        return Formato::dias(MotorDeCalculo::diasCorridos($desde, $hasta));
     }
 }

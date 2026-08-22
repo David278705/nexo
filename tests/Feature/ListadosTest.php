@@ -239,3 +239,65 @@ it('ningún listado vuelve a copiar el armazón', function () {
         }
     }
 });
+
+/*
+ * Las props de la pantalla (revisión de F2-11).
+ *
+ * El armazón resolvía la consulta, pero cada controlador seguía armando a mano
+ * el literal con el que la página viaja a Inertia. Eran ocho copias del mismo
+ * bloque, y una ya se había separado: el panel de empresas escribía `total`
+ * antes que `pagina`.
+ */
+it('entrega la página y los tres bloques de filtros ya armados para la pantalla', function () {
+    app(ContextoTenant::class)->paraTenant(test()->empresa, function (): void {
+        RegistroListable::create(['titulo' => 'Primero', 'estado' => 'abierto']);
+        RegistroListable::create(['titulo' => 'Segundo', 'estado' => 'abierto']);
+
+        $props = listadoDePrueba('buscar=Primero')->paraLaPantalla(
+            'registros',
+            fn (RegistroListable $registro): array => ['titulo' => $registro->titulo],
+        );
+
+        expect($props)->toHaveKeys(['registros', 'filtros', 'aplicados', 'tieneFiltros'])
+            ->and($props['registros']['filas'])->toBe([['titulo' => 'Primero']])
+            ->and($props['registros']['pagina'])->toBe(1)
+            ->and($props['registros']['paginas'])->toBe(1)
+            ->and($props['registros']['total'])->toBe(1)
+            ->and($props['registros']['desde'])->toBe(1)
+            ->and($props['registros']['hasta'])->toBe(1)
+            // Los tres bloques de filtros son los mismos que responden los
+            // métodos sueltos: la pantalla no puede recibir dos versiones.
+            ->and($props['filtros'])->toBe(listadoDePrueba('buscar=Primero')->paraLaInterfaz())
+            ->and($props['tieneFiltros'])->toBeTrue()
+            ->and($props['aplicados'])->toBe([
+                ['clave' => 'buscar', 'texto' => 'Búsqueda: Primero'],
+                // El fixture abre con `estado=abierto`, así que ese filtro
+                // también viaja puesto.
+                ['clave' => 'estado', 'texto' => 'Estado: abierto'],
+            ]);
+    });
+});
+
+it('ningún controlador de listado vuelve a armar el bloque de paginación', function () {
+    // Ocho controladores escribían `'pagina' => $pagina->currentPage()` y sus
+    // cinco hermanos. Si vuelve a aparecer, esto se pone rojo.
+    $controladores = [
+        'app/Http/Controllers/EmpleadoController.php',
+        'app/Http/Controllers/ContratoController.php',
+        'app/Http/Controllers/IncapacidadController.php',
+        'app/Http/Controllers/VacacionController.php',
+        'app/Http/Controllers/LicenciaController.php',
+        'app/Http/Controllers/MovimientoController.php',
+        'app/Http/Controllers/TerminacionController.php',
+        'app/Http/Controllers/Proveedor/EmpresaController.php',
+    ];
+
+    foreach ($controladores as $archivo) {
+        $codigo = (string) file_get_contents(base_path($archivo));
+
+        expect($codigo)->toContain('paraLaPantalla(')
+            ->and($codigo)->not->toContain('currentPage()')
+            ->and($codigo)->not->toContain('lastPage()')
+            ->and($codigo)->not->toContain('firstItem()');
+    }
+});
