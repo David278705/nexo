@@ -21,8 +21,12 @@ use Illuminate\Support\Carbon;
  * - `$fechaDelDisparo` es el día en que la alerta **tocaría** naturalmente. Es
  *   contra esta contra la que la regla busca a sus empleados.
  * - `$fechaDeEnvio` es el día en que el correo va a salir de verdad, que es hoy.
- *   Es la que la regla usa para redactar: si las dos coinciden el aviso dice
- *   «mañana», y si no, dice «en dos días» (documento 1, 9.1).
+ *
+ * La regla no compara las dos a mano: le pasa las dos a
+ * `ReferenciaTemporal::hasta()` y esa escribe la frase con la fecha entre
+ * paréntesis —«mañana (14 de junio)», «en dos días (14 de junio)»— ya ajustada
+ * al adelanto (documento 1, 9.1). Es la única forma de que las once alertas
+ * digan lo mismo el día en que un festivo produzca un adelanto raro.
  *
  * ## Lo que la regla no tiene que hacer
  *

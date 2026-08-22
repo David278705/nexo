@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Queue;
 use Tests\Fixtures\ReglaDePrueba;
 
 /**
- * La infraestructura del motor de alertas (F3-01).
+ * La infraestructura del motor de alertas (F3-01) y el corrimiento al día hábil
+ * anterior (F3-02).
  *
  * Aquí no se prueba ninguna alerta concreta: las once llegan en F3-03, F3-04 y
  * F3-05 y cada una traerá sus propios casos. Lo que se prueba es el armazón que
@@ -205,7 +206,10 @@ describe('las fechas que le tocan a cada día', function () {
         expect($regla->fechasEvaluadas)->toBe(['2026-08-21', '2026-08-22', '2026-08-23']);
     });
 
-    it('adelanta al viernes la alerta que tocaba el domingo', function () {
+});
+
+describe('el «hecho cuando» de F3-02', function () {
+    it('una alerta programada para domingo llega el viernes diciendo «en dos días (fecha)»', function () {
         Mail::fake();
         empleadoDeLaEmpresa($this->empresa);
         conLaRegla(new ReglaDePrueba('2026-08-23'));
@@ -215,8 +219,48 @@ describe('las fechas que le tocan a cada día', function () {
         $alerta = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => AlertaEnviada::first());
 
         expect($alerta->fecha_programada->toDateString())->toBe('2026-08-21')
-            ->and($alerta->fecha_del_hecho->toDateString())->toBe('2026-08-23');
+            ->and($alerta->fecha_del_hecho->toDateString())->toBe('2026-08-23')
+            ->and($alerta->cuerpo)->toBe('En dos días (23 de agosto) pasa algo en Comercializadora del Valle.');
+
+        // El texto ajustado es el que llega al correo, no solo el que queda en
+        // la tabla: el cuerpo se guarda ya escrito y el mailable lo pinta tal cual.
+        Mail::assertSent(
+            CorreoDeAlerta::class,
+            fn (CorreoDeAlerta $correo) => str_contains($correo->render(), 'En dos días (23 de agosto)')
+        );
     });
+});
+
+describe('el corrimiento al día hábil anterior', function () {
+    // La fecha que ya cae en día hábil no se corre y el texto no se ajusta: es
+    // el cuerpo exacto que comprueba «queda registrada con sus destinatarios».
+
+    it('la del sábado se adelanta un día y dice «mañana»', function () {
+        Mail::fake();
+        empleadoDeLaEmpresa($this->empresa);
+        conLaRegla(new ReglaDePrueba('2026-08-22'));
+
+        correrElProceso(VIERNES);
+
+        $alerta = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => AlertaEnviada::first());
+
+        expect($alerta->cuerpo)->toStartWith('Mañana (22 de agosto)');
+    });
+
+    it('si el lunes es festivo, la suya sale el viernes diciendo «en tres días»', function () {
+        Mail::fake();
+        Festivo::registrar(Carbon::parse('2026-08-24'), 'Festivo de prueba');
+        empleadoDeLaEmpresa($this->empresa);
+        conLaRegla(new ReglaDePrueba('2026-08-24'));
+
+        correrElProceso(VIERNES);
+
+        $alerta = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => AlertaEnviada::first());
+
+        expect($alerta->fecha_programada->toDateString())->toBe('2026-08-21')
+            ->and($alerta->cuerpo)->toStartWith('En tres días (24 de agosto)');
+    });
+
 });
 
 describe('la idempotencia', function () {
@@ -303,7 +347,7 @@ describe('el registro de lo enviado', function () {
 
         expect($alerta->tipo)->toBe(TipoDeAlerta::PruebaIndefinidoVispera)
             ->and($alerta->asunto)->toBe('Aviso de prueba de Comercializadora del Valle')
-            ->and($alerta->cuerpo)->toContain('(2026-08-21)')
+            ->and($alerta->cuerpo)->toBe('Hoy (21 de agosto) pasa algo en Comercializadora del Valle.')
             ->and($alerta->destinatarios)->toBe([$this->usuario->email])
             ->and($alerta->estado)->toBe(EstadoDeAlerta::Enviada)
             ->and($alerta->intentos)->toBe(1);

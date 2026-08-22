@@ -1,5 +1,6 @@
 <?php
 
+use App\Dominio\Alertas\ReferenciaTemporal;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Dominio\Calculo\PeriodoDePrueba;
 use App\Dominio\Calculo\SaldoDeVacaciones;
@@ -169,9 +170,12 @@ it('envía el viernes, «en dos días», una alerta programada para el domingo',
     expect($envio->toDateString())->toBe('2026-07-03');
 
     // Dos días, no tres: la anticipación es la diferencia entre las fechas y no
-    // los días corridos entre ellas. El texto del correo lo escribe F3-02 con
-    // este número.
+    // los días corridos entre ellas.
     expect(MotorDeCalculo::diasDeAnticipacion($envio, $domingo))->toBe(2);
+
+    // Y la otra mitad del caso obligatorio: «el texto dice "en dos días" con la
+    // fecha». Sin esto el correo saldría el día correcto diciendo algo falso.
+    expect(ReferenciaTemporal::hasta($envio, $domingo)->frase())->toBe('en dos días (5 de julio)');
 })->group('motor');
 
 it('no cuenta como día de vacaciones un festivo que cae en sábado, ni con sábado laboral', function () {

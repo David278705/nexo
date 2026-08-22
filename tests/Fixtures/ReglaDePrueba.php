@@ -3,6 +3,7 @@
 namespace Tests\Fixtures;
 
 use App\Dominio\Alertas\AlertaPorEnviar;
+use App\Dominio\Alertas\ReferenciaTemporal;
 use App\Dominio\Alertas\ReglaDeAlerta;
 use App\Dominio\Alertas\TipoDeAlerta;
 use App\Models\Vinculacion;
@@ -72,7 +73,11 @@ class ReglaDePrueba implements ReglaDeAlerta
                 $fechaDeEnvio,
                 $fechaDelDisparo,
                 'Aviso de prueba de '.$empresa,
-                'Mañana ('.$fechaDelDisparo->toDateString().') pasa algo en '.$empresa.'.',
+                // La frase la escribe `ReferenciaTemporal`, igual que las once
+                // de verdad: así el corrimiento al día hábil anterior (F3-02)
+                // se comprueba de punta a punta y no solo en el unitario.
+                ReferenciaTemporal::hasta($fechaDeEnvio, $fechaDelDisparo)->fraseCapitalizada()
+                    .' pasa algo en '.$empresa.'.',
             ))
             ->all();
     }

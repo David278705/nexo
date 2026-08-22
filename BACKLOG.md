@@ -579,11 +579,24 @@ ajustar el texto al adelanto es F3-02. **Ninguna regla de disparo existe todaví
 las once llegan en F3-03, F3-04 y F3-05, y el armazón se prueba con `Tests\Fixtures\ReglaDePrueba`,
 la gemela de `RegistroDePrueba`.
 
-### [ ] F3-02 · Corrimiento al día hábil
+### [x] F3-02 · Corrimiento al día hábil
 
 Si la fecha cae en sábado, domingo o festivo, se envía el día hábil anterior y el texto se ajusta.
 **Hecho cuando:** una alerta programada para domingo llega el viernes diciendo «en dos días (fecha)».
 **Fuente:** `docs/01-especificacion-funcional.md` 9.1
+
+Hecho: `App\Dominio\Alertas\ReferenciaTemporal`, la frase compartida por las once alertas. Recibe las
+dos fechas que la regla de disparo ya tenía —la del envío y la del hecho— y escribe «hoy (21 de
+agosto)», «mañana (…)», «en dos días (…)» o «en 15 días (…)», siempre con la fecha exacta entre
+paréntesis (9.1). **La mitad del calendario ya venía de F3-01**: el proceso adelanta la evaluación y
+guarda `fecha_programada` corrida; lo que faltaba era que el texto no mintiera al adelantarse. Las
+cantidades de una cifra van con letras y las de dos con número, que es lo que hacen literalmente las
+plantillas de la sección 5.4 del documento 2 —«en dos días» y «en 15 días»—. `ReglaDePrueba` ahora
+redacta con esta clase, así que el corrimiento se comprueba de punta a punta: sábado → «mañana»,
+domingo → «en dos días», lunes festivo → «en tres días». El caso obligatorio del motor —«se envía el
+viernes anterior y el texto dice "en dos días" con la fecha»— quedó completo por primera vez: le
+faltaba justo la mitad del texto. No redacta nada del pasado en relativo: un hecho anterior al envío
+lanza excepción, porque ninguna de las once plantillas dice «hace dos días».
 
 ### [ ] F3-03 · Alertas de periodo de prueba
 
