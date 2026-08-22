@@ -222,6 +222,17 @@ class Vinculacion extends Model
     }
 
     /**
+     * Las vacaciones registradas sobre esta vinculación, la más reciente
+     * primero.
+     *
+     * @return HasMany<Vacacion, $this>
+     */
+    public function vacaciones(): HasMany
+    {
+        return $this->hasMany(Vacacion::class)->orderByDesc('fecha_inicio');
+    }
+
+    /**
      * @return BelongsTo<Eps, $this>
      */
     public function eps(): BelongsTo

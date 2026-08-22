@@ -5,6 +5,7 @@ use App\Autorizacion\Rol;
 use App\Exports\ContratosExport;
 use App\Exports\EmpleadosExport;
 use App\Exports\IncapacidadesExport;
+use App\Exports\VacacionesExport;
 use App\Models\Eps;
 use App\Models\Incapacidad;
 use App\Models\PerfilSociodemografico;
@@ -13,6 +14,7 @@ use App\Models\Persona;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserModulo;
+use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Multiempresa\PoliticaRls;
@@ -546,6 +548,79 @@ describe('incapacidades, por sus rutas reales', function () {
         Excel::assertDownloaded(
             'incapacidades-'.now()->format('Y-m-d').'.xlsx',
             fn (IncapacidadesExport $exportacion) => $exportacion->collection()->count() === 1
+        );
+    });
+});
+
+/**
+ * El listado de vacaciones, por sus rutas de verdad (F2-05). El segundo
+ * módulo de novedades que se registra por `POST` en vez de heredar la fila de
+ * otra tabla, igual que incapacidades.
+ */
+describe('vacaciones, por sus rutas reales', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->vacacionDeLaA = $this->contexto->paraTenant($this->empresaA, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create(['primer_nombre' => 'Confidencial', 'primer_apellido' => 'DeLaEmpresaA']))
+                ->create(['cargo' => SECRETO_DE_LA_A]);
+
+            return Vacacion::factory()->de($vinculacion)->del27al31DeJulio()->create();
+        });
+
+        $this->usuarioB = usuarioDe($this->empresaB, Rol::Administrador, Modulo::Vacaciones);
+    });
+
+    it('no lista vacaciones de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/vacaciones');
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['vacaciones']['filas'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('no incluye vacaciones de otra empresa en la exportación', function () {
+        Excel::fake();
+
+        $this->actingAs($this->usuarioB)->get('/vacaciones/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'vacaciones-'.now()->format('Y-m-d').'.xlsx',
+            fn (VacacionesExport $exportacion) => $exportacion->collection()->isEmpty()
+        );
+    });
+
+    it('no registra unas vacaciones sobre el empleado de otra empresa', function () {
+        $this->actingAs($this->usuarioB)->post('/vacaciones', [
+            'vinculacion_id' => $this->vacacionDeLaA->vinculacion_id,
+            'fecha_inicio' => '2026-07-27',
+            'fecha_fin' => '2026-07-31',
+        ])->assertSessionHasErrors('vinculacion_id');
+
+        expect($this->contexto->paraTenant(
+            $this->empresaA,
+            fn () => Vacacion::query()->count()
+        ))->toBe(1);
+    });
+
+    it('la empresa dueña sí ve su vacación por los dos caminos', function () {
+        Excel::fake();
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Vacaciones);
+
+        $listado = $this->actingAs($usuarioA)->get('/vacaciones');
+        $listado->assertOk();
+
+        expect($listado->viewData('page')['props']['vacaciones']['filas'])->toHaveCount(1);
+
+        $this->actingAs($usuarioA)->get('/vacaciones/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'vacaciones-'.now()->format('Y-m-d').'.xlsx',
+            fn (VacacionesExport $exportacion) => $exportacion->collection()->count() === 1
         );
     });
 });

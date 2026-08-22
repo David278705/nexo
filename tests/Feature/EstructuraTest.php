@@ -110,10 +110,10 @@ it('navega a la sección de cada módulo que el usuario tiene', function () {
     $usuario = usuarioDe($empresa, Rol::Superadministrador);
 
     foreach (Modulo::cases() as $modulo) {
-        // Inicio, Empleados, Contratos, Incapacidades y Configuración ya
-        // tienen pantalla propia; el resto siguen siendo secciones pendientes
-        // hasta su tarea.
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Configuracion], true)) {
+        // Inicio, Empleados, Contratos, Incapacidades, Vacaciones y
+        // Configuración ya tienen pantalla propia; el resto siguen siendo
+        // secciones pendientes hasta su tarea.
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Configuracion], true)) {
             continue;
         }
 
@@ -146,6 +146,16 @@ it('lleva la sección de incapacidades a su listado, no a una sección pendiente
         ->get(Modulo::Incapacidades->url())
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina->component('Incapacidades/Index')->etc());
+});
+
+it('lleva la sección de vacaciones a su listado, no a una sección pendiente', function () {
+    $empresa = Tenant::factory()->create();
+    $usuario = usuarioDe($empresa, Rol::Superadministrador);
+
+    $this->actingAs($usuario)
+        ->get(Modulo::Vacaciones->url())
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina->component('Vacaciones/Index')->etc());
 });
 
 it('lleva la sección de contratos a su listado, no a una sección pendiente', function () {

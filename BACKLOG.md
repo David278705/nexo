@@ -417,11 +417,26 @@ el servidor y llegan por una recarga parcial (`diasDeIncapacidad`), igual que la
 renovación de contrato: en el modal no se resta ninguna fecha. **Edición y borrado quedan para F2-10**,
 que ya los tiene asignados para los tres módulos de novedades a la vez.
 
-### [ ] F2-05 · Vacaciones
+### [x] F2-05 · Vacaciones
 
 Módulo completo con acumulación automática, cálculo en días hábiles y descuento del saldo.
 **Hecho cuando:** registrar y eliminar unas vacaciones deja el saldo exactamente como estaba.
 **Fuente:** `docs/01-especificacion-funcional.md` 6.4
+
+Hecho: la tabla `vacaciones` —colgada de `vinculacion_id`, sin columna de días—, el modelo
+`Vacacion` con `dias()` llamando a `MotorDeCalculo::diasHabilesVacaciones()`, `ListadoDeVacaciones`
+sobre el armazón de `Listado` (REV-01), la pantalla `Vacaciones/Index` sobre `useListado` (REV-02) y
+enchufada al flujo compartido de novedades (F2-03) con `ModalDeNovedad`. **El descuento del saldo no
+escribe nada aparte**: `SaldoDeVacaciones::al()` gana un tercer sumando, `diasDisfrutadosHasta()`, que
+suma los días hábiles de las vacaciones ya registradas con inicio hasta esa fecha; como `Vacacion` usa
+borrado lógico, eliminar una fila la saca sola de esa suma la próxima vez que se pida el saldo, sin
+ninguna operación inversa. Es exactamente el «hecho cuando» de la tarea, probado en
+`VacacionesTest.php` guardando y eliminando un periodo y comparando el saldo antes, con la vacación
+puesta y después de borrarla. **Edición y borrado por pantalla quedan para F2-10**, igual que en
+incapacidades: lo que esta tarea necesitaba de «eliminar» es que el cálculo lo soporte, no una acción
+de la interfaz. El filtro del listado es solo el rango de fechas —«Empleado» y «Cargo», que también
+lista el documento 1 para este módulo, son F4-01, igual que la búsqueda por nombre que le falta a
+incapacidades—.
 
 ### [ ] F2-06 · Advertencia de saldo insuficiente
 

@@ -2,6 +2,7 @@
 
 namespace App\Dominio\Calculo;
 
+use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -18,13 +19,13 @@ use Illuminate\Support\Carbon;
  *
  * **No existe ninguna columna `saldo_vacaciones` que se sume y se reste.** Es lo
  * que hace que corregir la fecha de ingreso recalcule todo solo y que eliminar
- * unas vacaciones restituya el saldo sin operación inversa.
+ * unas vacaciones restituya el saldo sin operación inversa: `Vacacion` usa
+ * borrado lógico, así que una vez eliminada deja de sumar en
+ * `diasDisfrutadosHasta()` sin que nadie tenga que restar nada a mano.
  *
- * Los dos últimos sumandos todavía valen cero y se dice dónde: las vacaciones
- * disfrutadas son el módulo F2-05 y la reducción por suspensiones vive en
- * `MotorDeCalculo::acumulacionMes()`, a la espera de la tabla de F2-07. Hoy
- * ninguna de las dos tiene de dónde leer un solo día, así que el saldo que sale
- * de aquí es completo y no una aproximación.
+ * El último sumando todavía vale cero y se dice dónde: la reducción por
+ * suspensiones vive en `MotorDeCalculo::acumulacionMes()`, a la espera de la
+ * tabla de F2-07. Hoy no tiene de dónde leer un solo día.
  */
 class SaldoDeVacaciones
 {
@@ -45,7 +46,11 @@ class SaldoDeVacaciones
      */
     public function al(CarbonInterface $fecha): float
     {
-        $saldo = $this->saldoInicial() + $this->acumulacionHasta(Carbon::parse($fecha->toDateString()));
+        $hasta = Carbon::parse($fecha->toDateString());
+
+        $saldo = $this->saldoInicial()
+            + $this->acumulacionHasta($hasta)
+            - $this->diasDisfrutadosHasta($hasta);
 
         // Cuatro decimales: 1,25 y sus proporciones no son exactos en coma
         // flotante y un saldo de 12,749999999 no se puede comparar con nada.
@@ -65,6 +70,21 @@ class SaldoDeVacaciones
     public function faltantePara(float $dias, CarbonInterface $fecha): float
     {
         return round(max(0.0, $dias - $this->al($fecha)), 4);
+    }
+
+    /**
+     * Los días hábiles de las vacaciones ya registradas cuyo inicio no es
+     * posterior a la fecha consultada.
+     *
+     * El borrado lógico es lo que hace que restituir el saldo no necesite una
+     * operación inversa: una vacación eliminada deja de contar aquí sola.
+     */
+    private function diasDisfrutadosHasta(Carbon $fecha): int
+    {
+        return (int) $this->vinculacion->vacaciones()
+            ->where('fecha_inicio', '<=', $fecha)
+            ->get()
+            ->sum(fn (Vacacion $vacacion): int => $vacacion->dias());
     }
 
     /**

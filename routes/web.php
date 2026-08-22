@@ -15,6 +15,7 @@ use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
+use App\Http\Controllers\VacacionController;
 use App\Presentacion\Formato;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -138,6 +139,22 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
+     * Vacaciones (documento 1, 6.4). El segundo módulo de novedades, y el
+     * primero que descuenta del saldo: `guardar()` solo crea la fila, y
+     * `SaldoDeVacaciones::al()` la resta la próxima vez que alguien pida el
+     * saldo. La ruta de exportar va antes de cualquiera que pudiera
+     * confundirse con un identificador.
+     */
+    Route::middleware('modulo:'.Modulo::Vacaciones->value)->group(function () {
+        Route::get('/vacaciones', [VacacionController::class, 'index'])
+            ->name(Modulo::Vacaciones->nombreDeRuta());
+        Route::get('/vacaciones/exportar', [VacacionController::class, 'exportar'])
+            ->name('vacaciones.exportar');
+        Route::post('/vacaciones', [VacacionController::class, 'guardar'])
+            ->name('vacaciones.guardar');
+    });
+
+    /*
      * Configuración (documento 3, sección 5.7). El módulo es solo del
      * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
      * declararlo como cualquier otro.
@@ -153,7 +170,7 @@ Route::middleware('auth')->group(function () {
     });
 
     foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Configuracion], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Configuracion], true)) {
             continue;
         }
 
