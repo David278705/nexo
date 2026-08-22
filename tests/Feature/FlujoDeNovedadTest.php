@@ -62,14 +62,16 @@ function empleadoParaNovedad(array $persona = [], array $vinculacion = [], bool 
 /**
  * El componente que Inertia renderiza en cada dirección del flujo, para que la
  * cabecera de la recarga parcial coincida con la pantalla de verdad.
- * Incapacidades (F2-04) y vacaciones (F2-05) ya tienen contenido real; las
- * otras tres siguen siendo `SeccionPendiente` hasta que exista su módulo.
+ * Incapacidades (F2-04), vacaciones (F2-05) y licencias (F2-07) ya tienen
+ * contenido real; las otras dos siguen siendo `SeccionPendiente` hasta que
+ * exista su módulo.
  */
 function componenteDe(string $url): string
 {
     return match ($url) {
         Modulo::Incapacidades->url() => 'Incapacidades/Index',
         Modulo::Vacaciones->url() => 'Vacaciones/Index',
+        Modulo::Licencias->url() => 'Licencias/Index',
         default => 'SeccionPendiente',
     };
 }

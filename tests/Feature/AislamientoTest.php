@@ -5,9 +5,11 @@ use App\Autorizacion\Rol;
 use App\Exports\ContratosExport;
 use App\Exports\EmpleadosExport;
 use App\Exports\IncapacidadesExport;
+use App\Exports\LicenciasExport;
 use App\Exports\VacacionesExport;
 use App\Models\Eps;
 use App\Models\Incapacidad;
+use App\Models\Licencia;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
@@ -621,6 +623,80 @@ describe('vacaciones, por sus rutas reales', function () {
         Excel::assertDownloaded(
             'vacaciones-'.now()->format('Y-m-d').'.xlsx',
             fn (VacacionesExport $exportacion) => $exportacion->collection()->count() === 1
+        );
+    });
+});
+
+/**
+ * El listado de licencias, ausencias y suspensiones, por sus rutas de verdad
+ * (F2-07). El tercer módulo de novedades que se registra por `POST` en vez de
+ * heredar la fila de otra tabla, igual que incapacidades y vacaciones.
+ */
+describe('licencias, por sus rutas reales', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->licenciaDeLaA = $this->contexto->paraTenant($this->empresaA, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create(['primer_nombre' => 'Confidencial', 'primer_apellido' => 'DeLaEmpresaA']))
+                ->create(['cargo' => SECRETO_DE_LA_A]);
+
+            return Licencia::factory()->de($vinculacion)->delJuevesAlMartes()->create();
+        });
+
+        $this->usuarioB = usuarioDe($this->empresaB, Rol::Administrador, Modulo::Licencias);
+    });
+
+    it('no lista licencias de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/licencias');
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['licencias']['filas'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('no incluye licencias de otra empresa en la exportación', function () {
+        Excel::fake();
+
+        $this->actingAs($this->usuarioB)->get('/licencias/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'licencias-'.now()->format('Y-m-d').'.xlsx',
+            fn (LicenciasExport $exportacion) => $exportacion->collection()->isEmpty()
+        );
+    });
+
+    it('no registra una licencia sobre el empleado de otra empresa', function () {
+        $this->actingAs($this->usuarioB)->post('/licencias', [
+            'vinculacion_id' => $this->licenciaDeLaA->vinculacion_id,
+            'tipo' => 'ausencia',
+            'fecha_inicio' => '2026-07-02',
+            'fecha_fin' => '2026-07-07',
+        ])->assertSessionHasErrors('vinculacion_id');
+
+        expect($this->contexto->paraTenant(
+            $this->empresaA,
+            fn () => Licencia::query()->count()
+        ))->toBe(1);
+    });
+
+    it('la empresa dueña sí ve su licencia por los dos caminos', function () {
+        Excel::fake();
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Licencias);
+
+        $listado = $this->actingAs($usuarioA)->get('/licencias');
+        $listado->assertOk();
+
+        expect($listado->viewData('page')['props']['licencias']['filas'])->toHaveCount(1);
+
+        $this->actingAs($usuarioA)->get('/licencias/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'licencias-'.now()->format('Y-m-d').'.xlsx',
+            fn (LicenciasExport $exportacion) => $exportacion->collection()->count() === 1
         );
     });
 });

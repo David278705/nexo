@@ -233,6 +233,17 @@ class Vinculacion extends Model
     }
 
     /**
+     * Las licencias, ausencias y suspensiones registradas sobre esta
+     * vinculación, la más reciente primero.
+     *
+     * @return HasMany<Licencia, $this>
+     */
+    public function licencias(): HasMany
+    {
+        return $this->hasMany(Licencia::class)->orderByDesc('fecha_inicio');
+    }
+
+    /**
      * @return BelongsTo<Eps, $this>
      */
     public function eps(): BelongsTo

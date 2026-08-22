@@ -1,60 +1,55 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-22 · Tarea F2-06 · Advertencia de saldo insuficiente
+**Última sesión:** 2026-08-22 · Tarea F2-07 · Licencias, ausencias y suspensiones
 **Verificación:** verde
-**Siguiente tarea:** F2-07 · Licencias, ausencias y suspensiones. Módulo con el selector de tres
-tipos, días corridos y el efecto proporcional sobre la acumulación de vacaciones.
+**Siguiente tarea:** F2-08 · Aumentos y promociones. Módulo con salario y cargo actuales de solo
+lectura, y el histórico de la persona.
 
 ## Qué se hizo
 
-- **`App\Vacaciones\AdvertenciaDeSaldo`** es la clase nueva de esta tarea, con el mismo patrón que
-  `RenovacionDeContrato`: recibe la vinculación, los días solicitados y la fecha de disfrute, y
-  devuelve `saldoActual`, `saldoProyectado` y `advertencia` ya escritos, sin que el navegador cuente
-  nada. **No cuenta ni un día**: llama a `SaldoDeVacaciones::al()` y `::faltantePara()`, las dos
-  desde F2-02, y solo arma el texto —«Al 28 de agosto tendrá 12,75 días disponibles. Estás
-  registrando 14 días: faltan 1,25 días.», literal del documento 3, 5.5—.
-- **`VacacionController` gana una segunda prop `Inertia::optional`**, `saldoDeVacaciones`, hermana de
-  `diasDeVacaciones` y con el mismo parseo de fechas —se extrajo a `periodoDigitado()` para no
-  repetirlo dos veces en el mismo archivo—. Resuelve la vinculación desde `vinculacion_id` en la
-  consulta; sin ella no hay nada que calcular y la prop llega nula.
-- **La franja permanente del documento 3, 5.5** —saldo actual y saldo proyectado a la fecha de
-  disfrute, con el aviso ámbar debajo si no alcanza— se pintó en `Pages/Vacaciones/Index.vue`, bajo
-  los tres campos del periodo. La recarga parcial que ya pedía `diasDeVacaciones` ahora también pide
-  `saldoDeVacaciones` y se dispara con un tercer disparador: elegir al empleado, no solo cambiar una
-  fecha, porque el saldo de hoy ya se puede enseñar antes de que existan fechas.
-- **No bloquea, y no se tocó nada para que no bloqueara**: ni `RegistrarVacacion` ni
-  `VacacionController::guardar()` cambiaron. Es la regla explícita del documento 1, 6.4, y aquí se
-  cumplió por omisión: no había ninguna validación de saldo que quitar.
-- **`Formato::diaYMes()` es la única pieza nueva de presentación**: «28 de agosto», sin año, porque la
-  fecha de disfrute de unas vacaciones nunca está a años de distancia y el ejemplo del documento no
-  lleva año.
-- **Pruebas nuevas en `VacacionesTest.php`**: el caso exacto de los 14 días para el 28 de agosto
-  —comprobando el texto letra por letra—, que no avisa nada cuando el saldo proyectado alcanza, que
-  la franja llega con solo el saldo de hoy antes de tener fechas, y que el periodo digitado por HTTP
-  llega a la misma franja que se puede calcular de forma independiente (sin volver a contar los días
-  a mano en la prueba).
-- **`Pages/Vacaciones/Index.test.js` es nuevo**, la primera prueba de Vitest de esta pantalla: hasta
-  F2-05 no hacía falta porque toda su lógica ya la cubría `ModalDeNovedad.test.js`. Ahora sí tiene
-  lógica propia —qué pide, cuándo, y qué pinta con la respuesta— y quedó cubierta con el mismo
-  patrón de interacción por DOM que ya usa `ModalDeNovedad.test.js`.
-- `composer verificar` en verde: Pint, PHPStan sin errores, **631** pruebas de Pest, build y **242**
-  de Vitest (seis nuevas, las de `Vacaciones/Index.test.js`).
+- **Una sola tabla `licencias` con un campo de clasificación**, no tres tablas: es literal del
+  documento 1, 6.5 —«un solo tipo de novedad con un campo de clasificación»—. `TipoDeLicencia` es el
+  enumerado de las tres opciones (licencia no remunerada · ausencia · suspensión) y se guarda como
+  texto legible, nunca como número. Sin columna de días, igual que incapacidades y vacaciones.
+- **`Licencia::dias()` llama a `MotorDeCalculo::diasCorridos()`**, la misma regla de conteo que
+  incapacidades y distinta de vacaciones. El caso del documento —jueves a martes, con el domingo
+  dentro— da seis días y está probado por la ruta de verdad.
+- **El hueco que F2-05 dejó anotado quedó tapado.** `MotorDeCalculo::diasDeSuspensionDelMes()`
+  devolvía cero con un comentario que decía por qué: no existía tabla de dónde leer un solo día.
+  Ahora recorre las licencias de la vinculación y suma, con `diasSuspendidosDelMes()`, los días de
+  cada una que caen en el mes que se está acumulando. **El parámetro
+  `suspensiones_afectan_vacaciones` se lee dentro del motor**, no en quien llama, para que ninguna
+  pantalla pueda olvidarse de mirarlo.
+- **La aritmética de la proporción no se escribió: ya estaba.** `acumulacionProporcional()` existe y
+  está probada desde F2-02, así que esta tarea no tocó `SaldoDeVacaciones` más allá de actualizar el
+  comentario que anunciaba el sumando pendiente. El caso obligatorio pasa: la licencia del 16 de
+  marzo al 15 de abril deja marzo en 0,625 y abril en 0,625 —la mitad de 1,25 en cada uno—.
+- **Eliminar una licencia no hace ninguna operación inversa.** `Licencia` usa borrado lógico, así que
+  la fila sale sola de la suma la próxima vez que se pida la acumulación; hay prueba que la borra y
+  comprueba que marzo vuelve a 1,25.
+- **El módulo completo con el patrón compartido**: `ListadoDeLicencias` sobre `Listado` (REV-01) con
+  filtro de rango de fechas y de tipo, `LicenciaController`, `RegistrarLicencia`, `LicenciasExport`
+  con las tres columnas obligatorias de toda exportación de novedades, y la pantalla
+  `Licencias/Index` sobre `useListado` (REV-02) enchufada a `ModalDeNovedad` (F2-03). Los días de la
+  novedad que se digita se cuentan en el servidor y llegan por la recarga parcial `diasDeLicencia`:
+  en el navegador no se resta ninguna fecha.
+- **Las tres pruebas compartidas de siempre se actualizaron**: el caso de aislamiento por las cuatro
+  vías en `AislamientoTest.php`, la pantalla real en vez de `SeccionPendiente` en `EstructuraTest.php`
+  y `componenteDe()` en `FlujoDeNovedadTest.php`.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **648** pruebas de Pest (17 nuevas),
+  build y **247** de Vitest (cinco nuevas, las de `Licencias/Index.test.js`).
 
 ## Decisiones tomadas
 
-- **La franja se muestra en cuanto se resuelve el empleado, no en cuanto hay fechas.** El documento
-  dice «franja permanente con el saldo actual», y el saldo de hoy no depende de ninguna fecha del
-  formulario: esperar a que se digiten las dos fechas habría escondido un dato que ya se puede
-  enseñar. El saldo proyectado sí espera al periodo completo, porque sin fecha de disfrute no hay a
-  qué fecha proyectar.
-- **La franja del prototipo trae una frase adicional** —«Puedes continuar. Si la empresa aprueba
-  vacaciones anticipadas, el saldo quedará en −1,25 días.»— **que no se copió.** No está en el texto
-  literal de los documentos 1 ni 3, que son la fuente de verdad funcional; el prototipo es una guía
-  visual y no un texto a transcribir letra por letra cuando no coincide con la especificación. Si
-  Angela la quiere, es un ajuste de una línea en `AdvertenciaDeSaldo::mensaje()`.
-- **La recarga parcial se disparó también al elegir el empleado**, además de al cambiar una fecha,
-  porque es el punto en el que `form.vinculacion_id` deja de ser nulo y hay algo que pedir por primera
-  vez. Antes de esta tarea el único disparador eran las dos fechas.
+- **El botón de guardar exige el tipo, no solo las fechas.** El tipo es obligatorio en el servidor
+  (`Rule::in` sobre los tres valores) y el modal lo refleja: sin tipo elegido no se puede enviar.
+  Es la única pieza de lógica propia de esta pantalla que no cubría ya `ModalDeNovedad.test.js`, y
+  por eso `Licencias/Index.test.js` es nuevo.
+- **El listado ordena por fecha de inicio descendente por defecto**, igual que incapacidades y
+  vacaciones: la novedad más reciente arriba.
+- **No se filtró por empleado ni por cargo** aunque el documento 1, 11.3 los liste: es F4-01 para los
+  tres módulos de novedades a la vez, y adelantarlo aquí habría dejado dos módulos con un filtro que
+  el tercero no tiene.
 
 ## Preguntas para Angela
 
@@ -62,31 +57,25 @@ tipos, días corridos y el efecto proporcional sobre la acumulación de vacacion
 
 ## Decisiones para David
 
-- **Todas las heredadas de sesiones anteriores siguen abiertas** —meses comerciales de treinta días,
-  prórroga mínima, plantilla de carga, fondo de cesantías, la prueba intermitente de `CatalogosTest`,
-  el texto del empleado inactivo, PHP 8.2 contra el 8.3 que pide `CLAUDE.md`, si la pestaña de
-  novedades de la ficha del empleado muestra o no el diagnóstico de una incapacidad, la frase del
-  prototipo sobre el saldo negativo que no se copió, y el resto de la lista larga de REV-02—. Ninguna
-  la tocó esta tarea salvo la del saldo negativo, que queda anotada arriba.
+- **Todas las heredadas siguen abiertas** —meses comerciales de treinta días, prórroga mínima,
+  plantilla de carga, fondo de cesantías, la prueba intermitente de `CatalogosTest`, el texto del
+  empleado inactivo, PHP 8.2 contra el 8.3 que pide `CLAUDE.md`, el diagnóstico en la pestaña de
+  novedades de la ficha, la frase del prototipo sobre el saldo negativo, y el resto de la lista larga
+  de REV-02—. Ninguna la tocó esta tarea.
 
 ## Notas para la próxima sesión
 
-- **La siguiente es F2-07, Licencias, ausencias y suspensiones.** El documento 1, 6.5 pide un solo
-  tipo de novedad con un selector de tres opciones —licencia no remunerada, ausencia, suspensión—,
-  contadas todas en días corridos (`MotorDeCalculo::diasCorridos()`, ya existente) y con un efecto
-  proporcional sobre `acumulacionMes()` que el motor ya deja anotado y en cero a la espera de esta
-  tabla, según dejó escrito F2-05.
-- **El patrón para copiar sigue siendo el de `app/Vacaciones/`**, con dos diferencias: el conteo es
-  `diasCorridos`, no `diasHabilesVacaciones`, y el efecto no es un descuento de saldo sino una
-  reducción proporcional de la acumulación del mes o meses que la novedad atraviese —el ejemplo del
-  documento es la licencia del 16 de marzo al 15 de abril, que reduce a la mitad la acumulación de
-  los dos meses—.
-- **Cuando una pantalla real reemplace a `SeccionPendiente`, hay que revisar las mismas dos pruebas
-  compartidas de siempre**: `EstructuraTest.php` y `FlujoDeNovedadTest.php::componenteDe()`. F2-07 le
-  toca hacer lo mismo con licencias.
-- **`AdvertenciaDeSaldo` y `Formato::diaYMes()` quedan disponibles** por si algún aviso futuro necesita
-  fechas sin año o el patrón de «franja con proyección más advertencia ámbar sin bloqueo» que ya usó
-  esta tarea y antes `RenovacionDeContrato`.
-- Todas las notas de arquitectura de REV-02 sobre el armazón de listado, y las de F2-04/F2-05 sobre el
-  flujo compartido de novedades y el patrón de cálculo reactivo en el modal, siguen vigentes y no se
-  repiten aquí.
+- **La siguiente es F2-08, Aumentos y promociones.** No es una novedad del capítulo 6 sino un
+  movimiento del capítulo 8, 8.1: salario y cargo actuales de solo lectura, el nuevo valor, y el
+  histórico de la persona. **Guardar un movimiento actualiza el registro principal de la
+  vinculación**, que es lo que lo diferencia de las tres novedades ya construidas: aquí sí se escribe
+  en dos sitios y hay que hacerlo en una sola transacción, como ya hace
+  `Vinculacion::registrarPeriodo()` con el historial de contrato.
+- **El módulo `Modulo::Movimientos` sigue siendo `SeccionPendiente`.** Cuando F2-08 le ponga pantalla
+  real hay que tocar las mismas tres pruebas compartidas de siempre: la lista de exclusión de
+  `routes/web.php`, la de `EstructuraTest.php` y `componenteDe()` en `FlujoDeNovedadTest.php`.
+- **Con F2-07 el motor de cálculo ya no tiene ningún sumando en cero.** `SaldoDeVacaciones` está
+  completo: saldo inicial, acumulación con reducción por suspensiones, y disfrute. Si un cálculo sale
+  raro de aquí en adelante, es un error de verdad y no una pieza que falte.
+- Las notas de arquitectura de REV-01/REV-02 sobre el armazón de listado y las de F2-03/F2-04/F2-05
+  sobre el flujo compartido de novedades siguen vigentes y no se repiten aquí.

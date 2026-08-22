@@ -23,9 +23,9 @@ use Illuminate\Support\Carbon;
  * borrado lógico, así que una vez eliminada deja de sumar en
  * `diasDisfrutadosHasta()` sin que nadie tenga que restar nada a mano.
  *
- * El último sumando todavía vale cero y se dice dónde: la reducción por
- * suspensiones vive en `MotorDeCalculo::acumulacionMes()`, a la espera de la
- * tabla de F2-07. Hoy no tiene de dónde leer un solo día.
+ * El último sumando vive en `MotorDeCalculo::acumulacionMes()`, que resta los
+ * días de licencia, ausencia o suspensión de ese mes cuando la empresa tiene
+ * activo `suspensiones_afectan_vacaciones` (F2-07).
  */
 class SaldoDeVacaciones
 {

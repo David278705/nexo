@@ -3,6 +3,7 @@
 namespace App\Dominio\Calculo;
 
 use App\Models\Festivo;
+use App\Models\Licencia;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use Carbon\CarbonInterface;
@@ -252,20 +253,25 @@ class MotorDeCalculo
     /**
      * Los días de suspensión de un mes que reducen la acumulación.
      *
-     * **Devuelve cero y todavía no es un cálculo.** Las licencias no
-     * remuneradas, las ausencias injustificadas y las suspensiones son el módulo
-     * F2-07 y su tabla no existe: hoy no hay de dónde leer un solo día. Cuando
-     * exista, aquí se suman los días de ese mes con `diasSuspendidosDelMes()`,
-     * y solo si la empresa tiene activo `suspensiones_afectan_vacaciones` —el
-     * parámetro se lee ahí y no en quien llama, para que ninguna pantalla pueda
-     * olvidarse de mirarlo—.
-     *
-     * La aritmética de la proporción sí está escrita y probada: es
-     * `acumulacionProporcional()`, y por eso F2-07 no tiene que tocar el saldo.
+     * Suma, para cada licencia, ausencia o suspensión de la vinculación, los
+     * días de ese mes con `diasSuspendidosDelMes()`, y solo si la empresa
+     * tiene activo `suspensiones_afectan_vacaciones` —el parámetro se lee aquí
+     * y no en quien llama, para que ninguna pantalla pueda olvidarse de
+     * mirarlo—. Sin el parámetro activo, ninguna licencia reduce nada.
      */
     private static function diasDeSuspensionDelMes(Vinculacion $vinculacion, CarbonInterface $mes): int
     {
-        return 0;
+        if ($vinculacion->tenant?->getAttribute('suspensiones_afectan_vacaciones') !== true) {
+            return 0;
+        }
+
+        return $vinculacion->licencias()
+            ->get()
+            ->sum(fn (Licencia $licencia): int => self::diasSuspendidosDelMes(
+                $licencia->fecha_inicio,
+                $licencia->fecha_fin,
+                $mes,
+            ));
     }
 
     /**

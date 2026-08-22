@@ -462,13 +462,28 @@ alcanza, la franja con solo el saldo de hoy y la integración del periodo digita
 `Pages/Vacaciones/Index.test.js`, la primera prueba de Vitest de esta pantalla porque es la primera
 vez que tiene lógica propia que `ModalDeNovedad.test.js` no cubre.
 
-### [ ] F2-07 · Licencias, ausencias y suspensiones
+### [x] F2-07 · Licencias, ausencias y suspensiones
 
 Módulo con el selector de tres tipos. Días corridos, domingos y festivos incluidos. Efecto
 proporcional sobre la acumulación de vacaciones.
 **Hecho cuando:** la licencia del 16 de marzo al 15 de abril reduce a la mitad la acumulación de
 ambos meses.
 **Fuente:** `docs/01-especificacion-funcional.md` 6.5
+
+Hecho: la tabla `licencias` —**una sola tabla con un campo de clasificación**, no tres, como pide el
+documento—, el enumerado `TipoDeLicencia`, el modelo `Licencia` con `dias()` llamando a
+`MotorDeCalculo::diasCorridos()`, `ListadoDeLicencias` sobre el armazón de `Listado` (REV-01), la
+pantalla `Licencias/Index` sobre `useListado` (REV-02) y enchufada al flujo compartido de novedades
+(F2-03). **El efecto sobre la acumulación era el hueco que F2-05 dejó anotado**:
+`MotorDeCalculo::diasDeSuspensionDelMes()` devolvía cero porque no había tabla de dónde leer; ahora
+suma los días de cada licencia que caen en ese mes con `diasSuspendidosDelMes()`, y solo si la
+empresa tiene activo `suspensiones_afectan_vacaciones` —el parámetro se lee **dentro del motor**, no
+en quien llama—. La aritmética de la proporción ya estaba escrita y probada desde F2-02
+(`acumulacionProporcional()`), así que esta tarea no tocó el saldo. El caso obligatorio pasa: del 16
+de marzo al 15 de abril deja marzo y abril en 0,625 días cada uno. **Nada se escribe aparte**: como
+`Licencia` usa borrado lógico, eliminar una la saca sola de la reducción la próxima vez que se pida
+el saldo. Filtros del listado: rango de fechas y tipo; «Empleado» es F4-01, igual que en los otros
+dos módulos de novedades. Edición y borrado por pantalla siguen siendo F2-10.
 
 ### [ ] F2-08 · Aumentos y promociones
 

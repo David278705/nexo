@@ -11,6 +11,7 @@ use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\IncapacidadController;
+use App\Http\Controllers\LicenciaController;
 use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
@@ -155,6 +156,21 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
+     * Licencias, ausencias y suspensiones (documento 1, 6.5). El tercer
+     * módulo de novedades: un solo tipo con un selector de tres opciones. La
+     * ruta de exportar va antes de cualquiera que pudiera confundirse con un
+     * identificador.
+     */
+    Route::middleware('modulo:'.Modulo::Licencias->value)->group(function () {
+        Route::get('/licencias', [LicenciaController::class, 'index'])
+            ->name(Modulo::Licencias->nombreDeRuta());
+        Route::get('/licencias/exportar', [LicenciaController::class, 'exportar'])
+            ->name('licencias.exportar');
+        Route::post('/licencias', [LicenciaController::class, 'guardar'])
+            ->name('licencias.guardar');
+    });
+
+    /*
      * Configuración (documento 3, sección 5.7). El módulo es solo del
      * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
      * declararlo como cualquier otro.
@@ -170,7 +186,7 @@ Route::middleware('auth')->group(function () {
     });
 
     foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Configuracion], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Configuracion], true)) {
             continue;
         }
 
