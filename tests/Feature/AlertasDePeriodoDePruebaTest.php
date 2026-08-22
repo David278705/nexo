@@ -297,7 +297,7 @@ describe('el corrimiento al día hábil anterior', function () {
 });
 
 describe('el proceso diario con las cinco reglas registradas', function () {
-    it('el catálogo trae las cinco del periodo de prueba', function () {
+    it('el catálogo trae las reglas construidas y solo esas', function () {
         $tipos = array_map(
             fn (ReglaDeAlerta $regla): TipoDeAlerta => $regla->tipo(),
             app(CatalogoDeReglas::class)->reglas(),
@@ -309,6 +309,8 @@ describe('el proceso diario con las cinco reglas registradas', function () {
             TipoDeAlerta::PruebaIndefinidoVispera,
             TipoDeAlerta::PruebaFijoDosDias,
             TipoDeAlerta::PruebaFijoVispera,
+            TipoDeAlerta::PlazoDeRenovacion,
+            TipoDeAlerta::EfectoDelSilencio,
         ]);
     });
 

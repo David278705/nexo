@@ -619,11 +619,30 @@ también se ajustan al corrimiento**: los tres de la sección 5.4 traen «Mañan
 recibe el calendario del indefinido, que es el que le corresponde por 9.6. Dos pruebas cubren los
 contratos tan cortos que el aviso caería antes del ingreso.
 
-### [ ] F3-04 · Alertas de contrato a término fijo
+### [!] F3-04 · Alertas de contrato a término fijo — dos de las cuatro dependen de decisiones abiertas
 
 Plazo de renovación a 32 días, efecto del silencio a 30, última renovación corta y cercanía al tope.
 **Hecho cuando:** las cuatro se disparan en sus fechas y hay prueba de cada una.
 **Fuente:** `docs/01-especificacion-funcional.md` 9.4
+
+Hechas **las dos del preaviso**: `PlazoDeRenovacion` y `EfectoDelSilencio`, sobre la base compartida
+`ReglaDePreavisoDelFijo`, registradas en el catálogo y con sus textos literales de la sección 5.4.
+Las dos cuelgan de la fecha límite del preaviso —`HistorialDeContrato::fechaLimiteDePreaviso()`—, así
+que **el «32» no está escrito en ninguna parte**: es el preaviso configurado más los dos días que el
+propio mensaje anuncia. La condición «si no se ha registrado prórroga ni terminación» se cumple por
+construcción y tiene prueba.
+
+**Bloqueadas las otras dos, y ninguna es un olvido:**
+
+- **Cercanía al tope legal.** La decisión **D.3** del documento 6 está marcada BLOQUEANTE y sin
+  responder: no hay número para «se aproxima a los cuatro años». No se inventa.
+- **Última renovación corta posible.** La tabla dice «llega al límite de prórrogas cortas», en
+  singular, y el sistema tiene **dos** límites distintos —cuatro pactadas y tres automáticas—.
+  Disparar con el primero que se agote afirmaría en un correo que «la próxima renovación deberá ser
+  de mínimo un año» cuando todavía podría ser corta del otro tipo. Falta además el día de disparo.
+
+Las preguntas concretas están en `ESTADO.md`. Al resolverlas, esta tarea se retoma: solo faltan las
+dos reglas, sus textos y sus pruebas; el armazón ya está.
 
 ### [ ] F3-05 · Resúmenes mensuales
 
