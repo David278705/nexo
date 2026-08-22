@@ -5,7 +5,6 @@ namespace App\Licencias;
 use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
 use App\Models\Licencia;
-use App\Models\Persona;
 use App\Presentacion\Formato;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -131,9 +130,7 @@ class ListadoDeLicencias extends Listado
     protected static function columnasDeOrden(): array
     {
         return [
-            'nombre' => fn (Builder $consulta, string $sentido) => $consulta
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_apellido'), $sentido)
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_nombre'), $sentido),
+            'nombre' => fn (Builder $consulta, string $sentido) => self::porNombreDeLaPersonaDeLaNovedad($consulta, $sentido, 'licencias'),
             'inicio' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_inicio', $sentido),
             'fin' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_fin', $sentido),
         ];
@@ -154,18 +151,5 @@ class ListadoDeLicencias extends Listado
             'hasta' => $this->hasta,
             'tipo' => $this->tipo,
         ];
-    }
-
-    /**
-     * El nombre de una persona a través de la vinculación de la licencia.
-     *
-     * @return Builder<Persona>
-     */
-    private static function dePersonaDeLaVinculacion(string $columna): Builder
-    {
-        return Persona::query()
-            ->select($columna)
-            ->join('vinculaciones', 'vinculaciones.persona_id', '=', 'personas.id')
-            ->whereColumn('vinculaciones.id', 'licencias.vinculacion_id');
     }
 }

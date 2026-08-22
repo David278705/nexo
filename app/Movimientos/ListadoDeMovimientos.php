@@ -5,7 +5,6 @@ namespace App\Movimientos;
 use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
 use App\Models\Movimiento;
-use App\Models\Persona;
 use App\Presentacion\Formato;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -139,9 +138,7 @@ class ListadoDeMovimientos extends Listado
     protected static function columnasDeOrden(): array
     {
         return [
-            'nombre' => fn (Builder $consulta, string $sentido) => $consulta
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_apellido'), $sentido)
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_nombre'), $sentido),
+            'nombre' => fn (Builder $consulta, string $sentido) => self::porNombreDeLaPersonaDeLaNovedad($consulta, $sentido, 'movimientos'),
             'efectivo' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_efectividad', $sentido),
         ];
     }
@@ -161,18 +158,5 @@ class ListadoDeMovimientos extends Listado
             'hasta' => $this->hasta,
             'tipo' => $this->tipo,
         ];
-    }
-
-    /**
-     * El nombre de una persona a través de la vinculación del movimiento.
-     *
-     * @return Builder<Persona>
-     */
-    private static function dePersonaDeLaVinculacion(string $columna): Builder
-    {
-        return Persona::query()
-            ->select($columna)
-            ->join('vinculaciones', 'vinculaciones.persona_id', '=', 'personas.id')
-            ->whereColumn('vinculaciones.id', 'movimientos.vinculacion_id');
     }
 }

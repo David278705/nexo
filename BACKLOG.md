@@ -504,16 +504,25 @@ vacía: enseña «Analista Senior → Coordinadora de Operaciones» y «$ 2.700.
 del listado: rango de fecha de efectividad y tipo de movimiento; «Cargo» es F4-01, como «Empleado»
 en los tres módulos de novedades.
 
-### [ ] F2-09 · Terminaciones
+### [x] F2-09 · Terminaciones
 
 Módulo con los siete tipos de salida y los motivos dependientes. Autocompletado en expiración de
 plazo y obra terminada. Categoría de rotación deducida.
 **Hecho cuando:** cambiar el tipo de salida recarga los motivos y el empleado pasa a inactivo.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 7
 
-Pendiente que dejó F1-05: al guardar la fecha de salida, **`Vinculacion::fechaDeSalida()` tiene que
-devolverla a ella** y no `fecha_fin`. Es un método de tres líneas y es de donde sale el énfasis de
-los 30 días de la advertencia de reingreso.
+Hecho: la tabla `terminaciones`, los enumerados `TipoDeSalida` —los siete tipos, sus 35 motivos, el
+motivo automático y la categoría que deducen— y `CategoriaDeRotacion`,
+`Vinculacion::registrarTerminacion()` con **las dos escrituras en una sola transacción** —la salida y
+el paso a inactivo—, `ListadoDeTerminaciones` sobre el armazón de `Listado` (REV-01),
+`TerminacionController`, `RegistrarTerminacion`, `TerminacionesExport` y la pantalla
+`Terminaciones/Index` sobre `useListado` (REV-02) enchufada al flujo compartido de novedades (F2-03).
+**La categoría de rotación no se guarda**: la deduce el tipo de salida, que es lo que pide la sección
+7.4. El motivo de la expiración del plazo y de la obra terminada lo completa el servidor y se ignora
+el que llegue. La confirmación con la consecuencia llega escrita del servidor con el nombre del
+empleado. **La deuda de F1-05 quedó pagada**: `fechaDeSalida()` devuelve la fecha registrada, y de
+ella salen el énfasis de los 30 días del reingreso y el mes en que el saldo deja de acumular;
+`fecha_fin` queda solo como respaldo del personal histórico que traerá la carga inicial.
 
 ### [ ] F2-10 · Edición y borrado de novedades
 

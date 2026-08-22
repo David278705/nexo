@@ -17,6 +17,13 @@ const props = defineProps({
     error: { type: String, default: "" },
     ayuda: { type: String, default: "" },
     opcional: { type: Boolean, default: false },
+    /*
+     * Un selector cuya opción decide el sistema y no quien digita. Es el motivo
+     * de la baja en la expiración del plazo y en la obra terminada, donde el
+     * documento 1, 7.3 dice que hay un solo motivo y el sistema lo autocompleta:
+     * ofrecer una lista de una sola opción invita a buscar las otras.
+     */
+    deshabilitado: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "salir"]);
@@ -72,10 +79,14 @@ const opcionesVisibles = computed(() => {
         <select
             :id="identificador"
             :value="modelValue"
+            :disabled="deshabilitado"
             :aria-invalid="error ? 'true' : undefined"
             :aria-describedby="error ? identificadorDelError : undefined"
-            class="mt-1 block h-control w-full rounded-[var(--radius-caja)] border bg-superficie px-3 text-tabla text-texto"
-            :class="error ? 'border-error' : 'border-borde'"
+            class="mt-1 block h-control w-full rounded-[var(--radius-caja)] border px-3 text-tabla text-texto"
+            :class="[
+                error ? 'border-error' : 'border-borde',
+                deshabilitado ? 'bg-neutro-fondo' : 'bg-superficie',
+            ]"
             @change="emit('update:modelValue', $event.target.value)"
             @blur="emit('salir', $event.target.value)"
         >

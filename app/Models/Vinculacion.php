@@ -11,6 +11,7 @@ use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoRiesgo;
 use App\Movimientos\TipoDeMovimiento;
 use App\Multiempresa\PerteneceATenant;
+use App\Terminaciones\TipoDeSalida;
 use Database\Factories\VinculacionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -307,6 +309,61 @@ class Vinculacion extends Model
     }
 
     /**
+     * La terminación que cerró esta vinculación, si ya se registró.
+     *
+     * Es una sola: lo que termina es el vínculo, y un vínculo termina una vez.
+     * El flujo no deja registrar dos porque `RegistrarTerminacion` exige que el
+     * empleado esté activo, y el primer registro lo desactiva.
+     *
+     * @return HasOne<Terminacion, $this>
+     */
+    public function terminacion(): HasOne
+    {
+        return $this->hasOne(Terminacion::class);
+    }
+
+    /**
+     * Registra la salida del empleado (documento 1, capítulo 7).
+     *
+     * **Escribe en dos sitios**, igual que `registrarMovimiento()`: crea la
+     * terminación y pasa la vinculación a inactiva. La sección 7.1 las pide
+     * como un solo hecho —«al registrar la terminación, el empleado pasa a
+     * estado inactivo»—, así que van en una transacción: un fallo en medio
+     * dejaría una salida registrada sobre alguien que el sistema sigue
+     * considerando activo, y le seguiría mandando alertas.
+     *
+     * El motivo con el que queda lo decide `TipoDeSalida`: en la expiración del
+     * plazo y en la obra terminada se autocompleta y se ignora el que llegue.
+     *
+     * Aquí no se valida: que el empleado esté activo y que el motivo sea de ese
+     * tipo lo comprueba `RegistrarTerminacion`.
+     */
+    public function registrarTerminacion(
+        TipoDeSalida $tipo,
+        ?string $motivoPedido,
+        Carbon $fechaSalida,
+        ?string $observaciones = null,
+    ): Terminacion {
+        return DB::transaction(function () use ($tipo, $motivoPedido, $fechaSalida, $observaciones): Terminacion {
+            $terminacion = $this->terminacion()->create([
+                'tipo_salida' => $tipo,
+                'motivo' => $tipo->motivoResultante($motivoPedido),
+                'fecha_salida' => $fechaSalida,
+                'observaciones' => $observaciones,
+            ]);
+
+            $this->desactivar();
+            $this->save();
+
+            // La relación acaba de existir: quien la tuviera cargada de antes
+            // seguiría creyendo que esta vinculación no tiene salida.
+            $this->setRelation('terminacion', $terminacion);
+
+            return $terminacion;
+        });
+    }
+
+    /**
      * @return BelongsTo<Eps, $this>
      */
     public function eps(): BelongsTo
@@ -356,10 +413,9 @@ class Vinculacion extends Model
     /**
      * El único camino por el que una vinculación deja de estar activa.
      *
-     * Lo llamará el módulo de terminaciones (F2-09) al registrar la salida. Se
-     * expone como método y no como un campo editable para que no exista ninguna
-     * pantalla donde alguien pueda «poner inactivo» a un empleado sin registrar
-     * por qué se fue.
+     * Lo llama `registrarTerminacion()` y nadie más. Se expone como método y no
+     * como un campo editable para que no exista ninguna pantalla donde alguien
+     * pueda «poner inactivo» a un empleado sin registrar por qué se fue.
      */
     public function desactivar(): void
     {
@@ -369,22 +425,30 @@ class Vinculacion extends Model
     /**
      * Cuándo terminó esta vinculación, o `null` si sigue viva.
      *
-     * **Es provisional, y está en un solo sitio a propósito.** La fecha de
-     * salida es un campo del módulo de terminaciones (documento 1, 7.1), que es
-     * la tarea F2-09: hoy una vinculación inactiva no guarda cuándo terminó. Lo
-     * único disponible es `fecha_fin`, que en un término fijo expirado es
-     * exactamente esa fecha, y en el indefinido y en la obra o labor es nula.
+     * **Manda la fecha de salida registrada** en la terminación (documento 1,
+     * 7.1), que es lo que F2-09 vino a arreglar: hasta entonces solo existía
+     * `fecha_fin`, que en el indefinido y en la obra o labor es nula y en el
+     * término fijo dice cuándo *iba* a terminar el contrato, no cuándo se fue
+     * la persona. De aquí sale el énfasis de los 30 días de la advertencia de
+     * reingreso, y también el mes en que el saldo de vacaciones deja de
+     * acumular.
      *
-     * Cuando F2-09 exista, este método devuelve la fecha de salida registrada y
-     * nadie más cambia. Lo único que hoy se pierde por devolver nulo es el
-     * énfasis de los 30 días en la advertencia de reingreso: el aviso se muestra
-     * igual, porque no depende de esta fecha sino de que haya una vinculación
-     * anterior.
+     * `fecha_fin` queda como respaldo de las vinculaciones inactivas que no
+     * tienen terminación registrada. No es un resto del código anterior: la
+     * carga inicial (F5-02) trae personal histórico que se fue antes de que la
+     * empresa usara el sistema, y para ese la fecha de finalización pactada es
+     * la única que hay.
      */
     public function fechaDeSalida(): ?Carbon
     {
         if ($this->estaActiva()) {
             return null;
+        }
+
+        $registrada = $this->terminacion?->fecha_salida;
+
+        if ($registrada instanceof Carbon) {
+            return $registrada;
         }
 
         $fecha = $this->getAttribute('fecha_fin');

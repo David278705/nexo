@@ -6,7 +6,6 @@ use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
 use App\Models\Eps;
 use App\Models\Incapacidad;
-use App\Models\Persona;
 use App\Presentacion\Formato;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -160,9 +159,7 @@ class ListadoDeIncapacidades extends Listado
     protected static function columnasDeOrden(): array
     {
         return [
-            'nombre' => fn (Builder $consulta, string $sentido) => $consulta
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_apellido'), $sentido)
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_nombre'), $sentido),
+            'nombre' => fn (Builder $consulta, string $sentido) => self::porNombreDeLaPersonaDeLaNovedad($consulta, $sentido, 'incapacidades'),
             'inicio' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_inicio', $sentido),
             'fin' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_fin', $sentido),
         ];
@@ -184,23 +181,6 @@ class ListadoDeIncapacidades extends Listado
             'origen' => $this->origen,
             'eps' => $this->eps,
         ];
-    }
-
-    /**
-     * El nombre de una persona a través de la vinculación de la incapacidad.
-     *
-     * Es un salto más que `OrdenaPorEmpleado`: ahí la tabla de partida ya es
-     * `vinculaciones`, y aquí es `incapacidades`, así que la subconsulta pasa
-     * por las dos con un `join` en vez de un `whereColumn` directo.
-     *
-     * @return Builder<Persona>
-     */
-    private static function dePersonaDeLaVinculacion(string $columna): Builder
-    {
-        return Persona::query()
-            ->select($columna)
-            ->join('vinculaciones', 'vinculaciones.persona_id', '=', 'personas.id')
-            ->whereColumn('vinculaciones.id', 'incapacidades.vinculacion_id');
     }
 
     /**

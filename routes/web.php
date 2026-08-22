@@ -17,6 +17,7 @@ use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
+use App\Http\Controllers\TerminacionController;
 use App\Http\Controllers\VacacionController;
 use App\Presentacion\Formato;
 use Illuminate\Support\Facades\Route;
@@ -188,6 +189,21 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
+     * Terminaciones (documento 1, capítulo 7). El último módulo del flujo
+     * compartido, y el que cierra el ciclo: `guardar()` registra la salida y
+     * pasa al empleado a inactivo en una sola transacción. La ruta de exportar
+     * va antes de cualquiera que pudiera confundirse con un identificador.
+     */
+    Route::middleware('modulo:'.Modulo::Terminaciones->value)->group(function () {
+        Route::get('/terminaciones', [TerminacionController::class, 'index'])
+            ->name(Modulo::Terminaciones->nombreDeRuta());
+        Route::get('/terminaciones/exportar', [TerminacionController::class, 'exportar'])
+            ->name('terminaciones.exportar');
+        Route::post('/terminaciones', [TerminacionController::class, 'guardar'])
+            ->name('terminaciones.guardar');
+    });
+
+    /*
      * Configuración (documento 3, sección 5.7). El módulo es solo del
      * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
      * declararlo como cualquier otro.
@@ -203,7 +219,7 @@ Route::middleware('auth')->group(function () {
     });
 
     foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Configuracion], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Terminaciones, Modulo::Configuracion], true)) {
             continue;
         }
 

@@ -7,6 +7,7 @@ use App\Exports\EmpleadosExport;
 use App\Exports\IncapacidadesExport;
 use App\Exports\LicenciasExport;
 use App\Exports\MovimientosExport;
+use App\Exports\TerminacionesExport;
 use App\Exports\VacacionesExport;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Eps;
@@ -17,6 +18,7 @@ use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
 use App\Models\Tenant;
+use App\Models\Terminacion;
 use App\Models\User;
 use App\Models\UserModulo;
 use App\Models\Vacacion;
@@ -796,6 +798,102 @@ describe('movimientos, por sus rutas reales', function () {
         Excel::assertDownloaded(
             'movimientos-'.now()->format('Y-m-d').'.xlsx',
             fn (MovimientosExport $exportacion) => $exportacion->collection()->count() === 1
+        );
+    });
+});
+
+/**
+ * El listado de terminaciones, por sus rutas de verdad (F2-09). Se prueba
+ * aparte de `casoDeAislamiento()` por lo mismo que los otros cuatro módulos del
+ * flujo: se registra por `POST` sobre un empleado, y aquí ese camino es el más
+ * grave de todos —una empresa que pudiera terminar al empleado de otra le
+ * dejaría a alguien sin alertas y sin saber por qué—.
+ */
+describe('terminaciones, por sus rutas reales', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->terminacionDeLaA = $this->contexto->paraTenant($this->empresaA, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create(['primer_nombre' => 'Confidencial', 'primer_apellido' => 'DeLaEmpresaA']))
+                ->create(['cargo' => SECRETO_DE_LA_A]);
+
+            return Terminacion::factory()->de($vinculacion)->create();
+        });
+
+        $this->activoDeLaA = $this->contexto->paraTenant($this->empresaA, fn () => Vinculacion::factory()
+            ->de(Persona::factory()->create(['primer_apellido' => 'SigueActivo']))
+            ->create(['cargo' => SECRETO_DE_LA_A]));
+
+        $this->usuarioB = usuarioDe($this->empresaB, Rol::Administrador, Modulo::Terminaciones);
+    });
+
+    it('no lista terminaciones de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/terminaciones');
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['terminaciones']['filas'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('no incluye terminaciones de otra empresa en la exportación', function () {
+        Excel::fake();
+
+        $this->actingAs($this->usuarioB)->get('/terminaciones/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'terminaciones-'.now()->format('Y-m-d').'.xlsx',
+            fn (TerminacionesExport $exportacion) => $exportacion->collection()->isEmpty()
+        );
+    });
+
+    it('no termina al empleado de otra empresa ni lo deja inactivo', function () {
+        $this->actingAs($this->usuarioB)->post('/terminaciones', [
+            'vinculacion_id' => $this->activoDeLaA->id,
+            'tipo_salida' => 'renuncia',
+            'motivo' => 'Motivos de salud',
+            'fecha_salida' => '2026-08-31',
+        ])->assertSessionHasErrors('vinculacion_id');
+
+        $visto = $this->contexto->paraTenant($this->empresaA, fn () => [
+            'terminaciones' => Terminacion::query()->count(),
+            'activo' => Vinculacion::query()->findOrFail($this->activoDeLaA->id)->estaActiva(),
+        ]);
+
+        expect($visto['terminaciones'])->toBe(1)
+            ->and($visto['activo'])->toBeTrue();
+    });
+
+    it('no resuelve el aviso de confirmación del empleado de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)
+            ->get('/terminaciones?'.http_build_query(['vinculacion_id' => $this->activoDeLaA->id]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Terminaciones/Index',
+                'X-Inertia-Partial-Data' => 'avisoDeTerminacion',
+            ]);
+
+        expect($respuesta->json()['props']['avisoDeTerminacion'])->toBeNull()
+            ->and($respuesta->getContent())->not->toContain('SigueActivo');
+    });
+
+    it('la empresa dueña sí ve su terminación por los dos caminos', function () {
+        Excel::fake();
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Terminaciones);
+
+        $listado = $this->actingAs($usuarioA)->get('/terminaciones');
+        $listado->assertOk();
+
+        expect($listado->viewData('page')['props']['terminaciones']['filas'])->toHaveCount(1);
+
+        $this->actingAs($usuarioA)->get('/terminaciones/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'terminaciones-'.now()->format('Y-m-d').'.xlsx',
+            fn (TerminacionesExport $exportacion) => $exportacion->collection()->count() === 1
         );
     });
 });

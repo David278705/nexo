@@ -4,7 +4,6 @@ namespace App\Vacaciones;
 
 use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
-use App\Models\Persona;
 use App\Models\Vacacion;
 use App\Presentacion\Formato;
 use Illuminate\Database\Eloquent\Builder;
@@ -120,9 +119,7 @@ class ListadoDeVacaciones extends Listado
     protected static function columnasDeOrden(): array
     {
         return [
-            'nombre' => fn (Builder $consulta, string $sentido) => $consulta
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_apellido'), $sentido)
-                ->orderBy(self::dePersonaDeLaVinculacion('primer_nombre'), $sentido),
+            'nombre' => fn (Builder $consulta, string $sentido) => self::porNombreDeLaPersonaDeLaNovedad($consulta, $sentido, 'vacaciones'),
             'inicio' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_inicio', $sentido),
             'fin' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_fin', $sentido),
         ];
@@ -142,18 +139,5 @@ class ListadoDeVacaciones extends Listado
             'desde' => $this->desde,
             'hasta' => $this->hasta,
         ];
-    }
-
-    /**
-     * El nombre de una persona a través de la vinculación de la vacación.
-     *
-     * @return Builder<Persona>
-     */
-    private static function dePersonaDeLaVinculacion(string $columna): Builder
-    {
-        return Persona::query()
-            ->select($columna)
-            ->join('vinculaciones', 'vinculaciones.persona_id', '=', 'personas.id')
-            ->whereColumn('vinculaciones.id', 'vacaciones.vinculacion_id');
     }
 }
