@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Autorizacion\Modulo;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Exports\LicenciasExport;
+use App\Http\Requests\EditarLicencia;
 use App\Http\Requests\RegistrarLicencia;
 use App\Licencias\ListadoDeLicencias;
 use App\Licencias\TipoDeLicencia;
 use App\Models\Licencia;
+use App\Novedades\DetalleDeNovedad;
 use App\Presentacion\Formato;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -58,6 +60,11 @@ class LicenciaController extends Controller
              * una fecha; aquí no se resta ningún día en el navegador.
              */
             'diasDeLicencia' => Inertia::optional(fn (): ?string => self::diasDeLicencia($peticion)),
+            /*
+             * La novedad que se está editando o que se va a eliminar (F2-10).
+             * La pantalla la pide al pulsar Editar o Eliminar.
+             */
+            DetalleDeNovedad::PROP => DetalleDeNovedad::prop($peticion, Licencia::class),
         ]);
     }
 
@@ -95,6 +102,44 @@ class LicenciaController extends Controller
         return redirect()
             ->route(Modulo::Licencias->nombreDeRuta())
             ->with('estado', 'Novedad registrada.');
+    }
+
+    /**
+     * Corrige una novedad ya registrada (documento 1, 6.2): «cualquier
+     * registro de novedad puede modificarse, sin importar su antigüedad».
+     *
+     * El tipo se puede cambiar y las fechas también; la acumulación de
+     * vacaciones se recalcula sola porque la reducción no está guardada en
+     * ninguna columna. El empleado no se toca: lo explica `EditarLicencia`.
+     */
+    public function editar(EditarLicencia $peticion, Licencia $licencia): RedirectResponse
+    {
+        $licencia->update([
+            'tipo' => $peticion->validated('tipo'),
+            'fecha_inicio' => $peticion->validated('fecha_inicio'),
+            'fecha_fin' => $peticion->validated('fecha_fin'),
+        ]);
+
+        return redirect()
+            ->route(Modulo::Licencias->nombreDeRuta())
+            ->with('estado', 'Novedad actualizada.');
+    }
+
+    /**
+     * Elimina la novedad (documento 1, 6.2). Es borrado lógico —la regla 4 del
+     * proyecto— y la auditoría lo registra sola.
+     *
+     * La acumulación que la suspensión había reducido vuelve sin ninguna
+     * operación inversa: `Licencia` usa borrado lógico y el motor deja de
+     * verla en cuanto se elimina.
+     */
+    public function eliminar(Licencia $licencia): RedirectResponse
+    {
+        $licencia->delete();
+
+        return redirect()
+            ->route(Modulo::Licencias->nombreDeRuta())
+            ->with('estado', 'Novedad eliminada.');
     }
 
     /**

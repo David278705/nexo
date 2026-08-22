@@ -148,6 +148,15 @@ describe('el permiso del módulo', function () {
         $this->actingAs($sinPermiso)->get('/incapacidades')->assertForbidden();
         $this->actingAs($sinPermiso)->get('/incapacidades/exportar')->assertForbidden();
         $this->actingAs($sinPermiso)->post('/incapacidades', datosDeIncapacidad())->assertForbidden();
+        // Sobre un registro que sí existe: si no, la respuesta sería 404 y no
+        // demostraría nada del permiso.
+        $incapacidad = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Incapacidad::factory()
+            ->de(empleadoParaNovedad(['numero_documento' => '43887201']))
+            ->del14al16DeJulio()
+            ->create(['eps_id' => $this->eps->id]));
+
+        $this->actingAs($sinPermiso)->put('/incapacidades/'.$incapacidad->id, datosDeIncapacidad())->assertForbidden();
+        $this->actingAs($sinPermiso)->delete('/incapacidades/'.$incapacidad->id)->assertForbidden();
     });
 
     it('el diagnóstico se ve en el listado de quien sí tiene el módulo', function () {
@@ -160,6 +169,76 @@ describe('el permiso del módulo', function () {
         $respuesta = $this->actingAs($this->usuario)->get('/incapacidades');
 
         expect($respuesta->viewData('page')['props']['incapacidades']['filas'][0]['diagnostico'])->toBe('M54.5');
+    });
+});
+
+describe('editar y eliminar (documento 1, 6.2)', function () {
+    it('la confirmación de borrado es la frase literal del documento 3, 2.5', function () {
+        $vinculacion = empleadoParaNovedad([
+            'numero_documento' => '43887201',
+            'primer_nombre' => 'Ana',
+            'segundo_nombre' => null,
+            'primer_apellido' => 'Torres',
+            'segundo_apellido' => null,
+        ]);
+
+        $incapacidad = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Incapacidad::factory()
+            ->de($vinculacion)
+            ->del14al16DeJulio()
+            ->create(['eps_id' => $this->eps->id]));
+
+        $frase = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => $incapacidad->confirmacionDeBorrado(),
+        );
+
+        expect($frase)->toBe(
+            'Vas a eliminar la incapacidad del 14 al 16 de julio de Ana Torres. '
+            .'Esta acción queda registrada en la auditoría.'
+        );
+    });
+
+    it('editar corrige los campos y recalcula los días', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        $incapacidad = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Incapacidad::factory()
+            ->de($vinculacion)
+            ->del14al16DeJulio()
+            ->create(['eps_id' => $this->eps->id]));
+
+        $respuesta = $this->actingAs($this->usuario)->put('/incapacidades/'.$incapacidad->id, datosDeIncapacidad([
+            'fecha_fin' => '2026-07-20',
+            'codigo_diagnostico' => 'M54.5',
+            'es_prorroga' => 'si',
+            'eps_id' => $this->eps->id,
+        ]));
+
+        $respuesta->assertRedirect('/incapacidades')->assertSessionHas('estado', 'Incapacidad actualizada.');
+
+        $corregida = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => Incapacidad::query()->findOrFail($incapacidad->id),
+        );
+
+        expect($corregida->dias())->toBe(7)
+            ->and($corregida->codigo_diagnostico)->toBe('M54.5')
+            ->and($corregida->es_prorroga)->toBeTrue();
+    });
+
+    it('eliminar es borrado lógico y deja constancia en la auditoría', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        $incapacidad = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Incapacidad::factory()
+            ->de($vinculacion)
+            ->del14al16DeJulio()
+            ->create(['eps_id' => $this->eps->id]));
+
+        $this->actingAs($this->usuario)
+            ->delete('/incapacidades/'.$incapacidad->id)
+            ->assertRedirect('/incapacidades')
+            ->assertSessionHas('estado', 'Incapacidad eliminada.');
+
+        expect(Incapacidad::withoutGlobalScopes()->whereNotNull('deleted_at')->count())->toBe(1);
     });
 });
 

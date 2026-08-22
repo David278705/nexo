@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Autorizacion\Modulo;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Exports\VacacionesExport;
+use App\Http\Requests\EditarVacacion;
 use App\Http\Requests\RegistrarVacacion;
 use App\Models\Vacacion;
 use App\Models\Vinculacion;
+use App\Novedades\DetalleDeNovedad;
 use App\Presentacion\Formato;
 use App\Vacaciones\AdvertenciaDeSaldo;
 use App\Vacaciones\ListadoDeVacaciones;
@@ -64,6 +66,12 @@ class VacacionController extends Controller
              * la fecha de disfrute con la advertencia de F2-06 si no alcanza.
              */
             'saldoDeVacaciones' => Inertia::optional(fn (): ?array => self::saldoDeVacaciones($peticion)),
+            /*
+             * El periodo que se está editando o que se va a eliminar (F2-10).
+             * La pantalla la pide al pulsar Editar o Eliminar; el listado no
+             * paga nada por ofrecer las dos acciones.
+             */
+            DetalleDeNovedad::PROP => DetalleDeNovedad::prop($peticion, Vacacion::class),
         ]);
     }
 
@@ -100,6 +108,44 @@ class VacacionController extends Controller
         return redirect()
             ->route(Modulo::Vacaciones->nombreDeRuta())
             ->with('estado', 'Vacaciones registradas.');
+    }
+
+    /**
+     * Corrige un periodo ya registrado (documento 1, 6.2): «cualquier registro
+     * de novedad puede modificarse, sin importar su antigüedad».
+     *
+     * El empleado no se toca —lo explica `EditarVacacion`— y el saldo no se
+     * ajusta a mano: se recalcula solo la próxima vez que alguien lo pida,
+     * porque no hay ninguna columna que corregir.
+     */
+    public function editar(EditarVacacion $peticion, Vacacion $vacacion): RedirectResponse
+    {
+        $vacacion->update([
+            'fecha_inicio' => $peticion->validated('fecha_inicio'),
+            'fecha_fin' => $peticion->validated('fecha_fin'),
+        ]);
+
+        return redirect()
+            ->route(Modulo::Vacaciones->nombreDeRuta())
+            ->with('estado', 'Vacaciones actualizadas.');
+    }
+
+    /**
+     * Elimina el periodo (documento 1, 6.2). Es borrado lógico —la regla 4 del
+     * proyecto— y la auditoría lo registra sola.
+     *
+     * Los días vuelven al saldo sin ninguna operación inversa: `Vacacion` usa
+     * borrado lógico y `SaldoDeVacaciones` deja de verla en cuanto se elimina.
+     * La consecuencia que el usuario acaba de leer la escribió
+     * `ConfirmacionDeBorrado` con esa misma cuenta.
+     */
+    public function eliminar(Vacacion $vacacion): RedirectResponse
+    {
+        $vacacion->delete();
+
+        return redirect()
+            ->route(Modulo::Vacaciones->nombreDeRuta())
+            ->with('estado', 'Vacaciones eliminadas.');
     }
 
     /**

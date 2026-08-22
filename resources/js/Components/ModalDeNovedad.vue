@@ -27,6 +27,14 @@ import ResumenDeEmpleado from "@/Components/ResumenDeEmpleado.vue";
  * 5. Los días los calcula el servidor y los pinta el módulo en su `slot`. **Aquí
  *    no se cuenta ni un día ni se calcula ningún saldo.**
  *
+ * ## Editar en lugar de registrar
+ *
+ * Con la prop `edicion` el mismo componente sirve para corregir una novedad que
+ * ya existe (documento 1, 6.2): se salta los pasos 2 y 3 —el empleado ya se
+ * sabe— y abre directamente el modal grande. Es el mismo modal a propósito: el
+ * usuario no está aprendiendo una pantalla nueva, está volviendo a la que ya
+ * conoce con los datos puestos.
+ *
  * ## De dónde salen los datos
  *
  * De la prop compartida `empleadoDeNovedad`, que se pide con una recarga parcial
@@ -50,6 +58,17 @@ const props = defineProps({
     // La respuesta del servidor al documento digitado: prop `empleadoDeNovedad`.
     // Nula mientras no se haya preguntado nada.
     empleado: { type: Object, default: null },
+    /*
+     * La novedad que ya existe, cuando lo que se abre es una edición
+     * (documento 1, 6.2). Llega de la prop `novedad` —`DetalleDeNovedad` en el
+     * servidor— con la ficha del empleado ya resuelta.
+     *
+     * Con ella, los pasos 2 y 3 no existen: el registro ya sabe de quién es y
+     * volver a pedir el documento sería preguntar algo que el sistema conoce.
+     * Además, la búsqueda solo encuentra empleados activos y el documento 1,
+     * 6.2 permite corregir cualquier novedad, incluida la de quien ya salió.
+     */
+    edicion: { type: Object, default: null },
     // Mientras el módulo envía la novedad. El botón se deshabilita para evitar
     // el doble registro (documento 3, 6.2).
     enviando: { type: Boolean, default: false },
@@ -64,22 +83,31 @@ const emit = defineEmits(["cerrar", "guardar", "seleccionado"]);
 const documento = ref("");
 const campoDelDocumento = ref(null);
 // Mientras no se pulsa Continuar, el flujo sigue en el paso del documento
-// aunque el empleado ya se haya encontrado: es lo que hace el prototipo.
-const enElFormulario = ref(false);
+// aunque el empleado ya se haya encontrado: es lo que hace el prototipo. Al
+// editar se arranca ya dentro, porque el paso del documento no existe.
+const enElFormulario = ref(props.edicion !== null);
 
 /*
  * La respuesta del servidor solo se tiene en cuenta si es la del documento que
  * está en el campo ahora. Sin esa comprobación, borrar dos cifras del número
  * dejaría en pantalla la ficha del empleado anterior.
  */
-const respuesta = computed(() =>
-    props.empleado && props.empleado.documento === documento.value.trim()
-        ? props.empleado
-        : null,
-);
+const respuesta = computed(() => {
+    if (props.edicion) {
+        return props.edicion;
+    }
 
-const encontrado = computed(() => respuesta.value?.encontrado === true);
-const error = computed(() => respuesta.value?.error ?? "");
+    return props.empleado && props.empleado.documento === documento.value.trim()
+        ? props.empleado
+        : null;
+});
+
+const encontrado = computed(
+    () => props.edicion !== null || respuesta.value?.encontrado === true,
+);
+const error = computed(() =>
+    props.edicion ? "" : (respuesta.value?.error ?? ""),
+);
 
 /*
  * La consulta al salir del campo (paso 3). `only` trae únicamente la prop del
@@ -135,9 +163,11 @@ watch(
     async (abierto) => {
         documento.value = "";
         ultimaConsulta.value = "";
-        enElFormulario.value = false;
+        // Editar empieza donde registrar termina: en el formulario, con el
+        // empleado ya resuelto.
+        enElFormulario.value = props.edicion !== null;
 
-        if (abierto) {
+        if (abierto && props.edicion === null) {
             await nextTick();
             campoDelDocumento.value?.$el?.querySelector("input")?.focus();
         }

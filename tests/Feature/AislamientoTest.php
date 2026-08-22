@@ -540,6 +540,28 @@ describe('incapacidades, por sus rutas reales', function () {
         ))->toBe(1);
     });
 
+    it('no edita ni elimina la incapacidad de otra empresa (F2-10)', function () {
+        $this->actingAs($this->usuarioB)
+            ->put('/incapacidades/'.$this->incapacidadDeLaA->getKey(), [
+                'fecha_inicio' => '2026-07-14',
+                'fecha_fin' => '2026-07-30',
+                'codigo_diagnostico' => 'M54.5',
+                'es_prorroga' => 'no',
+                'eps_id' => $this->incapacidadDeLaA->eps_id,
+                'origen' => 'comun',
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($this->usuarioB)
+            ->delete('/incapacidades/'.$this->incapacidadDeLaA->getKey())
+            ->assertNotFound();
+
+        expect($this->contexto->paraTenant(
+            $this->empresaA,
+            fn () => Incapacidad::query()->findOrFail($this->incapacidadDeLaA->getKey())->dias()
+        ))->toBe(3);
+    });
+
     it('la empresa dueña sí ve su incapacidad por los dos caminos', function () {
         Excel::fake();
 
@@ -611,6 +633,35 @@ describe('vacaciones, por sus rutas reales', function () {
             $this->empresaA,
             fn () => Vacacion::query()->count()
         ))->toBe(1);
+    });
+
+    it('no edita ni elimina las vacaciones de otra empresa, ni se le resuelve su detalle (F2-10)', function () {
+        $this->actingAs($this->usuarioB)
+            ->put('/vacaciones/'.$this->vacacionDeLaA->getKey(), [
+                'fecha_inicio' => '2026-07-27',
+                'fecha_fin' => '2026-07-28',
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($this->usuarioB)
+            ->delete('/vacaciones/'.$this->vacacionDeLaA->getKey())
+            ->assertNotFound();
+
+        // Y la prop que lleva la ficha del empleado y la consecuencia
+        // calculada tampoco contesta por una fila ajena.
+        $detalle = $this->actingAs($this->usuarioB)
+            ->get('/vacaciones?'.http_build_query(['novedad' => $this->vacacionDeLaA->getKey()]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Vacaciones/Index',
+                'X-Inertia-Partial-Data' => 'novedad',
+            ]);
+
+        expect($detalle->json()['props']['novedad'])->toBeNull()
+            ->and($this->contexto->paraTenant(
+                $this->empresaA,
+                fn () => Vacacion::query()->findOrFail($this->vacacionDeLaA->getKey())->dias()
+            ))->toBe(5);
     });
 
     it('la empresa dueña sí ve su vacación por los dos caminos', function () {
@@ -685,6 +736,25 @@ describe('licencias, por sus rutas reales', function () {
             $this->empresaA,
             fn () => Licencia::query()->count()
         ))->toBe(1);
+    });
+
+    it('no edita ni elimina la licencia de otra empresa (F2-10)', function () {
+        $this->actingAs($this->usuarioB)
+            ->put('/licencias/'.$this->licenciaDeLaA->getKey(), [
+                'tipo' => 'suspension',
+                'fecha_inicio' => '2026-07-02',
+                'fecha_fin' => '2026-07-30',
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($this->usuarioB)
+            ->delete('/licencias/'.$this->licenciaDeLaA->getKey())
+            ->assertNotFound();
+
+        expect($this->contexto->paraTenant(
+            $this->empresaA,
+            fn () => Licencia::query()->findOrFail($this->licenciaDeLaA->getKey())->dias()
+        ))->toBe(6);
     });
 
     it('la empresa dueña sí ve su licencia por los dos caminos', function () {

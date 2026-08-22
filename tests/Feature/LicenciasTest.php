@@ -4,6 +4,7 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
 use App\Contratacion\TipoContrato;
 use App\Dominio\Calculo\MotorDeCalculo;
+use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Exports\LicenciasExport;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Licencias\ListadoDeLicencias;
@@ -11,6 +12,7 @@ use App\Models\Licencia;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
+use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -134,6 +136,106 @@ describe('el permiso del módulo', function () {
         $this->actingAs($sinPermiso)->get('/licencias')->assertForbidden();
         $this->actingAs($sinPermiso)->get('/licencias/exportar')->assertForbidden();
         $this->actingAs($sinPermiso)->post('/licencias', datosDeLicencia())->assertForbidden();
+        // Sobre un registro que sí existe: si no, la respuesta sería 404 y no
+        // demostraría nada del permiso.
+        $licencia = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Licencia::factory()
+            ->de(empleadoParaNovedad(['numero_documento' => '43887201']))
+            ->delJuevesAlMartes()
+            ->create());
+
+        $this->actingAs($sinPermiso)->put('/licencias/'.$licencia->id, datosDeLicencia())->assertForbidden();
+        $this->actingAs($sinPermiso)->delete('/licencias/'.$licencia->id)->assertForbidden();
+    });
+});
+
+describe('editar y eliminar (documento 1, 6.2)', function () {
+    it('editar el tipo y las fechas recalcula los días y la reducción del saldo', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        $licencia = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Licencia::factory()
+            ->de($vinculacion)
+            ->delJuevesAlMartes()
+            ->create());
+
+        $respuesta = $this->actingAs($this->usuario)->put('/licencias/'.$licencia->id, datosDeLicencia([
+            'tipo' => 'suspension',
+            'fecha_fin' => '2026-07-04',
+        ]));
+
+        $respuesta->assertRedirect('/licencias')->assertSessionHas('estado', 'Novedad actualizada.');
+
+        $corregida = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => Licencia::query()->findOrFail($licencia->id),
+        );
+
+        expect($corregida->dias())->toBe(3)
+            ->and($corregida->tipo->value)->toBe('suspension');
+    });
+
+    it('la confirmación de borrado cuenta los días de suspensión y el saldo que se recupera', function () {
+        $empresa = Tenant::factory()->create(['suspensiones_afectan_vacaciones' => true]);
+
+        [$licencia, $antes, $despues] = app(ContextoTenant::class)->paraTenant($empresa, function () {
+            $vinculacion = Vinculacion::factory()
+                ->conIngreso('2025-01-01')
+                ->create(['tipo_contrato' => TipoContrato::Indefinido->value, 'fecha_fin' => null]);
+
+            $licencia = Licencia::factory()->de($vinculacion)->del16DeMarzoAl15DeAbril()->create();
+
+            $saldo = SaldoDeVacaciones::de($vinculacion);
+
+            return [
+                $licencia,
+                $saldo->al(Carbon::today()),
+                $saldo->sin($licencia)->al(Carbon::today()),
+            ];
+        });
+
+        // La suspensión había quitado media acumulación en marzo y otra media
+        // en abril: 1,25 días entre las dos.
+        expect($despues)->toEqualWithDelta($antes + 1.25, 0.0001);
+
+        $frase = app(ContextoTenant::class)->paraTenant($empresa, fn () => $licencia->confirmacionDeBorrado());
+
+        expect($frase)->toContain('Se eliminarán 31 días de suspensión del contrato')
+            ->and($frase)->toContain('pasará de '.Formato::numeroDecimal($antes).' a '.Formato::diasDecimales($despues))
+            ->and($frase)->toEndWith('Esta acción queda registrada en la auditoría.');
+    });
+
+    it('no anuncia ningún cambio de saldo si la empresa no tiene el parámetro activo', function () {
+        $empresa = Tenant::factory()->create(['suspensiones_afectan_vacaciones' => false]);
+
+        $frase = app(ContextoTenant::class)->paraTenant($empresa, function () {
+            $vinculacion = Vinculacion::factory()
+                ->conIngreso('2025-01-01')
+                ->create(['tipo_contrato' => TipoContrato::Indefinido->value, 'fecha_fin' => null]);
+
+            return Licencia::factory()
+                ->de($vinculacion)
+                ->del16DeMarzoAl15DeAbril()
+                ->create()
+                ->confirmacionDeBorrado();
+        });
+
+        expect($frase)->toContain('Se eliminarán 31 días de suspensión del contrato')
+            ->and($frase)->not->toContain('pasará de');
+    });
+
+    it('eliminar es borrado lógico', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        $licencia = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Licencia::factory()
+            ->de($vinculacion)
+            ->delJuevesAlMartes()
+            ->create());
+
+        $this->actingAs($this->usuario)
+            ->delete('/licencias/'.$licencia->id)
+            ->assertRedirect('/licencias')
+            ->assertSessionHas('estado', 'Novedad eliminada.');
+
+        expect(Licencia::withoutGlobalScopes()->whereNotNull('deleted_at')->count())->toBe(1);
     });
 });
 

@@ -118,9 +118,15 @@ class MotorDeCalculo
      * aritmética —días que no acumulan sobre una base de treinta— y por eso se
      * suman antes de una única llamada a `acumulacionProporcional()`.
      *
+     * `$licenciaExcluida` deja fuera una licencia concreta sin tocar la base de
+     * datos. Es lo que permite responder «cómo quedaría el saldo si esta
+     * novedad se eliminara» **antes** de eliminarla, que es lo que la
+     * confirmación de borrado tiene que decir (documento 3, 2.4). Sin él, la
+     * única forma de saberlo sería borrar primero y contar después.
+     *
      * Se usa en: saldo de vacaciones.
      */
-    public static function acumulacionMes(Vinculacion $vinculacion, CarbonInterface $mes): float
+    public static function acumulacionMes(Vinculacion $vinculacion, CarbonInterface $mes, ?int $licenciaExcluida = null): float
     {
         $cubiertos = self::diasComercialesDelMes(
             $vinculacion->fecha_ingreso,
@@ -128,7 +134,8 @@ class MotorDeCalculo
             $mes,
         );
 
-        $noAcumulan = self::DIAS_DEL_MES_COMERCIAL - $cubiertos + self::diasDeSuspensionDelMes($vinculacion, $mes);
+        $noAcumulan = self::DIAS_DEL_MES_COMERCIAL - $cubiertos
+            + self::diasDeSuspensionDelMes($vinculacion, $mes, $licenciaExcluida);
 
         return self::acumulacionProporcional($noAcumulan);
     }
@@ -259,13 +266,19 @@ class MotorDeCalculo
      * y no en quien llama, para que ninguna pantalla pueda olvidarse de
      * mirarlo—. Sin el parámetro activo, ninguna licencia reduce nada.
      */
-    private static function diasDeSuspensionDelMes(Vinculacion $vinculacion, CarbonInterface $mes): int
+    private static function diasDeSuspensionDelMes(Vinculacion $vinculacion, CarbonInterface $mes, ?int $licenciaExcluida = null): int
     {
         if ($vinculacion->tenant?->getAttribute('suspensiones_afectan_vacaciones') !== true) {
             return 0;
         }
 
-        return $vinculacion->licencias()
+        $licencias = $vinculacion->licencias();
+
+        if ($licenciaExcluida !== null) {
+            $licencias->whereKeyNot($licenciaExcluida);
+        }
+
+        return (int) $licencias
             ->get()
             ->sum(fn (Licencia $licencia): int => self::diasSuspendidosDelMes(
                 $licencia->fecha_inicio,

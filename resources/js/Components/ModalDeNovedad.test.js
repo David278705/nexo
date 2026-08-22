@@ -290,3 +290,46 @@ describe("el flujo compartido de novedades", () => {
         componente.unmount();
     });
 });
+
+describe("el mismo modal en modo edición (documento 1, 6.2)", () => {
+    beforeEach(() => {
+        reload.mockClear();
+        document.body.innerHTML = "";
+    });
+
+    // El detalle que manda `App\Novedades\DetalleDeNovedad`: la ficha del
+    // empleado ya resuelta, sin pasar por la búsqueda del documento.
+    const enEdicion = { id: 12, datos: encontrada.datos, valores: {} };
+
+    it("se salta el paso del documento y abre directamente el formulario", () => {
+        const componente = montar({
+            titulo: "Editar incapacidad",
+            edicion: enEdicion,
+        });
+
+        expect(document.body.textContent).toContain("Editar incapacidad");
+        expect(document.body.textContent).toContain("Carolina Ramírez Gómez");
+        expect(document.body.textContent).toContain("Analista de compras");
+        expect(document.body.textContent).not.toContain(
+            "Número de documento del empleado",
+        );
+        // Y no pregunta nada al servidor: el empleado ya se sabe.
+        expect(reload).not.toHaveBeenCalled();
+
+        componente.unmount();
+    });
+
+    it("guarda sobre el registro que ya existe", async () => {
+        const componente = montar({
+            titulo: "Editar incapacidad",
+            edicion: enEdicion,
+        });
+
+        boton("Guardar").dispatchEvent(new Event("click"));
+        await nextTick();
+
+        expect(componente.emitted("guardar")[0][0].id).toBe(12);
+
+        componente.unmount();
+    });
+});

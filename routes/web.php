@@ -139,6 +139,22 @@ Route::middleware('auth')->group(function () {
             ->name('incapacidades.exportar');
         Route::post('/incapacidades', [IncapacidadController::class, 'guardar'])
             ->name('incapacidades.guardar');
+        /*
+         * Editar y eliminar (F2-10, documento 1, 6.2). Las tres novedades del
+         * capítulo 6 llevan el mismo par de direcciones y los mismos verbos:
+         * `PUT` porque se reemplaza el registro que ya existe, y `DELETE`
+         * porque se elimina —lógicamente, la regla 4 del proyecto—, no porque
+         * se cree un hecho nuevo.
+         *
+         * No llevan `whereNumber` por accidente: sin él, `exportar` se leería
+         * como identificador.
+         */
+        Route::put('/incapacidades/{incapacidad}', [IncapacidadController::class, 'editar'])
+            ->whereNumber('incapacidad')
+            ->name('incapacidades.editar');
+        Route::delete('/incapacidades/{incapacidad}', [IncapacidadController::class, 'eliminar'])
+            ->whereNumber('incapacidad')
+            ->name('incapacidades.eliminar');
     });
 
     /*
@@ -155,6 +171,13 @@ Route::middleware('auth')->group(function () {
             ->name('vacaciones.exportar');
         Route::post('/vacaciones', [VacacionController::class, 'guardar'])
             ->name('vacaciones.guardar');
+        // Editar y eliminar (F2-10): el mismo par que en incapacidades.
+        Route::put('/vacaciones/{vacacion}', [VacacionController::class, 'editar'])
+            ->whereNumber('vacacion')
+            ->name('vacaciones.editar');
+        Route::delete('/vacaciones/{vacacion}', [VacacionController::class, 'eliminar'])
+            ->whereNumber('vacacion')
+            ->name('vacaciones.eliminar');
     });
 
     /*
@@ -170,6 +193,13 @@ Route::middleware('auth')->group(function () {
             ->name('licencias.exportar');
         Route::post('/licencias', [LicenciaController::class, 'guardar'])
             ->name('licencias.guardar');
+        // Editar y eliminar (F2-10): el mismo par que en incapacidades.
+        Route::put('/licencias/{licencia}', [LicenciaController::class, 'editar'])
+            ->whereNumber('licencia')
+            ->name('licencias.editar');
+        Route::delete('/licencias/{licencia}', [LicenciaController::class, 'eliminar'])
+            ->whereNumber('licencia')
+            ->name('licencias.eliminar');
     });
 
     /*

@@ -1,77 +1,74 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-22 · Tarea F2-09 · Terminaciones
+**Última sesión:** 2026-08-22 · Tarea F2-10 · Edición y borrado de novedades
 **Verificación:** verde
-**Siguiente tarea:** F2-10 · Edición y borrado de novedades. Todas editables y eliminables sin límite
-de antigüedad, con confirmación que explica la consecuencia calculada.
+**Siguiente tarea:** F2-11 · PUNTO DE CONTROL — revisión (ejecutar el skill `revisar`)
 
 ## Qué se hizo
 
-- **La deuda que F1-05 dejó apuntada quedó pagada.** `Vinculacion::fechaDeSalida()` ya no sale de
-  `fecha_fin` sino de la terminación registrada, y de ella dependen tres cosas que hasta hoy no
-  funcionaban en un contrato indefinido: el énfasis de los 30 días de la advertencia de reingreso, el
-  mes en que el saldo de vacaciones deja de acumular y la antigüedad de la ficha. `fecha_fin` queda
-  como respaldo **a propósito y no por descuido**: la carga inicial (F5-02) traerá personal histórico
-  que se fue antes de que la empresa usara el sistema, y para ese la fecha pactada es la única que
-  hay. Las dos pruebas que lo demuestran son nuevas: una mide los 30 días sobre un indefinido y otra
-  comprueba que el saldo se congela el día de la salida.
-- **`Vinculacion::registrarTerminacion()` es la segunda escritura doble del proyecto**, y copia el
-  patrón de `registrarMovimiento()` en vez de inventar otro: la terminación y el paso a inactivo van
-  en una transacción. Un fallo en medio dejaría una salida registrada sobre alguien a quien el
-  sistema le seguiría mandando alertas, que es exactamente lo que la sección 7.1 pide evitar.
-- **La categoría de rotación no tiene columna.** La sección 7.4 dice que el usuario no la digita, la
-  deduce el sistema, así que la responde `TipoDeSalida::categoriaDeRotacion()` cada vez. Guardarla
-  habría congelado la clasificación del día del registro, y el propio documento discute mover el
-  mutuo acuerdo de grupo: el día que se moviera, las filas viejas mentirían.
-- **Los 35 motivos y su dependencia viven en `TipoDeSalida` y en ningún otro sitio.** De ahí salen
-  las opciones del formulario, el motivo automático de los dos tipos sin submotivos, la lista blanca
-  del filtro del listado y la validación del servidor. La lista dependiente se recarga en el
-  navegador con datos que ya vinieron —son frases fijas, no dependen de la empresa—, pero **quién
-  decide cuál vale es el servidor**: hay prueba de que «Estudios» no se puede guardar como despido
-  con justa causa.
-- **La confirmación de la sección 5.6 se escribe en el servidor**, `AvisoDeTerminacion`, y llega por
-  la recarga parcial `avisoDeTerminacion`, el mismo patrón de `situacionActual` en movimientos. Así
-  la prueba lee la misma frase que ve el usuario, con el nombre del empleado de verdad.
-- **El módulo completo con el patrón compartido**: `ListadoDeTerminaciones` sobre `Listado` (REV-01)
-  con los tres filtros del documento 1, 11.3 —rango de fecha de salida, tipo y motivo—,
-  `TerminacionController`, `RegistrarTerminacion`, `TerminacionesExport` con las tres columnas
-  obligatorias más la rotación, y la pantalla `Terminaciones/Index` sobre `useListado` (REV-02)
-  enchufada a `ModalDeNovedad` (F2-03).
-- **`Selector` estrenó `deshabilitado`**, que es lo que pide el documento 3, 5.6 para el motivo
-  autocompletado. Es el primer componente compartido que se toca desde F2-03.
-- **Se extrajo la sexta copia antes de escribirla.** Los cuatro listados de novedades repetían
-  `dePersonaDeLaVinculacion()` con la sola diferencia del nombre de la tabla; ahora está una vez en
-  el trait `OrdenaPorEmpleado` como `porNombreDeLaPersonaDeLaNovedad()`, y los cinco listados lo
-  llaman. Ninguna prueba se tocó para eso.
-- **Las cuatro pruebas compartidas de siempre se actualizaron**: el caso de aislamiento por sus rutas
-  reales en `AislamientoTest.php` —con el caso propio: que la empresa B no pueda terminar al empleado
-  de la A ni dejarlo inactivo—, `EstructuraTest.php`, `componenteDe()` en `FlujoDeNovedadTest.php` y
-  la lista `PANTALLAS` de `useListado.test.js`.
-- `composer verificar` en verde: Pint, PHPStan sin errores, **703** pruebas de Pest (30 nuevas), build
-  y **257** de Vitest.
+- **Las tres novedades del capítulo 6 ya se editan y se eliminan desde su listado**, sin límite de
+  antigüedad, que es lo que pide la tabla del documento 1, 6.2. Cada fila estrena dos acciones de
+  texto —Editar y Eliminar—, seis rutas nuevas (`PUT` y `DELETE` por módulo) y ninguna de las dos
+  toca una sola columna de saldo: no existe.
+- **El «hecho cuando» está probado con la frase que ve el usuario.** `ConfirmacionDeBorrado` escribe
+  la plantilla literal del documento 3, 6.3 —«Vas a eliminar {descripción}. {Consecuencia}. Esta
+  acción queda registrada en la auditoría.»— y para vacaciones la consecuencia es la del ejemplo del
+  2.4: «Se eliminarán 5 días de vacaciones y el saldo de Carlos Ramírez pasará de X a Y días». La
+  prueba comprueba **las dos cosas a la vez**: que la frase sea esa y que el saldo de después sea de
+  verdad el de antes más los cinco días.
+- **`SaldoDeVacaciones::sin()` es la pieza nueva del motor**, y hace falta porque la consecuencia se
+  enseña **antes** de eliminar: responde «cuánto valdría el saldo si esta novedad no existiera» sin
+  escribir nada en la base. Excluye por identificador —una vacación en `diasDisfrutadosHasta()`, una
+  licencia a través del nuevo parámetro de `MotorDeCalculo::acumulacionMes()`—; la alternativa era
+  borrar dentro de una transacción y revertirla, que durante ese rato es una escritura de verdad.
+- **`DetalleDeNovedad` es el gemelo de `EmpleadoDeNovedad` para el otro lado del flujo**: una sola
+  prop `novedad`, `Inertia::optional`, que la pantalla pide al pulsar Editar o Eliminar. Lleva las
+  tres cosas que hacen falta —la ficha del empleado, los valores del formulario y la frase de la
+  confirmación—, así que el listado no paga nada por ofrecer dos acciones que casi nunca se usan, ni
+  hay dos props que puedan discrepar sobre qué fila está seleccionada.
+- **La interfaz `NovedadEditable`** declara lo único que cambia entre los tres módulos:
+  `valoresParaEdicion()`, `confirmacionDeBorrado()` y `vinculacionDeLaNovedad()`. Todo lo demás —la
+  prop, el modal, la ruta, el composable— es compartido.
+- **`ModalDeNovedad` estrenó modo edición** en vez de tener un gemelo: con la prop `edicion` se salta
+  los pasos 2 y 3 del documento 3, 5.5 y abre directamente el modal grande con el empleado ya
+  resuelto. Las tres pantallas montan **un solo modal** para registrar y para corregir, así que los
+  campos del formulario se escriben una vez.
+- **Dos piezas compartidas nuevas**: `ModalDeBorrado` —el único sitio del sistema con un botón rojo,
+  que es la regla del documento 3, 3.4— y el composable `useNovedad`, el hermano de `useListado`, con
+  las dos acciones enteras. Tres casos de Vitest leen los `.vue` para comprobar que ninguna pantalla
+  conserva su copia.
+- **Las `Editar*` heredan de las `Registrar*`** y solo quitan la regla del empleado, con el motivo
+  escrito: editar es corregir el registro, no moverlo de persona, y exigir empleado activo dejaría
+  sin corregir precisamente las novedades más viejas. Hay prueba de que la novedad de alguien que ya
+  salió sí se puede corregir.
+- **Aislamiento**: los tres módulos suman su caso a `AislamientoTest.php`. La empresa B recibe 404 al
+  editar y al eliminar la novedad de la A, y la prop `novedad` tampoco le contesta por una fila ajena
+  —que era el camino nuevo por donde podía haberse filtrado la ficha de un empleado ajeno—.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **719** pruebas de Pest (16 nuevas), build
+  y **273** de Vitest (16 nuevas).
 
 ## Decisiones tomadas
 
-- **El motivo se guarda como su frase, no como un código.** Son 35 textos que ya están escritos en el
-  documento y en el prototipo, y el sistema no los interpreta: los enseña y los agrupa. La convención
-  del proyecto pide enumerados legibles y no hay nada más legible que la frase misma; inventar 35
-  identificadores habría añadido una traducción que nadie lee. El tipo de salida sí es un enumerado
-  con valor corto, porque de él dependen reglas.
-- **La rotación involuntaria se pinta ámbar y no roja como el prototipo.** La regla de interfaz
-  reserva el rojo para cuando algo está mal de verdad, y una salida decidida por la empresa es un
-  hecho que merece atención, no un error. Los tres tonos siguen siendo distintos y el texto va
-  siempre escrito, así que el color no es el único portador de la información. Queda anotado en
-  `CategoriaDeRotacion::tono()` para que no parezca un descuido.
-- **No se valida que la fecha de salida sea posterior al ingreso ni que no sea futura.** Ningún
-  documento lo fija y no es una regla legal: una renuncia se avisa con antelación y una salida se
-  registra a veces días después. Queda escrito en `RegistrarTerminacion` con el resto de lo que
-  deliberadamente no se comprueba.
-- **La doble terminación no necesita índice único.** La impide la misma guardia que las demás
-  novedades: `RegistrarTerminacion` exige un empleado activo, y el primer registro lo desactiva. Hay
-  prueba de que la segunda petición no entra.
-- **La lista de motivos viaja entera en la carga de la pantalla**, no por recarga parcial. Son frases
-  fijas que no dependen de ningún dato de la empresa, y pedirlas al servidor cada vez que se cambia
-  el tipo sería una vuelta de red por algo que ya se sabe.
+- **La tarea se cerró con tres módulos y no con cinco, a propósito.** Su fuente es la sección 6.2,
+  «Reglas comunes a todas las novedades», y las novedades del capítulo 6 son incapacidades,
+  vacaciones y licencias. Movimientos y terminaciones comparten el flujo de registro pero no son
+  novedades de ese capítulo, y **deshacerlas no es quitar una fila**: hay que decidir qué pasa con el
+  salario ya cambiado y con el empleado ya inactivo. Eso es una regla de negocio que ningún documento
+  fija, así que quedó como **`REV-03`, marcada `[!]`**, con las dos preguntas abajo. `ESTADO.md` de
+  la sesión anterior ya avisaba de este caso.
+- **La cláusula del saldo solo aparece si el saldo cambia.** Unas vacaciones que empiezan el mes que
+  viene todavía no se han descontado, y una licencia no reduce nada si la empresa no tiene activo
+  `suspensiones_afectan_vacaciones`. Anunciar un cambio que no va a ocurrir es peor que no anunciar
+  ninguno; hay prueba de los dos casos. La incapacidad no lleva consecuencia nunca, y eso coincide
+  con el ejemplo del propio documento 3, 2.5, que tampoco la lleva.
+- **Editar no permite cambiar de empleado.** Para eso se elimina y se registra de nuevo, que además
+  deja las dos líneas en la auditoría. Mover una novedad de persona en silencio sería el cambio más
+  difícil de auditar del sistema.
+- **`Formato::periodo()` escribe «del 14 al 16 de julio» y repite el mes solo cuando cambia.** Es la
+  descripción del registro en la confirmación, y el documento la escribe así.
+- **El botón Eliminar de la tabla no es rojo.** El destructivo vive dentro de la confirmación, nunca
+  suelto en una tabla (documento 3, 3.4). Y `ModalDeBorrado` no emite el `confirmar` mientras no haya
+  llegado la frase: eliminar algo sin haber leído qué se pierde es justo lo que ese modal evita.
 
 ## Preguntas para Angela
 
@@ -79,6 +76,13 @@ de antigüedad, con confirmación que explica la consecuencia calculada.
 
 ## Decisiones para David
 
+- **`REV-03`, pregunta 1 — ¿eliminar un movimiento salarial devuelve el salario y el cargo
+  anteriores?** El registro principal del empleado ya cambió al guardarlo (documento 1, 8.1). Si se
+  devuelve, falta decidir qué pasa cuando hubo otro movimiento encima. Si no se devuelve, el
+  histórico y el registro principal quedan contando cosas distintas.
+- **`REV-03`, pregunta 2 — ¿eliminar una terminación devuelve al empleado a activo?** Con él vuelven
+  todas sus alertas, que es la consecuencia más grande que puede tener una acción en este sistema. El
+  capítulo 7 dice qué pasa al registrarla y no dice nada de deshacerla.
 - **Todas las heredadas siguen abiertas** —meses comerciales de treinta días, prórroga mínima,
   plantilla de carga, fondo de cesantías, la prueba intermitente de `CatalogosTest`, el texto del
   empleado inactivo, PHP 8.2 contra el 8.3 que pide `CLAUDE.md`, el diagnóstico en la pestaña de
@@ -87,20 +91,18 @@ de antigüedad, con confirmación que explica la consecuencia calculada.
 
 ## Notas para la próxima sesión
 
-- **La siguiente es F2-10, edición y borrado de novedades**, y son cuatro módulos, no tres:
-  incapacidades, vacaciones, licencias y movimientos. **Las terminaciones son el caso difícil y hay
-  que decidir qué se hace con ellas**: borrar una terminación tendría que devolver al empleado a
-  activo, y eso es una acción con más consecuencias que las otras cuatro —revive las alertas de esa
-  persona—. La tarea no lo nombra; conviene resolverlo explícitamente en vez de dejarlo caer.
-- **Deshacer un movimiento sigue siendo el otro caso propio** que ya quedó anotado: el registro
-  principal del empleado quedó con el valor nuevo, así que la confirmación tiene que decir a qué
-  salario y a qué cargo vuelve.
+- **La siguiente es F2-11, el punto de control de la fase 2**: se ejecuta el skill `revisar` y lo que
+  encuentre se arregla o se convierte en tareas `REV-`. Cierra ocho módulos construidos desde F2-01.
+- **`REV-03` está `[!]` al final del backlog** y no se toma hasta que las dos preguntas de arriba
+  estén respondidas. `TipoDeNovedad::tituloDeEdicion()` devuelve nulo para esos dos módulos justamente
+  para que se note.
 - **Auditoría es el último módulo que sigue siendo `SeccionPendiente`.** Al ponerle pantalla real hay
   que tocar las mismas cuatro pruebas compartidas: la lista de exclusión de `routes/web.php`, la de
   `EstructuraTest.php`, `componenteDe()` en `FlujoDeNovedadTest.php` y `PANTALLAS` en
-  `useListado.test.js`.
-- **`TipoDeSalida::categoriaDeRotacion()` es lo que va a consumir el indicador de rotación del
-  capítulo 12** (F4-04), incluida la rotación temprana —salidas de personas con menos de seis meses—,
-  que se calcula con `fecha_ingreso` y la fecha de salida ya registrada.
-- Las notas de arquitectura de REV-01/REV-02 sobre el armazón de listado y las de F2-03 a F2-08 sobre
-  el flujo compartido de novedades siguen vigentes y no se repiten aquí.
+  `useListado.test.js`. Ahora tiene además un motivo nuevo para existir: es donde se ve quién editó o
+  eliminó una novedad, que es la contrapartida de la libertad que abrió esta tarea.
+- **`Vacaciones/Index.vue` y `Licencias/Index.vue` siguen fuera de la lista `PANTALLAS` de
+  `useListado.test.js`** —vienen así desde F2-05—, aunque sí usan el composable. La lista de
+  `useNovedad.test.js` sí incluye a las tres.
+- Las notas de arquitectura de REV-01/REV-02 y las de F2-03 a F2-09 sobre el flujo compartido de
+  novedades siguen vigentes y no se repiten aquí.

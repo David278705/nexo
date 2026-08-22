@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Incapacidades\OrigenIncapacidad;
 use App\Multiempresa\PerteneceATenant;
+use App\Novedades\ConfirmacionDeBorrado;
+use App\Novedades\NovedadEditable;
 use Database\Factories\IncapacidadFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -34,7 +36,7 @@ use Illuminate\Support\Carbon;
  * @property-read Vinculacion $vinculacion
  * @property-read Eps $eps
  */
-class Incapacidad extends Model
+class Incapacidad extends Model implements NovedadEditable
 {
     /** @use HasFactory<IncapacidadFactory> */
     use HasFactory, PerteneceATenant, SoftDeletes;
@@ -76,6 +78,36 @@ class Incapacidad extends Model
     public function dias(): int
     {
         return MotorDeCalculo::diasCorridos($this->fecha_inicio, $this->fecha_fin);
+    }
+
+    public function vinculacionDeLaNovedad(): Vinculacion
+    {
+        return $this->vinculacion;
+    }
+
+    /**
+     * Los valores del formulario de edición. `es_prorroga` viaja como `si`/`no`
+     * y no como booleano por lo mismo que en los parámetros de la empresa: la
+     * cadena «false» que llega de un formulario es verdadera en PHP.
+     *
+     * @return array<string, string|bool|int|null>
+     */
+    public function valoresParaEdicion(): array
+    {
+        return [
+            'vinculacion_id' => $this->vinculacion_id,
+            'fecha_inicio' => $this->fecha_inicio->toDateString(),
+            'fecha_fin' => $this->fecha_fin->toDateString(),
+            'codigo_diagnostico' => $this->codigo_diagnostico,
+            'es_prorroga' => $this->es_prorroga ? 'si' : 'no',
+            'eps_id' => (string) $this->eps_id,
+            'origen' => $this->origen->value,
+        ];
+    }
+
+    public function confirmacionDeBorrado(): string
+    {
+        return ConfirmacionDeBorrado::deIncapacidad($this);
     }
 
     /**

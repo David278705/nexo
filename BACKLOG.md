@@ -524,12 +524,21 @@ empleado. **La deuda de F1-05 quedó pagada**: `fechaDeSalida()` devuelve la fec
 ella salen el énfasis de los 30 días del reingreso y el mes en que el saldo deja de acumular;
 `fecha_fin` queda solo como respaldo del personal histórico que traerá la carga inicial.
 
-### [ ] F2-10 · Edición y borrado de novedades
+### [x] F2-10 · Edición y borrado de novedades
 
 Todas editables y eliminables sin límite de antigüedad, con confirmación que explica la consecuencia
 calculada.
 **Hecho cuando:** eliminar unas vacaciones muestra el saldo antes y después en la confirmación.
 **Fuente:** `docs/01-especificacion-funcional.md` 6.2
+
+Hecho: las **tres novedades del capítulo 6** —incapacidades, vacaciones y licencias— se editan y se
+eliminan desde su listado, sin límite de antigüedad y aunque el empleado ya no esté activo. La
+interfaz `NovedadEditable`, `ConfirmacionDeBorrado` —la plantilla literal del documento 3, 6.3 con la
+consecuencia ya calculada—, `DetalleDeNovedad` —la prop `novedad`, gemela de `EmpleadoDeNovedad`—,
+`SaldoDeVacaciones::sin()`, las tres `Editar*` heredando de sus `Registrar*`, las seis rutas
+`PUT`/`DELETE`, el componente compartido `ModalDeBorrado` y el composable `useNovedad`.
+`ModalDeNovedad` estrenó modo edición: el mismo modal, sin el paso del documento. **Movimientos y
+terminaciones quedaron fuera a propósito y su decisión está en `REV-03`.**
 
 ### [ ] F2-11 · PUNTO DE CONTROL — revisión
 
@@ -765,3 +774,23 @@ servidor. Las tres perdieron 179 líneas y ganaron 46. **`textoExportar` está e
 que era el agravante de esta tarea. Diecinueve casos nuevos en
 `resources/js/Utilidades/useListado.test.js`, tres de ellos leyendo los `.vue` para comprobar que
 ninguna pantalla conserva su copia; ninguna prueba existente se tocó.
+
+### [!] REV-03 · Editar y eliminar movimientos y terminaciones — bloqueada: nadie ha definido qué se deshace
+
+F2-10 dejó editables y eliminables las **tres** novedades del capítulo 6. Movimientos (8.1) y
+terminaciones (capítulo 7) comparten el flujo de registro pero no son novedades del capítulo 6, y
+borrarlos no es quitar una fila:
+
+- **Eliminar un movimiento** tendría que devolver el salario y el cargo anteriores al registro
+  principal del empleado, porque `registrarMovimiento()` los cambió al guardar. ¿Se devuelven? ¿Y si
+  después hubo otro movimiento encima?
+- **Eliminar una terminación** tendría que devolver al empleado a activo, y con él vuelven todas sus
+  alertas. Es la acción con más consecuencias del sistema y ningún documento la menciona.
+
+Ninguna de las dos está escrita en `docs/01-especificacion-funcional.md` ni en
+`docs/06-decisiones-pendientes.md`, y son reglas de negocio, no detalles de interfaz. Las preguntas
+concretas están en `ESTADO.md`.
+
+**Hecho cuando:** las dos preguntas están respondidas, los dos módulos tienen sus acciones con la
+consecuencia escrita antes de ejecutarla, y `TipoDeNovedad::tituloDeEdicion()` deja de devolver nulo
+para ellos.

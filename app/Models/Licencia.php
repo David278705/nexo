@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Licencias\TipoDeLicencia;
 use App\Multiempresa\PerteneceATenant;
+use App\Novedades\ConfirmacionDeBorrado;
+use App\Novedades\NovedadEditable;
 use Database\Factories\LicenciaFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +33,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $fecha_fin
  * @property-read Vinculacion $vinculacion
  */
-class Licencia extends Model
+class Licencia extends Model implements NovedadEditable
 {
     /** @use HasFactory<LicenciaFactory> */
     use HasFactory, PerteneceATenant, SoftDeletes;
@@ -62,6 +64,29 @@ class Licencia extends Model
     public function dias(): int
     {
         return MotorDeCalculo::diasCorridos($this->fecha_inicio, $this->fecha_fin);
+    }
+
+    public function vinculacionDeLaNovedad(): Vinculacion
+    {
+        return $this->vinculacion;
+    }
+
+    /**
+     * @return array<string, string|bool|int|null>
+     */
+    public function valoresParaEdicion(): array
+    {
+        return [
+            'vinculacion_id' => $this->vinculacion_id,
+            'tipo' => $this->tipo->value,
+            'fecha_inicio' => $this->fecha_inicio->toDateString(),
+            'fecha_fin' => $this->fecha_fin->toDateString(),
+        ];
+    }
+
+    public function confirmacionDeBorrado(): string
+    {
+        return ConfirmacionDeBorrado::deLicencia($this);
     }
 
     /**

@@ -66,6 +66,28 @@ final class Formato
     }
 
     /**
+     * Un periodo escrito como se lee en una frase: «del 14 al 16 de julio»
+     * cuando las dos fechas caen en el mismo mes, y «del 28 de julio al 3 de
+     * agosto» cuando no.
+     *
+     * Es la descripción del registro que llevan las confirmaciones de borrado
+     * (documento 3, 6.3): «Vas a eliminar la incapacidad del 14 al 16 de julio
+     * de Ana Torres». Repetir el mes cuando es el mismo hace que la frase se
+     * lea como la escribiría un formulario y no una persona.
+     */
+    public static function periodo(mixed $inicio, mixed $fin): string
+    {
+        if (! $inicio instanceof Carbon || ! $fin instanceof Carbon) {
+            return self::VACIO;
+        }
+
+        $mismoMes = $inicio->year === $fin->year && $inicio->month === $fin->month;
+
+        return 'del '.($mismoMes ? (string) $inicio->day : self::diaYMes($inicio))
+            .' al '.self::diaYMes($fin);
+    }
+
+    /**
      * El día con su nombre delante: «Lunes, 17 de agosto de 2026».
      *
      * Es la fecha que encabeza las dos pantallas de inicio, la del cliente
@@ -103,10 +125,22 @@ final class Formato
      */
     public static function diasDecimales(float $cantidad): string
     {
+        return self::numeroDecimal($cantidad).($cantidad === 1.0 ? ' día' : ' días');
+    }
+
+    /**
+     * El mismo número sin la palabra detrás: «12,75», «1,25», «13».
+     *
+     * Es la mitad de una frase que ya dice de qué habla: «el saldo pasará de
+     * 4,25 a 12,25 días» (documento 3, 2.4). Escribir «días» tres veces en una
+     * sola oración la vuelve ilegible, y por eso `diasDecimales()` sale de
+     * aquí en lugar de tener su propio `number_format`.
+     */
+    public static function numeroDecimal(float $cantidad): string
+    {
         $decimales = fmod($cantidad, 1.0) === 0.0 ? 0 : 2;
 
-        return number_format($cantidad, $decimales, ',', '.')
-            .($cantidad === 1.0 ? ' día' : ' días');
+        return number_format($cantidad, $decimales, ',', '.');
     }
 
     /**

@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Autorizacion\Modulo;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Exports\IncapacidadesExport;
+use App\Http\Requests\EditarIncapacidad;
 use App\Http\Requests\RegistrarIncapacidad;
 use App\Incapacidades\ListadoDeIncapacidades;
 use App\Incapacidades\OrigenIncapacidad;
 use App\Models\Incapacidad;
+use App\Novedades\DetalleDeNovedad;
 use App\Presentacion\Formato;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -60,6 +62,11 @@ class IncapacidadController extends Controller
              * no se resta nada.
              */
             'diasDeIncapacidad' => Inertia::optional(fn (): ?string => self::diasDeIncapacidad($peticion)),
+            /*
+             * La incapacidad que se está editando o que se va a eliminar
+             * (F2-10). La pantalla la pide al pulsar Editar o Eliminar.
+             */
+            DetalleDeNovedad::PROP => DetalleDeNovedad::prop($peticion, Incapacidad::class),
         ]);
     }
 
@@ -101,6 +108,43 @@ class IncapacidadController extends Controller
         return redirect()
             ->route(Modulo::Incapacidades->nombreDeRuta())
             ->with('estado', 'Incapacidad registrada.');
+    }
+
+    /**
+     * Corrige una incapacidad ya registrada (documento 1, 6.2): «cualquier
+     * registro de novedad puede modificarse, sin importar su antigüedad».
+     *
+     * Los días no se guardan en ninguna columna, así que corregir una fecha
+     * los recalcula solo. El empleado no se toca: lo explica
+     * `EditarIncapacidad`.
+     */
+    public function editar(EditarIncapacidad $peticion, Incapacidad $incapacidad): RedirectResponse
+    {
+        $incapacidad->update([
+            'fecha_inicio' => $peticion->validated('fecha_inicio'),
+            'fecha_fin' => $peticion->validated('fecha_fin'),
+            'codigo_diagnostico' => $peticion->validated('codigo_diagnostico'),
+            'es_prorroga' => $peticion->esProrroga(),
+            'eps_id' => $peticion->validated('eps_id'),
+            'origen' => $peticion->validated('origen'),
+        ]);
+
+        return redirect()
+            ->route(Modulo::Incapacidades->nombreDeRuta())
+            ->with('estado', 'Incapacidad actualizada.');
+    }
+
+    /**
+     * Elimina la incapacidad (documento 1, 6.2). Es borrado lógico —la regla 4
+     * del proyecto— y la auditoría lo registra sola.
+     */
+    public function eliminar(Incapacidad $incapacidad): RedirectResponse
+    {
+        $incapacidad->delete();
+
+        return redirect()
+            ->route(Modulo::Incapacidades->nombreDeRuta())
+            ->with('estado', 'Incapacidad eliminada.');
     }
 
     /**

@@ -2,12 +2,14 @@
 import { Head, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import { useListado } from "@/Utilidades/useListado";
+import { useNovedad } from "@/Utilidades/useNovedad";
 import Armazon from "@/Components/Armazon.vue";
 import Aviso from "@/Components/Aviso.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
+import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
 import ModalDeNovedad from "@/Components/ModalDeNovedad.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 import Paginacion from "@/Components/Paginacion.vue";
@@ -37,6 +39,7 @@ const props = defineProps({
     opciones: { type: Object, required: true },
     diasDeVacaciones: { type: String, default: null },
     saldoDeVacaciones: { type: Object, default: null },
+    novedad: { type: Object, default: null },
 });
 
 const columnas = [
@@ -46,6 +49,7 @@ const columnas = [
     { clave: "inicio", titulo: "Inicio", ordenable: true },
     { clave: "fin", titulo: "Fin", ordenable: true },
     { clave: "dias", titulo: "Días hábiles", numerica: true },
+    { clave: "acciones", titulo: "Acciones" },
 ];
 
 const { pedir, ordenar, quitar, limpiar, urlExportar, textoExportar } =
@@ -60,10 +64,12 @@ const { pedir, ordenar, quitar, limpiar, urlExportar, textoExportar } =
 // El título de los cinco módulos lo decide `TipoDeNovedad` en el servidor, y
 // llega en la prop compartida `flujoDeNovedad`.
 const flujo = computed(() => usePage().props.flujoDeNovedad);
-const titulo = computed(
-    () =>
-        flujo.value.tipos.find((tipo) => tipo.clave === "vacaciones")
-            ?.titulo ?? "Registrar vacaciones",
+const tipo = computed(() =>
+    flujo.value.tipos.find((clase) => clase.clave === "vacaciones"),
+);
+const titulo = computed(() => tipo.value?.titulo ?? "Registrar vacaciones");
+const tituloEdicion = computed(
+    () => tipo.value?.tituloEdicion ?? "Editar vacaciones",
 );
 
 const abierto = ref(false);
@@ -99,6 +105,27 @@ function guardar() {
 }
 
 /*
+ * Editar y eliminar (documento 1, 6.2). El mismo formulario y el mismo modal
+ * del registro, con los valores puestos; la consecuencia del borrado —cuántos
+ * días se devuelven y cómo queda el saldo— la escribe el servidor.
+ */
+const {
+    editando,
+    borrando,
+    borradoAbierto,
+    enviando: eliminando,
+    abrirEdicion,
+    abrirBorrado,
+    cerrar: cerrarNovedad,
+    guardarEdicion,
+    confirmarBorrado,
+} = useNovedad({
+    ruta: "/vacaciones",
+    form,
+    novedad: () => props.novedad,
+});
+
+/*
  * Cada cambio del empleado seleccionado o de una de las dos fechas pide de
  * nuevo los días hábiles y la franja de saldo. Es el mismo patrón que
  * incapacidades: el servidor cuenta, el navegador solo pinta. El saldo de hoy
@@ -120,6 +147,37 @@ watch(
         });
     },
 );
+
+/*
+ * Registrar y editar son el mismo modal —el usuario no está aprendiendo una
+ * pantalla nueva—, así que la pantalla monta uno solo y le dice cuál de las dos
+ * cosas está haciendo.
+ */
+const modalAbierto = computed(() => abierto.value || editando.value !== null);
+const tituloDelModal = computed(() =>
+    editando.value ? tituloEdicion.value : titulo.value,
+);
+
+function cerrarElModal() {
+    if (editando.value) {
+        cerrarNovedad();
+        form.reset();
+
+        return;
+    }
+
+    cerrarModal();
+}
+
+function guardarElModal() {
+    if (editando.value) {
+        guardarEdicion();
+
+        return;
+    }
+
+    guardar();
+}
 
 const confirmacion = computed(() => usePage().props.estado ?? "");
 const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
@@ -190,6 +248,30 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 "
                 @ordenar="ordenar"
             >
+                <!--
+                    Editar y eliminar, sin límite de antigüedad (documento 1,
+                    6.2). Ninguno de los dos es un botón rojo suelto en la
+                    tabla: el destructivo vive dentro de la confirmación.
+                -->
+                <template #celda-acciones="{ fila }">
+                    <div class="flex items-center gap-1">
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirEdicion(fila)"
+                        >
+                            Editar
+                        </Boton>
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirBorrado(fila)"
+                        >
+                            Eliminar
+                        </Boton>
+                    </div>
+                </template>
+
                 <template #accion-vacio>
                     <Boton
                         v-if="tieneFiltros"
@@ -221,15 +303,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
         </div>
 
         <ModalDeNovedad
-            :abierto="abierto"
-            :titulo="titulo"
+            :abierto="modalAbierto"
+            :titulo="tituloDelModal"
             :flujo="flujo"
             :empleado="empleadoDeNovedad"
+            :edicion="editando"
             :enviando="form.processing"
             :deshabilitado="!diasDeVacaciones"
-            @cerrar="cerrarModal"
+            @cerrar="cerrarElModal"
             @seleccionado="seleccionado"
-            @guardar="guardar"
+            @guardar="guardarElModal"
         >
             <div class="grid gap-4 sm:grid-cols-3">
                 <CampoFecha
@@ -274,5 +357,19 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 </Aviso>
             </div>
         </ModalDeNovedad>
+
+        <!--
+            La confirmación del documento 3, 2.4: «Se eliminarán 8 días de
+            vacaciones y el saldo de Carlos Ramírez pasará de 4,25 a 12,25
+            días». La frase entera llega del servidor.
+        -->
+        <ModalDeBorrado
+            :abierto="borradoAbierto"
+            titulo="Eliminar vacaciones"
+            :mensaje="borrando?.confirmacion ?? ''"
+            :enviando="eliminando"
+            @cerrar="cerrarNovedad"
+            @confirmar="confirmarBorrado"
+        />
     </Armazon>
 </template>

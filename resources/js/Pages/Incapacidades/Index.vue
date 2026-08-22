@@ -2,11 +2,13 @@
 import { Head, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import { TODOS, useListado } from "@/Utilidades/useListado";
+import { useNovedad } from "@/Utilidades/useNovedad";
 import Armazon from "@/Components/Armazon.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
+import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
 import ModalDeNovedad from "@/Components/ModalDeNovedad.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 import Paginacion from "@/Components/Paginacion.vue";
@@ -36,6 +38,7 @@ const props = defineProps({
     tieneFiltros: { type: Boolean, default: false },
     opciones: { type: Object, required: true },
     diasDeIncapacidad: { type: String, default: null },
+    novedad: { type: Object, default: null },
 });
 
 const columnas = [
@@ -48,6 +51,7 @@ const columnas = [
     { clave: "diagnostico", titulo: "Diagnóstico" },
     { clave: "origen", titulo: "Origen" },
     { clave: "prorroga", titulo: "Prórroga" },
+    { clave: "acciones", titulo: "Acciones" },
 ];
 
 const { pedir, ordenar, quitar, limpiar, urlExportar, textoExportar } =
@@ -72,10 +76,12 @@ const epsDisponibles = computed(() => [
 // El título de los cinco módulos lo decide `TipoDeNovedad` en el servidor, y
 // llega en la prop compartida `flujoDeNovedad`.
 const flujo = computed(() => usePage().props.flujoDeNovedad);
-const titulo = computed(
-    () =>
-        flujo.value.tipos.find((tipo) => tipo.clave === "incapacidad")
-            ?.titulo ?? "Nueva incapacidad",
+const tipo = computed(() =>
+    flujo.value.tipos.find((clase) => clase.clave === "incapacidad"),
+);
+const titulo = computed(() => tipo.value?.titulo ?? "Nueva incapacidad");
+const tituloEdicion = computed(
+    () => tipo.value?.tituloEdicion ?? "Editar incapacidad",
 );
 
 const abierto = ref(false);
@@ -112,6 +118,54 @@ function guardar() {
             form.reset();
         },
     });
+}
+
+/*
+ * Editar y eliminar (documento 1, 6.2). Una incapacidad no toca ningún saldo,
+ * así que su confirmación de borrado no lleva más consecuencia que la propia
+ * pérdida del registro y la constancia en la auditoría.
+ */
+const {
+    editando,
+    borrando,
+    borradoAbierto,
+    enviando: eliminando,
+    abrirEdicion,
+    abrirBorrado,
+    cerrar: cerrarNovedad,
+    guardarEdicion,
+    confirmarBorrado,
+} = useNovedad({
+    ruta: "/incapacidades",
+    form,
+    novedad: () => props.novedad,
+});
+
+// Registrar y editar son el mismo modal, como en los otros dos módulos.
+const modalAbierto = computed(() => abierto.value || editando.value !== null);
+const tituloDelModal = computed(() =>
+    editando.value ? tituloEdicion.value : titulo.value,
+);
+
+function cerrarElModal() {
+    if (editando.value) {
+        cerrarNovedad();
+        form.reset();
+
+        return;
+    }
+
+    cerrarModal();
+}
+
+function guardarElModal() {
+    if (editando.value) {
+        guardarEdicion();
+
+        return;
+    }
+
+    guardar();
 }
 
 /*
@@ -227,6 +281,29 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 "
                 @ordenar="ordenar"
             >
+                <!--
+                    Editar y eliminar, sin límite de antigüedad (documento 1,
+                    6.2). El botón rojo vive dentro de la confirmación, no aquí.
+                -->
+                <template #celda-acciones="{ fila }">
+                    <div class="flex items-center gap-1">
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirEdicion(fila)"
+                        >
+                            Editar
+                        </Boton>
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirBorrado(fila)"
+                        >
+                            Eliminar
+                        </Boton>
+                    </div>
+                </template>
+
                 <template #accion-vacio>
                     <Boton
                         v-if="tieneFiltros"
@@ -258,15 +335,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
         </div>
 
         <ModalDeNovedad
-            :abierto="abierto"
-            :titulo="titulo"
+            :abierto="modalAbierto"
+            :titulo="tituloDelModal"
             :flujo="flujo"
             :empleado="empleadoDeNovedad"
+            :edicion="editando"
             :enviando="form.processing"
             :deshabilitado="!diasDeIncapacidad"
-            @cerrar="cerrarModal"
+            @cerrar="cerrarElModal"
             @seleccionado="seleccionado"
-            @guardar="guardar"
+            @guardar="guardarElModal"
         >
             <div class="grid gap-4 sm:grid-cols-3">
                 <CampoFecha
@@ -318,5 +396,15 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 />
             </div>
         </ModalDeNovedad>
+
+        <!-- La confirmación con la consecuencia calculada (documento 3, 6.3). -->
+        <ModalDeBorrado
+            :abierto="borradoAbierto"
+            titulo="Eliminar incapacidad"
+            :mensaje="borrando?.confirmacion ?? ''"
+            :enviando="eliminando"
+            @cerrar="cerrarNovedad"
+            @confirmar="confirmarBorrado"
+        />
     </Armazon>
 </template>

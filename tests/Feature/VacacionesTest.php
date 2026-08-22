@@ -134,6 +134,15 @@ describe('el permiso del módulo', function () {
         $this->actingAs($sinPermiso)->get('/vacaciones')->assertForbidden();
         $this->actingAs($sinPermiso)->get('/vacaciones/exportar')->assertForbidden();
         $this->actingAs($sinPermiso)->post('/vacaciones', datosDeVacacion())->assertForbidden();
+        // Sobre un registro que sí existe: si no, la respuesta sería 404 y no
+        // demostraría nada del permiso.
+        $vacacion = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vacacion::factory()
+            ->de(empleadoParaNovedad(['numero_documento' => '43887201']))
+            ->del27al31DeJulio()
+            ->create());
+
+        $this->actingAs($sinPermiso)->put('/vacaciones/'.$vacacion->id, datosDeVacacion())->assertForbidden();
+        $this->actingAs($sinPermiso)->delete('/vacaciones/'.$vacacion->id)->assertForbidden();
     });
 });
 
@@ -192,6 +201,137 @@ describe('el descuento del saldo (documento 1, 6.4)', function () {
             $despues = SaldoDeVacaciones::de($vinculacion)->al(Carbon::create(2026, 7, 31));
             expect($despues)->toBe($antes);
         });
+    });
+});
+
+describe('editar y eliminar (documento 1, 6.2)', function () {
+    /**
+     * El «hecho cuando» de F2-10: eliminar unas vacaciones muestra el saldo
+     * antes y después en la confirmación.
+     */
+    it('la confirmación de borrado dice cuántos días se devuelven y de cuánto a cuánto pasa el saldo', function () {
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () {
+            $persona = Persona::factory()->create([
+                'primer_nombre' => 'Carlos',
+                'segundo_nombre' => null,
+                'primer_apellido' => 'Ramírez',
+                'segundo_apellido' => null,
+            ]);
+
+            $vinculacion = Vinculacion::factory()
+                ->de($persona)
+                ->create(['fecha_ingreso' => Carbon::create(2025, 1, 15)]);
+
+            $vacacion = Vacacion::factory()->de($vinculacion)->del27al31DeJulio()->create();
+
+            $saldo = SaldoDeVacaciones::de($vinculacion);
+            $antes = $saldo->al(Carbon::today());
+            $despues = $saldo->sin($vacacion)->al(Carbon::today());
+
+            // Lo que la frase promete tiene que ser lo que de verdad pasa: los
+            // cinco días hábiles vuelven al saldo.
+            expect($despues)->toBe(round($antes + 5, 4));
+
+            expect($vacacion->confirmacionDeBorrado())->toBe(
+                'Vas a eliminar las vacaciones del 27 al 31 de julio de Carlos Ramírez. '
+                .'Se eliminarán 5 días de vacaciones y el saldo de Carlos Ramírez pasará de '
+                .Formato::numeroDecimal($antes).' a '.Formato::diasDecimales($despues).'. '
+                .'Esta acción queda registrada en la auditoría.'
+            );
+        });
+    });
+
+    it('no anuncia un cambio de saldo que no va a ocurrir, como el de unas vacaciones futuras', function () {
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create())
+                ->create(['fecha_ingreso' => Carbon::create(2025, 1, 15)]);
+
+            $vacacion = Vacacion::factory()->de($vinculacion)->create([
+                'fecha_inicio' => Carbon::today()->addMonth(),
+                'fecha_fin' => Carbon::today()->addMonth()->addDays(4),
+            ]);
+
+            expect($vacacion->confirmacionDeBorrado())->not->toContain('pasará de');
+        });
+    });
+
+    it('la pantalla trae el detalle de la novedad solo cuando se le pide', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        $vacacion = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vacacion::factory()
+            ->de($vinculacion)
+            ->del27al31DeJulio()
+            ->create());
+
+        $respuesta = $this->actingAs($this->usuario)
+            ->get('/vacaciones?'.http_build_query(['novedad' => $vacacion->id]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Vacaciones/Index',
+                'X-Inertia-Partial-Data' => 'novedad',
+            ]);
+
+        $detalle = $respuesta->json()['props']['novedad'];
+
+        expect($detalle['id'])->toBe($vacacion->id)
+            ->and($detalle['valores']['fecha_inicio'])->toBe('2026-07-27')
+            ->and($detalle['valores']['fecha_fin'])->toBe('2026-07-31')
+            ->and($detalle['confirmacion'])->toStartWith('Vas a eliminar las vacaciones del 27 al 31 de julio')
+            ->and($detalle['datos'])->not->toBeEmpty();
+    });
+
+    it('editar las fechas recalcula los días sin tocar ninguna columna', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        $vacacion = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vacacion::factory()
+            ->de($vinculacion)
+            ->del27al31DeJulio()
+            ->create());
+
+        $respuesta = $this->actingAs($this->usuario)->put('/vacaciones/'.$vacacion->id, [
+            'fecha_inicio' => '2026-07-27',
+            'fecha_fin' => '2026-07-29',
+        ]);
+
+        $respuesta->assertRedirect('/vacaciones')->assertSessionHas('estado', 'Vacaciones actualizadas.');
+
+        $corregida = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => Vacacion::query()->findOrFail($vacacion->id),
+        );
+
+        expect($corregida->dias())->toBe(3);
+    });
+
+    it('deja corregir la novedad de alguien que ya no está activo, sin límite de antigüedad', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '1017234891'], [], terminada: true);
+
+        $vacacion = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vacacion::factory()
+            ->de($vinculacion)
+            ->del27al31DeJulio()
+            ->create());
+
+        $this->actingAs($this->usuario)
+            ->put('/vacaciones/'.$vacacion->id, ['fecha_inicio' => '2026-07-27', 'fecha_fin' => '2026-07-29'])
+            ->assertRedirect('/vacaciones');
+    });
+
+    it('eliminar es borrado lógico y devuelve los días al saldo', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        $vacacion = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vacacion::factory()
+            ->de($vinculacion)
+            ->del27al31DeJulio()
+            ->create());
+
+        $respuesta = $this->actingAs($this->usuario)->delete('/vacaciones/'.$vacacion->id);
+
+        $respuesta->assertRedirect('/vacaciones')->assertSessionHas('estado', 'Vacaciones eliminadas.');
+
+        // La fila sigue ahí, marcada: nunca hay borrado físico (regla 4).
+        expect(Vacacion::withoutGlobalScopes()->count())->toBe(1)
+            ->and(Vacacion::withoutGlobalScopes()->whereNotNull('deleted_at')->count())->toBe(1);
     });
 });
 

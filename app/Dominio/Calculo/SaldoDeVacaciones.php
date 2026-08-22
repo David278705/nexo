@@ -2,6 +2,7 @@
 
 namespace App\Dominio\Calculo;
 
+use App\Models\Licencia;
 use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use Carbon\CarbonInterface;
@@ -29,11 +30,33 @@ use Illuminate\Support\Carbon;
  */
 class SaldoDeVacaciones
 {
-    private function __construct(public readonly Vinculacion $vinculacion) {}
+    private function __construct(
+        public readonly Vinculacion $vinculacion,
+        private readonly ?int $vacacionExcluida = null,
+        private readonly ?int $licenciaExcluida = null,
+    ) {}
 
     public static function de(Vinculacion $vinculacion): self
     {
         return new self($vinculacion);
+    }
+
+    /**
+     * El mismo saldo calculado como si esa novedad no existiera.
+     *
+     * Es lo que responde «de cuánto a cuánto va a pasar el saldo» en la
+     * confirmación de borrado (documento 3, 2.4), y hay que poder decirlo
+     * **antes** de borrar nada. Se excluye por identificador y no escribiendo
+     * en la base: una consulta que se revierte para poder contar es una
+     * escritura de verdad durante el tiempo que dura.
+     */
+    public function sin(Vacacion|Licencia $novedad): self
+    {
+        $id = (int) $novedad->getKey();
+
+        return $novedad instanceof Vacacion
+            ? new self($this->vinculacion, $id, $this->licenciaExcluida)
+            : new self($this->vinculacion, $this->vacacionExcluida, $id);
     }
 
     /**
@@ -81,8 +104,13 @@ class SaldoDeVacaciones
      */
     private function diasDisfrutadosHasta(Carbon $fecha): int
     {
-        return (int) $this->vinculacion->vacaciones()
-            ->where('fecha_inicio', '<=', $fecha)
+        $vacaciones = $this->vinculacion->vacaciones()->where('fecha_inicio', '<=', $fecha);
+
+        if ($this->vacacionExcluida !== null) {
+            $vacaciones->whereKeyNot($this->vacacionExcluida);
+        }
+
+        return (int) $vacaciones
             ->get()
             ->sum(fn (Vacacion $vacacion): int => $vacacion->dias());
     }
@@ -123,7 +151,7 @@ class SaldoDeVacaciones
                 break;
             }
 
-            $acumulado += MotorDeCalculo::acumulacionMes($this->vinculacion, $mes)
+            $acumulado += MotorDeCalculo::acumulacionMes($this->vinculacion, $mes, $this->licenciaExcluida)
                 * $this->fraccionPosteriorAlCorte($inicio, $mes);
         }
 
