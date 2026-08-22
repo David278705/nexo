@@ -3,6 +3,7 @@ import { Head, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import { useListado } from "@/Utilidades/useListado";
 import Armazon from "@/Components/Armazon.vue";
+import Aviso from "@/Components/Aviso.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
@@ -23,8 +24,10 @@ import TablaDatos from "@/Components/TablaDatos.vue";
  * **Los días no se cuentan aquí.** Los pinta `diasDeVacaciones`, que llega
  * del servidor y se vuelve a pedir con una recarga parcial cada vez que
  * cambia una de las dos fechas (igual que incapacidades y que el modal de
- * renovación de contrato). La advertencia de saldo insuficiente es F2-06 y
- * no está en esta pantalla.
+ * renovación de contrato). **Tampoco el saldo ni la advertencia de F2-06**:
+ * `saldoDeVacaciones` llega igual, escrito por `App\Vacaciones\AdvertenciaDeSaldo`,
+ * con el saldo de hoy, el proyectado a la fecha de disfrute y el texto ámbar
+ * exacto del documento 3 cuando los días solicitados no alcanzan. No bloquea.
  */
 const props = defineProps({
     vacaciones: { type: Object, required: true },
@@ -33,6 +36,7 @@ const props = defineProps({
     tieneFiltros: { type: Boolean, default: false },
     opciones: { type: Object, required: true },
     diasDeVacaciones: { type: String, default: null },
+    saldoDeVacaciones: { type: Object, default: null },
 });
 
 const columnas = [
@@ -95,20 +99,21 @@ function guardar() {
 }
 
 /*
- * Cada cambio de una de las dos fechas pide de nuevo los días hábiles
- * calculados. Es el mismo patrón que incapacidades: el servidor cuenta, el
- * navegador solo pinta.
+ * Cada cambio del empleado seleccionado o de una de las dos fechas pide de
+ * nuevo los días hábiles y la franja de saldo. Es el mismo patrón que
+ * incapacidades: el servidor cuenta, el navegador solo pinta. El saldo de hoy
+ * ya se puede pedir con solo el empleado resuelto, antes de que existan fechas.
  */
 watch(
-    () => [form.fecha_inicio, form.fecha_fin],
-    ([fecha_inicio, fecha_fin]) => {
-        if (fecha_inicio === "" || fecha_fin === "") {
+    () => [form.vinculacion_id, form.fecha_inicio, form.fecha_fin],
+    ([vinculacion_id, fecha_inicio, fecha_fin]) => {
+        if (!vinculacion_id) {
             return;
         }
 
         router.reload({
-            only: ["diasDeVacaciones"],
-            data: { fecha_inicio, fecha_fin },
+            only: ["diasDeVacaciones", "saldoDeVacaciones"],
+            data: { vinculacion_id, fecha_inicio, fecha_fin },
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -243,6 +248,30 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                     solo-lectura
                     ayuda="Días hábiles: domingos y festivos no cuentan"
                 />
+            </div>
+
+            <!--
+                La franja permanente del documento 3, 5.5: el saldo de hoy y el
+                proyectado a la fecha de disfrute, con la advertencia ámbar de
+                F2-06 cuando los días solicitados no alcanzan. No bloquea.
+            -->
+            <div v-if="saldoDeVacaciones" class="mt-4 space-y-3">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <CampoTexto
+                        :model-value="saldoDeVacaciones.saldoActual"
+                        etiqueta="Saldo actual"
+                        solo-lectura
+                    />
+                    <CampoTexto
+                        :model-value="saldoDeVacaciones.saldoProyectado ?? '—'"
+                        etiqueta="Saldo proyectado a la fecha de disfrute"
+                        solo-lectura
+                    />
+                </div>
+
+                <Aviso v-if="saldoDeVacaciones.advertencia" tono="advertencia">
+                    {{ saldoDeVacaciones.advertencia }}
+                </Aviso>
             </div>
         </ModalDeNovedad>
     </Armazon>

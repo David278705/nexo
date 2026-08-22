@@ -7,7 +7,9 @@ use App\Dominio\Calculo\MotorDeCalculo;
 use App\Exports\VacacionesExport;
 use App\Http\Requests\RegistrarVacacion;
 use App\Models\Vacacion;
+use App\Models\Vinculacion;
 use App\Presentacion\Formato;
+use App\Vacaciones\AdvertenciaDeSaldo;
 use App\Vacaciones\ListadoDeVacaciones;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -22,8 +24,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * El segundo módulo de novedades (documento 1, 6.4), y el primero que
  * descuenta del saldo.
  *
- * El acceso lo verifica el middleware `modulo:vacaciones`. La advertencia de
- * saldo insuficiente es F2-06 y no vive aquí.
+ * El acceso lo verifica el middleware `modulo:vacaciones`.
  */
 class VacacionController extends Controller
 {
@@ -57,6 +58,12 @@ class VacacionController extends Controller
              * una fecha; aquí no se resta ningún día en el navegador.
              */
             'diasDeVacaciones' => Inertia::optional(fn (): ?string => self::diasDeVacaciones($peticion)),
+            /*
+             * La franja permanente del formulario (documento 3, 5.5): el saldo
+             * de hoy y, en cuanto hay un periodo con sentido, el proyectado a
+             * la fecha de disfrute con la advertencia de F2-06 si no alcanza.
+             */
+            'saldoDeVacaciones' => Inertia::optional(fn (): ?array => self::saldoDeVacaciones($peticion)),
         ]);
     }
 
@@ -101,16 +108,70 @@ class VacacionController extends Controller
      */
     private static function diasDeVacaciones(Request $peticion): ?string
     {
-        $inicio = $peticion->query('fecha_inicio');
-        $fin = $peticion->query('fecha_fin');
+        $empresa = tenant_actual();
+        $periodo = self::periodoDigitado($peticion);
 
-        if (! is_string($inicio) || ! is_string($fin) || $inicio === '' || $fin === '') {
+        if ($empresa === null || $periodo === null) {
+            return null;
+        }
+
+        [$desde, $hasta] = $periodo;
+
+        return Formato::dias(MotorDeCalculo::diasHabilesVacaciones($desde, $hasta, $empresa));
+    }
+
+    /**
+     * La franja permanente de saldo del formulario (documento 3, 5.5): el
+     * saldo de hoy siempre, y el proyectado a la fecha de disfrute —con su
+     * advertencia si no alcanza— en cuanto el periodo digitado tiene sentido.
+     *
+     * Nula mientras el modal no haya resuelto todavía al empleado: sin
+     * vinculación no hay de quién calcular el saldo.
+     *
+     * @return array{saldoActual: string, saldoProyectado: string|null, advertencia: string|null}|null
+     */
+    private static function saldoDeVacaciones(Request $peticion): ?array
+    {
+        $vinculacionId = $peticion->query('vinculacion_id');
+
+        if (! is_numeric($vinculacionId)) {
+            return null;
+        }
+
+        $vinculacion = Vinculacion::query()->activas()->find((int) $vinculacionId);
+
+        if (! $vinculacion instanceof Vinculacion) {
             return null;
         }
 
         $empresa = tenant_actual();
+        $periodo = $empresa === null ? null : self::periodoDigitado($peticion);
 
-        if ($empresa === null) {
+        if ($periodo === null) {
+            return AdvertenciaDeSaldo::paraLaPantalla($vinculacion, null, null);
+        }
+
+        [$desde, $hasta] = $periodo;
+
+        return AdvertenciaDeSaldo::paraLaPantalla(
+            $vinculacion,
+            MotorDeCalculo::diasHabilesVacaciones($desde, $hasta, $empresa),
+            $hasta,
+        );
+    }
+
+    /**
+     * Las dos fechas digitadas, convertidas y en orden, o nulo mientras no
+     * lleguen las dos o no tengan sentido.
+     *
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    private static function periodoDigitado(Request $peticion): ?array
+    {
+        $inicio = $peticion->query('fecha_inicio');
+        $fin = $peticion->query('fecha_fin');
+
+        if (! is_string($inicio) || ! is_string($fin) || $inicio === '' || $fin === '') {
             return null;
         }
 
@@ -121,10 +182,6 @@ class VacacionController extends Controller
             return null;
         }
 
-        if ($hasta->lessThan($desde)) {
-            return null;
-        }
-
-        return Formato::dias(MotorDeCalculo::diasHabilesVacaciones($desde, $hasta, $empresa));
+        return $hasta->lessThan($desde) ? null : [$desde, $hasta];
     }
 }

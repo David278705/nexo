@@ -52,6 +52,20 @@ final class Formato
     }
 
     /**
+     * El día y el mes sin el año: «28 de agosto».
+     *
+     * Es la advertencia de saldo insuficiente de vacaciones (documento 3, 5.5):
+     * «Al 28 de agosto tendrá...» no lleva año porque la fecha de disfrute
+     * siempre está a meses de hoy, nunca a años.
+     */
+    public static function diaYMes(mixed $fecha): string
+    {
+        return $fecha instanceof Carbon
+            ? $fecha->translatedFormat('j \d\e F')
+            : self::VACIO;
+    }
+
+    /**
      * El día con su nombre delante: «Lunes, 17 de agosto de 2026».
      *
      * Es la fecha que encabeza las dos pantallas de inicio, la del cliente

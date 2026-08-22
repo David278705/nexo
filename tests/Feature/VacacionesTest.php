@@ -2,6 +2,7 @@
 
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
+use App\Dominio\Calculo\MotorDeCalculo;
 use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Exports\VacacionesExport;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -10,6 +11,8 @@ use App\Models\Tenant;
 use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
+use App\Presentacion\Formato;
+use App\Vacaciones\AdvertenciaDeSaldo;
 use App\Vacaciones\ListadoDeVacaciones;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -189,5 +192,83 @@ describe('el descuento del saldo (documento 1, 6.4)', function () {
             $despues = SaldoDeVacaciones::de($vinculacion)->al(Carbon::create(2026, 7, 31));
             expect($despues)->toBe($antes);
         });
+    });
+});
+
+describe('la advertencia de saldo insuficiente (documento 1, 6.4)', function () {
+    it('el caso de los 14 días para el 28 de agosto muestra el texto exacto con «faltan 1,25 días»', function () {
+        $vinculacion = vinculacionConSaldoDeCorte();
+
+        $franja = enLaEmpresaDelMotor(
+            fn () => AdvertenciaDeSaldo::paraLaPantalla($vinculacion, 14, Carbon::parse('2026-08-28'))
+        );
+
+        $saldoDeHoy = enLaEmpresaDelMotor(
+            fn () => Formato::diasDecimales(SaldoDeVacaciones::de($vinculacion)->al(Carbon::today()))
+        );
+
+        expect($franja)->toBe([
+            'saldoActual' => $saldoDeHoy,
+            'saldoProyectado' => '12,75 días',
+            'advertencia' => 'Al 28 de agosto tendrá 12,75 días disponibles. Estás registrando 14 días: faltan 1,25 días.',
+        ]);
+    });
+
+    it('no avisa nada cuando el saldo proyectado alcanza para los días solicitados', function () {
+        $vinculacion = vinculacionConSaldoDeCorte();
+
+        $franja = enLaEmpresaDelMotor(
+            fn () => AdvertenciaDeSaldo::paraLaPantalla($vinculacion, 10, Carbon::parse('2026-08-28'))
+        );
+
+        expect($franja['advertencia'])->toBeNull();
+    });
+
+    it('la franja llega con solo el saldo de hoy en cuanto se resuelve el empleado, antes de tener fechas', function () {
+        $vinculacion = vinculacionConSaldoDeCorte();
+
+        $respuesta = $this->actingAs($this->usuario)
+            ->get('/vacaciones?'.http_build_query(['vinculacion_id' => $vinculacion->id]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Vacaciones/Index',
+                'X-Inertia-Partial-Data' => 'saldoDeVacaciones',
+            ]);
+
+        expect($respuesta->json()['props']['saldoDeVacaciones'])->toBe([
+            'saldoActual' => enLaEmpresaDelMotor(
+                fn () => Formato::diasDecimales(SaldoDeVacaciones::de($vinculacion)->al(Carbon::today()))
+            ),
+            'saldoProyectado' => null,
+            'advertencia' => null,
+        ]);
+    });
+
+    it('conecta el periodo digitado con la franja, sin volver a contar los días en la petición', function () {
+        $vinculacion = vinculacionConSaldoDeCorte();
+
+        $respuesta = $this->actingAs($this->usuario)
+            ->get('/vacaciones?'.http_build_query([
+                'vinculacion_id' => $vinculacion->id,
+                'fecha_inicio' => '2026-08-24',
+                'fecha_fin' => '2026-08-28',
+            ]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Vacaciones/Index',
+                'X-Inertia-Partial-Data' => 'saldoDeVacaciones',
+            ]);
+
+        $esperado = enLaEmpresaDelMotor(function () use ($vinculacion) {
+            $dias = MotorDeCalculo::diasHabilesVacaciones(
+                Carbon::parse('2026-08-24'),
+                Carbon::parse('2026-08-28'),
+                test()->empresa,
+            );
+
+            return AdvertenciaDeSaldo::paraLaPantalla($vinculacion, $dias, Carbon::parse('2026-08-28'));
+        });
+
+        expect($respuesta->json()['props']['saldoDeVacaciones'])->toBe($esperado);
     });
 });

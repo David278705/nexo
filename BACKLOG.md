@@ -438,12 +438,29 @@ de la interfaz. El filtro del listado es solo el rango de fechas —«Empleado»
 lista el documento 1 para este módulo, son F4-01, igual que la búsqueda por nombre que le falta a
 incapacidades—.
 
-### [ ] F2-06 · Advertencia de saldo insuficiente
+### [x] F2-06 · Advertencia de saldo insuficiente
 
 Compara contra el saldo proyectado a la fecha de disfrute, no al de hoy. El mensaje dice cuántos días
 faltan. No bloquea.
 **Hecho cuando:** el caso de los 14 días para el 28 de agosto muestra «faltan 1,25 días».
 **Fuente:** `docs/01-especificacion-funcional.md` 6.4
+
+Hecho: `App\Vacaciones\AdvertenciaDeSaldo`, con el texto exacto del documento 3 —«Al 28 de
+agosto tendrá 12,75 días disponibles. Estás registrando 14 días: faltan 1,25 días.»—, armado sobre
+`SaldoDeVacaciones::al()` y `::faltantePara()`, que ya existían desde F2-02 y no se tocaron.
+`VacacionController` comparte una nueva prop `saldoDeVacaciones` —`Inertia::optional`, igual que
+`diasDeVacaciones`— que resuelve la vinculación del `vinculacion_id` digitado y, en cuanto hay un
+periodo con sentido, calcula el saldo proyectado a la fecha de disfrute; sin fechas todavía entrega
+solo el saldo de hoy. **La franja permanente del documento 3, 5.5** —saldo actual y saldo
+proyectado, con el aviso ámbar debajo cuando no alcanza— vive en `Pages/Vacaciones/Index.vue`, bajo
+los campos de fecha del formulario; se vuelve a pedir con la misma recarga parcial que ya usaban los
+días hábiles, ahora también disparada al elegir el empleado y no solo al cambiar una fecha. **No
+bloquea**: no se tocó `RegistrarVacacion` ni `guardar()`, que es la regla explícita del documento 1.
+`Formato::diaYMes()` es nuevo —«28 de agosto», sin año, que es como se lee la fecha de disfrute en la
+frase—. Pruebas nuevas en `VacacionesTest.php` (el caso exacto de los 14 días, que no avisa cuando
+alcanza, la franja con solo el saldo de hoy y la integración del periodo digitado) y en
+`Pages/Vacaciones/Index.test.js`, la primera prueba de Vitest de esta pantalla porque es la primera
+vez que tiene lógica propia que `ModalDeNovedad.test.js` no cubre.
 
 ### [ ] F2-07 · Licencias, ausencias y suspensiones
 
