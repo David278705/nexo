@@ -50,6 +50,12 @@ use Tests\Fixtures\ReglaDePrueba;
 const VIERNES = '2026-08-21';
 
 beforeEach(function () {
+    // El catálogo de verdad ya trae las cinco reglas del periodo de prueba
+    // (F3-03). Aquí se mide el armazón, no las alertas: se vacía para que la
+    // única regla en juego sea la de mentira y los conteos digan lo que dicen.
+    // Las cinco de verdad se prueban en `AlertasDePeriodoDePruebaTest`.
+    app()->instance(CatalogoDeReglas::class, new CatalogoDeReglas);
+
     $this->empresa = Tenant::factory()->create(['nombre' => 'Comercializadora del Valle']);
     $this->usuario = usuarioDe($this->empresa, Rol::Administrador, Modulo::Contratos);
 });

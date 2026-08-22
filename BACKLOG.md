@@ -598,12 +598,26 @@ viernes anterior y el texto dice "en dos días" con la fecha»— quedó complet
 faltaba justo la mitad del texto. No redacta nada del pasado en relativo: un hecho anterior al envío
 lanza excepción, porque ninguna de las once plantillas dice «hace dos días».
 
-### [ ] F3-03 · Alertas de periodo de prueba
+### [x] F3-03 · Alertas de periodo de prueba
 
 Las tres de contrato indefinido y las dos de término fijo, con sus textos exactos y la fecha entre
 paréntesis.
 **Hecho cuando:** el caso del ingreso el 15 de abril produce las tres alertas en 14/05, 30/05 y 13/06.
 **Fuente:** `docs/01-especificacion-funcional.md` 9.2 y 9.3
+
+Hecho: las cinco reglas en `app/Dominio/Alertas/Reglas/`, con `ReglaDePeriodoDePrueba` de base —quién
+es candidato, que el empleado esté activo y de dónde sale la fecha— y `ReglaDeVisperaDePrueba`
+compartiendo el texto que el documento le da idéntico a las dos vísperas. Ya están registradas en el
+catálogo, así que el proceso diario las manda. **La fecha del hecho es siempre el último día del
+periodo de prueba**, que sale de `PeriodoDePrueba::terminaEl()`: ninguna regla cuenta días. La de los
+15 días se dispara **quince días antes del final y no cuarenta y cinco después del ingreso**: en el
+ejemplo del documento coinciden, pero sobre febrero no, y manda el mensaje —«completará en 15 días»
+tiene que ser cierto—. La del mes cumplido es la única que no usa `ReferenciaTemporal`: su plantilla
+escribe la fecha entera, con año, porque el final puede caer en el año siguiente. **Los asuntos
+también se ajustan al corrimiento**: los tres de la sección 5.4 traen «Mañana», «quedan 15 días» y
+«quedan 2 días» escritos a mano, y un asunto que miente es lo primero que se lee. La obra o labor
+recibe el calendario del indefinido, que es el que le corresponde por 9.6. Dos pruebas cubren los
+contratos tan cortos que el aviso caería antes del ingreso.
 
 ### [ ] F3-04 · Alertas de contrato a término fijo
 

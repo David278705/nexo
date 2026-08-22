@@ -7,6 +7,11 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\PoliticaDeModulos;
 use App\Contratacion\ObservadorDeVinculacion;
 use App\Dominio\Alertas\CatalogoDeReglas;
+use App\Dominio\Alertas\Reglas\PruebaFijoDosDias;
+use App\Dominio\Alertas\Reglas\PruebaFijoVispera;
+use App\Dominio\Alertas\Reglas\PruebaIndefinidoQuinceDias;
+use App\Dominio\Alertas\Reglas\PruebaIndefinidoUnMes;
+use App\Dominio\Alertas\Reglas\PruebaIndefinidoVispera;
 use App\Models\User;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
@@ -25,13 +30,21 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ContextoTenant::class);
 
         // El catálogo de reglas de alerta, también singleton: es una lista que
-        // se llena al arrancar y que el proceso diario recorre. Hoy está vacía
-        // —F3-01 construye la infraestructura, las once reglas llegan en F3-03,
-        // F3-04 y F3-05— y cada regla nueva se suma aquí con una línea:
-        //
-        //     $this->app->afterResolving(CatalogoDeReglas::class, fn ($catalogo) =>
-        //         $catalogo->registrar(new ReglaDelPeriodoDePrueba));
-        $this->app->singleton(CatalogoDeReglas::class);
+        // se llena al arrancar y que el proceso diario recorre. Cada tarea de
+        // la fase 3 suma aquí las suyas con una línea y no toca el proceso;
+        // faltan las del término fijo (F3-04) y los resúmenes (F3-05).
+        $this->app->singleton(CatalogoDeReglas::class, function (): CatalogoDeReglas {
+            $catalogo = new CatalogoDeReglas;
+
+            // Las cinco del periodo de prueba (documento 1, 9.2 y 9.3).
+            $catalogo->registrar(new PruebaIndefinidoUnMes);
+            $catalogo->registrar(new PruebaIndefinidoQuinceDias);
+            $catalogo->registrar(new PruebaIndefinidoVispera);
+            $catalogo->registrar(new PruebaFijoDosDias);
+            $catalogo->registrar(new PruebaFijoVispera);
+
+            return $catalogo;
+        });
     }
 
     /**
