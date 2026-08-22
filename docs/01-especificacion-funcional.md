@@ -588,9 +588,9 @@ Es el conjunto de alertas de mayor valor comercial del producto.
 | Alerta | Cuándo se dispara | Contenido |
 |---|---|---|
 | Plazo para definir la renovación | 32 días antes de la fecha de finalización | Recuerda que en dos días (fecha) vence el plazo legal de 30 días para avisarle al trabajador si el contrato no se va a renovar. |
-| Efecto del silencio | 30 días antes de la fecha de finalización, si no se ha registrado prórroga ni terminación | Si no se avisa hoy (fecha), el contrato queda prorrogado automáticamente por un término igual al último pactado. |
+| Efecto del silencio | 30 días antes de la fecha de finalización, si no se ha registrado prórroga ni terminación | Si no se avisa hoy (fecha), el contrato queda prorrogado automáticamente por un término igual al último pactado. **Excepto cuando esta es la última renovación posible antes del tope de cuatro años**: ver las tres variantes de texto en la decisión D.3 de `docs/06-decisiones-pendientes.md`. |
 | Última renovación corta posible | Cuando el contrato es inferior a un año y llega al límite de prórrogas cortas | La próxima renovación de este contrato deberá ser de mínimo un año. |
-| Cercanía al tope legal | Cuando el vínculo a término fijo se aproxima a los cuatro años | Este contrato se acerca al tope de duración a término fijo. Al superarlo se convierte en indefinido por ley. |
+| Cercanía al tope legal | Tres meses antes de la fecha en que el vínculo completaría los cuatro años a término fijo | Este contrato se acerca al tope de duración a término fijo. Al superarlo se convierte en indefinido por ley. Decisión D.3, resuelta. |
 | Contratos vencidos sin gestionar | Resumen mensual, último día hábil del mes | Listado de contratos que superaron su fecha de finalización sin que se registrara prórroga ni terminación. |
 
 ### 9.5 Vacaciones
@@ -603,13 +603,13 @@ Es el conjunto de alertas de mayor valor comercial del producto.
 
 ### 9.6 Contratos de obra o labor
 
-No generan alertas de vencimiento, porque no hay fecha previsible. Sí generan una alerta de gestión dentro del resumen mensual: contratos de obra o labor que llevan un tiempo prolongado sin registrar terminación, lo cual puede indicar que el vínculo ya mutó a indefinido sin que nadie lo notara. Aplican también, cuando corresponda, las alertas de periodo de prueba y de vacaciones.
+No generan alertas de vencimiento, porque no hay fecha previsible. Sí generan una alerta de gestión dentro del resumen mensual: contratos de obra o labor que llevan un tiempo prolongado sin registrar terminación, lo cual puede indicar que el vínculo ya mutó a indefinido sin que nadie lo notara. **No reciben ninguna de las tres alertas de periodo de prueba** —respondido por Angela, revierte lo que decía esta sección antes de la revisión de agosto de 2026—. Sí aplican las alertas de vacaciones.
 
 ### 9.7 Resumen del calendario
 
 | Frecuencia | Alertas |
 |---|---|
-| Individuales, por empleado | Periodo de prueba en indefinido (3 avisos) · Periodo de prueba en término fijo (2 avisos) · Plazo de renovación a 32 días · Efecto del silencio a 30 días · Última renovación corta · Cercanía al tope legal. |
+| Individuales, por empleado | Periodo de prueba en indefinido (3 avisos, no aplica a obra o labor) · Periodo de prueba en término fijo (2 avisos) · Plazo de renovación a 32 días · Efecto del silencio a 30 días · Última renovación corta · Cercanía al tope legal (3 meses antes). |
 | Resumen mensual | Contratos vencidos sin gestionar · Acumulación de 15 días de vacaciones · Año cumplido sin disfrute mínimo · Contratos de obra o labor prolongados. |
 | En pantalla, al momento | Saldo de vacaciones insuficiente · Documento inexistente · Advertencia de reingreso · Validaciones bloqueantes de prórroga. |
 

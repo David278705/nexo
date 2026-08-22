@@ -311,6 +311,7 @@ describe('el proceso diario con las cinco reglas registradas', function () {
             TipoDeAlerta::PruebaFijoVispera,
             TipoDeAlerta::PlazoDeRenovacion,
             TipoDeAlerta::EfectoDelSilencio,
+            TipoDeAlerta::CercaniaAlTope,
         ]);
     });
 

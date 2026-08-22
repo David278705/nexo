@@ -4,6 +4,7 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
 use App\Contratacion\EventoContractual;
 use App\Dominio\Alertas\ProcesoDiarioDeAlertas;
+use App\Dominio\Alertas\Reglas\CercaniaAlTope;
 use App\Dominio\Alertas\Reglas\EfectoDelSilencio;
 use App\Dominio\Alertas\Reglas\PlazoDeRenovacion;
 use App\Dominio\Alertas\TipoDeAlerta;
@@ -14,13 +15,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Las dos alertas del preaviso del término fijo (F3-04, documento 1, 9.4).
+ * Las alertas del término fijo (F3-04, documento 1, 9.4).
  *
- * Son las dos primeras filas de la tabla: el plazo para definir la renovación,
- * 32 días antes del vencimiento, y el efecto del silencio, 30 días antes. Las
- * otras dos de esa tabla —última renovación corta y cercanía al tope— no están
- * construidas: su día de disparo depende de decisiones abiertas del documento 6
- * y el motivo está escrito en `BACKLOG.md` y en `ESTADO.md`.
+ * Tres de las cuatro filas de la tabla: el plazo para definir la renovación, 32
+ * días antes del vencimiento; el efecto del silencio, 30 días antes, con las
+ * tres variantes de texto que le puso la decisión D.3; y la cercanía al tope de
+ * cuatro años, tres meses antes. La cuarta —última renovación corta— sigue sin
+ * construir porque su día de disparo depende de una pregunta abierta, y el
+ * motivo está escrito en `BACKLOG.md` y en `ESTADO.md`.
  *
  * ## El contrato de la batería
  *
@@ -46,6 +48,18 @@ const LIMITE_DEL_PREAVISO = '2026-12-01';
  * Treinta y dos días antes del vencimiento. Domingo, en 2026.
  */
 const PLAZO_PARA_DEFINIR = '2026-11-29';
+
+/**
+ * El día en que el vínculo cumpliría los cuatro años a término fijo: cuatro
+ * años después del 1 de enero de 2026. Es la fecha de la que habla la alerta de
+ * cercanía al tope, y no depende de las prórrogas que se registren en medio.
+ */
+const FECHA_DEL_TOPE = '2030-01-01';
+
+/**
+ * Tres meses antes del tope, que es la anticipación decidida en D.3.
+ */
+const DISPARO_DEL_TOPE = '2029-10-01';
 
 beforeEach(function () {
     $this->empresa = Tenant::factory()->create(['nombre' => 'Comercializadora del Valle']);
@@ -155,6 +169,120 @@ describe('«si no se ha registrado prórroga ni terminación»', function () {
 
         expect(alertasDe(new PlazoDeRenovacion, $otra, PLAZO_PARA_DEFINIR))->toBe([])
             ->and(alertasDe(new EfectoDelSilencio, $otra, LIMITE_DEL_PREAVISO))->toBe([]);
+    });
+});
+
+describe('la cercanía al tope de cuatro años', function () {
+    it('sale tres meses antes del día en que el vínculo cumple los cuatro años', function () {
+        expect(alertasDe(new CercaniaAlTope, $this->empresa, DISPARO_DEL_TOPE))->toHaveCount(1)
+            ->and(alertasDe(new CercaniaAlTope, $this->empresa, '2029-09-30'))->toBe([])
+            ->and(alertasDe(new CercaniaAlTope, $this->empresa, '2029-10-02'))->toBe([])
+            // Y no vuelve a salir el día del tope: es un solo aviso.
+            ->and(alertasDe(new CercaniaAlTope, $this->empresa, FECHA_DEL_TOPE))->toBe([]);
+    });
+
+    it('habla del día del tope y escribe la antigüedad que lleva el vínculo', function () {
+        $alerta = alertasDe(new CercaniaAlTope, $this->empresa, DISPARO_DEL_TOPE)[0];
+
+        expect($alerta->fechaDelHecho->toDateString())->toBe(FECHA_DEL_TOPE)
+            ->and($alerta->asunto)->toBe('El contrato de Ana Gómez se acerca al tope de cuatro años')
+            ->and($alerta->cuerpo)->toBe(
+                'El vínculo a término fijo de Ana Gómez lleva 3 años y 9 meses y se acerca al '
+                .'límite legal de cuatro años, que se cumple el 1 de enero de 2030. Al superarlo, '
+                .'el contrato se convierte en indefinido por ley, sin necesidad de liquidar '
+                .'prestaciones en ese momento.'
+            );
+    });
+
+    it('en un contrato anterior a la reforma cuenta desde el 25 de junio de 2025', function () {
+        $otra = Tenant::factory()->create();
+        usuarioDe($otra, Rol::Administrador, Modulo::Contratos);
+        empleadaEnPrueba($otra, Vinculacion::factory()->aTerminoFijo('2020-01-01', '2029-12-31'));
+
+        // Los años anteriores a la Ley 2466 de 2025 no cuentan para el tope
+        // (documento 6, C.2), así que el tope es el 25 de junio de 2029 y el
+        // aviso sale el 25 de marzo, no cuatro años después de la firma.
+        expect(alertasDe(new CercaniaAlTope, $otra, '2024-10-01'))->toBe([]);
+
+        $alerta = alertasDe(new CercaniaAlTope, $otra, '2029-03-25')[0];
+
+        expect($alerta->fechaDelHecho->toDateString())->toBe('2029-06-25')
+            ->and($alerta->cuerpo)->toContain('lleva 3 años y 9 meses')
+            ->and($alerta->cuerpo)->toContain('que se cumple el 25 de junio de 2029');
+    });
+
+    it('no le toca al indefinido, ni a la obra o labor, ni a quien ya salió', function () {
+        $otra = Tenant::factory()->create();
+        usuarioDe($otra, Rol::Administrador, Modulo::Contratos);
+        empleadaEnPrueba($otra, Vinculacion::factory()->conIngreso(INICIO_DEL_FIJO));
+        empleadaEnPrueba($otra, Vinculacion::factory()->deObraOLabor()->conIngreso(INICIO_DEL_FIJO));
+        empleadaEnPrueba(
+            $otra,
+            Vinculacion::factory()->aTerminoFijo(INICIO_DEL_FIJO, FIN_DEL_FIJO)->terminada()
+        );
+
+        expect(alertasDe(new CercaniaAlTope, $otra, DISPARO_DEL_TOPE))->toBe([]);
+    });
+
+    it('el proceso diario la registra y no la repite al correr dos veces', function () {
+        Mail::fake();
+
+        $primera = app(ProcesoDiarioDeAlertas::class)->correr(Carbon::parse(DISPARO_DEL_TOPE));
+        $segunda = app(ProcesoDiarioDeAlertas::class)->correr(Carbon::parse(DISPARO_DEL_TOPE));
+
+        $alerta = alertaRegistrada($this->empresa);
+
+        expect($alerta->tipo)->toBe(TipoDeAlerta::CercaniaAlTope)
+            ->and($alerta->fecha_del_hecho->toDateString())->toBe(FECHA_DEL_TOPE)
+            ->and($alerta->destinatarios)->toBe([$this->usuario->email])
+            ->and($primera->registradas())->toBe(1)
+            ->and($segunda->registradas())->toBe(0);
+    });
+});
+
+describe('el efecto del silencio cuando el tope está cerca (documento 6, D.3)', function () {
+    it('avisa que la prórroga queda truncada si el término completo se pasaría del tope', function () {
+        // El tope cae el 1 de enero de 2030. El contrato se renueva hasta el 1
+        // de diciembre de 2029 por seis meses, así que otro término igual se
+        // pasaría cinco meses del límite y la ley lo trunca solo.
+        app(ContextoTenant::class)->paraTenant($this->empresa, function (): void {
+            $this->empleada->renovar(EventoContractual::ProrrogaPactada, Carbon::parse('2029-06-01'));
+            $this->empleada->renovar(EventoContractual::ProrrogaPactada, Carbon::parse('2029-12-01'));
+        });
+
+        $alerta = alertasDe(new EfectoDelSilencio, $this->empresa, '2029-11-01')[0];
+
+        expect($alerta->cuerpo)->toBe(
+            'Hoy (1 de noviembre) es el último día para notificar a Ana Gómez que su contrato no '
+            .'se renovará. Si no se avisa, el contrato queda prorrogado automáticamente solo hasta '
+            .'el 1 de enero de 2030, y al llegar a esa fecha se convierte en indefinido por ley.'
+        );
+    });
+
+    it('avisa que ya no cabe ninguna prórroga si el contrato vence en el tope', function () {
+        app(ContextoTenant::class)->paraTenant($this->empresa, function (): void {
+            $this->empleada->renovar(EventoContractual::ProrrogaPactada, Carbon::parse(FECHA_DEL_TOPE));
+        });
+
+        $alerta = alertasDe(new EfectoDelSilencio, $this->empresa, '2029-12-02')[0];
+
+        expect($alerta->cuerpo)->toBe(
+            'Hoy (2 de diciembre) es el último día para notificar a Ana Gómez que su contrato no '
+            .'se renovará. Si no se avisa, el contrato ya no puede prorrogarse: el vínculo cumple '
+            .'el tope legal de cuatro años el 1 de enero de 2030 y a partir de esa fecha se '
+            .'convierte en indefinido por ley.'
+        );
+    });
+
+    it('mantiene el texto de la sección 5.4 mientras la prórroga entera quepa', function () {
+        // El contrato de la batería vence el 31 de diciembre de 2026 y otro año
+        // igual lo deja en 2027, tres años antes del tope.
+        $alerta = alertasDe(new EfectoDelSilencio, $this->empresa, LIMITE_DEL_PREAVISO)[0];
+
+        expect($alerta->cuerpo)->toEndWith(
+            'Si no se avisa, el contrato queda prorrogado automáticamente por un término igual al '
+            .'último pactado.'
+        );
     });
 });
 

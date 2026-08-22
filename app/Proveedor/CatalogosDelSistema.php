@@ -373,14 +373,14 @@ class CatalogosDelSistema
     /**
      * La pestaña «Umbrales»: los números que no vienen de la ley.
      *
-     * El capítulo 8 lista cuatro y **ninguno de los cuatro está decidido
-     * todavía**. Así que esta pestaña dice la verdad en vez de ofrecer cuatro
-     * campos que escribirían un número inventado en alguna parte: los umbrales
-     * que ya existen dicen dónde viven, y los que faltan, de qué decisión
-     * dependen y en qué tarea se van a poder usar.
+     * El capítulo 8 lista cuatro, y la pestaña dice la verdad de cada uno en vez
+     * de ofrecer cuatro campos que escribirían un número inventado en alguna
+     * parte: los umbrales que ya están en uso dicen dónde viven, y los que
+     * faltan, de qué decisión dependen y en qué tarea se van a poder usar.
      *
-     * Cuando esas decisiones se cierren, cada una es un renglón de
-     * `config/panel.php` y un renglón de aquí.
+     * La anticipación de la alerta de tope fue el primero en cerrarse —decisión
+     * D.3, tres meses, F3-04— y enseña el camino: cada decisión que se cierra es
+     * un renglón de un archivo de configuración y un renglón de aquí.
      *
      * @return array{filas: list<array{umbral: string, valor: string, donde: string, estado: string, tono: string}>, nota: string}
      */
@@ -425,10 +425,10 @@ class CatalogosDelSistema
                 ],
                 [
                     'umbral' => 'Anticipación de la alerta de cercanía al tope de cuatro años',
-                    'valor' => 'Sin decidir',
-                    'donde' => 'Llega con las alertas de contrato (F3-04)',
-                    'estado' => 'Decisión D.3 del documento 6',
-                    'tono' => 'neutro',
+                    'valor' => Formato::tiempoTranscurrido((int) config('alertas.cercania_al_tope_meses')),
+                    'donde' => 'config/alertas.php',
+                    'estado' => 'En uso',
+                    'tono' => 'exito',
                 ],
                 [
                     'umbral' => 'Tiempo para considerar prolongado un contrato de obra o labor',

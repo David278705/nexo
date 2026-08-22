@@ -223,6 +223,42 @@ class MotorDeCalculo
     }
 
     /**
+     * Cuántos meses completos han transcurrido entre dos fechas.
+     *
+     * Con la misma regla de la sección 9.1 que usa `cumpleMesesEl()`: el mes se
+     * cumple la víspera del mismo número del mes siguiente, así que quien entró
+     * el 15 de abril lleva un mes cumplido el 14 de mayo y no el 15. Se apoya en
+     * ella a propósito, en lugar de restar meses por su cuenta: dos formas de
+     * contar lo mismo se separan el día en que una de las dos se corrija.
+     *
+     * Se usa en: la antigüedad que escribe la alerta de cercanía al tope.
+     */
+    public static function mesesCumplidos(CarbonInterface $desde, CarbonInterface $hasta): int
+    {
+        $inicio = self::dia($desde);
+        $fin = self::dia($hasta);
+
+        if ($fin->lessThan($inicio)) {
+            return 0;
+        }
+
+        // La resta de meses de Carbon es la aproximación de partida; el ajuste
+        // fino lo hace la regla del día anterior, que puede dejarla en uno más
+        // o en uno menos según el número del día.
+        $meses = (int) $inicio->diffInMonths($fin);
+
+        while ($meses > 0 && self::dia(self::cumpleMesesEl($inicio, $meses))->greaterThan($fin)) {
+            $meses--;
+        }
+
+        while (self::dia(self::cumpleMesesEl($inicio, $meses + 1))->lessThanOrEqualTo($fin)) {
+            $meses++;
+        }
+
+        return $meses;
+    }
+
+    /**
      * El día en que se envía una alerta programada para esa fecha.
      *
      * Si cae en sábado, domingo o festivo se corre al día hábil anterior

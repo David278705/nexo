@@ -2,6 +2,7 @@
 
 namespace App\Dominio\Alertas\Reglas;
 
+use App\Contratacion\HistorialDeContrato;
 use App\Dominio\Alertas\ReferenciaTemporal;
 use App\Dominio\Alertas\TipoDeAlerta;
 use App\Presentacion\Formato;
@@ -61,6 +62,7 @@ class PlazoDeRenovacion extends ReglaDePreavisoDelFijo
         string $cargo,
         Carbon $vencimiento,
         ReferenciaTemporal $referencia,
+        HistorialDeContrato $historial,
     ): string {
         return 'El contrato de '.$nombre.', '.$cargo.', termina el '.Formato::fechaLarga($vencimiento).'. '
             .$referencia->fraseCapitalizada().' vence el plazo legal de '.$this->diasDePreaviso()

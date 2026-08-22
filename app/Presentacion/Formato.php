@@ -113,6 +113,35 @@ final class Formato
     }
 
     /**
+     * Un tiempo transcurrido como se dice en voz alta: «3 años y 9 meses»,
+     * «un año», «9 meses», «un mes».
+     *
+     * Recibe los meses ya contados —contarlos es del motor,
+     * `MotorDeCalculo::mesesCumplidos()`— y solo decide cómo se escriben. Es la
+     * antigüedad que nombra la alerta de cercanía al tope de cuatro años
+     * (documento 2, 5.4): «El vínculo a término fijo de {Nombre} lleva
+     * {tiempo}…».
+     *
+     * El año y el mes sueltos van con letra —«lleva un año», no «lleva 1 año»—
+     * porque así se lee dentro de una frase, que es el único sitio donde se usa.
+     */
+    public static function tiempoTranscurrido(int $meses): string
+    {
+        $meses = max(0, $meses);
+        $anios = intdiv($meses, 12);
+        $restantes = $meses % 12;
+
+        $enAnios = $anios === 1 ? 'un año' : $anios.' años';
+        $enMeses = $restantes === 1 ? 'un mes' : $restantes.' meses';
+
+        if ($anios === 0) {
+            return $enMeses;
+        }
+
+        return $restantes === 0 ? $enAnios : $enAnios.' y '.$enMeses;
+    }
+
+    /**
      * Los días que vienen con fracción: «12,75 días», «1,25 días», «3 días».
      *
      * Es el saldo de vacaciones y todo lo que sale del motor con decimales. Va

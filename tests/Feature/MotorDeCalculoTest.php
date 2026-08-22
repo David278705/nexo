@@ -115,6 +115,25 @@ it('hace cumplir el primer mes el 14 de mayo a quien ingresó el 15 de abril', f
         ->and(MotorDeCalculo::cumpleMesesEl($ingreso, 2)->toDateString())->toBe('2026-06-14');
 })->group('motor');
 
+it('cuenta 45 meses cumplidos del 1 de enero de 2026 al 1 de octubre de 2029', function () {
+    $inicio = Carbon::parse('2026-01-01');
+
+    // Tres años y nueve meses, que es la antigüedad que anuncia la alerta de
+    // cercanía al tope: se dispara tres meses antes de los cuatro años.
+    expect(MotorDeCalculo::mesesCumplidos($inicio, Carbon::parse('2029-10-01')))->toBe(45);
+
+    // Con la misma regla de la víspera que `cumpleMesesEl()`: quien entró el 15
+    // de abril lleva un mes el 14 de mayo, no el 15, y cero meses el día 13.
+    $abril = Carbon::parse('2026-04-15');
+
+    expect(MotorDeCalculo::mesesCumplidos($abril, Carbon::parse('2026-05-13')))->toBe(0)
+        ->and(MotorDeCalculo::mesesCumplidos($abril, Carbon::parse('2026-05-14')))->toBe(1)
+        ->and(MotorDeCalculo::mesesCumplidos($abril, Carbon::parse('2026-06-14')))->toBe(2);
+
+    // Un final anterior al inicio no devuelve meses negativos.
+    expect(MotorDeCalculo::mesesCumplidos($abril, Carbon::parse('2026-01-01')))->toBe(0);
+})->group('motor');
+
 it('da un saldo de 12,75 días al 31 de julio', function () {
     $vinculacion = vinculacionConSaldoDeCorte();
 

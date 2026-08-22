@@ -187,6 +187,34 @@ class HistorialDeContrato
     }
 
     /**
+     * Hasta cuándo llegaría el contrato si nadie avisa y el silencio lo
+     * prorroga solo, **sin mirar el tope**.
+     *
+     * La prórroga automática opera «por un término igual al último pactado»
+     * (artículo 46 del CST), así que arranca el día siguiente al vencimiento
+     * vigente y dura lo mismo que el tramo vigente. Un tramo del 1 de enero al
+     * 31 de diciembre de 2026 se prorroga hasta el 31 de diciembre de 2027.
+     *
+     * Devuelve el plazo entero a propósito, sin truncar: quien pregunta —la
+     * alerta del efecto del silencio— necesita justamente comparar este plazo
+     * contra `fechaDelTopeLegal()` para saber si se pasa, y truncarlo aquí le
+     * borraría la pregunta.
+     */
+    public function finDeLaProrrogaAutomatica(): ?Carbon
+    {
+        $vigente = $this->vigente();
+        $vencimiento = $this->fechaDeVencimiento();
+
+        if ($vigente === null || ! $vencimiento instanceof Carbon) {
+            return null;
+        }
+
+        return $vencimiento->copy()->addDays(
+            MotorDeCalculo::diasCorridos($vigente->fecha_inicio, $vencimiento)
+        );
+    }
+
+    /**
      * Desde cuándo corren los cuatro años del tope (documento 6, C.2).
      *
      * Desde el inicio del primer tramo, salvo que el contrato sea anterior a la

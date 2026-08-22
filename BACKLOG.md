@@ -619,11 +619,11 @@ también se ajustan al corrimiento**: los tres de la sección 5.4 traen «Mañan
 recibe el calendario del indefinido, que es el que le corresponde por 9.6. Dos pruebas cubren los
 contratos tan cortos que el aviso caería antes del ingreso.
 
-### [!] F3-04 · Alertas de contrato a término fijo — dos de las cuatro dependen de decisiones abiertas
+### [!] F3-04 · Alertas de contrato a término fijo — tres construidas, «última renovación corta» bloqueada por la pregunta de los dos límites de prórrogas cortas
 
 Plazo de renovación a 32 días, efecto del silencio a 30, última renovación corta y cercanía al tope.
 **Hecho cuando:** las cuatro se disparan en sus fechas y hay prueba de cada una.
-**Fuente:** `docs/01-especificacion-funcional.md` 9.4
+**Fuente:** `docs/01-especificacion-funcional.md` 9.4 · `docs/06-decisiones-pendientes.md` D.3
 
 Hechas **las dos del preaviso**: `PlazoDeRenovacion` y `EfectoDelSilencio`, sobre la base compartida
 `ReglaDePreavisoDelFijo`, registradas en el catálogo y con sus textos literales de la sección 5.4.
@@ -632,17 +632,32 @@ que **el «32» no está escrito en ninguna parte**: es el preaviso configurado 
 propio mensaje anuncia. La condición «si no se ha registrado prórroga ni terminación» se cumple por
 construcción y tiene prueba.
 
-**Bloqueadas las otras dos, y ninguna es un olvido:**
+**Hecho también lo que trajo D.3:**
 
-- **Cercanía al tope legal.** La decisión **D.3** del documento 6 está marcada BLOQUEANTE y sin
-  responder: no hay número para «se aproxima a los cuatro años». No se inventa.
+- **`CercaniaAlTope`, la alerta nueva.** Un solo aviso, tres meses antes de
+  `HistorialDeContrato::fechaDelTopeLegal()`, con el texto de 5.4 y la fecha del tope escrita entera.
+  La anticipación vive en `config/alertas.php`, que es nuevo: es criterio y no ley, y el documento 2,
+  8.1, manda sacarla del código. Cuelga del tope y no del vencimiento, así que las prórrogas que se
+  registren en medio no la mueven; en un contrato anterior a la reforma cuenta desde el 25 de junio
+  de 2025 (C.2) y tiene prueba de ese caso.
+- **`EfectoDelSilencio` escoge entre tres consecuencias.** La primera frase no cambia; la segunda
+  depende de si la prórroga automática cabe entera antes del tope, se trunca contra él, o ya no cabe
+  ninguna porque el contrato vence en el tope. Las decide comparando `fechaDelTopeLegal()` con
+  `finDeLaProrrogaAutomatica()`, el método nuevo del historial. **El «prácticamente llega al tope» de
+  D.3 no se implementó**: un margen de tolerancia sería un umbral legal inventado, y una prórroga que
+  cabe entera recibe el texto normal, que es cierto.
+
+**Sigue bloqueada, y no es un olvido:**
+
 - **Última renovación corta posible.** La tabla dice «llega al límite de prórrogas cortas», en
   singular, y el sistema tiene **dos** límites distintos —cuatro pactadas y tres automáticas—.
   Disparar con el primero que se agote afirmaría en un correo que «la próxima renovación deberá ser
-  de mínimo un año» cuando todavía podría ser corta del otro tipo. Falta además el día de disparo.
+  de mínimo un año» cuando todavía podría ser corta del otro tipo. Falta además el día de disparo. La
+  pregunta concreta sigue en `ESTADO.md`.
 
-Las preguntas concretas están en `ESTADO.md`. Al resolverlas, esta tarea se retoma: solo faltan las
-dos reglas, sus textos y sus pruebas; el armazón ya está.
+Al resolver la última pregunta, esta tarea se cierra del todo: el armazón ya está para las cuatro y
+la que falta no necesita infraestructura nueva —`HistorialDeContrato::prorrogasCortasRestantes()`
+responde los dos cupos por separado—.
 
 ### [ ] F3-05 · Resúmenes mensuales
 
@@ -897,3 +912,18 @@ valor anterior; el módulo sale de las cuatro listas de exclusión compartidas �
 `useListado.test.js`—; y hay prueba de que el código de diagnóstico no aparece.
 
 **Fuente:** `docs/02-arquitectura-y-datos.md` 7.2 · `docs/03-diseno-e-interfaz.md` cap. 4
+
+### [ ] REV-05 · Quitar las alertas de periodo de prueba de obra o labor
+
+F3-03 construyó las tres alertas de periodo de prueba del contrato indefinido —al mes, a los 45 días,
+un día antes— y, apoyándose en que 9.6 decía «aplican también, cuando corresponda», las mandó también
+a los contratos de obra o labor. Angela ya respondió la pregunta que quedó abierta desde entonces:
+**a obra o labor no le va ninguna de las tres.** El documento 1, sección 9.6, ya se corrigió para
+decirlo así de claro.
+
+Hoy el sistema le sigue mandando esas tres alertas a los empleados de obra o labor. Hay que quitarlas.
+
+**Hecho cuando:** un empleado con contrato de obra o labor no genera ninguna de las tres alertas de
+periodo de prueba en ningún punto de su periodo de prueba, con prueba que lo demuestre; un empleado a
+término indefinido las sigue generando exactamente igual que antes.
+**Fuente:** `docs/01-especificacion-funcional.md` 9.6

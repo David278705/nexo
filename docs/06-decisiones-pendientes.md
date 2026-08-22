@@ -294,9 +294,17 @@ Alternativa si se quiere simplificar: aplicar siempre la regla más estricta, la
 
 **BLOQUEANTE.** ¿A partir de cuántos meses sin registrar terminación debe aparecer un contrato de obra o labor en la alerta mensual? No hay un criterio legal: es una señal de gestión y depende de qué tan largas suelen ser las obras en las empresas del segmento.
 
-### D.3 Anticipación de la alerta de cercanía al tope
+### D.3 Anticipación de la alerta de cercanía al tope — RESUELTA
 
-**BLOQUEANTE.** ¿Con cuánta anticipación debe avisarse que un contrato a término fijo se acerca a los cuatro años? La decisión importa porque de ella depende que la empresa tenga tiempo de decidir. Sugerencia: seis meses antes, para que alcance a planear una renovación de un año si la quiere, y de nuevo a los tres meses.
+**Respondida por Angela.** Un solo aviso nuevo, **tres meses antes** de la fecha en que el vínculo completaría los cuatro años (`HistorialDeContrato::fechaDelTopeLegal()`). No son dos avisos: los "35 días" que ella mencionó al principio no son una alerta nueva, son las dos que ya existen —`PlazoDeRenovacion` y `EfectoDelSilencio`— que solo necesitan ajustar su texto cuando la renovación en curso es la última posible antes del tope. Ver la nota siguiente.
+
+**Efecto sobre `EfectoDelSilencio` cuando la renovación es la última antes del tope.** El artículo 46 del CST reformado (Ley 2466 de 2025) ya resuelve el caso: la prórroga automática por silencio siempre es "por un término igual al inicialmente pactado... sin que pueda superarse el límite máximo de cuatro (4) años". Es decir, la renovación tácita **se trunca sola** al tiempo que falte para el tope, nunca se pasa. Tres variantes de mensaje, según cuánto falte para el tope frente al término que tocaría renovar:
+
+1. **La renovación llega exacto (o prácticamente) al tope de 4 años** → el mensaje dice que si no se avisa, el contrato se vuelve indefinido.
+2. **Falta menos tiempo para el tope que el término que normalmente se renovaría** (ejemplo de Angela: falta 1 mes, el término pactado la última vez fue de 6 meses) → el mensaje no puede decir "se renueva por el mismo término" —sería ilegal, se pasaría del tope— ni "se vuelve indefinido" —todavía no llega—. Dice que la prórroga automática queda truncada hasta la fecha del tope, y que ahí se vuelve indefinido: *"Si no se avisa hoy (fecha), el contrato queda prorrogado automáticamente solo hasta el (fecha del tope), y al llegar a esa fecha se convierte en indefinido por ley."*
+3. **Falta más tiempo para el tope que el término que tocaría renovar** → es el caso normal, ya construido: el mensaje literal que ya tiene `EfectoDelSilencio`.
+
+Fuente legal: artículo 46 CST reformado — https://leyes.co/codigo_sustantivo_del_trabajo/46.htm
 
 ### D.4 Rangos de edad y de antigüedad
 

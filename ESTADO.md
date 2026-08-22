@@ -1,68 +1,80 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-22 · Tarea F3-04 (bloqueada parcialmente)
+**Última sesión:** 2026-08-22 · Tarea F3-04 (segunda pasada, cerrada como `[!]`)
 **Verificación:** verde
-**Siguiente tarea:** F3-05 · Resúmenes mensuales
+**Siguiente tarea:** F3-05 · Resúmenes mensuales — los cuatro correos agrupados por empresa
 
 ## Qué se hizo
 
-- **Las dos alertas del preaviso del término fijo, con sus textos exactos.** `PlazoDeRenovacion`
-  —32 días antes del vencimiento— y `EfectoDelSilencio` —30 días antes—, en
-  `app/Dominio/Alertas/Reglas/`, ya registradas en el catálogo, así que el proceso diario las manda.
-  Son las dos primeras filas de la sección 9.4.
-- **`ReglaDePreavisoDelFijo`, la base que comparten.** Las dos cuelgan de la misma fecha —la fecha
-  límite del preaviso— y solo se diferencian en cuántos días antes de ella avisan y en qué dicen.
-  Candidatas, contrato activo, vencimiento vigente y armado de la alerta se escriben una vez.
-- **El «32» no existe en el código.** Es `HistorialDeContrato::fechaLimiteDePreaviso()` —que lee
-  `preaviso_dias` de la configuración— menos los dos días que el propio mensaje anuncia. Escribir 32
-  sería guardar dos veces el mismo número legal: el día en que el preaviso deje de ser de treinta
-  días, esa alerta quedaría mintiendo sola.
-- **Las otras dos de la sección 9.4 quedaron bloqueadas**, con la tarea marcada `[!]` y el motivo en
-  `BACKLOG.md`. Las preguntas están abajo.
-- `composer verificar` en verde: Pint, PHPStan sin errores, **806** pruebas de Pest (13 nuevas), build
+- **`CercaniaAlTope`, la alerta nueva de la cuarta fila de 9.4.** Un solo aviso, **tres meses antes**
+  del día en que el vínculo cumple los cuatro años a término fijo. Ya está registrada en el catálogo,
+  así que el proceso diario la manda. Es la primera alerta que **no cuelga del vencimiento vigente
+  sino del vínculo entero**: las prórrogas que se registren en medio no la mueven.
+- **`config/alertas.php`, archivo nuevo.** La anticipación de tres meses vive ahí y no dentro de la
+  regla. Es lo que manda el documento 2, 8.1: los umbrales que decide Angela se ajustan sin desplegar
+  código. `reglas_laborales.php` no se tocó, porque ahí solo van números con norma citada.
+- **`EfectoDelSilencio` ahora escoge entre tres consecuencias**, que son las tres variantes de D.3.
+  La primera frase del correo no cambia nunca; la segunda sí, según lo que quepa antes del tope.
+- **Dos métodos nuevos de dominio**: `HistorialDeContrato::finDeLaProrrogaAutomatica()` —hasta dónde
+  llegaría el contrato si nadie avisa, sin truncar— y `MotorDeCalculo::mesesCumplidos()`, que cuenta
+  con la misma regla de la víspera que `cumpleMesesEl()` en lugar de inventar una segunda.
+  `Formato::tiempoTranscurrido()` los escribe: «3 años y 9 meses», «un año», «un mes».
+- **La pestaña «Umbrales» del panel del proveedor dejó de decir «sin decidir»** en el renglón de la
+  anticipación del tope: enseña los tres meses y dónde se cambian. Era el primero de los cuatro que
+  se cierra.
+- **«Última renovación corta» sigue bloqueada** y por eso la tarea quedó `[!]`. La pregunta, abajo,
+  es la misma de la sesión anterior y no ha cambiado.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **815** pruebas de Pest (9 nuevas), build
   y 275 de Vitest.
 
 ## Decisiones tomadas
 
-- **«Si no se ha registrado prórroga ni terminación» no se pregunta aparte: se cumple por
-  construcción.** La terminación deja la vinculación inactiva y `activas()` la saca de las
-  candidatas; la prórroga mueve el vencimiento vigente y con él la fecha límite del preaviso, así
-  que el disparo del plazo viejo desaparece y aparece el del tramo nuevo, que es justo lo que
-  corresponde. Escribir la condición otra vez sería tener la misma regla en dos sitios, y la segunda
-  copia se separa sola. Las dos mitades tienen prueba.
-- **La `fechaDelHecho` de las dos es la fecha límite del preaviso, no el vencimiento.** Es de ella de
-  la que hablan los mensajes en relativo —«en dos días», «hoy»—, y es la que tiene que ir entre
-  paréntesis por 9.1.
-- **La de los 32 días escribe dos fechas y cada una a su manera.** El vencimiento del contrato va
-  entero y con año con `Formato::fechaLarga()`, porque puede caer en el año siguiente y el mensaje no
-  habla de él en relativo; la fecha límite del preaviso la escribe `ReferenciaTemporal`, que es la
-  que se ajusta al corrimiento.
-- **Los dos asuntos no llevan referencia temporal y por eso no se tocan.** Es la diferencia con
-  F3-03, donde tres de los cinco asuntos traían la cuenta escrita a mano y hubo que reescribirlos:
-  los de la sección 5.4 para estas dos —«Definir renovación del contrato de {Nombre}» y «Último día
-  para avisar la no renovación de {Nombre}»— no afirman ningún plazo, así que se copian literales.
-- **Un contrato tan corto que el plazo del preaviso caería antes del ingreso no manda nada.** Con
-  veinte días pactados, los treinta días de preaviso quedan en diciembre del año anterior. Tiene
-  prueba, igual que su gemela de F3-03.
-- **El indefinido y la obra o labor no reciben ninguna de las dos.** No tienen fecha de finalización
-  previsible, que es lo que dice expresamente la sección 9.6.
+- **Las tres variantes de D.3 se deciden comparando dos fechas, sin ningún margen.** El tope frente a
+  hasta dónde llegaría la prórroga automática. Si el vencimiento ya está en el tope, no cabe ninguna
+  prórroga y el mensaje lo dice; si la prórroga completa se pasaría, queda truncada hasta el tope; si
+  cabe, sale el texto literal de la sección 5.4.
+- **El «(o prácticamente)» de D.3 no se implementó, a propósito.** Una prórroga que cabe entera y
+  termina dos días antes del tope recibe el texto normal, y ese texto es cierto: se prorroga por el
+  término completo. Poner un margen de «casi llega» habría sido escribir un umbral legal que no está
+  en ninguna norma ni en ninguna decisión.
+- **Apareció una cuarta situación que D.3 no nombra y hubo que redactarla: el contrato que vence
+  exactamente el día del tope.** No es rara —es justo lo que deja una prórroga apurada hasta el
+  límite—, y ahí la prórroga automática no existe: el contrato se vuelve indefinido. El texto se
+  compuso con las piezas de las otras dos variantes y con la ley que ya cita D.3; la regla es de
+  Angela, la redacción es del sistema. Vale la pena que ella la lea.
+- **El «hoy (fecha)» que D.3 escribe al principio de la variante truncada no se repite.** Ya lo dice
+  la primera frase del mismo correo. Lo que se copió literal es la consecuencia, que es la parte con
+  efecto jurídico.
+- **La fecha del tope se escribe entera y con año, no en cuenta atrás.** El texto de 5.4 no trae
+  ninguna referencia relativa que `ReferenciaTemporal` pueda ajustar, y el tope cae a meses de
+  distancia, casi siempre en el año siguiente. Es el mismo criterio de la alerta del mes cumplido.
+- **Al texto de 5.4 se le agregó la fecha del tope** —«que se cumple el 1 de enero de 2030»—. Sin
+  ella el correo dice «se acerca al límite» y no dice cuándo, que es exactamente lo que prohíbe la
+  regla de redacción de 9.1: quien lo recibe no debe tener que calcular nada.
+- **«Lleva {tiempo}» se cuenta desde el inicio del conteo del tope, no desde la firma.** Es la misma
+  convención que ya usaba `HistorialDeContrato::duracionTotalEnDias()`. En un contrato posterior a la
+  reforma las dos fechas coinciden; en uno anterior, los años previos a la ley no cuentan para el
+  tope, y son los años del tope los que el mensaje explica.
+- **La consulta de candidatas no filtra por fecha.** El día del disparo sale del inicio del vínculo,
+  que puede ser el de la firma o el de la reforma según C.2; escribir esa condición en SQL sería la
+  misma regla por segunda vez, en otro idioma y sin prueba.
 
 ## Preguntas para Angela
 
-- **¿Con cuánta anticipación avisa la alerta de cercanía al tope de cuatro años?** Es la decisión
-  **D.3** del documento 6, marcada BLOQUEANTE. La tabla 9.4 solo dice «cuando se aproxima a los
-  cuatro años» y no hay número en `config/reglas_laborales.php`. El propio documento 6 sugiere seis
-  meses antes y de nuevo a los tres meses; **falta confirmarlo**, y hay que decir si son uno o dos
-  avisos, porque son una o dos filas del catálogo.
 - **¿Cuál es «el límite de prórrogas cortas» de la alerta de última renovación corta, y qué día
   dispara?** La tabla lo dice en singular, pero el sistema tiene dos límites distintos —cuatro
   prórrogas pactadas y tres automáticas, del Concepto MinTrabajo 6157—. Disparar en cuanto se agote
   el primero afirmaría en un correo que «la próxima renovación deberá ser de mínimo un año» cuando
   todavía podría ser corta del otro tipo, y eso es afirmar algo falso sobre una regla legal. Falta
   además el día: «cuando llega al límite» puede ser el día en que se registra la prórroga que lo
-  agota, o el mismo día del aviso de renovación, 32 días antes del vencimiento siguiente.
-- **¿La obra o labor debe recibir las tres alertas del indefinido, como quedó, o solo alguna?**
-  (heredada de F3-03). La sección 9.6 dice que le aplican «cuando corresponda» sin decir cuáles.
+  agota, o el mismo día del aviso de renovación, 32 días antes del vencimiento siguiente. Es lo único
+  que le falta a F3-04 para cerrarse.
+- **Para confirmar, no para desbloquear: el texto del contrato que vence el día mismo del tope.** Hoy
+  dice «Si no se avisa, el contrato ya no puede prorrogarse: el vínculo cumple el tope legal de
+  cuatro años el (fecha) y a partir de esa fecha se convierte en indefinido por ley». Es la
+  consecuencia que D.3 pide para ese caso; la frase la escribió el sistema.
+- **D.2 sigue abierta y bloquea uno de los cuatro resúmenes de F3-05**: no hay umbral de meses para
+  considerar prolongado un contrato de obra o labor.
 
 ## Decisiones para David
 
@@ -77,25 +89,28 @@
 - **La siguiente tarea es F3-05, los cuatro resúmenes mensuales**, y son de otra forma: van agrupados
   en un solo correo por empresa, sin vinculación, con `AlertaPorEnviar::paraLaEmpresa()`, que existe
   desde F3-01 y todavía no la usa nadie. Su día es «el último día hábil del mes».
-- **Ojo con dos de los cuatro resúmenes**: el de obra o labor prolongada depende de la decisión
-  **D.2**, que sigue abierta —no hay umbral de meses—, así que probablemente se bloquee igual que las
-  dos de esta sesión. Los otros tres —contratos vencidos sin gestionar, acumulación de 15 días y año
-  cumplido sin disfrute mínimo— están completos en 9.4, 9.5 y 5.4.
+- **Uno de los cuatro se va a bloquear**: el de obra o labor prolongada depende de D.2, que no tiene
+  umbral. Los otros tres —contratos vencidos sin gestionar, acumulación de 15 días y año cumplido sin
+  disfrute mínimo— están completos en 9.4, 9.5 y 5.4. Si se bloquea uno, es `[!]` y se termina la
+  sesión: no se pasa a F3-06.
 - **Cuidado con `ReferenciaTemporal` en el resumen de contratos vencidos**: habla de fechas pasadas y
   esa clase lanza excepción a propósito con un hecho anterior al envío. Ese resumen escribe la fecha
   de vencimiento entera y los días transcurridos, no una referencia relativa.
-- **Al retomar F3-04 no hay que construir nada de infraestructura**: `ReglaDePreavisoDelFijo` no
-  sirve para las dos que faltan —ninguna cuelga del preaviso—, pero `HistorialDeContrato` ya responde
-  todo lo que necesitan: `prorrogasAcumuladas()`, `prorrogasCortasRestantes()`,
-  `contratoInicialEsInferiorAUnAnio()`, `fechaDelTopeLegal()` e `inicioDelConteoDelTope()`, este
-  último con la regla C.2 de la reforma ya aplicada.
+- **El umbral de D.2, cuando llegue, va en `config/alertas.php`**, que se estrenó en esta sesión con
+  la anticipación del tope, y suma un renglón a la pestaña «Umbrales» de `CatalogosDelSistema`. El
+  camino ya está hecho y probado: son dos renglones, no una tarea.
 - **La prueba «el catálogo trae las reglas construidas y solo esas»** —en
-  `AlertasDePeriodoDePruebaTest.php`— ahora enumera siete tipos. Es a propósito la que se pone roja
-  cuando alguien registra una regla sin querer; al sumar las de F3-05 hay que actualizarla.
+  `AlertasDePeriodoDePruebaTest.php`— ahora enumera **ocho** tipos. Es a propósito la que se pone
+  roja cuando alguien registra una regla sin querer; al sumar las de F3-05 hay que actualizarla.
+- **`CercaniaAlTope` es la primera regla que recorre todas las vinculaciones a término fijo activas
+  de la empresa**, sin acotar por fecha. Es correcto y está razonado en su docblock, pero es el sitio
+  que hay que mirar si algún día el proceso diario se vuelve lento con una empresa grande.
 - **El punto que hay que mirar en el próximo control** sigue siendo el contexto de empresa en segundo
   plano: `EnviarAlerta` serializa dos identificadores y no un modelo. Está probado, pero es el sitio
   donde una fuga sería más fácil.
 - **Aviso para F5-03:** el ambiente de demostración nace `en_prueba` y hoy no recibe alertas. Si tiene
   que enseñar correos, esa tarea cambia una línea en
   `ProcesoDiarioDeAlertas::empresasQueRecibenAlertas()`.
-- `REV-03` y `REV-04` siguen al final del backlog, con F5-07 dando por hecha la pantalla de auditoría.
+- `REV-03`, `REV-04` y `REV-05` siguen al final del backlog. **`REV-05` no es opcional**: hoy el
+  sistema le manda a un empleado de obra o labor las alertas de periodo de prueba, que no le
+  corresponden por ley.

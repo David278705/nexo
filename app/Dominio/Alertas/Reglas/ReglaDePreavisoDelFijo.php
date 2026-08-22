@@ -65,11 +65,19 @@ abstract class ReglaDePreavisoDelFijo implements ReglaDeAlerta
 
     abstract protected function asunto(string $nombre): string;
 
+    /**
+     * El historial llega entero además del vencimiento porque el efecto del
+     * silencio necesita preguntarle dos cosas más —el tope de los cuatro años y
+     * hasta dónde llegaría la prórroga automática— para escoger su texto
+     * (documento 6, D.3). El vencimiento sigue aparte, y ya comprobado, para no
+     * obligar a cada texto a volver a mirar si existe.
+     */
     abstract protected function cuerpo(
         string $nombre,
         string $cargo,
         Carbon $vencimiento,
         ReferenciaTemporal $referencia,
+        HistorialDeContrato $historial,
     ): string;
 
     /**
@@ -112,6 +120,7 @@ abstract class ReglaDePreavisoDelFijo implements ReglaDeAlerta
                     $cargo,
                     Carbon::parse($vencimiento->toDateString()),
                     ReferenciaTemporal::hasta($fechaDeEnvio, $limite),
+                    $historial,
                 ),
             );
         }

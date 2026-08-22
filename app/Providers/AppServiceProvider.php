@@ -7,6 +7,7 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\PoliticaDeModulos;
 use App\Contratacion\ObservadorDeVinculacion;
 use App\Dominio\Alertas\CatalogoDeReglas;
+use App\Dominio\Alertas\Reglas\CercaniaAlTope;
 use App\Dominio\Alertas\Reglas\EfectoDelSilencio;
 use App\Dominio\Alertas\Reglas\PlazoDeRenovacion;
 use App\Dominio\Alertas\Reglas\PruebaFijoDosDias;
@@ -46,9 +47,11 @@ class AppServiceProvider extends ServiceProvider
             $catalogo->registrar(new PruebaFijoDosDias);
             $catalogo->registrar(new PruebaFijoVispera);
 
-            // Las dos del preaviso del término fijo (documento 1, 9.4).
+            // Las del término fijo (documento 1, 9.4). Falta «última renovación
+            // corta», bloqueada por una pregunta abierta en `ESTADO.md`.
             $catalogo->registrar(new PlazoDeRenovacion);
             $catalogo->registrar(new EfectoDelSilencio);
+            $catalogo->registrar(new CercaniaAlTope);
 
             return $catalogo;
         });
