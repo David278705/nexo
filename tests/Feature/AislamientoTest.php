@@ -10,6 +10,7 @@ use App\Exports\MovimientosExport;
 use App\Exports\TerminacionesExport;
 use App\Exports\VacacionesExport;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Models\AlertaEnviada;
 use App\Models\Eps;
 use App\Models\Incapacidad;
 use App\Models\Licencia;
@@ -980,4 +981,15 @@ casoDeAislamiento('perfil sociodemográfico', [
     'crear' => fn (string $vivienda) => PerfilSociodemografico::factory()->create([
         'tipo_vivienda' => $vivienda,
     ]),
+]);
+
+casoDeAislamiento('alertas enviadas', [
+    'tabla' => 'alertas_enviadas',
+    'modelo' => AlertaEnviada::class,
+    'campo' => 'asunto',
+    'migracion' => function (): void {},
+    // El asunto es el texto que se busca porque es el que la consola del
+    // proveedor (F5-05) enseña en el listado: si una fuga existiera, saldría
+    // por ahí y con el nombre del empleado de la otra empresa dentro.
+    'crear' => fn (string $asunto) => AlertaEnviada::factory()->create(['asunto' => $asunto]),
 ]);

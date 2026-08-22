@@ -6,6 +6,7 @@ use App\Auditoria\ObservadorDeAuditoria;
 use App\Autorizacion\Modulo;
 use App\Autorizacion\PoliticaDeModulos;
 use App\Contratacion\ObservadorDeVinculacion;
+use App\Dominio\Alertas\CatalogoDeReglas;
 use App\Models\User;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
@@ -22,6 +23,15 @@ class AppServiceProvider extends ServiceProvider
         // Singleton: la empresa se resuelve una sola vez por petición y todo
         // el sistema lee de la misma instancia.
         $this->app->singleton(ContextoTenant::class);
+
+        // El catálogo de reglas de alerta, también singleton: es una lista que
+        // se llena al arrancar y que el proceso diario recorre. Hoy está vacía
+        // —F3-01 construye la infraestructura, las once reglas llegan en F3-03,
+        // F3-04 y F3-05— y cada regla nueva se suma aquí con una línea:
+        //
+        //     $this->app->afterResolving(CatalogoDeReglas::class, fn ($catalogo) =>
+        //         $catalogo->registrar(new ReglaDelPeriodoDePrueba));
+        $this->app->singleton(CatalogoDeReglas::class);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Auditoria;
 
 use App\Models\Acceso;
+use App\Models\AlertaEnviada;
 use App\Models\Auditoria;
 use App\Models\Invitacion;
 use App\Models\Tenant;
@@ -42,6 +43,13 @@ class ObservadorDeAuditoria
         // Una invitación guarda el hash de un token de un solo uso. Copiarlo a
         // otra tabla es repartir un secreto por más sitios sin ganar nada.
         Invitacion::class,
+
+        // Por lo mismo que `accesos`: `alertas_enviadas` ya es el registro de
+        // lo que pasó, lo escribe el proceso y no una persona, y ninguna
+        // pantalla lo edita. Auditarlo dejaría tres líneas sin autor por cada
+        // correo —el registro, el intento y el envío— contando lo que la propia
+        // tabla cuenta mejor.
+        AlertaEnviada::class,
     ];
 
     /**

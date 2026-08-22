@@ -236,11 +236,28 @@ class MotorDeCalculo
     {
         $dia = self::dia($fecha);
 
-        while ($dia->isSaturday() || $dia->isSunday() || Festivo::esFestivo($dia)) {
+        while (! self::esDiaHabilParaAlertas($dia)) {
             $dia->subDay();
         }
 
         return $dia;
+    }
+
+    /**
+     * Si ese día es de oficina para el motor de alertas.
+     *
+     * Es la pregunta que se hace el proceso diario para saber qué fechas le
+     * tocan: cada día evalúa la suya y las de los días no hábiles que vienen
+     * detrás, porque esas hay que adelantarlas (documento 2, 5.3). Es la misma
+     * regla de arriba vista al derecho, y por eso vive junto a ella y no en el
+     * proceso: el sábado tampoco es hábil aquí aunque la empresa lo tenga
+     * laboral.
+     */
+    public static function esDiaHabilParaAlertas(CarbonInterface $fecha): bool
+    {
+        $dia = self::dia($fecha);
+
+        return ! $dia->isSaturday() && ! $dia->isSunday() && ! Festivo::esFestivo($dia);
     }
 
     /**

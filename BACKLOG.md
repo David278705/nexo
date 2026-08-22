@@ -557,12 +557,27 @@ ninguna fase.
 
 ## Fase 3 — Alertas
 
-### [ ] F3-01 · Infraestructura de alertas
+### [x] F3-01 · Infraestructura de alertas
 
 Tabla `alertas_enviadas` con clave de idempotencia e índice único. Proceso diario que recorre
 empresas una por una. Cola con reintentos. Plantilla base de correo.
 **Hecho cuando:** ejecutar el proceso dos veces el mismo día no duplica ningún correo.
 **Fuente:** `docs/02-arquitectura-y-datos.md` cap. 5 · skill `agregar-alerta`
+
+Hecho: la tabla `alertas_enviadas` con su índice único `(tenant_id, clave)` y su política RLS, el
+modelo `AlertaEnviada`, los enumerados `TipoDeAlerta` —las trece del capítulo 9— y `EstadoDeAlerta`,
+`AlertaPorEnviar`, la interfaz `ReglaDeAlerta`, `CatalogoDeReglas`, `DestinatariosDeAlertas`,
+`RegistroDeAlertas`, `ProcesoDiarioDeAlertas` con su `ResumenDelProceso`, el job `EnviarAlerta`, el
+mailable `CorreoDeAlerta` con la plantilla base `correos/alerta.blade.php` y el comando
+`alertas:diarias`, programado a las 06:00 de `America/Bogota`. **La idempotencia la impone el índice
+y no una comprobación previa**: `RegistroDeAlertas` inserta y captura el rechazo dentro de su propio
+savepoint, porque una comprobación previa pierde la carrera contra un segundo proceso. El recorrido
+va empresa por empresa con `ContextoTenant::paraTenant()`, y una empresa que falla no detiene a las
+demás. El proceso evalúa cada día su fecha **y las de los días no hábiles que vienen detrás**
+(`fechasQueLeTocanA()`), así que un viernes evalúa viernes, sábado, domingo y el lunes si es festivo;
+ajustar el texto al adelanto es F3-02. **Ninguna regla de disparo existe todavía y no es un olvido**:
+las once llegan en F3-03, F3-04 y F3-05, y el armazón se prueba con `Tests\Fixtures\ReglaDePrueba`,
+la gemela de `RegistroDePrueba`.
 
 ### [ ] F3-02 · Corrimiento al día hábil
 
@@ -736,7 +751,7 @@ vender, tomándolo de `docs/06-decisiones-pendientes.md`.
 `ListadoDeEmpleados` y `ListadoDeContratos` tienen la misma estructura escrita dos veces:
 `opcion()`, `porPagina()`, `dePersona()`, `ordenar()`, `pagina()`, `total()`, `tieneFiltros()`,
 `paraLaInterfaz()`, la constante `TODOS`, `TAMANOS_DE_PAGINA` y la lista blanca de ordenamientos.
-Extrae lo común —clase base abstracta o *trait*, con la lista blanca y el mapa de columnas como
+Extrae lo común —clase base abstracta o _trait_, con la lista blanca y el mapa de columnas como
 declaración de cada listado—, dejando en cada clase solo sus filtros y sus filas.
 
 **Motivo:** hoy son dos, pero el documento 3 cuenta **siete** pantallas de listado. Con el patrón
@@ -764,15 +779,15 @@ prueba el armazón con un listado de mentira que declara dos filtros y nada más
 
 `Pages/Empleados/Index.vue` y `Pages/Contratos/Index.vue` repiten `pedir()`, `ordenar()`,
 `quitar()`, `limpiar()`, `urlExportar` y `textoExportar` casi carácter por carácter. Extrae un
-*composable* —`resources/js/Utilidades/useListado.js`— que reciba la ruta base y las props de
+_composable_ —`resources/js/Utilidades/useListado.js`— que reciba la ruta base y las props de
 filtros y devuelva las seis cosas.
 
 **Motivo:** el mismo de REV-01, y con un agravante: `textoExportar` arma la frase «Exportar 43
 registros filtrados» que la regla de interfaz exige, y dos copias de una frase obligatoria se
 separan solas.
 
-**Hecho cuando:** las dos pantallas usan el *composable*, sus pruebas de Vitest siguen en verde y
-el *composable* tiene las suyas.
+**Hecho cuando:** las dos pantallas usan el _composable_, sus pruebas de Vitest siguen en verde y
+el _composable_ tiene las suyas.
 
 Hecho: `resources/js/Utilidades/useListado.js`, el gemelo en la interfaz de `App\Listados\Listado`.
 Devuelve las nueve cosas que las pantallas repetían —`busqueda`, `buscar()` con su espera,
@@ -784,21 +799,29 @@ que era el agravante de esta tarea. Diecinueve casos nuevos en
 `resources/js/Utilidades/useListado.test.js`, tres de ellos leyendo los `.vue` para comprobar que
 ninguna pantalla conserva su copia; ninguna prueba existente se tocó.
 
-### [!] REV-03 · Editar y eliminar movimientos y terminaciones — bloqueada: nadie ha definido qué se deshace
+### [ ] REV-03 · Editar y eliminar movimientos y terminaciones
 
 F2-10 dejó editables y eliminables las **tres** novedades del capítulo 6. Movimientos (8.1) y
 terminaciones (capítulo 7) comparten el flujo de registro pero no son novedades del capítulo 6, y
-borrarlos no es quitar una fila:
+borrarlos no es quitar una fila: ambos cambiaron al empleado cuando se registraron.
 
-- **Eliminar un movimiento** tendría que devolver el salario y el cargo anteriores al registro
-  principal del empleado, porque `registrarMovimiento()` los cambió al guardar. ¿Se devuelven? ¿Y si
-  después hubo otro movimiento encima?
-- **Eliminar una terminación** tendría que devolver al empleado a activo, y con él vuelven todas sus
-  alertas. Es la acción con más consecuencias del sistema y ningún documento la menciona.
+**Decisión de David: eliminar es volver al pasado.** Borrar uno de estos dos registros deja al
+empleado exactamente como estaba **antes de crearlo**, sin rastro de que existió:
 
-Ninguna de las dos está escrita en `docs/01-especificacion-funcional.md` ni en
-`docs/06-decisiones-pendientes.md`, y son reglas de negocio, no detalles de interfaz. Las preguntas
-concretas están en `ESTADO.md`.
+- **Eliminar un movimiento** devuelve al empleado el salario y el cargo que tenía justo antes de ese
+  movimiento (los que el propio registro guardó como «anteriores» al aplicarse).
+- **Eliminar una terminación** devuelve al empleado a activo, con la fecha de fin borrada, y con él
+  vuelven todas sus alertas —igual que si el despido nunca se hubiera registrado.
+
+**Solo se puede deshacer el último de la lista.** Si después de un movimiento o una terminación hubo
+otro registro encima, ese de encima hay que eliminarlo primero. No se permite eliminar uno de en medio
+del historial, porque ya no habría un «antes» claro al que volver.
+
+**Hecho cuando:** eliminar el movimiento o la terminación más reciente de un empleado lo deja
+indistinguible de como estaba antes de crearlo —mismo salario, mismo cargo, mismo estado, mismas
+alertas—, y hay prueba. Intentar eliminar uno que no es el más reciente lo rechaza con un mensaje
+claro.
+**Fuente:** esta decisión (no hay documento previo; queda registrada aquí como la fuente).
 
 **Hecho cuando:** las dos preguntas están respondidas, los dos módulos tienen sus acciones con la
 consecuencia escrita antes de ejecutarla, y `TipoDeNovedad::tituloDeEdicion()` deja de devolver nulo
