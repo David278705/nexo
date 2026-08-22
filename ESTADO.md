@@ -1,55 +1,65 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-22 · Tarea F2-07 · Licencias, ausencias y suspensiones
+**Última sesión:** 2026-08-22 · Tarea F2-08 · Aumentos y promociones
 **Verificación:** verde
-**Siguiente tarea:** F2-08 · Aumentos y promociones. Módulo con salario y cargo actuales de solo
-lectura, y el histórico de la persona.
+**Siguiente tarea:** F2-09 · Terminaciones. Los siete tipos de salida, los motivos dependientes, el
+autocompletado en expiración de plazo y obra terminada, y la categoría de rotación deducida.
 
 ## Qué se hizo
 
-- **Una sola tabla `licencias` con un campo de clasificación**, no tres tablas: es literal del
-  documento 1, 6.5 —«un solo tipo de novedad con un campo de clasificación»—. `TipoDeLicencia` es el
-  enumerado de las tres opciones (licencia no remunerada · ausencia · suspensión) y se guarda como
-  texto legible, nunca como número. Sin columna de días, igual que incapacidades y vacaciones.
-- **`Licencia::dias()` llama a `MotorDeCalculo::diasCorridos()`**, la misma regla de conteo que
-  incapacidades y distinta de vacaciones. El caso del documento —jueves a martes, con el domingo
-  dentro— da seis días y está probado por la ruta de verdad.
-- **El hueco que F2-05 dejó anotado quedó tapado.** `MotorDeCalculo::diasDeSuspensionDelMes()`
-  devolvía cero con un comentario que decía por qué: no existía tabla de dónde leer un solo día.
-  Ahora recorre las licencias de la vinculación y suma, con `diasSuspendidosDelMes()`, los días de
-  cada una que caen en el mes que se está acumulando. **El parámetro
-  `suspensiones_afectan_vacaciones` se lee dentro del motor**, no en quien llama, para que ninguna
-  pantalla pueda olvidarse de mirarlo.
-- **La aritmética de la proporción no se escribió: ya estaba.** `acumulacionProporcional()` existe y
-  está probada desde F2-02, así que esta tarea no tocó `SaldoDeVacaciones` más allá de actualizar el
-  comentario que anunciaba el sumando pendiente. El caso obligatorio pasa: la licencia del 16 de
-  marzo al 15 de abril deja marzo en 0,625 y abril en 0,625 —la mitad de 1,25 en cada uno—.
-- **Eliminar una licencia no hace ninguna operación inversa.** `Licencia` usa borrado lógico, así que
-  la fila sale sola de la suma la próxima vez que se pida la acumulación; hay prueba que la borra y
-  comprueba que marzo vuelve a 1,25.
-- **El módulo completo con el patrón compartido**: `ListadoDeLicencias` sobre `Listado` (REV-01) con
-  filtro de rango de fechas y de tipo, `LicenciaController`, `RegistrarLicencia`, `LicenciasExport`
-  con las tres columnas obligatorias de toda exportación de novedades, y la pantalla
-  `Licencias/Index` sobre `useListado` (REV-02) enchufada a `ModalDeNovedad` (F2-03). Los días de la
-  novedad que se digita se cuentan en el servidor y llegan por la recarga parcial `diasDeLicencia`:
-  en el navegador no se resta ninguna fecha.
-- **Las tres pruebas compartidas de siempre se actualizaron**: el caso de aislamiento por las cuatro
-  vías en `AislamientoTest.php`, la pantalla real en vez de `SeccionPendiente` en `EstructuraTest.php`
-  y `componenteDe()` en `FlujoDeNovedadTest.php`.
-- `composer verificar` en verde: Pint, PHPStan sin errores, **648** pruebas de Pest (17 nuevas),
-  build y **247** de Vitest (cinco nuevas, las de `Licencias/Index.test.js`).
+- **La tabla `movimientos` guarda el cargo y el salario anteriores, y eso es deliberado.** Es la
+  primera tabla de este grupo que guarda un valor «que ya estaba en otro sitio», y no contradice la
+  regla 2: lo que la regla prohíbe es guardar un saldo que se puede calcular, y aquí no hay nada que
+  calcular. Al guardar el movimiento, el registro principal del empleado cambia, así que la
+  vinculación deja de saber qué había antes; sin esta foto el histórico no podría enseñar «el salario
+  y el cargo anterior frente al nuevo», que es literal de la sección 8.1.
+- **`Vinculacion::registrarMovimiento()` es el único sitio donde se escribe en dos tablas**, y por
+  eso vive en el modelo y no en el controlador, igual que `registrarPeriodo()` con el historial de
+  contrato. Las dos escrituras van en una transacción: un fallo en medio dejaría un histórico que no
+  coincide con lo vigente. Hay prueba de que una petición que no pasa la validación no le toca el
+  salario al empleado.
+- **El cargo del aumento salarial no lo digita nadie.** «Si el movimiento es solo aumento salarial,
+  se repite el mismo cargo» es del documento 1, 8.1, así que es una derivación y no un campo:
+  `TipoDeMovimiento::cargoResultante()` la resuelve y el servidor ignora cualquier cargo que llegue
+  en un aumento. Hay prueba con un cargo distinto enviado a propósito.
+- **El cargo y el salario vigentes se enseñan de solo lectura y llegan del servidor** por la recarga
+  parcial `situacionActual`, el mismo patrón de `diasDeLicencia` y `saldoDeVacaciones`. En el
+  navegador no se formatea dinero ni se adivina nada, y la prop no se resuelve en la carga de la
+  pantalla.
+- **La pestaña «Movimientos» de la ficha dejó de estar vacía.** `FichaDeEmpleado::movimientos()`
+  devuelve el histórico del más reciente al más antiguo con el cambio escrito en una sola celda
+  —«Analista Senior → Coordinadora de Operaciones»—, y cuando el cargo no cambió no dibuja la flecha:
+  decir «Conductor → Conductor» sería anunciar un cambio que no hubo. `Ficha.vue` no se tocó: las
+  cuatro claves de columna que ya declaraba eran las que hacían falta.
+- **El módulo completo con el patrón compartido**: `ListadoDeMovimientos` sobre `Listado` (REV-01)
+  con filtro de rango de fecha de efectividad y de tipo, `MovimientoController`,
+  `RegistrarMovimiento`, `MovimientosExport` con las tres columnas obligatorias de toda exportación
+  más los cuatro valores del movimiento, y la pantalla `Movimientos/Index` sobre `useListado`
+  (REV-02) enchufada a `ModalDeNovedad` (F2-03).
+- **Las cuatro pruebas compartidas de siempre se actualizaron**: el caso de aislamiento por sus rutas
+  reales en `AislamientoTest.php` —con un caso propio: que la empresa B no pueda subirle el salario al
+  empleado de la A ni consultar su situación actual—, la pantalla real en vez de `SeccionPendiente` en
+  `EstructuraTest.php`, `componenteDe()` en `FlujoDeNovedadTest.php` y la lista `PANTALLAS` de
+  `useListado.test.js`.
+- `composer verificar` en verde: Pint, PHPStan sin errores, **673** pruebas de Pest (25 nuevas), build
+  y **256** de Vitest (nueve nuevas).
 
 ## Decisiones tomadas
 
-- **El botón de guardar exige el tipo, no solo las fechas.** El tipo es obligatorio en el servidor
-  (`Rule::in` sobre los tres valores) y el modal lo refleja: sin tipo elegido no se puede enviar.
-  Es la única pieza de lógica propia de esta pantalla que no cubría ya `ModalDeNovedad.test.js`, y
-  por eso `Licencias/Index.test.js` es nuevo.
-- **El listado ordena por fecha de inicio descendente por defecto**, igual que incapacidades y
-  vacaciones: la novedad más reciente arriba.
-- **No se filtró por empleado ni por cargo** aunque el documento 1, 11.3 los liste: es F4-01 para los
-  tres módulos de novedades a la vez, y adelantarlo aquí habría dejado dos módulos con un filtro que
-  el tercero no tiene.
+- **No se validó que el nuevo salario sea mayor que el actual, ni que la promoción estrene un cargo
+  distinto.** Ningún documento lo pide y no es una regla legal: un movimiento puede corregir una
+  digitación o reflejar un acuerdo que el sistema no tiene por qué juzgar. Queda escrito en
+  `RegistrarMovimiento` para que no parezca un olvido.
+- **El nuevo cargo de una promoción arranca vacío**, no relleno con el actual. El documento 3, 5.6
+  solo pide el relleno automático «si el movimiento es un aumento», y en un aumento el campo es de
+  solo lectura: rellenar también la promoción invitaba a guardar el cargo de antes como si fuera el
+  nuevo.
+- **El listado no filtra por cargo** aunque el documento 1, 11.3 lo liste para este módulo: es F4-01
+  para todos los módulos a la vez, igual que el filtro de «Empleado» que les falta a los tres de
+  novedades.
+- **La tabla se llama `movimientos`, en singular `Movimiento`**, para que el nombre del módulo, la
+  ruta, el permiso y el modelo sean el mismo texto y no puedan separarse. El reporte del catálogo
+  (11.4) se llama «Movimientos salariales» y así se titula la exportación.
 
 ## Preguntas para Angela
 
@@ -65,17 +75,19 @@ lectura, y el histórico de la persona.
 
 ## Notas para la próxima sesión
 
-- **La siguiente es F2-08, Aumentos y promociones.** No es una novedad del capítulo 6 sino un
-  movimiento del capítulo 8, 8.1: salario y cargo actuales de solo lectura, el nuevo valor, y el
-  histórico de la persona. **Guardar un movimiento actualiza el registro principal de la
-  vinculación**, que es lo que lo diferencia de las tres novedades ya construidas: aquí sí se escribe
-  en dos sitios y hay que hacerlo en una sola transacción, como ya hace
-  `Vinculacion::registrarPeriodo()` con el historial de contrato.
-- **El módulo `Modulo::Movimientos` sigue siendo `SeccionPendiente`.** Cuando F2-08 le ponga pantalla
-  real hay que tocar las mismas tres pruebas compartidas de siempre: la lista de exclusión de
-  `routes/web.php`, la de `EstructuraTest.php` y `componenteDe()` en `FlujoDeNovedadTest.php`.
-- **Con F2-07 el motor de cálculo ya no tiene ningún sumando en cero.** `SaldoDeVacaciones` está
-  completo: saldo inicial, acumulación con reducción por suspensiones, y disfrute. Si un cálculo sale
-  raro de aquí en adelante, es un error de verdad y no una pieza que falte.
-- Las notas de arquitectura de REV-01/REV-02 sobre el armazón de listado y las de F2-03/F2-04/F2-05
-  sobre el flujo compartido de novedades siguen vigentes y no se repiten aquí.
+- **La siguiente es F2-09, Terminaciones**, y trae **una deuda apuntada desde F1-05**: al guardar la
+  fecha de salida, `Vinculacion::fechaDeSalida()` tiene que devolverla a ella y no `fecha_fin`. Son
+  tres líneas y es de donde sale el énfasis de los 30 días de la advertencia de reingreso.
+- **Terminaciones es el último módulo que sigue siendo `SeccionPendiente`** junto con Auditoría. Al
+  ponerle pantalla real hay que tocar las mismas cuatro pruebas compartidas: la lista de exclusión de
+  `routes/web.php`, la de `EstructuraTest.php`, `componenteDe()` en `FlujoDeNovedadTest.php` y
+  `PANTALLAS` en `useListado.test.js`.
+- **F2-09 también escribe en dos sitios**: crea la terminación y desactiva la vinculación. El camino
+  ya existe —`Vinculacion::desactivar()`— y el patrón de la transacción única es el de
+  `registrarMovimiento()` que dejó esta tarea; conviene copiarlo y no inventar otro.
+- **F2-10 (edición y borrado de novedades) tendrá que incluir los movimientos**, y ahí sí hay un
+  problema propio: deshacer o corregir un movimiento no es solo borrar la fila, porque el registro
+  principal del empleado quedó con el valor nuevo. La confirmación con la consecuencia calculada que
+  pide la tarea tiene que decir a qué salario y a qué cargo vuelve el empleado.
+- Las notas de arquitectura de REV-01/REV-02 sobre el armazón de listado y las de F2-03 a F2-07 sobre
+  el flujo compartido de novedades siguen vigentes y no se repiten aquí.

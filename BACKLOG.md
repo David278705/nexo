@@ -485,11 +485,24 @@ de marzo al 15 de abril deja marzo y abril en 0,625 días cada uno. **Nada se es
 el saldo. Filtros del listado: rango de fechas y tipo; «Empleado» es F4-01, igual que en los otros
 dos módulos de novedades. Edición y borrado por pantalla siguen siendo F2-10.
 
-### [ ] F2-08 · Aumentos y promociones
+### [x] F2-08 · Aumentos y promociones
 
 Módulo con salario y cargo actuales de solo lectura, y el histórico de la persona.
 **Hecho cuando:** guardar un movimiento actualiza el registro principal y aparece en el histórico.
 **Fuente:** `docs/01-especificacion-funcional.md` 8.1
+
+Hecho: la tabla `movimientos` —la primera del grupo que **guarda el valor anterior**, porque al
+guardar el registro principal ya cambió y el histórico tiene que enseñar «el anterior frente al
+nuevo»—, el enumerado `TipoDeMovimiento` con la regla del cargo repetido en el aumento salarial
+(`cargoResultante()`), `Vinculacion::registrarMovimiento()` con **las dos escrituras en una sola
+transacción**, `ListadoDeMovimientos` sobre el armazón de `Listado` (REV-01), `MovimientoController`,
+`RegistrarMovimiento`, `MovimientosExport` y la pantalla `Movimientos/Index` sobre `useListado`
+(REV-02) enchufada al flujo compartido de novedades (F2-03). El cargo y el salario vigentes llegan
+por la recarga parcial `situacionActual` y van de solo lectura; el nuevo salario y la fecha son lo
+único que se digita en un aumento. La pestaña «Movimientos» de la ficha del empleado dejó de estar
+vacía: enseña «Analista Senior → Coordinadora de Operaciones» y «$ 2.700.000 → $ 3.200.000». Filtros
+del listado: rango de fecha de efectividad y tipo de movimiento; «Cargo» es F4-01, como «Empleado»
+en los tres módulos de novedades.
 
 ### [ ] F2-09 · Terminaciones
 

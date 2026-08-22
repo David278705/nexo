@@ -9,6 +9,7 @@ use App\Contratacion\HistorialDeContrato;
 use App\Contratacion\RenovacionDeContrato;
 use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoRiesgo;
+use App\Movimientos\TipoDeMovimiento;
 use App\Multiempresa\PerteneceATenant;
 use Database\Factories\VinculacionFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -241,6 +242,68 @@ class Vinculacion extends Model
     public function licencias(): HasMany
     {
         return $this->hasMany(Licencia::class)->orderByDesc('fecha_inicio');
+    }
+
+    /**
+     * Los aumentos y las promociones de esta vinculación, el más reciente
+     * primero.
+     *
+     * @return HasMany<Movimiento, $this>
+     */
+    public function movimientos(): HasMany
+    {
+        return $this->hasMany(Movimiento::class)->orderByDesc('fecha_efectividad');
+    }
+
+    /**
+     * Registra un aumento salarial o una promoción (documento 1, 8.1).
+     *
+     * **Es el único sitio donde se escribe en dos tablas a la vez**, y por eso
+     * está aquí y no en el controlador. La sección 8.1 pide dos cosas de un
+     * mismo hecho: que el movimiento quede en el histórico y que «el salario y
+     * el cargo del empleado se actualicen en su registro principal». Si se
+     * hicieran por separado, un fallo en medio dejaría un histórico que no
+     * coincide con lo vigente, que es exactamente el desalineamiento que
+     * `registrarPeriodo()` evita con el historial del contrato.
+     *
+     * El cargo con el que queda el empleado lo decide `TipoDeMovimiento`: en un
+     * aumento salarial se repite el actual, en una promoción es el pedido.
+     *
+     * Aquí no se valida: que el empleado esté activo y que el salario tenga
+     * formato de dinero lo comprueba `RegistrarMovimiento`.
+     */
+    public function registrarMovimiento(
+        TipoDeMovimiento $tipo,
+        ?string $cargoPedido,
+        string $salarioNuevo,
+        Carbon $fechaEfectividad,
+    ): Movimiento {
+        return DB::transaction(function () use ($tipo, $cargoPedido, $salarioNuevo, $fechaEfectividad): Movimiento {
+            $cargoAnterior = (string) $this->getAttribute('cargo');
+            $salarioAnterior = (string) $this->getAttribute('salario');
+            $cargoNuevo = $tipo->cargoResultante($cargoAnterior, $cargoPedido);
+
+            $movimiento = $this->movimientos()->create([
+                'tipo' => $tipo,
+                'cargo_anterior' => $cargoAnterior,
+                'cargo_nuevo' => $cargoNuevo,
+                'salario_anterior' => $salarioAnterior,
+                'salario_nuevo' => $salarioNuevo,
+                'fecha_efectividad' => $fechaEfectividad,
+            ]);
+
+            $this->fill(['cargo' => $cargoNuevo, 'salario' => $salarioNuevo]);
+
+            if ($this->isDirty()) {
+                $this->save();
+            }
+
+            // El histórico acaba de crecer: quien tenga la relación cargada de
+            // antes leería un movimiento menos.
+            $this->unsetRelation('movimientos');
+
+            return $movimiento;
+        });
     }
 
     /**

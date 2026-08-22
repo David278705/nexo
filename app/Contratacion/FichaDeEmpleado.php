@@ -4,6 +4,7 @@ namespace App\Contratacion;
 
 use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Models\Ciudad;
+use App\Models\Movimiento;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
@@ -32,9 +33,10 @@ use UnitEnum;
  *
  * ## Lo que aquí no está
  *
- * Las novedades y los movimientos llegan vacíos porque sus módulos son F2-04,
- * F2-05, F2-07 y F2-08. La pestaña carga y explica qué se verá ahí; el día que
- * el módulo exista solo hay que llenar el arreglo.
+ * Las novedades llegan vacías: juntar en una sola tabla incapacidades,
+ * vacaciones y licencias es de la pestaña de novedades y sigue pendiente. La
+ * pestaña carga y explica qué se verá ahí; el día que se llene, aquí solo hay
+ * que llenar el arreglo. **Los movimientos ya no están vacíos** desde F2-08.
  */
 class FichaDeEmpleado
 {
@@ -53,6 +55,7 @@ class FichaDeEmpleado
             'persona.paisExpedicion',
             'persona.perfil',
             'periodos',
+            'movimientos',
             'eps',
             'fondoPension',
             'arl',
@@ -309,13 +312,42 @@ class FichaDeEmpleado
     }
 
     /**
-     * Aumentos y promociones de la persona. Vacío hasta F2-08.
+     * El histórico de aumentos y promociones (documento 1, 8.1), del más
+     * reciente al más antiguo.
+     *
+     * Cada fila enseña **el cargo y el salario anterior frente al nuevo**, que
+     * es lo que la sección 8.1 pide del histórico. Es el único sitio donde se
+     * lee el valor anterior guardado en la fila: la vinculación ya trae el
+     * vigente, y el de antes solo existe aquí.
      *
      * @return list<array<string, string>>
      */
     public function movimientos(): array
     {
-        return [];
+        return $this->vinculacion->movimientos
+            ->map(fn (Movimiento $movimiento): array => [
+                'fecha' => Formato::fecha($movimiento->fecha_efectividad),
+                'clase' => $movimiento->tipo->etiqueta(),
+                'cargo' => self::cambio($movimiento->cargo_anterior, $movimiento->cargo_nuevo),
+                'salario' => self::cambio(
+                    Formato::dinero($movimiento->getAttribute('salario_anterior')),
+                    Formato::dinero($movimiento->getAttribute('salario_nuevo')),
+                ),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * «Analista Senior → Coordinadora de Operaciones».
+     *
+     * Un aumento salarial repite el cargo, y escribirlo dos veces con una
+     * flecha en medio sería decirle al que mira que algo cambió cuando no
+     * cambió nada.
+     */
+    private static function cambio(string $anterior, string $nuevo): string
+    {
+        return $anterior === $nuevo ? $nuevo : $anterior.' → '.$nuevo;
     }
 
     /**

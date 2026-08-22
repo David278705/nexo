@@ -6,10 +6,13 @@ use App\Exports\ContratosExport;
 use App\Exports\EmpleadosExport;
 use App\Exports\IncapacidadesExport;
 use App\Exports\LicenciasExport;
+use App\Exports\MovimientosExport;
 use App\Exports\VacacionesExport;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Eps;
 use App\Models\Incapacidad;
 use App\Models\Licencia;
+use App\Models\Movimiento;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
@@ -697,6 +700,102 @@ describe('licencias, por sus rutas reales', function () {
         Excel::assertDownloaded(
             'licencias-'.now()->format('Y-m-d').'.xlsx',
             fn (LicenciasExport $exportacion) => $exportacion->collection()->count() === 1
+        );
+    });
+});
+
+/**
+ * El listado de aumentos y promociones, por sus rutas de verdad (F2-08). Se
+ * prueba aparte de `casoDeAislamiento()` por lo mismo que las tres novedades:
+ * se registra por `POST` sobre un empleado, y ese es el camino por donde una
+ * empresa podría tocar el salario de otra.
+ */
+describe('movimientos, por sus rutas reales', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->movimientoDeLaA = $this->contexto->paraTenant($this->empresaA, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create(['primer_nombre' => 'Confidencial', 'primer_apellido' => 'DeLaEmpresaA']))
+                ->create(['cargo' => SECRETO_DE_LA_A, 'salario' => 1_800_000]);
+
+            return Movimiento::factory()
+                ->de($vinculacion)
+                ->promocion(SECRETO_DE_LA_A, SECRETO_DE_LA_A)
+                ->create();
+        });
+
+        $this->usuarioB = usuarioDe($this->empresaB, Rol::Administrador, Modulo::Movimientos);
+    });
+
+    it('no lista movimientos de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)->get('/movimientos');
+
+        $respuesta->assertOk();
+        expect($respuesta->viewData('page')['props']['movimientos']['filas'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('no incluye movimientos de otra empresa en la exportación', function () {
+        Excel::fake();
+
+        $this->actingAs($this->usuarioB)->get('/movimientos/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'movimientos-'.now()->format('Y-m-d').'.xlsx',
+            fn (MovimientosExport $exportacion) => $exportacion->collection()->isEmpty()
+        );
+    });
+
+    it('no registra un movimiento sobre el empleado de otra empresa, ni le toca el salario', function () {
+        $this->actingAs($this->usuarioB)->post('/movimientos', [
+            'vinculacion_id' => $this->movimientoDeLaA->vinculacion_id,
+            'tipo' => 'aumento_salarial',
+            'salario_nuevo' => '9000000',
+            'fecha_efectividad' => '2026-08-15',
+        ])->assertSessionHasErrors('vinculacion_id');
+
+        $visto = $this->contexto->paraTenant($this->empresaA, fn () => [
+            'movimientos' => Movimiento::query()->count(),
+            'salario' => (float) Vinculacion::query()
+                ->findOrFail($this->movimientoDeLaA->vinculacion_id)
+                ->getAttribute('salario'),
+        ]);
+
+        expect($visto['movimientos'])->toBe(1)
+            ->and($visto['salario'])->toBe(1800000.0);
+    });
+
+    it('no resuelve el cargo ni el salario vigentes del empleado de otra empresa', function () {
+        $respuesta = $this->actingAs($this->usuarioB)
+            ->get('/movimientos?'.http_build_query(['vinculacion_id' => $this->movimientoDeLaA->vinculacion_id]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Movimientos/Index',
+                'X-Inertia-Partial-Data' => 'situacionActual',
+            ]);
+
+        expect($respuesta->json()['props']['situacionActual'])->toBeNull()
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('la empresa dueña sí ve su movimiento por los dos caminos', function () {
+        Excel::fake();
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Movimientos);
+
+        $listado = $this->actingAs($usuarioA)->get('/movimientos');
+        $listado->assertOk();
+
+        expect($listado->viewData('page')['props']['movimientos']['filas'])->toHaveCount(1);
+
+        $this->actingAs($usuarioA)->get('/movimientos/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'movimientos-'.now()->format('Y-m-d').'.xlsx',
+            fn (MovimientosExport $exportacion) => $exportacion->collection()->count() === 1
         );
     });
 });

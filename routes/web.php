@@ -12,6 +12,7 @@ use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\IncapacidadController;
 use App\Http\Controllers\LicenciaController;
+use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
@@ -171,6 +172,22 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
+     * Aumentos y promociones (documento 1, 8.1). No es una novedad del capítulo
+     * 6, pero comparte su flujo de registro; lo que no comparte es el efecto:
+     * `guardar()` escribe el histórico y el registro principal del empleado en
+     * una sola transacción. La ruta de exportar va antes de cualquiera que
+     * pudiera confundirse con un identificador.
+     */
+    Route::middleware('modulo:'.Modulo::Movimientos->value)->group(function () {
+        Route::get('/movimientos', [MovimientoController::class, 'index'])
+            ->name(Modulo::Movimientos->nombreDeRuta());
+        Route::get('/movimientos/exportar', [MovimientoController::class, 'exportar'])
+            ->name('movimientos.exportar');
+        Route::post('/movimientos', [MovimientoController::class, 'guardar'])
+            ->name('movimientos.guardar');
+    });
+
+    /*
      * Configuración (documento 3, sección 5.7). El módulo es solo del
      * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
      * declararlo como cualquier otro.
@@ -186,7 +203,7 @@ Route::middleware('auth')->group(function () {
     });
 
     foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Configuracion], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Configuracion], true)) {
             continue;
         }
 
