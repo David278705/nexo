@@ -33,23 +33,20 @@ use Illuminate\Support\Carbon;
  */
 class PlazoDeRenovacion extends ReglaDePreavisoDelFijo
 {
-    /**
-     * Con cuántos días de margen sobre el plazo legal avisa.
-     *
-     * Son los dos días que el propio texto anuncia —«en dos días vence el plazo
-     * legal de 30 días»—, que sumados a los treinta del preaviso dan los 32 de
-     * la tabla del documento.
-     */
-    private const DIAS_DE_MARGEN = 2;
-
     public function tipo(): TipoDeAlerta
     {
         return TipoDeAlerta::PlazoDeRenovacion;
     }
 
+    /**
+     * Los dos días que el propio texto anuncia —«en dos días vence el plazo
+     * legal de 30 días»—, que sumados a los treinta del preaviso dan los 32 de
+     * la tabla del documento. Están en la clase base porque la alerta de última
+     * renovación corta comparte este mismo día.
+     */
     protected function diasAntesDelPreaviso(): int
     {
-        return self::DIAS_DE_MARGEN;
+        return self::DIAS_DE_MARGEN_DEL_PLAZO;
     }
 
     protected function asunto(string $nombre): string

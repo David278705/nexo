@@ -64,7 +64,7 @@ describe('la pantalla de catálogos', function () {
             ->assertInertia(fn ($pagina) => $pagina
                 ->component('Proveedor/Catalogos')
                 ->where('viendo.pestana', 'constantes')
-                ->has('constantes.filas', 10)
+                ->has('constantes.filas', 9)
                 ->where('constantes.filas.0.constante', 'Acumulación de vacaciones por mes')
                 ->where('constantes.filas.0.valor', '1,25 días')
                 ->where('constantes.filas.0.norma', 'Art. 186 CST — 15 días hábiles por año'));

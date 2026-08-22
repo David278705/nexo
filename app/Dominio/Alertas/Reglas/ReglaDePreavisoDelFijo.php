@@ -12,14 +12,16 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
- * Lo que comparten las dos alertas del preaviso del término fijo
- * (documento 1, 9.4, primeras dos filas).
+ * Lo que comparten las tres alertas que cuelgan del preaviso del término fijo
+ * (documento 1, 9.4, primeras tres filas).
  *
- * Las dos cuelgan de la misma fecha —**la fecha límite del preaviso**, que son
- * treinta días antes del vencimiento vigente— y solo se diferencian en cuántos
- * días antes de ella avisan y en qué dicen. La de «plazo para definir la
- * renovación» avisa dos días antes de esa fecha; la del «efecto del silencio»,
- * el mismo día.
+ * Las tres cuelgan de la misma fecha —**la fecha límite del preaviso**, que son
+ * treinta días antes del vencimiento vigente— y se diferencian en cuántos días
+ * antes de ella avisan, a qué contratos les toca y en qué dicen. La de «plazo
+ * para definir la renovación» avisa dos días antes de esa fecha; la del «efecto
+ * del silencio», el mismo día; la de «última renovación corta» acompaña a la
+ * primera, en su mismo día, pero solo en los contratos que agotaron el cupo de
+ * prórrogas cortas.
  *
  * ## Ningún número está escrito a mano
  *
@@ -59,11 +61,46 @@ abstract class ReglaDePreavisoDelFijo implements ReglaDeAlerta
     private const DIAS_DE_LA_VENTANA = 60;
 
     /**
+     * Los dos días de margen sobre el plazo legal con que avisa «plazo para
+     * definir la renovación» —los 32 días de la tabla, treinta de preaviso más
+     * estos dos—.
+     *
+     * Vive aquí y no en esa regla porque la de «última renovación corta»
+     * dispara literalmente en «el mismo momento» (documento 1, 9.4, tercera
+     * fila), y el mismo momento tiene que ser el mismo número.
+     */
+    protected const DIAS_DE_MARGEN_DEL_PLAZO = 2;
+
+    /**
      * Cuántos días antes de la fecha límite del preaviso avisa esta alerta.
      */
     abstract protected function diasAntesDelPreaviso(): int;
 
     abstract protected function asunto(string $nombre): string;
+
+    /**
+     * Si a este contrato le toca la alerta, más allá de la fecha.
+     *
+     * Las dos alertas del preaviso le tocan a todo contrato a término fijo
+     * activo y por eso responden que sí. La de «última renovación corta» solo a
+     * los que agotaron el cupo de prórrogas cortas.
+     */
+    protected function aplicaA(HistorialDeContrato $historial): bool
+    {
+        return true;
+    }
+
+    /**
+     * El día del que habla el mensaje (documento 1, 9.1).
+     *
+     * Para las dos del preaviso es la fecha límite del preaviso, que es el día
+     * que sus textos nombran. Quien hable de otro día lo dice sobreescribiendo
+     * esto, no cambiando el disparo.
+     */
+    protected function fechaDelHecho(Carbon $vencimiento, Carbon $limite): Carbon
+    {
+        return $limite;
+    }
 
     /**
      * El historial llega entero además del vencimiento porque el efecto del
@@ -106,19 +143,24 @@ abstract class ReglaDePreavisoDelFijo implements ReglaDeAlerta
                 continue;
             }
 
+            if (! $this->aplicaA($historial)) {
+                continue;
+            }
+
             $nombre = $vinculacion->persona->nombreCompleto();
             $cargo = (string) $vinculacion->getAttribute('cargo');
+            $vencimiento = Carbon::parse($vencimiento->toDateString());
 
             yield AlertaPorEnviar::paraEmpleado(
                 $this->tipo(),
                 $vinculacion,
                 $fechaDeEnvio,
-                $limite,
+                $this->fechaDelHecho($vencimiento, $limite),
                 $this->asunto($nombre),
                 $this->cuerpo(
                     $nombre,
                     $cargo,
-                    Carbon::parse($vencimiento->toDateString()),
+                    $vencimiento,
                     ReferenciaTemporal::hasta($fechaDeEnvio, $limite),
                     $historial,
                 ),

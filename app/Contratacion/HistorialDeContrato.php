@@ -117,38 +117,64 @@ class HistorialDeContrato
     }
 
     /**
-     * Cuántas prórrogas inferiores a un año acumula el contrato de ese tipo.
+     * Cuántas prórrogas inferiores a un año acumula el contrato.
      *
-     * Se cuentan por tipo y solo las cortas, porque es lo que la regla del
-     * artículo 46 limita: una prórroga de dos años no gasta ninguno de los
-     * cuatro cupos de prórroga corta.
+     * **Una sola cuenta, sin mirar el tipo** (documento 6, C.1, corregida por
+     * Angela en agosto de 2026). El contrato tiene una única cadena de
+     * prórrogas y el cupo de tres es de la cadena entera: dos pactadas cortas y
+     * una automática corta lo agotan igual que tres pactadas.
+     *
+     * Solo cuentan las cortas, porque es lo que la regla del artículo 46
+     * limita: una prórroga de dos años no gasta ninguno de los tres cupos.
      */
-    public function prorrogasCortas(EventoContractual $evento): int
+    public function prorrogasCortas(): int
     {
         return $this->periodos
-            ->filter(fn (PeriodoContractual $tramo) => $tramo->evento === $evento
+            ->filter(fn (PeriodoContractual $tramo) => $tramo->esProrroga()
                 && $tramo->esInferiorAUnAnio())
             ->count();
     }
 
     /**
-     * Cuántas prórrogas cortas de ese tipo todavía caben.
+     * Cuántas prórrogas cortas todavía caben.
      *
-     * Nulo cuando la regla no aplica: el contrato inicial no es inferior a un
-     * año, o el evento no es una prórroga. Nunca negativo: si el contrato ya
-     * pasó el límite, quedan cero.
+     * Nulo cuando la regla no aplica, que es cuando el contrato inicial no es
+     * inferior a un año. Nunca negativo: si el contrato ya pasó el límite,
+     * quedan cero.
      *
-     * Este método responde, no impide. El bloqueo del guardado es F1-10.
+     * Este método responde, no impide. El bloqueo del guardado es F1-10 y el
+     * aviso por correo del último cupo es la alerta `UltimaRenovacionCorta`.
      */
-    public function prorrogasCortasRestantes(EventoContractual $evento): ?int
+    public function prorrogasCortasRestantes(): ?int
     {
-        $limite = $evento->limiteDeProrrogasCortas();
-
-        if ($limite === null || ! $this->contratoInicialEsInferiorAUnAnio()) {
+        if (! $this->contratoInicialEsInferiorAUnAnio()) {
             return null;
         }
 
-        return max(0, $limite - $this->prorrogasCortas($evento));
+        $limite = (int) config('reglas_laborales.prorrogas_cortas');
+
+        return max(0, $limite - $this->prorrogasCortas());
+    }
+
+    /**
+     * Si el tramo vigente es justamente el que agotó el cupo de prórrogas
+     * cortas.
+     *
+     * Es la condición de disparo de la alerta «última renovación corta posible»
+     * (documento 1, 9.4, tercera fila), que habla del vencimiento **del tramo
+     * que agota el cupo**: el vigente tiene que ser una prórroga inferior a un
+     * año y detrás de ella no puede quedar ninguna más. Una renovación
+     * posterior de un año o más deja de cumplirlo, y con razón: ya no es ese
+     * tramo, y la empresa ya hizo lo que el aviso le pedía.
+     */
+    public function elTramoVigenteAgotoElCupoCorto(): bool
+    {
+        $vigente = $this->vigente();
+
+        return $vigente instanceof PeriodoContractual
+            && $vigente->esProrroga()
+            && $vigente->esInferiorAUnAnio()
+            && $this->prorrogasCortasRestantes() === 0;
     }
 
     /**

@@ -98,18 +98,11 @@ final class ConstantesLegales
             'verificada' => '2026-08-17',
         ],
         [
-            'clave' => 'prorrogas_cortas_pactadas',
-            'titulo' => 'Prórrogas cortas pactadas antes del mínimo de un año',
+            'clave' => 'prorrogas_cortas',
+            'titulo' => 'Prórrogas inferiores a un año antes del mínimo de un año',
             'unidad' => 'veces',
-            'norma' => 'Concepto MinTrabajo 6157 de 2026',
-            'verificada' => '2026-08-17',
-        ],
-        [
-            'clave' => 'prorrogas_cortas_automaticas',
-            'titulo' => 'Prórrogas cortas automáticas por silencio',
-            'unidad' => 'veces',
-            'norma' => 'Concepto MinTrabajo 6157 de 2026',
-            'verificada' => '2026-08-17',
+            'norma' => 'Concepto MinTrabajo 6157 de 2026 — una sola cuenta, sean pactadas o automáticas',
+            'verificada' => '2026-08-22',
         ],
         [
             'clave' => 'vigencia_reforma_termino_fijo',

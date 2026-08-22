@@ -17,17 +17,21 @@ namespace App\Contratacion;
  * - **cambio_a_indefinido**: la modalidad cambió, por voluntad de la empresa o
  *   porque el vínculo alcanzó el tope legal de cuatro años.
  *
- * ## Las dos prórrogas se cuentan por separado a propósito
+ * ## El tipo de prórroga decide cuánto dura, nunca cuántas caben
  *
- * No es un matiz cosmético: el Concepto MinTrabajo 6157 de 2026 admite hasta
- * **cuatro** prórrogas cortas pactadas y solo **tres** automáticas. Contarlas
- * juntas daría el número equivocado en uno de los dos casos.
+ * Es la corrección de C.1 que hizo Angela en agosto de 2026, y conviene tenerla
+ * presente porque la primera lectura del documento llevó a construirlo al revés.
+ * Un contrato tiene **una sola cadena de prórrogas**, numeradas 1ª, 2ª, 3ª, y el
+ * cupo de tres prórrogas cortas es uno solo para todas. Lo único que cambia con
+ * el tipo es el plazo del tramo nuevo: la automática se renueva por el mismo
+ * término anterior y la pactada por el que acuerden las partes. Por eso el cupo
+ * no vive aquí sino en `HistorialDeContrato`, que es quien cuenta la cadena.
  *
- * Distinguirlas es además la decisión D.1 de `docs/06-decisiones-pendientes.md`,
+ * Distinguirlas es la decisión D.1 de `docs/06-decisiones-pendientes.md`,
  * resuelta como propone ese documento: la acción «Renovar contrato» pregunta de
  * cuál de las dos se trata, y el documento 3, sección 5.4, la lista entre los
- * campos del modal. Si algún día se decide simplificar, el formulario queda con
- * un solo valor de prórroga y el resto del modelo no cambia.
+ * campos del modal. Sigue sirviendo para el historial del contrato y para la
+ * frase informativa del modal, que son las dos cosas que D.1 le pide.
  */
 enum EventoContractual: string
 {
@@ -64,28 +68,6 @@ enum EventoContractual: string
     public function esInicial(): bool
     {
         return $this === self::Inicial;
-    }
-
-    /**
-     * Cuántas prórrogas inferiores a un año admite este tipo de prórroga antes
-     * de que la renovación deba ser de mínimo un año.
-     *
-     * Cuatro las pactadas por escrito y tres las automáticas por silencio. Son
-     * dos números distintos y por eso viven aquí, en el enumerado que distingue
-     * las dos prórrogas: pedir el límite sin decir de cuál prórroga se habla no
-     * es una pregunta que se pueda responder.
-     *
-     * Salen de `config/reglas_laborales.php` (Concepto MinTrabajo 6157 de 2026),
-     * nunca de un número escrito a mano. Nulo en los eventos que no son
-     * prórroga: el periodo inicial y el cambio a indefinido no tienen límite.
-     */
-    public function limiteDeProrrogasCortas(): ?int
-    {
-        return match ($this) {
-            self::ProrrogaPactada => (int) config('reglas_laborales.prorrogas_cortas_pactadas'),
-            self::ProrrogaAutomatica => (int) config('reglas_laborales.prorrogas_cortas_automaticas'),
-            default => null,
-        };
     }
 
     /**

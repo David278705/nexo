@@ -14,9 +14,19 @@ it('lee cada constante legal con su valor vigente', function (string $constante,
     'preaviso de no prórroga' => ['preaviso_dias', 30],
     'tope del contrato a término fijo' => ['tope_termino_fijo_anios', 4],
     'disfrute mínimo anual de vacaciones' => ['disfrute_minimo_dias_habiles', 6],
-    'prórrogas cortas pactadas por escrito' => ['prorrogas_cortas_pactadas', 4],
-    'prórrogas cortas automáticas por silencio' => ['prorrogas_cortas_automaticas', 3],
+    // Una sola cuenta para toda la cadena de prórrogas, sean pactadas o
+    // automáticas: es la corrección de C.1 que hizo Angela en agosto de 2026.
+    'prórrogas inferiores a un año' => ['prorrogas_cortas', 3],
 ]);
+
+it('cuenta las prórrogas cortas una sola vez, sin separar por tipo', function () {
+    // La versión anterior tenía dos constantes —cuatro pactadas y tres
+    // automáticas— y un contrato que mezclaba tipos acumulaba más prórrogas
+    // cortas de las que la ley admite. Que las claves viejas no existan es lo
+    // que impide que alguien vuelva a leerlas sin darse cuenta.
+    expect(config('reglas_laborales.prorrogas_cortas_pactadas'))->toBeNull()
+        ->and(config('reglas_laborales.prorrogas_cortas_automaticas'))->toBeNull();
+});
 
 it('sabe desde cuándo rige el régimen del término fijo', function () {
     // No es un número sino una fecha: se compara contra la fecha de inicio del
@@ -26,7 +36,7 @@ it('sabe desde cuándo rige el régimen del término fijo', function () {
 });
 
 it('no tiene constantes legales de más ni de menos', function () {
-    expect(array_keys(config('reglas_laborales')))->toHaveCount(10);
+    expect(array_keys(config('reglas_laborales')))->toHaveCount(9);
 });
 
 it('opera en la zona horaria de Colombia', function () {

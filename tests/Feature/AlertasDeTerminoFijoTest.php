@@ -7,7 +7,9 @@ use App\Dominio\Alertas\ProcesoDiarioDeAlertas;
 use App\Dominio\Alertas\Reglas\CercaniaAlTope;
 use App\Dominio\Alertas\Reglas\EfectoDelSilencio;
 use App\Dominio\Alertas\Reglas\PlazoDeRenovacion;
+use App\Dominio\Alertas\Reglas\UltimaRenovacionCorta;
 use App\Dominio\Alertas\TipoDeAlerta;
+use App\Models\AlertaEnviada;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
@@ -17,12 +19,12 @@ use Illuminate\Support\Facades\Mail;
 /**
  * Las alertas del término fijo (F3-04, documento 1, 9.4).
  *
- * Tres de las cuatro filas de la tabla: el plazo para definir la renovación, 32
- * días antes del vencimiento; el efecto del silencio, 30 días antes, con las
- * tres variantes de texto que le puso la decisión D.3; y la cercanía al tope de
- * cuatro años, tres meses antes. La cuarta —última renovación corta— sigue sin
- * construir porque su día de disparo depende de una pregunta abierta, y el
- * motivo está escrito en `BACKLOG.md` y en `ESTADO.md`.
+ * Las cuatro filas de la tabla: el plazo para definir la renovación, 32 días
+ * antes del vencimiento; el efecto del silencio, 30 días antes, con las tres
+ * variantes de texto que le puso la decisión D.3; la última renovación corta
+ * posible, en el mismo día que la primera pero solo en los contratos que
+ * agotaron el cupo de prórrogas cortas; y la cercanía al tope de cuatro años,
+ * tres meses antes.
  *
  * ## El contrato de la batería
  *
@@ -60,6 +62,31 @@ const FECHA_DEL_TOPE = '2030-01-01';
  * Tres meses antes del tope, que es la anticipación decidida en D.3.
  */
 const DISPARO_DEL_TOPE = '2029-10-01';
+
+/**
+ * Encadena prórrogas sobre un contrato, con la empresa en contexto.
+ *
+ * Cada tramo es el tipo de prórroga y hasta cuándo llega; el inicio lo pone
+ * `Vinculacion::renovar()`, que es el día siguiente al vencimiento vigente.
+ *
+ * @param  list<array{0: EventoContractual, 1: string}>  $tramos
+ */
+function conCadenaDeProrrogas(Vinculacion $contrato, array $tramos): void
+{
+    app(ContextoTenant::class)->paraTenant($contrato->tenant, function () use ($contrato, $tramos): void {
+        foreach ($tramos as [$prorroga, $hasta]) {
+            $contrato->renovar($prorroga, Carbon::parse($hasta));
+        }
+    });
+}
+
+function alertaDelTipo(Tenant $empresa, TipoDeAlerta $tipo): ?AlertaEnviada
+{
+    return app(ContextoTenant::class)->paraTenant(
+        $empresa,
+        fn () => AlertaEnviada::query()->where('tipo', $tipo->value)->first(),
+    );
+}
 
 beforeEach(function () {
     $this->empresa = Tenant::factory()->create(['nombre' => 'Comercializadora del Valle']);
@@ -283,6 +310,106 @@ describe('el efecto del silencio cuando el tope está cerca (documento 6, D.3)',
             'Si no se avisa, el contrato queda prorrogado automáticamente por un término igual al '
             .'último pactado.'
         );
+    });
+});
+
+describe('la última renovación corta posible', function () {
+    beforeEach(function () {
+        // Un contrato de tres meses con tres prórrogas cortas encima, y la
+        // tercera es automática: es justo el caso mezclado que el conteo viejo
+        // —cuatro cupos pactados y tres automáticos por separado— dejaba pasar.
+        // El tramo vigente vence el 31 de diciembre de 2026, igual que el
+        // contrato de la batería, así que el disparo cae el mismo día.
+        $this->corta = empleadaEnPrueba(
+            $this->empresa,
+            Vinculacion::factory()->aTerminoFijo(INICIO_DEL_FIJO, '2026-03-31')
+        );
+
+        conCadenaDeProrrogas($this->corta, [
+            [EventoContractual::ProrrogaPactada, '2026-06-30'],
+            [EventoContractual::ProrrogaPactada, '2026-09-30'],
+            [EventoContractual::ProrrogaAutomatica, FIN_DEL_FIJO],
+        ]);
+    });
+
+    it('sale el mismo día que el plazo para definir la renovación', function () {
+        expect(alertasDe(new UltimaRenovacionCorta, $this->empresa, PLAZO_PARA_DEFINIR))->toHaveCount(1)
+            ->and(alertasDe(new UltimaRenovacionCorta, $this->empresa, '2026-11-28'))->toBe([])
+            ->and(alertasDe(new UltimaRenovacionCorta, $this->empresa, '2026-11-30'))->toBe([])
+            // Y no el día en que se registró la prórroga que agotó el cupo: es
+            // un recordatorio del momento de decidir, no un acuse de recibo.
+            ->and(alertasDe(new UltimaRenovacionCorta, $this->empresa, '2026-10-01'))->toBe([]);
+    });
+
+    it('escribe el texto de la sección 5.4 y habla del vencimiento del tramo', function () {
+        $alerta = alertasDe(new UltimaRenovacionCorta, $this->empresa, PLAZO_PARA_DEFINIR)[0];
+
+        expect($alerta->asunto)->toBe('La próxima renovación de Ana Gómez debe ser de un año')
+            ->and($alerta->cuerpo)->toBe(
+                'El contrato de Ana Gómez acumula 3 prórrogas inferiores a un año. La próxima '
+                .'renovación deberá ser de mínimo un año.'
+            )
+            ->and($alerta->fechaDelHecho->toDateString())->toBe(FIN_DEL_FIJO);
+    });
+
+    it('no sale mientras al contrato le quede cupo', function () {
+        $otra = Tenant::factory()->create();
+        usuarioDe($otra, Rol::Administrador, Modulo::Contratos);
+
+        $contrato = empleadaEnPrueba(
+            $otra,
+            Vinculacion::factory()->aTerminoFijo(INICIO_DEL_FIJO, '2026-03-31')
+        );
+
+        // Dos cortas de las tres: todavía cabe una más.
+        conCadenaDeProrrogas($contrato, [
+            [EventoContractual::ProrrogaPactada, '2026-09-30'],
+            [EventoContractual::ProrrogaPactada, FIN_DEL_FIJO],
+        ]);
+
+        expect(alertasDe(new UltimaRenovacionCorta, $otra, PLAZO_PARA_DEFINIR))->toBe([]);
+    });
+
+    it('no se repite en el tramo siguiente cuando ya se renovó por un año', function () {
+        // La empresa hizo lo que el aviso le pedía: el tramo vigente ya no es
+        // el que agotó el cupo, y volver a avisar sería ruido.
+        conCadenaDeProrrogas($this->corta, [[EventoContractual::ProrrogaPactada, '2027-12-31']]);
+
+        expect(alertasDe(new UltimaRenovacionCorta, $this->empresa, PLAZO_PARA_DEFINIR))->toBe([])
+            ->and(alertasDe(new UltimaRenovacionCorta, $this->empresa, '2027-11-29'))->toBe([]);
+    });
+
+    it('no le toca al contrato inicial de un año o más, aunque acumule prórrogas cortas', function () {
+        // La regla del artículo 46 solo alcanza a los contratos inferiores a un
+        // año. El de la batería es de un año justo y tiene su propio disparo el
+        // mismo día, así que sirve de contraejemplo tal como está.
+        conCadenaDeProrrogas($this->empleada, [
+            [EventoContractual::ProrrogaPactada, '2027-03-31'],
+            [EventoContractual::ProrrogaPactada, '2027-06-30'],
+            [EventoContractual::ProrrogaPactada, '2027-09-30'],
+        ]);
+
+        expect(alertasDe(new UltimaRenovacionCorta, $this->empresa, '2027-08-29'))->toBe([]);
+    });
+
+    it('el proceso diario la manda junto a la del plazo y no la repite', function () {
+        Mail::fake();
+
+        // El 29 de noviembre de 2026 es domingo, así que el proceso lo evalúa
+        // el viernes anterior, igual que en la batería del corrimiento.
+        $primera = app(ProcesoDiarioDeAlertas::class)->correr(Carbon::parse('2026-11-27'));
+        $segunda = app(ProcesoDiarioDeAlertas::class)->correr(Carbon::parse('2026-11-27'));
+
+        $alerta = alertaDelTipo($this->empresa, TipoDeAlerta::UltimaRenovacionCorta);
+
+        expect($alerta)->not->toBeNull()
+            ->and($alerta->vinculacion_id)->toBe($this->corta->getKey())
+            ->and($alerta->fecha_del_hecho->toDateString())->toBe(FIN_DEL_FIJO)
+            ->and($alerta->destinatarios)->toBe([$this->usuario->email])
+            // Las dos empleadas vencen el mismo día: dos avisos de plazo y uno
+            // de última renovación corta.
+            ->and($primera->registradas())->toBe(3)
+            ->and($segunda->registradas())->toBe(0);
     });
 });
 

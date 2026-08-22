@@ -126,7 +126,7 @@ function registrar() {
                 etiqueta="Tipo de prórroga"
                 :opciones="renovacion.tipos"
                 :error="form.errors.tipo"
-                ayuda="El límite de prórrogas cortas es distinto en cada caso."
+                ayuda="La automática se renueva por el mismo término; la pactada, por el que acuerden las partes."
             />
 
             <CampoFecha

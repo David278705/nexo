@@ -15,6 +15,7 @@ use App\Dominio\Alertas\Reglas\PruebaFijoVispera;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoQuinceDias;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoUnMes;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoVispera;
+use App\Dominio\Alertas\Reglas\UltimaRenovacionCorta;
 use App\Models\User;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
@@ -35,8 +36,7 @@ class AppServiceProvider extends ServiceProvider
         // El catálogo de reglas de alerta, también singleton: es una lista que
         // se llena al arrancar y que el proceso diario recorre. Cada tarea de
         // la fase 3 suma aquí las suyas con una línea y no toca el proceso;
-        // faltan las dos del término fijo que dependen de decisiones abiertas
-        // —última renovación corta y cercanía al tope— y los resúmenes (F3-05).
+        // faltan los cuatro resúmenes mensuales (F3-05).
         $this->app->singleton(CatalogoDeReglas::class, function (): CatalogoDeReglas {
             $catalogo = new CatalogoDeReglas;
 
@@ -47,10 +47,10 @@ class AppServiceProvider extends ServiceProvider
             $catalogo->registrar(new PruebaFijoDosDias);
             $catalogo->registrar(new PruebaFijoVispera);
 
-            // Las del término fijo (documento 1, 9.4). Falta «última renovación
-            // corta», bloqueada por una pregunta abierta en `ESTADO.md`.
+            // Las cuatro del término fijo (documento 1, 9.4).
             $catalogo->registrar(new PlazoDeRenovacion);
             $catalogo->registrar(new EfectoDelSilencio);
+            $catalogo->registrar(new UltimaRenovacionCorta);
             $catalogo->registrar(new CercaniaAlTope);
 
             return $catalogo;

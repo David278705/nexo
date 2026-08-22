@@ -619,7 +619,7 @@ también se ajustan al corrimiento**: los tres de la sección 5.4 traen «Mañan
 recibe el calendario del indefinido, que es el que le corresponde por 9.6. Dos pruebas cubren los
 contratos tan cortos que el aviso caería antes del ingreso.
 
-### [!] F3-04 · Alertas de contrato a término fijo — tres construidas, «última renovación corta» bloqueada por la pregunta de los dos límites de prórrogas cortas
+### [x] F3-04 · Alertas de contrato a término fijo
 
 Plazo de renovación a 32 días, efecto del silencio a 30, última renovación corta y cercanía al tope.
 **Hecho cuando:** las cuatro se disparan en sus fechas y hay prueba de cada una.
@@ -647,17 +647,27 @@ construcción y tiene prueba.
   D.3 no se implementó**: un margen de tolerancia sería un umbral legal inventado, y una prórroga que
   cabe entera recibe el texto normal, que es cierto.
 
-**Sigue bloqueada, y no es un olvido:**
+**Hecho en la tercera pasada — el cupo corregido y la cuarta alerta:**
 
-- **Última renovación corta posible.** La tabla dice «llega al límite de prórrogas cortas», en
-  singular, y el sistema tiene **dos** límites distintos —cuatro pactadas y tres automáticas—.
-  Disparar con el primero que se agote afirmaría en un correo que «la próxima renovación deberá ser
-  de mínimo un año» cuando todavía podría ser corta del otro tipo. Falta además el día de disparo. La
-  pregunta concreta sigue en `ESTADO.md`.
-
-Al resolver la última pregunta, esta tarea se cierra del todo: el armazón ya está para las cuatro y
-la que falta no necesita infraestructura nueva —`HistorialDeContrato::prorrogasCortasRestantes()`
-responde los dos cupos por separado—.
+- **El cupo de prórrogas cortas quedó en uno solo, de tres.** `config/reglas_laborales.php` tiene
+  ahora la constante `prorrogas_cortas` en 3 y las dos viejas —`prorrogas_cortas_pactadas` en 4 y
+  `prorrogas_cortas_automaticas` en 3— desaparecieron, igual que
+  `EventoContractual::limiteDeProrrogasCortas()`: el cupo es de la cadena y por eso vive donde se
+  cuenta la cadena. `HistorialDeContrato::prorrogasCortas()` y `prorrogasCortasRestantes()` ya no
+  reciben el evento y filtran por `esProrroga()`, y las tres llamadas de `RenovacionDeContrato`
+  dejaron de pasarlo. **El caso mezclado tiene prueba**: dos pactadas cortas y una automática corta
+  agotan el cupo, que es justo lo que el conteo viejo dejaba pasar.
+- **El campo «tipo de prórroga» sigue en el modal** —es la decisión D.1— alimentando el historial y
+  la frase «sería la 2ª prórroga, pactada por escrito». Lo único que perdió es el reparto del cupo, y
+  con él el texto de ayuda del selector, que decía que el límite era distinto en cada caso.
+- **`UltimaRenovacionCorta`, la cuarta alerta.** Cuelga de `ReglaDePreavisoDelFijo` y dispara en el
+  mismo día que `PlazoDeRenovacion` —los dos días de margen pasaron a la clase base, para que «el
+  mismo momento» sea literalmente el mismo número—. Le toca al contrato cuyo **tramo vigente** es la
+  prórroga corta que agotó el cupo (`HistorialDeContrato::elTramoVigenteAgotoElCupoCorto()`): si
+  después se renueva por un año, el aviso no se repite. Texto de 5.4, con el número de prórrogas
+  precisado a las cortas, que son las que gastan cupo.
+- `config/validaciones.php` no se tocó: `renovacion_prorroga_minima` sigue en `advierte`, que es B.3
+  y sigue abierta.
 
 ### [ ] F3-05 · Resúmenes mensuales
 

@@ -16,6 +16,10 @@ use Illuminate\Support\Carbon;
  * por su cuenta. Cuando el usuario cambia la fecha o el tipo de prórroga, la
  * pantalla vuelve a pedir esta misma prop y no recalcula nada.
  *
+ * El tipo de prórroga sigue en el modal —es la decisión D.1— pero no reparte
+ * cupos: el de las prórrogas cortas es uno solo, de tres, para toda la cadena
+ * (documento 6, C.1).
+ *
  * ## Las dos validaciones de 5.5
  *
  * También decide, con esa misma fecha y ese mismo tipo, si la prórroga se puede
@@ -166,10 +170,12 @@ class RenovacionDeContrato
             return [];
         }
 
+        [, $inicio, $hasta] = $resuelta;
+
         return array_values(array_map(
             fn (array $hallazgo): string => $hallazgo['mensaje'],
             array_filter(
-                $this->hallazgos(...$resuelta),
+                $this->hallazgos($inicio, $hasta),
                 fn (array $hallazgo): bool => $hallazgo['estado']->bloquea(),
             ),
         ));
@@ -217,7 +223,7 @@ class RenovacionDeContrato
      */
     private function proyeccion(EventoContractual $prorroga, Carbon $inicio, Carbon $hasta): array
     {
-        $hallazgos = $this->hallazgos($prorroga, $inicio, $hasta);
+        $hallazgos = $this->hallazgos($inicio, $hasta);
 
         $lineas = [
             'Prórroga de '.Formato::dias(MotorDeCalculo::diasCorridos($inicio, $hasta))
@@ -227,7 +233,7 @@ class RenovacionDeContrato
             ...array_map(fn (array $hallazgo): string => $hallazgo['mensaje'], $hallazgos),
         ];
 
-        $tono = $this->tono($hallazgos, $this->gastaElUltimoCupoCorto($prorroga, $inicio, $hasta));
+        $tono = $this->tono($hallazgos, $this->gastaElUltimoCupoCorto($inicio, $hasta));
 
         return [
             'tono' => $tono,
@@ -247,9 +253,13 @@ class RenovacionDeContrato
      * en un bloqueo y la consecuencia a secas en una advertencia. Decirle a
      * alguien que no puede guardar y dejarlo guardar es peor que no avisar.
      *
+     * No recibe el tipo de prórroga y no es un olvido: el cupo corto es uno solo
+     * para toda la cadena (documento 6, C.1), así que ninguna de las dos reglas
+     * depende de si el tramo se pactó o lo trajo el silencio.
+     *
      * @return list<array{estado: EstadoDeValidacion, mensaje: string}>
      */
-    private function hallazgos(EventoContractual $prorroga, Carbon $inicio, Carbon $hasta): array
+    private function hallazgos(Carbon $inicio, Carbon $hasta): array
     {
         $hallazgos = [];
 
@@ -268,7 +278,7 @@ class RenovacionDeContrato
             ];
         }
 
-        if ($this->historial->prorrogasCortasRestantes($prorroga) === 0
+        if ($this->historial->prorrogasCortasRestantes() === 0
             && self::esInferiorAUnAnio($inicio, $hasta)) {
             $estado = EstadoDeValidacion::configurada(self::VALIDACION_PRORROGA_MINIMA);
 
@@ -311,6 +321,10 @@ class RenovacionDeContrato
     /**
      * Qué número de prórroga sería y cuántos cupos cortos quedarían.
      *
+     * El tipo de prórroga solo entra en la frase informativa —«sería la 2ª
+     * prórroga, pactada por escrito»—, que es para lo que D.1 lo conserva. La
+     * cuenta de cupos es de la cadena entera y no del tipo.
+     *
      * Cuando ya no queda ninguno, la frase la escribe `hallazgos()`: ahí deja de
      * ser una cuenta y pasa a ser la regla de prórroga mínima.
      */
@@ -320,7 +334,7 @@ class RenovacionDeContrato
         $frase = 'Sería la '.$numero.'ª prórroga del contrato, '
             .mb_strtolower($prorroga->etiqueta(), 'UTF-8').'.';
 
-        $restantes = $this->historial->prorrogasCortasRestantes($prorroga);
+        $restantes = $this->historial->prorrogasCortasRestantes();
 
         if ($restantes === null || $restantes === 0 || ! self::esInferiorAUnAnio($inicio, $hasta)) {
             return $frase;
@@ -363,9 +377,9 @@ class RenovacionDeContrato
      * renovación ya no podrá ser corta, y eso es una consecuencia que la empresa
      * tiene que conocer antes de firmar.
      */
-    private function gastaElUltimoCupoCorto(EventoContractual $prorroga, Carbon $inicio, Carbon $hasta): bool
+    private function gastaElUltimoCupoCorto(Carbon $inicio, Carbon $hasta): bool
     {
-        return $this->historial->prorrogasCortasRestantes($prorroga) === 1
+        return $this->historial->prorrogasCortasRestantes() === 1
             && self::esInferiorAUnAnio($inicio, $hasta);
     }
 

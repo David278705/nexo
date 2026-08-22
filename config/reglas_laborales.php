@@ -106,35 +106,34 @@ return [
     'disfrute_minimo_dias_habiles' => 6,
 
     /*
-    | 8. Prórrogas cortas pactadas por escrito
+    | 8. Prórrogas inferiores a un año
     |
-    | En contratos a término fijo inferiores a un año pueden pactarse
-    | hasta cuatro prórrogas por un término inferior a un año; a partir
-    | de la quinta, la renovación no puede ser inferior a un año.
+    | Un contrato a término fijo inferior a un año admite tres prórrogas
+    | por un término inferior a un año; la cuarta ya no puede serlo.
     |
-    | Norma: artículo 46 del Código Sustantivo del Trabajo, interpretado
-    | por el Concepto MinTrabajo 08SE2026120300000006157 del 18 de
-    | febrero de 2026.
-    | Verificado: 2026-08-17.
-    */
-    'prorrogas_cortas_pactadas' => 4,
-
-    /*
-    | 9. Prórrogas cortas automáticas por silencio
+    | Es **una sola cuenta**, y no una por tipo de prórroga. Un contrato
+    | tiene una sola cadena de prórrogas, numeradas 1ª, 2ª, 3ª, sin
+    | importar cómo se originó cada una: lo único que decide el tipo
+    | —pactada por escrito o automática por silencio— es cuánto dura el
+    | tramo nuevo, nunca cuántos caben. Un contrato con dos prórrogas
+    | pactadas y una automática, todas cortas, ya agotó las tres.
     |
-    | La prórroga automática opera tres veces por el mismo término; la
-    | cuarta ya debe ser por un año. Es una prórroga menos que la
-    | pactada por escrito, y por eso se cuentan por separado.
+    | El artículo 46 redacta la regla dos veces, una por tipo, y la de
+    | las pactadas dice «después de la cuarta prórroga», que leída sola
+    | sugeriría cuatro. Angela confirmó que la aplicación correcta es
+    | tres, que además es la lectura conservadora: el sistema avisa un
+    | tramo antes y nunca deja pasar por bueno algo ilegal.
     |
     | Norma: artículo 46 del Código Sustantivo del Trabajo, interpretado
     | por el Concepto MinTrabajo 08SE2026120300000006157 del 18 de
-    | febrero de 2026.
-    | Verificado: 2026-08-17.
+    | febrero de 2026, y la sección C.1 de
+    | `docs/06-decisiones-pendientes.md`.
+    | Verificado: 2026-08-22.
     */
-    'prorrogas_cortas_automaticas' => 3,
+    'prorrogas_cortas' => 3,
 
     /*
-    | 10. Entrada en vigencia del régimen del término fijo
+    | 9. Entrada en vigencia del régimen del término fijo
     |
     | Los cuatro años del tope corren desde la celebración del contrato,
     | salvo en los contratos que ya estaban vigentes ese día: para ellos

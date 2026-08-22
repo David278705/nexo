@@ -43,12 +43,12 @@ Aquí está todo lo que todavía no se puede dar por cerrado. Se organiza en cin
 | 3 | Acuerdo de tratamiento de datos revisado por abogado | A | Ambos | No |
 | 4 | Decisión de infraestructura y modelo de seguridad | A | David | No |
 | 5 | Constitución de la sociedad, DIAN y pasarela de pagos | A | Ambos | No |
-| 6 | Confirmar el conteo de prórrogas cortas con asesor laboral | B | Ambos | Sí, parcial |
+| 6 | ~~Confirmar el conteo de prórrogas cortas~~ **RESUELTA:** tres, en una sola cuenta | B | Ambos | No |
 | 7 | Confirmar el periodo de prueba en cambio de modalidad contractual | B | Ambos | No |
 | 8 | Decidir si las validaciones de prórroga bloquean o solo advierten | B | Ambos | Sí, parcial |
-| 9 | ¿Se registra el tipo de prórroga (pactada o automática)? | D | Angela | Sí |
+| 9 | ~~¿Se registra el tipo de prórroga?~~ **RESUELTA:** sí, pero no para contar | D | Angela | No |
 | 10 | Umbral de la alerta de contrato de obra o labor prolongado | D | Angela | Sí |
-| 11 | Anticipación de la alerta de cercanía al tope de cuatro años | D | Angela | Sí |
+| 11 | ~~Anticipación de la alerta de cercanía al tope~~ **RESUELTA:** tres meses antes | D | Angela | No |
 | 12 | Vigencia del usuario de demostración | D | Angela | No |
 | 13 | Rangos de edad y de antigüedad para el dashboard | D | Angela | Sí |
 | 14 | Listados maestros: EPS, fondos, ARL, cajas, bancos | D | Angela | Sí |
@@ -170,10 +170,11 @@ Se decidió mirarlo cuando exista producto. Cuando llegue el momento, la compara
 
 Estos puntos exigen la confirmación de un asesor laboral antes de programarse. Un error aquí no afecta a un cliente: produce comportamientos equivocados en todos a la vez.
 
-### B.1 El conteo de prórrogas cortas
+### B.1 El conteo de prórrogas cortas — RESUELTA
 
-**BLOQUEANTE PARCIAL.** La regla está clara en la sección C.1 de este documento, respaldada por el concepto del Ministerio del Trabajo. Lo que conviene confirmar es su aplicación práctica antes de convertirla en una validación que impide guardar. La razón: si el sistema bloquea algo que en realidad es legal, el cliente no puede operar y la culpa es del sistema.
-Mientras se obtiene la confirmación, se puede construir el conteo de prórrogas y la alerta, dejando el bloqueo como advertencia. Convertir la advertencia en bloqueo es un cambio de una línea.
+**Respondida por Angela en agosto de 2026, y corrige lo que el sistema había construido.** El conteo es **uno solo, de tres prórrogas cortas**, sin separar por tipo. La sección C.1 quedó reescrita con la explicación completa y con la razón por la que la primera lectura de este documento llevó a construirlo mal.
+
+Sigue abierta la otra mitad de la pregunta, que es la de B.3: si esa regla debe **impedir el guardado** o solo **advertir**. Hoy advierte —`config/validaciones.php`, clave `renovacion_prorroga_minima`— y convertirla en bloqueo sigue siendo cambiar una palabra en ese archivo.
 
 ### B.2 Periodo de prueba en cambio de modalidad contractual
 
@@ -206,16 +207,32 @@ La conclusión de la sección C.3 es que no procede pactar periodo de prueba cua
 
 Respuestas a las dudas que quedaron planteadas, con su fundamento. Se conservan aquí como referencia; las conclusiones ya están incorporadas a la Especificación Funcional.
 
-### C.1 La regla de la cuarta prórroga
+### C.1 La regla de la cuarta prórroga — CORREGIDA por Angela, agosto de 2026
 
 **La duda:** si se firma un contrato de un mes, ¿pueden hacerse cuatro prórrogas más y es en la quinta cuando debe ser de un año?
-**La respuesta:** sí, en las prórrogas pactadas por escrito. Pero la regla no es la misma para los dos tipos de prórroga, y esa es la parte que se presta a confusión.
 
-|  | Prórroga pactada por escrito | Prórroga automática por silencio |
-|---|---|---|
-| Duración de cada prórroga | La que las partes acuerden: puede ser inferior, igual o superior a la del contrato inicial | Igual al término inicialmente pactado o al de su última prórroga |
-| Cuántas pueden ser cortas | Hasta cuatro | Tres |
-| A partir de cuál debe ser mínimo un año | A partir de la quinta | La cuarta ya debe ser de un año |
+**La respuesta, en la forma que hay que programar:** **el límite es de tres prórrogas cortas, en una sola cuenta.** La cuarta prórroga de un contrato inferior a un año ya no puede ser corta, sin importar de qué tipo sea.
+
+> **Lo que la primera versión de este documento entendió mal**
+>
+> La tabla anterior enfrentaba «hasta cuatro» contra «tres» como si fueran dos cuentas separadas, y de ahí el sistema construyó **dos cupos independientes** —cuatro prórrogas cortas pactadas *más* tres automáticas—. Eso no existe. Un contrato tiene **una sola cadena de prórrogas**, numeradas 1ª, 2ª, 3ª, sin importar cómo se originó cada una.
+>
+> Lo único que decide el tipo de prórroga es **cuánto dura**, no cuántas caben:
+>
+> · **Automática:** nadie avisó, así que se renueva por el mismo término anterior. Contrato de seis meses → prórroga de seis meses.
+>
+> · **Pactada:** las partes acuerdan la duración, que puede ser mayor o menor. Contrato de seis meses → la prórroga puede ser de ocho, o de tres.
+>
+> Al sistema esa diferencia no le cambia el conteo: registra que hubo una prórroga y cuánto duró. Si duró menos de un año, gasta uno de los tres cupos.
+
+|  | Regla |
+|---|---|
+| Cuántas prórrogas pueden ser inferiores a un año | **Tres en total**, sean pactadas, automáticas o mezcladas |
+| A partir de cuál debe ser mínimo un año | **La cuarta**, sea del tipo que sea |
+| Qué decide el tipo de prórroga | Solo la duración del tramo nuevo, nunca el conteo |
+| Tope global | La suma de todo —contrato inicial más prórrogas— nunca supera cuatro años |
+
+**Nota sobre el texto de la norma.** El artículo 46 redacta la regla dos veces, una por tipo, y la de las pactadas dice «después de la cuarta prórroga», que leída sola sugeriría cuatro cortas en vez de tres. Angela confirmó que la aplicación correcta es **tres**, que además es la lectura conservadora: el sistema avisa un tramo antes y nunca deja pasar por bueno algo ilegal. Como esta regla está configurada en `config/validaciones.php` como `advierte` y no como `bloquea`, ser conservador no le impide operar a nadie —solo pone el aviso—, así que el riesgo de la lectura estricta es nulo.
 
 > **Lo que dice el Ministerio del Trabajo**
 >
@@ -284,11 +301,9 @@ Por ser dato sensible, requiere acceso restringido dentro del sistema, autorizac
 
 Detalles pequeños que faltan para poder construir sin adivinar. Ninguno requiere investigación: son decisiones de criterio.
 
-### D.1 ¿Se registra el tipo de prórroga?
+### D.1 ¿Se registra el tipo de prórroga? — RESUELTA
 
-**BLOQUEANTE.** Como se explicó en C.1, el conteo de prórrogas cortas es distinto según la prórroga sea pactada por escrito o automática por silencio. Para contarlas bien, el sistema necesita saber de cuál se trata.
-**Propuesta:** agregar un campo a la acción "Renovar contrato" con dos opciones: **Prórroga pactada por escrito** o **Prórroga automática por silencio** . Es un campo más en un formulario que ya existe, y resuelve tanto el conteo como el reporte de historial de prórrogas.
-Alternativa si se quiere simplificar: aplicar siempre la regla más estricta, la de la prórroga automática, que avisa una prórroga antes. Es más conservador y no requiere el campo, pero puede generar alertas prematuras en clientes que sí formalizan sus prórrogas por escrito.
+**Respondida por Angela.** El campo se queda en la acción "Renovar contrato" —**Prórroga pactada por escrito** o **Prórroga automática por silencio**—, pero deja de usarse para contar el límite de prórrogas cortas: ver la corrección de C.1. Sigue sirviendo para dos cosas que no cambiaron: el historial de cada contrato y la frase informativa del modal ("sería la 2ª prórroga, pactada por escrito").
 
 ### D.2 Umbral de contrato de obra o labor prolongado
 
