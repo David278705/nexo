@@ -7,7 +7,10 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\PoliticaDeModulos;
 use App\Contratacion\ObservadorDeVinculacion;
 use App\Dominio\Alertas\CatalogoDeReglas;
+use App\Dominio\Alertas\Reglas\AcumulacionDeQuinceDias;
+use App\Dominio\Alertas\Reglas\AnioSinDisfruteMinimo;
 use App\Dominio\Alertas\Reglas\CercaniaAlTope;
+use App\Dominio\Alertas\Reglas\ContratosVencidosSinGestionar;
 use App\Dominio\Alertas\Reglas\EfectoDelSilencio;
 use App\Dominio\Alertas\Reglas\PlazoDeRenovacion;
 use App\Dominio\Alertas\Reglas\PruebaFijoDosDias;
@@ -52,6 +55,13 @@ class AppServiceProvider extends ServiceProvider
             $catalogo->registrar(new EfectoDelSilencio);
             $catalogo->registrar(new UltimaRenovacionCorta);
             $catalogo->registrar(new CercaniaAlTope);
+
+            // Tres de los cuatro resúmenes mensuales (documento 1, 9.4 y 9.5).
+            // Falta el de obra o labor prolongada: su umbral es la decisión
+            // D.2, que sigue abierta, y sin él no hay regla que construir.
+            $catalogo->registrar(new ContratosVencidosSinGestionar);
+            $catalogo->registrar(new AcumulacionDeQuinceDias);
+            $catalogo->registrar(new AnioSinDisfruteMinimo);
 
             return $catalogo;
         });

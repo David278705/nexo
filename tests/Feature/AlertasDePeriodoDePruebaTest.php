@@ -313,6 +313,9 @@ describe('el proceso diario con las cinco reglas registradas', function () {
             TipoDeAlerta::EfectoDelSilencio,
             TipoDeAlerta::UltimaRenovacionCorta,
             TipoDeAlerta::CercaniaAlTope,
+            TipoDeAlerta::ContratosVencidosSinGestionar,
+            TipoDeAlerta::AcumulacionDeQuinceDias,
+            TipoDeAlerta::AnioSinDisfruteMinimo,
         ]);
     });
 

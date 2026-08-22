@@ -297,6 +297,43 @@ class MotorDeCalculo
     }
 
     /**
+     * El último día hábil del mes al que pertenece esa fecha.
+     *
+     * Es el día en que salen los cuatro resúmenes mensuales del capítulo 9. Se
+     * apoya en `diaHabilAnteriorParaAlertas()` a propósito: «último día hábil»
+     * es la misma noción de día de oficina que usa el corrimiento —el sábado no
+     * es hábil aunque la empresa lo tenga laboral—, y dos definiciones distintas
+     * de lo mismo se separarían el día en que se moviera un festivo.
+     *
+     * De aquí sale también la otra mitad de la respuesta: como este día es
+     * hábil por construcción, nunca se corre, y el proceso diario lo evalúa una
+     * sola vez. Por eso el resumen no puede salir dos veces en un mes ni
+     * saltarse uno.
+     */
+    public static function ultimoDiaHabilDelMes(CarbonInterface $mes): CarbonInterface
+    {
+        return self::diaHabilAnteriorParaAlertas(self::dia($mes)->endOfMonth());
+    }
+
+    /**
+     * Cuántos días han pasado desde una fecha hasta otra posterior.
+     *
+     * Es el «días transcurridos» del resumen de contratos vencidos (documento 2,
+     * 5.4): un contrato que venció el 31 de julio lleva 31 días vencidos el 31
+     * de agosto, no 32. **No son días corridos**, que cuentan los dos extremos y
+     * darían uno más, ni son una anticipación, que mira hacia adelante. Tiene
+     * nombre propio por lo mismo que las otras: contar esto con la regla de al
+     * lado escribe un número falso en un correo que el cliente cree.
+     */
+    public static function diasTranscurridos(CarbonInterface $desde, CarbonInterface $hasta): int
+    {
+        $inicio = self::dia($desde);
+        $fin = self::dia($hasta);
+
+        return $fin->lessThan($inicio) ? 0 : (int) $inicio->diffInDays($fin);
+    }
+
+    /**
      * Cuántos días faltan desde el envío de una alerta hasta el hecho que avisa.
      *
      * Es la diferencia entre dos fechas y **no** los días corridos: del viernes

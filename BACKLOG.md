@@ -669,12 +669,41 @@ construcción y tiene prueba.
 - `config/validaciones.php` no se tocó: `renovacion_prorroga_minima` sigue en `advierte`, que es B.3
   y sigue abierta.
 
-### [ ] F3-05 · Resúmenes mensuales
+### [!] F3-05 · Resúmenes mensuales — falta el cuarto: D.2 no tiene umbral de obra o labor prolongada
 
 Contratos vencidos sin gestionar, acumulación de 15 días, año cumplido sin disfrute mínimo y obra o
 labor prolongada.
 **Hecho cuando:** el resumen llega agrupado en un solo correo, no uno por empleado.
 **Fuente:** `docs/01-especificacion-funcional.md` 9.5 y 9.6
+
+**Hechos tres de los cuatro**, y el «hecho cuando» de la tarea está cumplido y probado: el resumen
+sale en un solo correo por empresa, sin vinculación, con el listado dentro.
+
+- **`ResumenMensual`, la base compartida.** Las tres cuelgan de ella y de ella salen las tres
+  diferencias con las nueve alertas individuales: **salen el último día hábil del mes**
+  (`MotorDeCalculo::ultimoDiaHabilDelMes()`, nuevo), **van agrupadas** con
+  `AlertaPorEnviar::paraLaEmpresa()` —que existía desde F3-01 y hasta hoy no usaba nadie— y **no se
+  mandan vacías**: un correo mensual que dice «0 contratos vencidos» enseña a ignorar el remitente.
+  El día de salida es hábil por definición, así que el corrimiento de 9.1 no tiene nada que hacer
+  aquí y el proceso lo evalúa exactamente una vez al mes.
+- **`ContratosVencidosSinGestionar`** (9.4). Solo término fijo —el indefinido y la obra o labor no
+  tienen fecha que superar—, y «sin gestionar» se cumple por construcción, igual que en
+  `ReglaDePreavisoDelFijo`: la terminación deja la vinculación inactiva y la prórroga mueve el
+  vencimiento. Mira contra el corte y no contra el fin del mes calendario, porque su texto habla en
+  pasado y tiene que ser cierto el día que sale. `MotorDeCalculo::diasTranscurridos()` es nuevo: los
+  «días transcurridos» de la plantilla no son días corridos y contarlos con la regla de al lado
+  escribiría un número falso.
+- **`AcumulacionDeQuinceDias`** (9.5). Los quince días **no están escritos**: son doce meses a 1,25,
+  la constante del artículo 186. Mira contra el fin del mes calendario porque el texto dice
+  «completaron este mes» y el saldo causa el mes completo al cerrarse. Es un cruce y no un umbral —al
+  cierre de este mes alcanza y al del anterior no—, así que nadie reaparece todos los meses hasta que
+  se tome vacaciones. También le aplica a la obra o labor, que es lo que manda 9.6.
+- **`AnioSinDisfruteMinimo`** (9.5). Cada año de servicio, no solo el primero: el motivo está en la
+  propia plantilla, «el mínimo anual que exige la ley». «Continuos» se lee como un solo periodo
+  registrado de seis días hábiles o más, que sale de `disfrute_minimo_dias_habiles`.
+- **`ObraOLaborProlongada` no se construyó.** Su umbral es D.2, que sigue abierta, y no hay ningún
+  criterio legal del que deducirlo. El tipo ya está en el catálogo desde F3-01 y el renglón le espera
+  en `config/alertas.php`; falta la respuesta, no el camino.
 
 ### [ ] F3-06 · Entregabilidad y registro
 
