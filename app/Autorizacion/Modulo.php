@@ -17,6 +17,14 @@ namespace App\Autorizacion;
  *
  * - `Inicio` lo ve todo usuario de una empresa.
  * - `Configuracion` es solo del superadministrador.
+ *
+ * `Alertas` es el único que no está en aquella tabla 4.2, y no es un olvido: lo
+ * pide el documento 2, sección 5.5, «panel de alertas dentro del sistema como
+ * canal alterno», que se escribió después. Va en el grupo «Sistema», al lado de
+ * Auditoría, porque es lo mismo que ella: un registro de lo que el sistema hizo,
+ * de solo lectura. Tener permiso sobre él **no** abre las alertas de los demás
+ * módulos: el panel enseña únicamente los tipos cuyo módulo el usuario ya tiene
+ * (`App\Alertas\AlertasDelUsuario`).
  */
 enum Modulo: string
 {
@@ -36,6 +44,8 @@ enum Modulo: string
 
     case Terminaciones = 'terminaciones';
 
+    case Alertas = 'alertas';
+
     case Auditoria = 'auditoria';
 
     case Configuracion = 'configuracion';
@@ -51,6 +61,7 @@ enum Modulo: string
             self::Licencias => 'Licencias y ausencias',
             self::Movimientos => 'Movimientos',
             self::Terminaciones => 'Terminaciones',
+            self::Alertas => 'Alertas',
             self::Auditoria => 'Auditoría',
             self::Configuracion => 'Configuración',
         };
@@ -81,7 +92,7 @@ enum Modulo: string
             self::Empleados, self::Contratos => 'Personal',
             self::Incapacidades, self::Vacaciones, self::Licencias => 'Novedades',
             self::Movimientos, self::Terminaciones => 'Movimientos',
-            self::Auditoria, self::Configuracion => 'Sistema',
+            self::Alertas, self::Auditoria, self::Configuracion => 'Sistema',
         };
     }
 

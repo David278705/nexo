@@ -7,6 +7,7 @@ use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
 use App\Http\Controllers\Acceso\SesionController;
+use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
@@ -234,6 +235,19 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
+     * El panel de alertas (documento 2, sección 5.5). Una sola dirección y de
+     * solo lectura, como la auditoría: es el registro de lo que el sistema
+     * envió, y eso no se edita ni se borra desde una pantalla.
+     *
+     * No hay ruta de detalle: el asunto, el cuerpo y los destinatarios viajan
+     * con la fila y el detalle se abre en un modal, sin pedir nada más.
+     */
+    Route::middleware('modulo:'.Modulo::Alertas->value)->group(function () {
+        Route::get('/alertas', [AlertaController::class, 'index'])
+            ->name(Modulo::Alertas->nombreDeRuta());
+    });
+
+    /*
      * Configuración (documento 3, sección 5.7). El módulo es solo del
      * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
      * declararlo como cualquier otro.
@@ -249,7 +263,7 @@ Route::middleware('auth')->group(function () {
     });
 
     foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Terminaciones, Modulo::Configuracion], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Terminaciones, Modulo::Alertas, Modulo::Configuracion], true)) {
             continue;
         }
 

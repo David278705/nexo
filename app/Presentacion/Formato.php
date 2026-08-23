@@ -39,6 +39,22 @@ final class Formato
     }
 
     /**
+     * Una fecha con su hora: 25/12/2026, 6:04 a. m.
+     *
+     * Es la única de la casa que lleva hora, y por un motivo concreto: las
+     * fechas laborales del sistema son `date` sin hora a propósito, pero el
+     * registro de envíos (documento 2, 5.5) tiene que decir **cuándo** salió el
+     * correo, y «el 25 de diciembre» no responde a un cliente que dice que a esa
+     * hora no le había llegado nada.
+     */
+    public static function fechaYHora(mixed $fecha): string
+    {
+        return $fecha instanceof Carbon
+            ? $fecha->format('d/m/Y').', '.$fecha->translatedFormat('g:i a')
+            : self::VACIO;
+    }
+
+    /**
      * La misma fecha escrita con letras: 25 de diciembre de 2026.
      *
      * Se usa dentro de una frase, donde `25/12/2026` se lee como un tropiezo.

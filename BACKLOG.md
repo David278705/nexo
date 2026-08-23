@@ -721,12 +721,53 @@ solo correo por empresa, sin vinculación, con el listado dentro.
 - **`config/alertas.php` no creció**: el renglón del umbral que esperaba ahí ya no existe, y así lo
   dicen ahora su comentario de cabecera y el renglón del panel del proveedor, que decía «sin decidir».
 
-### [ ] F3-06 · Entregabilidad y registro
+### [x] F3-06 · Entregabilidad y registro
 
 Proveedor transaccional configurado. Registro de envíos consultable con destinatarios, estado e
 intentos. Panel de alertas dentro del sistema como canal alterno.
 **Hecho cuando:** un correo de prueba llega a bandeja de entrada y queda registrado.
 **Fuente:** `docs/02-arquitectura-y-datos.md` 5.5
+
+Hechas las tres cosas de la sección 5.5, y el «hecho cuando» está probado de punta a punta:
+`alertas:prueba <empresa> <correo>` manda el correo **por el mismo camino que las alertas de verdad**
+—`RegistroDeAlertas`, `EnviarAlerta`, `CorreoDeAlerta`— y deja su fila en `alertas_enviadas`, que se
+consulta en la sección Alertas.
+
+- **`ProveedorDeCorreo` es lo único que se puede comprobar del proveedor desde dentro**: si el
+  transporte configurado es transaccional y si el remitente ya está en el dominio propio. Ahí no hay
+  ninguna credencial a propósito —la sección 7.1 manda los secretos fuera del repositorio— y por eso
+  el proveedor se configura en `.env`, que ahora explica las cinco líneas de Postmark, Resend o SES y
+  **la mitad que no está en el archivo**: SPF, DKIM y DMARC, que viven en el DNS. `advertencia()`
+  advierte y no bloquea: en local el correo va al log a propósito, porque el flujo entero tiene que
+  poder recorrerse sin credenciales de nadie.
+- **El correo de prueba es el único envío que no es idempotente por día**, y es la decisión de fondo
+  de la tarea. `AlertaPorEnviar::deEntregabilidad()` pone la hora en la clave: la regla 5.2 protege de
+  que el proceso diario repita lo que nadie le pidió, y aquí pasa lo contrario —quien está corrigiendo
+  el SPF de su dominio manda, mira la bandeja, corrige el DNS y vuelve a mandar la misma mañana—.
+- **`TipoDeAlerta` ganó un caso que no es una alerta**, `PruebaDeEntregabilidad`, con
+  `esDelCalendario()` separándolo de las trece del capítulo 9. Va en `alertas_enviadas` como todo lo
+  demás porque esa tabla **es** el registro de envíos: un correo de prueba sin rastro no probaría
+  justamente lo que se quiere probar. Su módulo es `Configuracion` —solo el superadministrador—
+  porque no habla de ningún empleado. Dos pruebas lo vigilan: que ninguna regla registrada lo dispare
+  y que sea el único tipo fuera del calendario.
+- **El panel de alertas es el módulo `Alertas`**, el único que no está en la tabla 4.2 del documento 3:
+  lo pide el documento 2, y va en el grupo «Sistema» al lado de Auditoría porque es lo mismo que ella,
+  un registro de solo lectura. `ListadoDeAlertas` sobre el armazón de `Listado`, `AlertaController`,
+  la pantalla `Alertas/Index` sobre `useListado` y una sola ruta, sin ninguna de escritura.
+- **Tener el módulo `Alertas` no abre las alertas de los demás módulos.** `AlertasDelUsuario` decide
+  los tipos visibles con el mismo `TipoDeAlerta::modulo()` que usa `DestinatariosDeAlertas` para
+  decidir a qué correos sale cada aviso, así que el panel y el buzón **no pueden discrepar**: el canal
+  alterno alcanza exactamente a quien habría recibido el correo y a nadie más. El filtro ofrece solo
+  los tipos visibles —una lista completa contaría qué alertas existen y dejaría deducir por el número
+  de resultados si a alguien le llegaron— y pedir un tipo ajeno por la dirección tampoco saca nada.
+- **El detalle no vuelve al servidor.** El asunto, el cuerpo y los destinatarios viajan con la fila y
+  son **los que se enviaron**, no los que se calcularían hoy: si el cargo de la persona cambió
+  después, el registro sigue contando lo que llegó al buzón. El modal es la otra mitad del «canal
+  alterno»: el aviso entero se lee ahí, con el mismo texto del correo.
+- El listado abre por lo más reciente, al revés que los otros ocho, porque un registro de envíos se
+  consulta siempre por lo de ayer. `Formato::fechaYHora()` es nuevo y es la única fecha de la casa con
+  hora: «el 25 de diciembre» no le responde a un cliente que dice que a esa hora no le había llegado
+  nada.
 
 ---
 

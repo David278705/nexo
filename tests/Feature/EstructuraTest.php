@@ -54,7 +54,7 @@ it('no le muestra configuración a quien no es superadministrador', function () 
         });
 });
 
-it('le muestra al superadministrador las diez secciones del menú', function () {
+it('le muestra al superadministrador las once secciones del menú', function () {
     $empresa = Tenant::factory()->create();
     $usuario = usuarioDe($empresa, Rol::Superadministrador);
 
@@ -112,7 +112,7 @@ it('navega a la sección de cada módulo que el usuario tiene', function () {
     foreach (Modulo::cases() as $modulo) {
         // Todos menos Auditoría ya tienen pantalla propia; esa sigue siendo
         // sección pendiente hasta su tarea.
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Terminaciones, Modulo::Configuracion], true)) {
+        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Terminaciones, Modulo::Alertas, Modulo::Configuracion], true)) {
             continue;
         }
 
@@ -185,6 +185,16 @@ it('lleva la sección de terminaciones a su listado, no a una sección pendiente
         ->get(Modulo::Terminaciones->url())
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina->component('Terminaciones/Index')->etc());
+});
+
+it('lleva la sección de alertas a su panel, no a una sección pendiente', function () {
+    $empresa = Tenant::factory()->create();
+    $usuario = usuarioDe($empresa, Rol::Superadministrador);
+
+    $this->actingAs($usuario)
+        ->get(Modulo::Alertas->url())
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina->component('Alertas/Index')->etc());
 });
 
 it('lleva la sección de contratos a su listado, no a una sección pendiente', function () {

@@ -5,7 +5,9 @@ namespace App\Dominio\Alertas;
 use App\Autorizacion\Modulo;
 
 /**
- * El catálogo cerrado de alertas del sistema (documento 1, 9.7).
+ * El catálogo cerrado de alertas del sistema (documento 1, 9.7), más el correo
+ * de prueba de entregabilidad, que no es una alerta y por eso va al final y
+ * `esDelCalendario()` lo distingue.
  *
  * Son las trece del «resumen del calendario»: nueve individuales, una por
  * empleado, y cuatro agrupadas —tres mensuales y la de obra o labor, que es
@@ -66,6 +68,21 @@ enum TipoDeAlerta: string
 
     case ObraOLaborActivos = 'obra_o_labor_activos';
 
+    /*
+     * El correo de prueba de entregabilidad (F3-06, documento 2, 5.5).
+     *
+     * No es una alerta del capítulo 9 y por eso está debajo de la línea y
+     * `esDelCalendario()` la separa: no la dispara ninguna regla, no la manda el
+     * proceso diario y nadie la recibe por corresponderle. La manda a mano quien
+     * acaba de configurar el dominio, con `alertas:prueba`, para comprobar que
+     * el proveedor transaccional entrega en bandeja de entrada.
+     *
+     * Se guarda en `alertas_enviadas` como todo lo demás porque esa tabla es el
+     * registro de envíos, y un correo de prueba que no dejara rastro no probaría
+     * justamente lo que se quiere probar: que lo enviado queda registrado.
+     */
+    case PruebaDeEntregabilidad = 'prueba_de_entregabilidad';
+
     /**
      * Cómo se nombra la alerta en el registro de envíos y en la consola del
      * proveedor. No es el asunto del correo: ese lo escribe cada regla con el
@@ -87,18 +104,41 @@ enum TipoDeAlerta: string
             self::AcumulacionDeQuinceDias => 'Vacaciones: acumulación de 15 días',
             self::AnioSinDisfruteMinimo => 'Vacaciones: año cumplido sin disfrute mínimo',
             self::ObraOLaborActivos => 'Contratos de obra o labor activos',
+            self::PruebaDeEntregabilidad => 'Correo de prueba de entregabilidad',
         };
     }
 
     /**
      * El módulo cuyos administradores reciben esta alerta.
+     *
+     * Decide dos cosas a la vez, y tienen que ser la misma: a quién le llega el
+     * correo (`DestinatariosDeAlertas`) y quién la ve en el panel de alertas
+     * (`App\Alertas\AlertasDelUsuario`). El panel es el canal alterno del correo,
+     * así que enseñar una alerta a quien no la habría recibido sería abrir por la
+     * pantalla lo que el correo mantiene cerrado.
+     *
+     * El correo de prueba es de `Configuracion` —solo el superadministrador—
+     * porque no habla de ningún empleado: es una comprobación de operación.
      */
     public function modulo(): Modulo
     {
         return match ($this) {
             self::AcumulacionDeQuinceDias, self::AnioSinDisfruteMinimo => Modulo::Vacaciones,
+            self::PruebaDeEntregabilidad => Modulo::Configuracion,
             default => Modulo::Contratos,
         };
+    }
+
+    /**
+     * Si es una de las trece del «resumen del calendario» (documento 1, 9.7).
+     *
+     * Lo es todo lo que dispara una regla. La única que no lo es —el correo de
+     * prueba de entregabilidad— existe para operar el sistema, no para avisarle
+     * nada a nadie.
+     */
+    public function esDelCalendario(): bool
+    {
+        return $this !== self::PruebaDeEntregabilidad;
     }
 
     /**

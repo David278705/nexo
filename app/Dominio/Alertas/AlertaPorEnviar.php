@@ -30,6 +30,7 @@ class AlertaPorEnviar
         public readonly Carbon $fechaDelHecho,
         public readonly string $asunto,
         public readonly string $cuerpo,
+        private readonly ?string $claveUnica = null,
     ) {}
 
     /**
@@ -76,6 +77,33 @@ class AlertaPorEnviar
     }
 
     /**
+     * El correo de prueba de entregabilidad (F3-06, documento 2, 5.5).
+     *
+     * Es el único que **no** es idempotente por día, y es a propósito. La regla
+     * de la sección 5.2 protege de que el proceso diario mande dos veces lo
+     * mismo sin que nadie se lo haya pedido; aquí ocurre lo contrario: quien
+     * está peleándose con el SPF de su dominio necesita mandar la prueba, mirar
+     * la bandeja, corregir el registro DNS y volver a mandarla, todo la misma
+     * mañana. Por eso la clave lleva la hora, y cada intento deja su propia fila
+     * en el registro de envíos, que es lo que se está comprobando.
+     */
+    public static function deEntregabilidad(
+        CarbonInterface $momento,
+        string $asunto,
+        string $cuerpo,
+    ): self {
+        return new self(
+            TipoDeAlerta::PruebaDeEntregabilidad,
+            null,
+            self::dia($momento),
+            self::dia($momento),
+            $asunto,
+            $cuerpo,
+            claveUnica: TipoDeAlerta::PruebaDeEntregabilidad->value.'::'.$momento->format('Y-m-d H:i:s'),
+        );
+    }
+
+    /**
      * La clave de idempotencia de la sección 5.2: tipo, vinculación y fecha
      * programada.
      *
@@ -86,7 +114,7 @@ class AlertaPorEnviar
      */
     public function clave(): string
     {
-        return implode(':', [
+        return $this->claveUnica ?? implode(':', [
             $this->tipo->value,
             $this->vinculacion?->getKey() ?? '',
             $this->fechaDeEnvio->toDateString(),
