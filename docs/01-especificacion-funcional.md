@@ -603,14 +603,19 @@ Es el conjunto de alertas de mayor valor comercial del producto.
 
 ### 9.6 Contratos de obra o labor
 
-No generan alertas de vencimiento, porque no hay fecha previsible. Sí generan una alerta de gestión dentro del resumen mensual: contratos de obra o labor que llevan un tiempo prolongado sin registrar terminación, lo cual puede indicar que el vínculo ya mutó a indefinido sin que nadie lo notara. **No reciben ninguna de las tres alertas de periodo de prueba** —respondido por Angela, revierte lo que decía esta sección antes de la revisión de agosto de 2026—. Sí aplican las alertas de vacaciones.
+No generan alertas de vencimiento, porque no hay fecha previsible. Sí generan una alerta de gestión, que es **un correo cada dos meses con el listado de los contratos de obra o labor activos** de la empresa, para que alguien los revise: si una obra ya terminó y la persona siguió trabajando sin un acuerdo nuevo por escrito, el vínculo mutó a indefinido sin que nadie lo notara.
+
+**No hay umbral de antigüedad y es a propósito** —decisión de Angela, agosto de 2026, que cierra D.2—. El listado los trae todos, sin importar cuánto lleven: no existe criterio legal para decir a partir de cuándo una obra es «prolongada», y el propósito de este correo es la visibilidad periódica, no señalar unos pocos. Por eso tampoco es mensual: cada dos meses da la visibilidad sin volverse ruido.
+
+**No reciben ninguna de las tres alertas de periodo de prueba** —respondido por Angela, revierte lo que decía esta sección antes de la revisión de agosto de 2026—. Sí aplican las alertas de vacaciones.
 
 ### 9.7 Resumen del calendario
 
 | Frecuencia | Alertas |
 |---|---|
 | Individuales, por empleado | Periodo de prueba en indefinido (3 avisos, no aplica a obra o labor) · Periodo de prueba en término fijo (2 avisos) · Plazo de renovación a 32 días · Efecto del silencio a 30 días · Última renovación corta · Cercanía al tope legal (3 meses antes). |
-| Resumen mensual | Contratos vencidos sin gestionar · Acumulación de 15 días de vacaciones · Año cumplido sin disfrute mínimo · Contratos de obra o labor prolongados. |
+| Resumen mensual | Contratos vencidos sin gestionar · Acumulación de 15 días de vacaciones · Año cumplido sin disfrute mínimo. |
+| Resumen bimestral | Contratos de obra o labor activos. Es el único que no sale todos los meses (9.6). |
 | En pantalla, al momento | Saldo de vacaciones insuficiente · Documento inexistente · Advertencia de reingreso · Validaciones bloqueantes de prórroga. |
 
 ## 10. Calendario de festivos

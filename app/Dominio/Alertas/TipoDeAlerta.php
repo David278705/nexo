@@ -8,7 +8,8 @@ use App\Autorizacion\Modulo;
  * El catálogo cerrado de alertas del sistema (documento 1, 9.7).
  *
  * Son las trece del «resumen del calendario»: nueve individuales, una por
- * empleado, y cuatro de resumen mensual, agrupadas. Las tres que la misma
+ * empleado, y cuatro agrupadas —tres mensuales y la de obra o labor, que es
+ * bimestral (documento 1, 9.6 y 9.7)—. Las tres que la misma
  * tabla lista como «en pantalla, al momento» —saldo insuficiente, documento
  * inexistente, advertencia de reingreso— no están aquí y no deben estarlo: no
  * son correos, ya viven en sus pantallas y se construyeron en la fase 1 y 2.
@@ -61,7 +62,9 @@ enum TipoDeAlerta: string
 
     case AnioSinDisfruteMinimo = 'anio_sin_disfrute_minimo';
 
-    case ObraOLaborProlongada = 'obra_o_labor_prolongada';
+    // Bimestral, la única que no sale todos los meses (documento 1, 9.6).
+
+    case ObraOLaborActivos = 'obra_o_labor_activos';
 
     /**
      * Cómo se nombra la alerta en el registro de envíos y en la consola del
@@ -83,7 +86,7 @@ enum TipoDeAlerta: string
             self::ContratosVencidosSinGestionar => 'Contratos vencidos sin gestionar',
             self::AcumulacionDeQuinceDias => 'Vacaciones: acumulación de 15 días',
             self::AnioSinDisfruteMinimo => 'Vacaciones: año cumplido sin disfrute mínimo',
-            self::ObraOLaborProlongada => 'Contratos de obra o labor prolongados',
+            self::ObraOLaborActivos => 'Contratos de obra o labor activos',
         };
     }
 
@@ -99,11 +102,14 @@ enum TipoDeAlerta: string
     }
 
     /**
-     * Si la alerta va agrupada en el resumen del mes o sale una por empleado
+     * Si la alerta va agrupada en un resumen o sale una por empleado
      * (documento 1, 9.1 y 9.7).
      *
      * Un resumen no cuelga de ninguna vinculación, y por eso esta pregunta
-     * decide también si `vinculacion_id` puede ser nulo.
+     * decide también si `vinculacion_id` puede ser nulo. Lo que decide es «va
+     * agrupada», no cada cuánto sale: la de obra o labor es bimestral y
+     * también responde `true`, porque su correo tampoco es de nadie en
+     * particular.
      */
     public function esResumenMensual(): bool
     {
@@ -111,7 +117,7 @@ enum TipoDeAlerta: string
             self::ContratosVencidosSinGestionar,
             self::AcumulacionDeQuinceDias,
             self::AnioSinDisfruteMinimo,
-            self::ObraOLaborProlongada => true,
+            self::ObraOLaborActivos => true,
             default => false,
         };
     }

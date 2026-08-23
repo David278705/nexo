@@ -54,8 +54,9 @@ verificó. Nunca un número suelto dentro de la lógica.
 Valores actuales: 1,25 días de vacaciones por mes (art. 186 CST) · 2 meses de periodo de prueba en
 indefinido (art. 78) · una quinta parte en fijo inferior a un año, máximo 2 meses (art. 78) ·
 30 días de preaviso (art. 46, mod. Ley 2466 de 2025) · tope de 4 años en término fijo (art. 46 reformado) ·
-6 días hábiles continuos de disfrute mínimo anual (art. 190) · 4 prórrogas pactadas cortas y
-3 automáticas antes del mínimo de un año (Concepto MinTrabajo 6157 de 2026).
+6 días hábiles continuos de disfrute mínimo anual (art. 190) · **3 prórrogas inferiores a un año, en
+una sola cuenta para toda la cadena**, sean pactadas o automáticas —el tipo decide cuánto dura el
+tramo, nunca cuántos caben— (Concepto MinTrabajo 6157 de 2026 y sección C.1 del documento 6).
 
 ## Festivos
 

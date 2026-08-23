@@ -432,10 +432,10 @@ class CatalogosDelSistema
                 ],
                 [
                     'umbral' => 'Tiempo para considerar prolongado un contrato de obra o labor',
-                    'valor' => 'Sin decidir',
-                    'donde' => 'Llega con los resúmenes mensuales (F3-05)',
-                    'estado' => 'Decisión D.2 del documento 6',
-                    'tono' => 'neutro',
+                    'valor' => 'No hay umbral',
+                    'donde' => 'En ningún archivo: la alerta lista todos los activos',
+                    'estado' => 'Decisión D.2 resuelta: en su lugar, un listado cada dos meses',
+                    'tono' => 'exito',
                 ],
                 [
                     'umbral' => 'Vigencia del usuario de demostración',

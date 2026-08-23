@@ -7,6 +7,7 @@ use App\Dominio\Alertas\ProcesoDiarioDeAlertas;
 use App\Dominio\Alertas\Reglas\AcumulacionDeQuinceDias;
 use App\Dominio\Alertas\Reglas\AnioSinDisfruteMinimo;
 use App\Dominio\Alertas\Reglas\ContratosVencidosSinGestionar;
+use App\Dominio\Alertas\Reglas\ObraOLaborActivos;
 use App\Dominio\Alertas\TipoDeAlerta;
 use App\Models\Persona;
 use App\Models\Tenant;
@@ -20,12 +21,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Los resúmenes mensuales (F3-05, documento 1, 9.4, 9.5 y 9.6).
+ * Los resúmenes agrupados (F3-05, documento 1, 9.4, 9.5 y 9.6).
  *
- * Tres de los cuatro: contratos vencidos sin gestionar, acumulación de 15 días
- * de vacaciones y año cumplido sin disfrute mínimo. El cuarto —obra o labor
- * prolongada— depende del umbral de la decisión D.2, que sigue abierta, y no
- * tiene regla construida ni prueba que escribir.
+ * Los cuatro: contratos vencidos sin gestionar, acumulación de 15 días de
+ * vacaciones y año cumplido sin disfrute mínimo, que salen todos los meses, y el
+ * listado de contratos de obra o labor activos, que es **bimestral** y es el
+ * único que no sale todos los meses.
  *
  * Lo que los separa de las nueve alertas individuales es lo que más se prueba
  * aquí: **salen el último día hábil del mes** y **van agrupados en un solo
@@ -38,7 +39,8 @@ use Illuminate\Support\Facades\Mail;
 
 /**
  * El último día hábil de agosto de 2026, que es lunes 31: el mes termina en día
- * de oficina y el corte cae en el último día del calendario.
+ * de oficina y el corte cae en el último día del calendario. Agosto es par, así
+ * que este corte **no** trae el listado de obra o labor.
  */
 const CORTE_DE_AGOSTO = '2026-08-31';
 
@@ -47,6 +49,12 @@ const CORTE_DE_AGOSTO = '2026-08-31';
  * corte se queda en el viernes 29.
  */
 const CORTE_DE_MAYO = '2026-05-29';
+
+/**
+ * El último día hábil de septiembre de 2026, que es miércoles 30. Septiembre es
+ * impar: es el corte en el que sí sale el listado de obra o labor.
+ */
+const CORTE_DE_SEPTIEMBRE = '2026-09-30';
 
 beforeEach(function () {
     $this->empresa = Tenant::factory()->create(['nombre' => 'Comercializadora del Valle']);
@@ -84,6 +92,22 @@ function contratoVencido(Tenant $empresa): Vinculacion
         'Ana',
         'Gómez',
         'Auxiliar contable',
+    );
+}
+
+/**
+ * Carla Díaz, recepcionista con contrato de obra o labor desde el 15 de junio de
+ * 2025: al corte de septiembre de 2026 lleva quince meses cumplidos, que son «un
+ * año y 3 meses».
+ */
+function obraOLaborActiva(Tenant $empresa): Vinculacion
+{
+    return empleadoDelResumen(
+        $empresa,
+        Vinculacion::factory()->deObraOLabor()->conIngreso('2025-06-15'),
+        'Carla',
+        'Díaz',
+        'Recepcionista',
     );
 }
 
@@ -391,5 +415,125 @@ describe('año cumplido sin disfrute mínimo', function () {
         );
 
         expect(alertasDe(new AnioSinDisfruteMinimo, $this->empresa, CORTE_DE_AGOSTO))->toBe([]);
+    });
+});
+
+describe('contratos de obra o labor activos, el listado bimestral', function () {
+    it('sale el último día hábil de un mes impar y no el de un mes par', function () {
+        obraOLaborActiva($this->empresa);
+
+        expect(alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_SEPTIEMBRE))->toHaveCount(1)
+            ->and(alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_AGOSTO))->toBe([])
+            ->and(alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_MAYO))->toHaveCount(1);
+    });
+
+    it('tampoco sale un día cualquiera de un mes impar', function () {
+        obraOLaborActiva($this->empresa);
+
+        expect(alertasDe(new ObraOLaborActivos, $this->empresa, '2026-09-15'))->toBe([]);
+    });
+
+    it('escribe el asunto y el listado con la fecha de ingreso y cuánto lleva', function () {
+        obraOLaborActiva($this->empresa);
+
+        $alerta = alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_SEPTIEMBRE)[0];
+
+        expect($alerta->asunto)->toBe('Contratos de obra o labor activos: 1')
+            ->and($alerta->cuerpo)->toBe(
+                'Este contrato de obra o labor sigue activo y sin terminación registrada. Conviene '
+                .'verificar si esta obra ya finalizó: si la obra terminó y la persona siguió '
+                .'trabajando sin un acuerdo nuevo por escrito, el contrato se entiende celebrado a '
+                ."término indefinido desde el inicio de la relación.\n"
+                .'Carla Díaz, Recepcionista — ingresó el 15 de junio de 2025, lleva un año y 3 meses.'
+            );
+    });
+
+    it('los trae todos, incluido el que ingresó ese mismo mes', function () {
+        obraOLaborActiva($this->empresa);
+        empleadoDelResumen(
+            $this->empresa,
+            Vinculacion::factory()->deObraOLabor()->conIngreso('2026-09-15'),
+            'Luis',
+            'Ríos',
+            'Ayudante de obra',
+        );
+
+        $alerta = alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_SEPTIEMBRE)[0];
+
+        expect($alerta->asunto)->toBe('Contratos de obra o labor activos: 2')
+            ->and($alerta->cuerpo)->toContain(
+                'Luis Ríos, Ayudante de obra — ingresó el 15 de septiembre de 2026, lleva menos de un mes.'
+            );
+    });
+
+    it('pone primero el que lleva más tiempo', function () {
+        empleadoDelResumen(
+            $this->empresa,
+            Vinculacion::factory()->deObraOLabor()->conIngreso('2026-01-20'),
+            'Luis',
+            'Ríos',
+            'Ayudante de obra',
+        );
+        obraOLaborActiva($this->empresa);
+
+        $cuerpo = alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_SEPTIEMBRE)[0]->cuerpo;
+
+        expect(mb_strpos($cuerpo, 'Carla Díaz'))->toBeLessThan(mb_strpos($cuerpo, 'Luis Ríos'));
+    });
+
+    it('no mira el indefinido ni el de término fijo', function () {
+        empleadoDelResumen(
+            $this->empresa,
+            Vinculacion::factory()->conIngreso('2024-01-01'),
+            'Luis',
+            'Ríos',
+            'Mensajero',
+        );
+        empleadoDelResumen(
+            $this->empresa,
+            Vinculacion::factory()->aTerminoFijo('2024-01-01', '2027-01-01'),
+            'Ana',
+            'Gómez',
+            'Auxiliar contable',
+        );
+
+        expect(alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_SEPTIEMBRE))->toBe([]);
+    });
+
+    it('sale del listado en cuanto se registra la terminación de la obra', function () {
+        $contrato = obraOLaborActiva($this->empresa);
+
+        app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $contrato->registrarTerminacion(
+            TipoDeSalida::ObraTerminada,
+            null,
+            Carbon::parse('2026-09-10'),
+        ));
+
+        expect(alertasDe(new ObraOLaborActivos, $this->empresa, CORTE_DE_SEPTIEMBRE))->toBe([]);
+    });
+
+    it('no manda nada si la empresa no tiene ninguno', function () {
+        Mail::fake();
+        contratoVencido($this->empresa);
+
+        app(ProcesoDiarioDeAlertas::class)->correr(Carbon::parse(CORTE_DE_SEPTIEMBRE));
+
+        expect(alertaDelTipo($this->empresa, TipoDeAlerta::ObraOLaborActivos))->toBeNull();
+    });
+
+    it('el proceso lo registra sin vinculación y correrlo dos veces no lo duplica', function () {
+        Mail::fake();
+        obraOLaborActiva($this->empresa);
+
+        app(ProcesoDiarioDeAlertas::class)->correr(Carbon::parse(CORTE_DE_SEPTIEMBRE));
+        app(ProcesoDiarioDeAlertas::class)->correr(Carbon::parse(CORTE_DE_SEPTIEMBRE));
+
+        $alerta = alertaDelTipo($this->empresa, TipoDeAlerta::ObraOLaborActivos);
+
+        expect($alerta)->not->toBeNull()
+            ->and($alerta->vinculacion_id)->toBeNull()
+            ->and($alerta->destinatarios)->toBe([$this->usuario->email]);
+
+        Mail::assertSent(CorreoDeAlerta::class, 1);
     });
 });

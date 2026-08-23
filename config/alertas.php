@@ -7,14 +7,18 @@
 |
 | Aquí no hay ni un número legal: esos viven en `reglas_laborales.php` con
 | su norma citada. Lo que vive aquí es lo otro que el documento 2, sección
-| 8.1, manda sacar del código: «los umbrales que decide Angela —anticipación
-| de la alerta de tope, tiempo para considerar prolongado un contrato de
-| obra o labor— van en el mismo lugar, para poder ajustarlos sin desplegar
-| código».
+| 8.1, manda sacar del código: «los umbrales que decide Angela van en el
+| mismo lugar, para poder ajustarlos sin desplegar código».
 |
 | Son decisiones de criterio, no de ley. Cambiarlas es editar este archivo:
 | ni la regla de disparo, ni el texto del correo, ni el proceso diario
 | cambian de código.
+|
+| Hay uno solo, y no es que falte el otro: el «tiempo para considerar
+| prolongado un contrato de obra o labor» que esa sección menciona **no
+| existe**. La decisión D.2 lo eliminó en agosto de 2026 cambiándole la forma
+| a la alerta —un listado de todos los activos cada dos meses— porque ningún
+| criterio legal dice a partir de cuándo una obra es prolongada.
 |
 */
 

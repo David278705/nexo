@@ -10,12 +10,11 @@ namespace App\Dominio\Alertas;
  * proceso las instanciara él mismo, agregar una alerta obligaría a tocar el
  * proceso, y el proceso es lo que no queremos volver a tocar.
  *
- * Hoy trae las cinco del periodo de prueba (F3-03), las cuatro del término fijo
- * (F3-04) y tres de los cuatro resúmenes mensuales (F3-05). El cuarto —obra o
- * labor prolongada— no está porque su umbral es la decisión D.2, que sigue
- * abierta. Un proceso que corre sin reglas registradas no manda nada, que es
- * exactamente lo correcto, y por eso las pruebas del armazón vacían el catálogo
- * antes de meter la suya.
+ * Trae las trece del capítulo 9 del documento 1: las cinco del periodo de prueba
+ * (F3-03), las cuatro del término fijo (F3-04) y los cuatro resúmenes agrupados
+ * —tres mensuales y el bimestral de obra o labor— (F3-05). Un proceso que corre
+ * sin reglas registradas no manda nada, que es exactamente lo correcto, y por
+ * eso las pruebas del armazón vacían el catálogo antes de meter la suya.
  */
 class CatalogoDeReglas
 {

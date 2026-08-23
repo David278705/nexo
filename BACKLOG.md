@@ -669,15 +669,15 @@ construcción y tiene prueba.
 - `config/validaciones.php` no se tocó: `renovacion_prorroga_minima` sigue en `advierte`, que es B.3
   y sigue abierta.
 
-### [!] F3-05 · Resúmenes mensuales — falta el cuarto: D.2 no tiene umbral de obra o labor prolongada
+### [x] F3-05 · Resúmenes mensuales
 
 Contratos vencidos sin gestionar, acumulación de 15 días, año cumplido sin disfrute mínimo y obra o
 labor prolongada.
 **Hecho cuando:** el resumen llega agrupado en un solo correo, no uno por empleado.
 **Fuente:** `docs/01-especificacion-funcional.md` 9.5 y 9.6
 
-**Hechos tres de los cuatro**, y el «hecho cuando» de la tarea está cumplido y probado: el resumen
-sale en un solo correo por empresa, sin vinculación, con el listado dentro.
+**Hechos los cuatro**, y el «hecho cuando» de la tarea está cumplido y probado: el resumen sale en un
+solo correo por empresa, sin vinculación, con el listado dentro.
 
 - **`ResumenMensual`, la base compartida.** Las tres cuelgan de ella y de ella salen las tres
   diferencias con las nueve alertas individuales: **salen el último día hábil del mes**
@@ -701,9 +701,25 @@ sale en un solo correo por empresa, sin vinculación, con el listado dentro.
 - **`AnioSinDisfruteMinimo`** (9.5). Cada año de servicio, no solo el primero: el motivo está en la
   propia plantilla, «el mínimo anual que exige la ley». «Continuos» se lee como un solo periodo
   registrado de seis días hábiles o más, que sale de `disfrute_minimo_dias_habiles`.
-- **`ObraOLaborProlongada` no se construyó.** Su umbral es D.2, que sigue abierta, y no hay ningún
-  criterio legal del que deducirlo. El tipo ya está en el catálogo desde F3-01 y el renglón le espera
-  en `config/alertas.php`; falta la respuesta, no el camino.
+- **`ObraOLaborActivos`, el cuarto y el único bimestral.** D.2 lo desbloqueó cambiándole la forma en
+  vez de darle un número: **no hay umbral**, es el listado de todos los contratos de obra o labor
+  activos de la empresa, cada dos meses, para visibilidad. Cada línea lleva nombre, cargo, fecha de
+  ingreso y cuánto lleva, con los meses del motor y la frase de `Formato::tiempoTranscurrido()`. Trae
+  también al que ingresó ese mismo mes, que es exactamente lo que D.2 decidió: no existe criterio
+  legal para decir a partir de cuándo una obra es «prolongada», así que ningún corte de antigüedad se
+  podría sostener.
+- **`ResumenMensual` ganó una cadencia y no solo un día**, el gancho `saleEsteMes(Carbon $corte)`, que
+  por defecto devuelve `true`. Las tres mensuales no cambiaron de código.
+- **La cadencia se ancla en los meses impares** —enero, marzo, mayo, julio, septiembre y noviembre—,
+  el último día hábil de cada uno. Es decisión de implementación y no de Angela, que solo pidió «cada
+  dos meses»: hacía falta un ancla para que el disparo sea determinista y por tanto idempotente, y la
+  paridad del mes calendario lo consigue sin guardar estado ni depender de cuándo se dio de alta cada
+  empresa. Cambiarla es cambiar una condición en un sitio.
+- **`TipoDeAlerta::ObraOLaborProlongada` se renombró a `ObraOLaborActivos`**, con su valor
+  `obra_o_labor_activos` y su etiqueta «Contratos de obra o labor activos». El nombre viejo describía
+  la alerta que D.2 descartó. La prueba del catálogo enumera ahora los trece tipos.
+- **`config/alertas.php` no creció**: el renglón del umbral que esperaba ahí ya no existe, y así lo
+  dicen ahora su comentario de cabecera y el renglón del panel del proveedor, que decía «sin decidir».
 
 ### [ ] F3-06 · Entregabilidad y registro
 

@@ -313,7 +313,7 @@ Todos los correos comparten una plantilla base: encabezado con el nombre del sis
 | Contratos vencidos sin gestionar | Contratos vencidos sin registrar: {n} | Estos contratos superaron su fecha de finalización y no se registró ni su prórroga ni su terminación. Listado con nombre, cargo, fecha de vencimiento y días transcurridos. |
 | Acumulación de 15 días | Vacaciones acumuladas: {n} personas completaron 15 días | Estas personas completaron este mes 15 días de vacaciones acumuladas. Ya causaron un periodo completo y conviene programarlas. |
 | Año sin disfrute mínimo | Vacaciones pendientes: {n} personas cumplen un año | Estas personas cumplen el mes entrante un año en la empresa sin haber tomado al menos seis días hábiles continuos de vacaciones, que es el mínimo anual que exige la ley. |
-| Obra o labor prolongados | Contratos de obra o labor sin gestionar: {n} | Estos contratos de obra o labor llevan más de {umbral} sin registrar terminación. Conviene verificar si la obra ya finalizó. |
+| Contratos de obra o labor **(bimestral, no mensual)** | Contratos de obra o labor activos: {n} | Estos contratos de obra o labor siguen activos y sin terminación registrada. Conviene verificar si alguna de estas obras ya finalizó: si la obra terminó y la persona siguió trabajando sin un acuerdo nuevo por escrito, el contrato se entiende celebrado a término indefinido desde el inicio de la relación. Listado con nombre, cargo, fecha de ingreso y cuánto lleva. |
 
 ### 5.5 Entregabilidad
 

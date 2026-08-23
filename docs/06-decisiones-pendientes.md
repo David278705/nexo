@@ -47,11 +47,11 @@ Aquí está todo lo que todavía no se puede dar por cerrado. Se organiza en cin
 | 7 | Confirmar el periodo de prueba en cambio de modalidad contractual | B | Ambos | No |
 | 8 | Decidir si las validaciones de prórroga bloquean o solo advierten | B | Ambos | Sí, parcial |
 | 9 | ~~¿Se registra el tipo de prórroga?~~ **RESUELTA:** sí, pero no para contar | D | Angela | No |
-| 10 | Umbral de la alerta de contrato de obra o labor prolongado | D | Angela | Sí |
+| 10 | ~~Umbral de obra o labor prolongado~~ **RESUELTA:** sin umbral, listado bimestral | D | Angela | No |
 | 11 | ~~Anticipación de la alerta de cercanía al tope~~ **RESUELTA:** tres meses antes | D | Angela | No |
 | 12 | Vigencia del usuario de demostración | D | Angela | No |
 | 13 | Rangos de edad y de antigüedad para el dashboard | D | Angela | Sí |
-| 14 | Listados maestros: EPS, fondos, ARL, cajas, bancos | D | Angela | Sí |
+| 14 | ~~Listados maestros: EPS, fondos, ARL, cajas, bancos~~ **RESUELTA:** ver D.5 | D | Angela | No |
 | 15 | Confirmar el orden propuesto del dashboard | D | Angela | No |
 | 16 | Nombre definitivo del proceso de carga inicial | D | Angela | No |
 | 17 | Módulo de llamados de atención | E | Ambos | No |
@@ -305,9 +305,17 @@ Detalles pequeños que faltan para poder construir sin adivinar. Ninguno requier
 
 **Respondida por Angela.** El campo se queda en la acción "Renovar contrato" —**Prórroga pactada por escrito** o **Prórroga automática por silencio**—, pero deja de usarse para contar el límite de prórrogas cortas: ver la corrección de C.1. Sigue sirviendo para dos cosas que no cambiaron: el historial de cada contrato y la frase informativa del modal ("sería la 2ª prórroga, pactada por escrito").
 
-### D.2 Umbral de contrato de obra o labor prolongado
+### D.2 Umbral de contrato de obra o labor prolongado — RESUELTA, y el umbral desaparece
 
-**BLOQUEANTE.** ¿A partir de cuántos meses sin registrar terminación debe aparecer un contrato de obra o labor en la alerta mensual? No hay un criterio legal: es una señal de gestión y depende de qué tan largas suelen ser las obras en las empresas del segmento.
+**Respondida por Angela en agosto de 2026, cambiando la forma de la alerta en vez de poner un número.** La pregunta era a partir de cuántos meses sin registrar terminación debía aparecer un contrato de obra o labor en el aviso. La respuesta: **no hay umbral.** En su lugar, **un correo cada dos meses con el listado de todos los contratos de obra o labor activos de la empresa, para visibilidad.**
+
+Es la salida limpia a una pregunta que no tenía respuesta: no existe criterio legal para decidir cuándo una obra es «prolongada», y cualquier número habría sido inventado. Un listado periódico completo da la misma señal de gestión —«revisa si alguna de estas obras ya terminó»— sin afirmar que unas importan y otras no. La cadencia bimestral es lo que evita que un listado completo se vuelva ruido mensual.
+
+Consecuencias, ya reflejadas en los documentos 1 (9.6 y 9.7) y 2 (5.4):
+
+- **No se agrega ningún umbral a `config/alertas.php`.** El renglón que esperaba ahí no va.
+- **Es la única alerta que no sale todos los meses**, así que el armazón `ResumenMensual` necesita una cadencia y no solo un día.
+- **El nombre `ObraOLaborProlongada` quedó desalineado** con lo que la alerta hace: ya no habla de contratos prolongados sino de todos los activos.
 
 ### D.3 Anticipación de la alerta de cercanía al tope — RESUELTA
 

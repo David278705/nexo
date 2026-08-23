@@ -16,7 +16,8 @@ use Illuminate\Support\Carbon;
  * viven aquí para no escribirlas una vez por resumen:
  *
  * 1. **Salen el último día hábil del mes**, no en una fecha que dependa de cada
- *    empleado.
+ *    empleado. En qué meses sale cada uno lo decide `saleEsteMes()`: tres salen
+ *    todos y el de obra o labor, cada dos.
  * 2. **Van agrupados en un solo correo por empresa**, no uno por persona. Por
  *    eso usan `AlertaPorEnviar::paraLaEmpresa()`, que deja `vinculacion_id` en
  *    nulo: el resumen no es de nadie en particular.
@@ -64,11 +65,30 @@ abstract class ResumenMensual implements ReglaDeAlerta
     abstract protected function lineas(Carbon $corte): array;
 
     /**
+     * Si a este resumen le toca salir en el mes del corte.
+     *
+     * Por defecto sí: los tres resúmenes de las secciones 9.4 y 9.5 salen todos
+     * los meses. Lo sobrescribe el único que no, el de contratos de obra o
+     * labor, que es bimestral (documento 1, 9.6). Es un gancho y no una
+     * propiedad porque la respuesta depende del mes que se está mirando, no de
+     * la regla: preguntársela al corte es lo que mantiene el disparo sin estado
+     * guardado y por tanto idempotente.
+     */
+    protected function saleEsteMes(Carbon $corte): bool
+    {
+        return true;
+    }
+
+    /**
      * @return iterable<AlertaPorEnviar>
      */
     public function evaluar(Carbon $fechaDelDisparo, Carbon $fechaDeEnvio): iterable
     {
         if (! $fechaDelDisparo->isSameDay(MotorDeCalculo::ultimoDiaHabilDelMes($fechaDelDisparo))) {
+            return;
+        }
+
+        if (! $this->saleEsteMes($fechaDelDisparo)) {
             return;
         }
 

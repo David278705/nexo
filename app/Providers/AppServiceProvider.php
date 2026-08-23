@@ -12,6 +12,7 @@ use App\Dominio\Alertas\Reglas\AnioSinDisfruteMinimo;
 use App\Dominio\Alertas\Reglas\CercaniaAlTope;
 use App\Dominio\Alertas\Reglas\ContratosVencidosSinGestionar;
 use App\Dominio\Alertas\Reglas\EfectoDelSilencio;
+use App\Dominio\Alertas\Reglas\ObraOLaborActivos;
 use App\Dominio\Alertas\Reglas\PlazoDeRenovacion;
 use App\Dominio\Alertas\Reglas\PruebaFijoDosDias;
 use App\Dominio\Alertas\Reglas\PruebaFijoVispera;
@@ -38,8 +39,8 @@ class AppServiceProvider extends ServiceProvider
 
         // El catálogo de reglas de alerta, también singleton: es una lista que
         // se llena al arrancar y que el proceso diario recorre. Cada tarea de
-        // la fase 3 suma aquí las suyas con una línea y no toca el proceso;
-        // faltan los cuatro resúmenes mensuales (F3-05).
+        // la fase 3 suma aquí las suyas con una línea y no toca el proceso.
+        // Están las trece del capítulo 9 del documento 1.
         $this->app->singleton(CatalogoDeReglas::class, function (): CatalogoDeReglas {
             $catalogo = new CatalogoDeReglas;
 
@@ -56,12 +57,13 @@ class AppServiceProvider extends ServiceProvider
             $catalogo->registrar(new UltimaRenovacionCorta);
             $catalogo->registrar(new CercaniaAlTope);
 
-            // Tres de los cuatro resúmenes mensuales (documento 1, 9.4 y 9.5).
-            // Falta el de obra o labor prolongada: su umbral es la decisión
-            // D.2, que sigue abierta, y sin él no hay regla que construir.
+            // Los tres resúmenes mensuales (documento 1, 9.4 y 9.5).
             $catalogo->registrar(new ContratosVencidosSinGestionar);
             $catalogo->registrar(new AcumulacionDeQuinceDias);
             $catalogo->registrar(new AnioSinDisfruteMinimo);
+
+            // El bimestral, el único que no sale todos los meses (9.6).
+            $catalogo->registrar(new ObraOLaborActivos);
 
             return $catalogo;
         });
