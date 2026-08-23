@@ -145,6 +145,28 @@ class CacheDeSaldos
     }
 
     /**
+     * Cuántos empleados activos tienen, en la caché, un periodo completo de
+     * vacaciones acumulado o más (documento 1, 12.1, bloque de vacaciones).
+     *
+     * Es un conteo agregado y no el saldo de nadie en particular: sigue
+     * cumpliendo «nunca se expone el saldo de una persona» porque lo único que
+     * sale de aquí es cuántas filas cruzan el umbral, igual que `total()` solo
+     * deja salir una suma. Un empleado activo que todavía no tiene fila en la
+     * caché —por haber ingresado después del último refresco— no se cuenta
+     * aquí: es la misma aproximación que ya acepta `total()`, y es aceptable en
+     * un indicador del panel porque, a diferencia de la tarjeta de acción de
+     * `AtencionDelInicio`, esta cifra no decide a quién se le manda a nadie ni
+     * a qué listado se llega.
+     */
+    public static function conAcumulacionExcesiva(): int
+    {
+        return SaldoEnCache::query()
+            ->whereIn('vinculacion_id', self::activas()->select('id'))
+            ->where('dias', '>=', SaldoDeVacaciones::diasDeUnPeriodoCompleto())
+            ->count();
+    }
+
+    /**
      * La fecha a la que se refiere lo que hay guardado, o nulo si no hay nada.
      *
      * Un refresco deja a toda la empresa en la misma fecha, así que preguntar

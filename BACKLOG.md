@@ -958,11 +958,51 @@ contrario: que ninguna de las tres se dispara. El panel de inicio no se tocó �
 obra o labor desde F4-03— y con este cambio deja de discrepar con el correo, que era la segunda razón
 por la que esta tarea se adelantó.
 
-### [ ] F4-04 · Panel de inicio, indicadores
+### [x] F4-04 · Panel de inicio, indicadores
 
 Los seis bloques restantes en el orden definido. Solo los indicadores aprobados.
 **Hecho cuando:** el panel carga completo en menos de dos segundos.
 **Fuente:** `docs/01-especificacion-funcional.md` 12.1
+
+Hechos los seis bloques —Vacaciones, Planta, Rotación, Ausentismo, Composición y Movimientos—, cada
+uno con la misma forma (`titulo`, `tarjetas`, `distribuciones` y, cuando aplica, `avisos`), así que
+`Pages/Inicio.vue` los pinta con un solo bucle en vez de repetir marcado por bloque. Van en su propia
+prop diferida de Inertia, `indicadores`, igual que la tarjeta de vacaciones acumuladas de F4-03.
+
+- **`App\Inicio\Indicadores\`, seis clases y un orquestador.** `BloqueDeIndicadores` decide qué
+  bloques calcular según los módulos del usuario —la misma regla que ya sigue `BloqueDeAccion` con sus
+  tarjetas—, y arma el bloque de Ausentismo con la mitad de Incapacidades, la de Licencias, las dos o
+  ninguna, porque sus indicadores vienen de dos permisos distintos.
+- **Vacaciones lee de la caché de saldos (F4-02) y no del motor.** `CacheDeSaldos` ganó
+  `conAcumulacionExcesiva()`, un conteo agregado —nunca el saldo de nadie en particular, que sigue sin
+  tener método propio— para que «días acumulados» y «personas con acumulación excesiva» respondan en
+  milisegundos igual que `total()`. «Días disfrutados en el periodo» sí es en vivo: se lee como el mes
+  en curso hasta hoy —lo que enseña el prototipo, «Días disfrutados en agosto»— y es una decisión de
+  implementación, no una regla legal.
+- **Los índices de rotación y de ausentismo no están en ningún documento con una fórmula.** Se usó la
+  fórmula estándar de cada indicador —salidas o días perdidos sobre el promedio o el disponible del
+  periodo, por cien—, con el mismo criterio de implementación con que F3-05 fijó la cadencia de los
+  meses impares: no es un valor legal ni una pregunta para Angela, es aritmética del propio indicador.
+  El de ausentismo no mira más allá de hoy ni en el numerador ni en el denominador, para no inflar el
+  índice de los primeros días del mes con una incapacidad certificada por adelantado.
+- **«Principales motivos de salida» no recorta a un top.** No existe un criterio para decidir cuántos
+  son «los principales» —la misma razón por la que D.2 descartó un umbral para la obra o labor
+  prolongada—, así que se muestran todos los motivos con al menos una salida en el mes, de mayor a
+  menor.
+- **Composición queda con dos de sus cuatro indicadores bloqueados por D.4**, que el documento 6 marca
+  expresamente como pendiente y bloqueante: los cortes de los rangos de edad y de antigüedad. Cargo,
+  género y la antigüedad **promedio** —un solo número, no un reparto en rangos— sí se calculan enteros;
+  el bloque trae un aviso que dice de qué depende lo que falta, el mismo patrón que F1B-03 usó con las
+  pestañas del panel del proveedor.
+- **Movimientos no repite el indicador descartado por 12.2.** El reparto entre aumentos y promociones
+  es una nota que descompone la misma cifra, no una proporción nueva —esa es justo la que 12.2
+  descarta—.
+- **El «hecho cuando» quedó medido y no solo afirmado.** `tests/Feature/PanelDeIndicadoresTest.php`
+  repite el método de F4-03: doscientos empleados, la caché ya refrescada —lo que hace el proceso
+  diario cada noche—, y los seis bloques resueltos en menos de dos segundos. El resto de la batería
+  cubre cada indicador, los permisos por módulo y que un bloque no cuente la planta de otra empresa.
+- `resources/js/Components/DistribucionLista.vue` es el componente nuevo: una lista de conteos por
+  categoría con su barra proporcional, compartida por las seis distribuciones del panel.
 
 ### [ ] F4-05 · PUNTO DE CONTROL — revisión
 

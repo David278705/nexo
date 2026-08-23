@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Inicio\BloqueDeAccion;
+use App\Inicio\Indicadores\BloqueDeIndicadores;
 use App\Models\User;
 use App\Presentacion\Formato;
 use Illuminate\Http\Request;
@@ -23,7 +24,10 @@ use Inertia\Response as RespuestaInertia;
  */
 class InicioController extends Controller
 {
-    public function __construct(private readonly BloqueDeAccion $bloque) {}
+    public function __construct(
+        private readonly BloqueDeAccion $bloque,
+        private readonly BloqueDeIndicadores $indicadores,
+    ) {}
 
     public function index(Request $peticion): RespuestaInertia
     {
@@ -46,6 +50,14 @@ class InicioController extends Controller
              */
             'accionesDiferidas' => Inertia::defer(
                 fn (): array => $this->bloque->diferidasParaElUsuario($usuario)
+            ),
+            /*
+             * Los seis bloques de indicadores del capítulo 12 (F4-04). Van en su
+             * propio grupo diferido: ninguno de los dos depende del otro para
+             * pintarse, así que no hace falta que compartan la misma vuelta.
+             */
+            'indicadores' => Inertia::defer(
+                fn (): array => $this->indicadores->paraElUsuario($usuario)
             ),
         ]);
     }

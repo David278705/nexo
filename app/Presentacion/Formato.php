@@ -189,6 +189,30 @@ final class Formato
     }
 
     /**
+     * El nombre del mes, en minúscula: «agosto».
+     *
+     * Es como se lee dentro de una frase —«Días disfrutados en agosto»,
+     * documento 1, 12.1—, nunca con mayúscula inicial porque ahí no empieza
+     * una oración.
+     */
+    public static function mes(mixed $fecha): string
+    {
+        return $fecha instanceof Carbon ? $fecha->translatedFormat('F') : self::VACIO;
+    }
+
+    /**
+     * Un porcentaje como se lee en un indicador: «4,2%», «0%».
+     *
+     * Siempre a un decimal fijo, para que dos índices del mismo panel —rotación
+     * y ausentismo— se lean con la misma precisión y no den la impresión de que
+     * uno se calculó con más cuidado que el otro.
+     */
+    public static function porcentaje(float $valor): string
+    {
+        return number_format($valor, 1, ',', '.').'%';
+    }
+
+    /**
      * El dinero como se lee en Colombia: punto de miles y coma decimal, y sin
      * centavos cuando no los hay, que es casi siempre.
      */
