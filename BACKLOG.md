@@ -813,11 +813,48 @@ que la pantalla enseña—. `tests/Feature/ExportacionesYFiltrosTest.php`, 22 ca
 - **Auditoría es el octavo módulo de la tabla 11.3 y queda fuera a propósito**: no tiene pantalla
   todavía, y sus cuatro filtros llegan con `REV-04`.
 
-### [ ] F4-02 · Caché de saldos
+### [x] F4-02 · Caché de saldos
 
 Tabla de caché refrescada por el proceso diario. Nunca fuente de verdad.
 **Hecho cuando:** el dashboard suma el saldo de 200 empleados en menos de dos segundos.
 **Fuente:** `docs/02-arquitectura-y-datos.md` 3.4
+
+Hecho, y el «hecho cuando» **medido**: con doscientos empleados, sumar el saldo de la planta pasó de
+**3,7 segundos a 0,006**, con la misma cifra por los dos caminos. Sin caché no se cumplía el plazo de
+la tarea, así que el número de antes no es un adorno: es el motivo.
+
+- **La tabla `saldos_en_cache`**, con `tenant_id`, el trait, su política de RLS y un índice único
+  `(tenant_id, vinculacion_id)` que es lo que impide duplicar a nadie al refrescar dos veces, igual
+  que la clave de `alertas_enviadas`. Guarda `dias` en decimal de precisión fija —el saldo se compara
+  contra los quince días de un periodo completo y con coma flotante esa comparación falla sola—,
+  `calculado_al` y `calculado_en`: un número sin la fecha a la que se refiere no se contrasta con nada.
+- **Se sale de dos convenciones a propósito y las dos están justificadas en la migración.** No lleva
+  borrado lógico —no hay información que proteger: la fila se vuelve a producir entera, y una fila
+  muerta que hubiera que excluir en cada lectura solo añadiría una forma de sumar de más— y **no se
+  audita**, porque si no el refresco nocturno dejaría una línea sin autor por empleado y por noche.
+- **`CacheDeSaldos`, con dos métodos y ni un tercero.** «Nunca la fuente de verdad» se cumple por
+  construcción y no por disciplina: **no existe ningún método que devuelva el saldo de una persona**,
+  así que la ficha, la advertencia de saldo insuficiente, la confirmación de borrado y los dos
+  resúmenes mensuales de vacaciones siguen llamando a `SaldoDeVacaciones`, que calcula. `total()` es
+  lo único que lee la tabla y `refrescar()` lo único que la escribe, copiando el resultado del motor:
+  no hay una segunda aritmética del saldo que pueda separarse de la primera.
+- **`total()` no se olvida de nadie.** Los empleados registrados después del último refresco todavía
+  no tienen fila y se calculan ahí mismo: la caché puede dar un número **viejo**, nunca uno **falso**.
+  En régimen son tres consultas y ninguna cuenta laboral. El terminado después del refresco sale del
+  total el mismo día aunque su fila siga guardada, porque el cruce es contra los activos.
+- **`TotalDeSaldos`** lleva la cifra, la fecha a la que se refiere, sobre cuántos se sumó y cuántos se
+  calcularon al vuelo. El panel de F4-04 puede escribir «actualizado al 22 de agosto» en lugar de dar
+  a entender que la cifra es de este instante.
+- **El refresco cuelga del proceso diario** (documento 2, 3.4: «el mismo proceso que envía las
+  alertas»), al final de cada vuelta y **en su propio bloque**: un fallo recalculando saldos anota la
+  empresa como fallida pero no puede costar un correo, que es lo que se vende. `ResumenDelProceso`
+  cuenta las filas refrescadas y las dice en su línea de consola.
+- **Diecisiete pruebas nuevas**, entre `CacheDeSaldosTest.php` y los tres casos de aislamiento. Las
+  dos que importan tiran en direcciones contrarias: la de los doscientos empleados demuestra que
+  sirve, y la de la fila envenenada demuestra que no manda —se le pone 999 y la ficha sigue enseñando
+  el número calculado, y el refresco siguiente la corrige sola—. El aislamiento va aparte del armazón
+  de `casoDeAislamiento()` porque aquí la fuga no se vería como el dato de otra empresa en pantalla:
+  se vería como un total más alto de lo debido, que es la clase de error que nadie nota.
 
 ### [ ] F4-03 · Panel de inicio, bloque de acción
 

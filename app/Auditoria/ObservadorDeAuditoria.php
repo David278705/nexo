@@ -6,6 +6,7 @@ use App\Models\Acceso;
 use App\Models\AlertaEnviada;
 use App\Models\Auditoria;
 use App\Models\Invitacion;
+use App\Models\SaldoEnCache;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -50,6 +51,12 @@ class ObservadorDeAuditoria
         // correo —el registro, el intento y el envío— contando lo que la propia
         // tabla cuenta mejor.
         AlertaEnviada::class,
+
+        // La caché de saldos no guarda información: guarda una copia de lo que
+        // el motor calcula, y la reescribe entera cada noche. Auditarla dejaría
+        // una línea sin autor por empleado y por noche contando que un número
+        // derivado se volvió a derivar.
+        SaldoEnCache::class,
     ];
 
     /**

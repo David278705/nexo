@@ -2,6 +2,7 @@
 
 namespace App\Dominio\Alertas;
 
+use App\Dominio\Calculo\CacheDeSaldos;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Jobs\EnviarAlerta;
 use App\Models\AlertaEnviada;
@@ -26,10 +27,21 @@ use Illuminate\Support\LazyCollection;
  * 3. Registra cada alerta que corresponde. Si el índice único la rechaza, es
  *    que ya se había mandado y no pasa nada más.
  * 4. Encola el correo de las que sí quedaron registradas.
+ * 5. Refresca la caché de saldos de vacaciones de esa empresa.
  *
  * El envío no ocurre aquí. Aquí se registra y se encola; enviar es del
  * trabajador de la cola, que es quien puede reintentar sin bloquear el
  * recorrido de las demás empresas.
+ *
+ * ## Por qué la caché de saldos cuelga de aquí
+ *
+ * Porque lo dice la sección 3.4 del documento 2 —«refrescada cada noche por el
+ * mismo proceso que envía las alertas»— y porque este es el único sitio del
+ * sistema que ya recorre las empresas una por una con el contexto de cada una
+ * puesto. Va **al final de la vuelta y en su propio bloque**: la caché es una
+ * optimización de lectura y las alertas son lo que se vende, así que un fallo
+ * recalculando saldos no puede costar un correo. Se anota como empresa fallida
+ * —el operador tiene que enterarse— pero los avisos de esa empresa ya salieron.
  *
  * ## Una empresa que falla no detiene a las otras
  *
@@ -61,7 +73,10 @@ class ProcesoDiarioDeAlertas
             try {
                 $this->contexto->paraTenant(
                     $empresa,
-                    fn () => $this->evaluarEmpresa($empresa, $fechas, $dia, $resumen)
+                    function () use ($empresa, $fechas, $dia, $resumen): void {
+                        $this->evaluarEmpresa($empresa, $fechas, $dia, $resumen);
+                        $this->refrescarSaldos($empresa, $dia, $resumen);
+                    }
                 );
             } catch (\Throwable $error) {
                 $resumen->contarEmpresaFallida($empresa, $error);
@@ -149,6 +164,23 @@ class ProcesoDiarioDeAlertas
                     $this->registrarYEncolar($empresa, $alerta, $destinatarios, $resumen);
                 }
             }
+        }
+    }
+
+    /**
+     * La caché de saldos de esa empresa, ya con su contexto fijado.
+     *
+     * El bloque es suyo a propósito: si recalcular revienta —un dato roto, una
+     * fecha imposible—, la empresa queda anotada como fallida, pero sus alertas
+     * ya salieron unas líneas más arriba. El orden inverso las habría perdido
+     * por un número que se puede volver a calcular mañana.
+     */
+    private function refrescarSaldos(Tenant $empresa, Carbon $dia, ResumenDelProceso $resumen): void
+    {
+        try {
+            $resumen->contarSaldosRefrescados(CacheDeSaldos::refrescar($dia));
+        } catch (\Throwable $error) {
+            $resumen->contarEmpresaFallida($empresa, $error);
         }
     }
 

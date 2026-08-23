@@ -1,70 +1,66 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-23 · Tarea F4-01 (cerrada: exportación y filtros por módulo)
-**Verificación:** verde — Pint, PHPStan sin errores, **898** pruebas de Pest, build y 277 de Vitest.
-**Siguiente tarea:** F4-02 · Caché de saldos.
+**Última sesión:** 2026-08-23 · Tarea F4-02 (cerrada: caché de saldos)
+**Verificación:** verde — Pint, PHPStan sin errores, **915** pruebas de Pest, build y 277 de Vitest.
+**Siguiente tarea:** F4-03 · Panel de inicio, bloque de acción.
 
 ## Qué se hizo
 
-- **Los cinco filtros que faltaban de la tabla 11.3 del documento 1**: «Empleado» en incapacidades,
-  vacaciones y licencias; «Cargo» en vacaciones y movimientos; «Estado del contrato» en contratos. Con
-  eso, **los siete módulos con pantalla tienen exactamente los filtros que el documento 1 les da**.
-- **`App\Contratacion\FiltraPorEmpleado`**, el trait nuevo: la búsqueda por nombre o documento y el
-  filtro de cargo, cada uno en sus dos versiones —el listado que parte de `vinculaciones` y el que
-  parte de la tabla de la novedad—. Es el gemelo de `OrdenaPorEmpleado`, que ya hacía lo mismo para el
-  orden.
-- **`VigenciaDelContrato` ganó `ESTADOS`, `estadoDeGestion()` y `acotarAlEstado()`.** Los tres estados
-  son los que la columna «Estado» ya pintaba; lo nuevo es que tienen nombre y se pueden pedir por la
-  dirección.
-- **`HistorialDeContrato::diasDePreaviso()`**, que reúne las tres lecturas sueltas de
-  `reglas_laborales.preaviso_dias`.
-- **La exportación de incapacidades lleva ahora la EPS**, que el reporte del documento 1, 11.4 pide
-  junto al origen, el diagnóstico y los días.
-- **`tests/Feature/ExportacionesYFiltrosTest.php`, 22 casos**: el «hecho cuando» con tres filtros a la
-  vez, las tres columnas obligatorias en las siete exportaciones, cada filtro nuevo con su etiqueta
-  removible, los tres estados del contrato con su prueba de coherencia con el color, y el aislamiento
-  de los caminos nuevos.
-- Las cinco pantallas afectadas y las tres fábricas de props de Vitest que se quedaban cortas
-  (`Contratos`, `Vacaciones`, `Movimientos`, `Licencias`), más un caso nuevo de Vitest para el selector
-  de estado del contrato.
+- **La tabla `saldos_en_cache`**: `tenant_id`, el trait, su política de RLS, índice único
+  `(tenant_id, vinculacion_id)`, `dias` en decimal de precisión fija, `calculado_al` y `calculado_en`.
+- **`App\Dominio\Calculo\CacheDeSaldos`**, con `refrescar()` y `total()` y **ningún método que
+  devuelva el saldo de una persona**, que es lo que hace que la caché no pueda volverse la fuente de
+  verdad de nada.
+- **`App\Dominio\Calculo\TotalDeSaldos`**, lo que devuelve `total()`: la cifra, la fecha a la que se
+  refiere, cuántos empleados la componen y cuántos de ellos se calcularon al vuelo.
+- **`App\Models\SaldoEnCache`**, y su entrada en la lista `SIN_AUDITAR` del observador.
+- **El proceso diario la refresca**, empresa por empresa, al final de cada vuelta y en su propio
+  bloque. `ResumenDelProceso` cuenta las filas refrescadas y las dice en su línea de consola.
+- **`tests/Feature/CacheDeSaldosTest.php`, 14 casos**, más tres de aislamiento en `AislamientoTest`.
 
 ## Decisiones tomadas
 
-- **«Empleado» es una caja de búsqueda y no un desplegable, y usa la clave `buscar`.** Una empresa de
-  doscientas personas produce un selector que no se recorre, y quien registra una novedad conoce el
-  nombre o la cédula. Reutilizar la clave de empleados tiene una consecuencia concreta: `useListado`
-  ya trae `busqueda` y `buscar()` con su espera de 400 ms, así que **el composable no se tocó** y las
-  cuatro cajas de búsqueda del sistema se comportan igual.
-- **«Cargo» filtra por el cargo vigente de la vinculación**, no por el que la persona tenía el día de
-  la novedad: ninguna de las cinco tablas lo guarda, y el vigente es el que la columna enseña y el que
-  va a la exportación. En movimientos eso significa que filtrar por «Coordinadora de Operaciones» trae
-  también la promoción que se lo dio, que es lo que se busca al preguntar por un cargo.
-- **«Estado del contrato» no inventó ningún estado.** El documento 1 pide el filtro y el documento 3,
-  5.4 no lo lista entre los tres de esa pantalla; la salida sin inventar nada fue **filtrar por la
-  columna que la tabla ya muestra**. `tono()` pasó a derivarse de `estadoDeGestion()`, así que hay una
-  sola definición del estado en PHP, y `acotarAlEstado()` es su traducción a SQL —hecha falta porque
-  filtrar en PHP obligaría a traer la empresa entera—. **La prueba que las mantiene juntas** recorre
-  las filas de cada estado comprobando su tono, y una tercera comprueba que los tres reparten entre
-  ellos todos los contratos sin dejar ninguno fuera.
-- **Un contrato sin plazo está «al día».** Indefinido y obra o labor no tienen fecha que se les pueda
-  pasar, y ya recibían el verde de `tono()`.
-- **Las siete exportaciones ya cumplían 11.2 y no se tocaron.** Lo que faltaba no era código sino la
-  prueba que lo comprueba en las siete a la vez: hoy la escribe un solo caso que recorre la lista, y
-  la octava exportación no puede olvidarlo sin ponerlo en rojo.
-- **Auditoría queda fuera de esta tarea a propósito.** Es el octavo módulo de la tabla 11.3 y no tiene
-  pantalla; sus cuatro filtros llegan con `REV-04`.
-- **El panel de alertas sigue sin exportación**, como decidió F3-06: el documento 2, 5.5 pide un
-  registro «consultable» y el capítulo 11 no lo lista entre los módulos que exportan.
+- **El «hecho cuando» está medido y sin la caché no se cumplía.** Con doscientos empleados, sumar el
+  saldo de la planta tarda **3,7 segundos calculando y 0,006 leyendo la caché**, y las dos vías dan
+  exactamente la misma cifra. Los dos segundos que pide la tarea no se alcanzaban por el camino largo.
+- **«Nunca fuente de verdad» se resolvió quitando el método, no escribiendo una advertencia.**
+  `CacheDeSaldos` no ofrece el saldo de un empleado por ninguna parte, así que la ficha, la
+  advertencia de saldo insuficiente, la confirmación de borrado y los dos resúmenes mensuales de
+  vacaciones **no tenían de dónde leerlo aunque quisieran**: siguen llamando a `SaldoDeVacaciones`.
+  La tabla la lee un solo consumidor y para una sola cosa, sumar.
+- **Los resúmenes mensuales de vacaciones no usan la caché, y no es un olvido.**
+  `AcumulacionDeQuinceDias` necesita el saldo al cierre de **dos** meses distintos y
+  `AnioSinDisfruteMinimo` mira periodos de disfrute, no el saldo de hoy. La caché guarda una cifra a
+  una fecha; servirles a ellos la obligaría a ser la fuente de verdad de fechas que no guarda. La nota
+  de la sesión anterior daba a entender que esta tarea los aliviaría: **no los alivia y no debía**.
+  A quien alivia es al panel de inicio, que es lo que dice la sección 3.4.
+- **`total()` calcula al vuelo a quien no tiene fila todavía.** Un total que se dejara fuera a los
+  registrados esta mañana sería un número **equivocado**, y una caché puede dar uno viejo pero no uno
+  falso. No los escribe: escribir en medio de una petición de lectura convierte un panel en un proceso
+  de mantenimiento. En régimen, después de cada noche, son cero.
+- **La fecha del total es la de la caché y viaja dentro del resultado**, para que la pantalla escriba
+  «actualizado al 22 de agosto» en vez de dar a entender que la cifra es de este instante. Los que se
+  calculan al vuelo se calculan **a esa misma fecha**: un total mezclado de dos fechas no sería el
+  saldo de ningún día.
+- **La tabla se sale de dos convenciones a propósito**, con el motivo escrito en la migración. **Sin
+  borrado lógico**: la regla 4 protege información, y aquí no hay ninguna que proteger —cada fila se
+  vuelve a producir entera—, mientras que una fila muerta que hubiera que excluir en cada lectura sí
+  añadiría una forma de sumar de más. **Sin auditar**: si no, el refresco nocturno dejaría una línea
+  sin autor por empleado y por noche contando que un número derivado se volvió a derivar.
+- **El refresco va después de las alertas y en su propio bloque.** La caché es una optimización de
+  lectura y las alertas son la promesa que se vende: un fallo recalculando saldos anota la empresa
+  como fallida —el operador tiene que enterarse— pero los correos de esa empresa ya salieron.
+- **El aislamiento no pasó por `casoDeAislamiento()`.** La tabla no tiene texto por el que buscar ni
+  ruta propia, y su único camino de salida es una suma: una fuga no se vería como el dato ajeno en
+  pantalla, sino como un total más alto de lo debido. Los tres casos prueban los tres caminos que sí
+  existen —el modelo, el total y el refresco—, y el tercero es el que importa: sin filtro de empresa,
+  la primera que corriera el proceso dejaría a las demás sin caché.
 
 ## Preguntas para Angela
 
-- **Del filtro «Estado del contrato», para confirmar y sin que frene nada: los tres nombres.** «Al
-  día», «Plazo de preaviso pasado» y «Vencido sin gestionar» los redactó el sistema a partir de lo que
-  la columna ya decía. Los estados en sí no son una decisión suya —son los que el propio documento y
-  el artículo 46 del CST producen—, solo cómo se llaman en el desplegable.
-- **Heredadas, las cuatro de sesiones anteriores**: el texto del correo de prueba de entregabilidad,
-  los textos del correo de obra o labor, el texto del contrato que vence el día mismo del tope y
-  «acumula 3 prórrogas inferiores a un año».
+- **Heredadas, las cinco de sesiones anteriores**: los tres nombres del filtro «Estado del contrato»,
+  el texto del correo de prueba de entregabilidad, los textos del correo de obra o labor, el texto del
+  contrato que vence el día mismo del tope y «acumula 3 prórrogas inferiores a un año».
 
 ## Decisiones para David
 
@@ -78,22 +74,22 @@
 
 ## Notas para la próxima sesión
 
-- **F4-02 es la siguiente y es justo el alivio que llevan tres sesiones anotándose.** Los dos
-  resúmenes mensuales de vacaciones y `CercaniaAlTope` recorren a todos los activos porque el saldo es
-  una función y no una columna; la caché de saldos es lo que lo arregla. **Nunca fuente de verdad**: si
-  hay diferencia, manda el cálculo (documento 2, 3.4).
-- **F4-01 no tocó ninguna consulta de saldo**, así que el sitio que hay que mirar cuando llegue una
-  empresa grande sigue siendo el mismo.
+- **F4-03 es la siguiente y ya tiene las dos piezas que necesitaba.** `CacheDeSaldos::total()` le
+  resuelve la tarjeta del saldo acumulado de la planta, y F4-01 le dejó el enlace de contratos:
+  `estado=vencido` con `vence=todos` es exactamente «los que vencieron sin gestionar», el mismo número
+  que la cabecera de contratos enseña en su aviso.
+- **Si el panel enseña el total, que enseñe también la fecha.** `TotalDeSaldos::$al` está justamente
+  para eso, y `vieneToda()` dice si la cifra salió entera de la caché. Poner el número sin la fecha
+  sería reintroducir por la pantalla el problema que la regla 2 evita en la base de datos.
+- **La caché queda vacía hasta la primera corrida del proceso diario**, y eso no rompe nada: `total()`
+  responde igual, solo que despacio, y hay prueba de ello. En un ambiente nuevo conviene correr
+  `php artisan alertas:diarias` una vez para dejarla poblada.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** Su contenido está en el commit de
   F3-06. **No hay que aplicarlo**: traería la versión vieja de `TipoDeAlerta`.
-- **La deuda de filtros del backlog quedó pagada entera.** Los avisos que F2-04, F2-05, F2-07 y F2-08
-  dejaron escritos en sus propias clases —«esto es F4-01»— se borraron al hacerlo, así que no queda
-  ningún comentario prometiendo un filtro que ya existe.
 - **`REV-03`, `REV-04` y `REV-05` siguen al final del backlog.** `REV-05` no es opcional: hoy el
   sistema le manda a un empleado de obra o labor las alertas de periodo de prueba, que no le
-  corresponden por ley. **`REV-04` ganó un motivo más**: la pantalla de auditoría es la única de la
-  tabla 11.3 del documento 1 que sigue sin sus filtros, y esta tarea no pudo dárselos porque no hay
-  pantalla donde ponerlos.
-- **Si F4-03 filtra el listado de contratos desde una tarjeta del panel de inicio**, ya tiene por
-  dónde: `estado=vencido` con `vence=todos` es exactamente «los que vencieron sin gestionar», el mismo
-  número que la cabecera de contratos enseña en su aviso.
+  corresponden por ley.
+- **El sitio lento que quedaba ya no es el saldo de la planta, sino el refresco mismo**: cuatro
+  segundos por empresa de doscientos empleados, de noche y sin nadie esperando. Si algún día molesta,
+  el punto es `SaldoDeVacaciones::acumulacionHasta()`, que consulta mes a mes; esta tarea no lo tocó
+  a propósito, porque tocar el motor para ganar velocidad es exactamente donde se rompen los números.

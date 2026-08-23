@@ -2,6 +2,7 @@
 
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
+use App\Dominio\Calculo\CacheDeSaldos;
 use App\Exports\ContratosExport;
 use App\Exports\EmpleadosExport;
 use App\Exports\IncapacidadesExport;
@@ -18,6 +19,7 @@ use App\Models\Movimiento;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
+use App\Models\SaldoEnCache;
 use App\Models\Tenant;
 use App\Models\Terminacion;
 use App\Models\User;
@@ -982,6 +984,71 @@ casoDeAislamiento('perfil sociodemográfico', [
         'tipo_vivienda' => $vivienda,
     ]),
 ]);
+
+/**
+ * La caché de saldos de vacaciones (F4-02).
+ *
+ * No pasa por `casoDeAislamiento()` y el motivo es el mismo que la hace
+ * peligrosa: no tiene ni una columna de texto por la que buscar ni ruta propia
+ * por la que asomarse. Lo único que guarda es una cifra por empleado, y el
+ * único camino por el que sale es una **suma**. Una fuga aquí no se vería como
+ * el dato de otra empresa en pantalla: se vería como un total más alto de lo que
+ * debería, que es justo la clase de error que nadie nota.
+ *
+ * Por eso los tres casos son los tres caminos que existen: el modelo, el total
+ * y el refresco.
+ */
+describe('saldos en caché', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $this->empleadoDeLaA = $this->contexto->paraTenant($this->empresaA, function () {
+            $vinculacion = Vinculacion::factory()->conIngreso('2024-01-15')->create(['cargo' => SECRETO_DE_LA_A]);
+
+            CacheDeSaldos::refrescar();
+
+            return $vinculacion;
+        });
+    });
+
+    it('no devuelve por modelo la fila de saldo de otra empresa', function () {
+        $visto = $this->contexto->paraTenant($this->empresaB, fn () => SaldoEnCache::query()->count());
+
+        expect($visto)->toBe(0)
+            ->and($this->contexto->paraTenant($this->empresaA, fn () => SaldoEnCache::query()->count()))->toBe(1);
+    });
+
+    it('no suma en el total de una empresa el saldo de la otra', function () {
+        $deLaB = $this->contexto->paraTenant($this->empresaB, function () {
+            Vinculacion::factory()->conIngreso('2025-06-01')->create();
+
+            CacheDeSaldos::refrescar();
+
+            return CacheDeSaldos::total();
+        });
+
+        $deLaA = $this->contexto->paraTenant($this->empresaA, fn () => CacheDeSaldos::total());
+
+        expect($deLaB->empleados)->toBe(1)
+            ->and($deLaA->empleados)->toBe(1)
+            // Y el saldo de cada una es el suyo: la A entró un año y medio
+            // antes, así que tiene más días acumulados.
+            ->and($deLaA->dias)->toBeGreaterThan($deLaB->dias);
+    });
+
+    it('el refresco de una empresa no toca ni borra las filas de la otra', function () {
+        // El refresco borra las filas de quien ya no está activo. Sin el filtro
+        // de empresa, la primera empresa que corriera el proceso dejaría a las
+        // demás sin caché.
+        $this->contexto->paraTenant($this->empresaB, fn () => CacheDeSaldos::refrescar());
+
+        $visto = $this->contexto->paraTenant($this->empresaA, fn () => SaldoEnCache::query()->count());
+
+        expect($visto)->toBe(1);
+    });
+});
 
 casoDeAislamiento('alertas enviadas', [
     'tabla' => 'alertas_enviadas',

@@ -29,6 +29,8 @@ class ResumenDelProceso
 
     private int $sinDestinatarios = 0;
 
+    private int $saldosRefrescados = 0;
+
     /** @var list<array{empresa: string, motivo: string}> */
     private array $fallidas = [];
 
@@ -50,6 +52,15 @@ class ResumenDelProceso
     public function contarSinDestinatarios(): void
     {
         $this->sinDestinatarios++;
+    }
+
+    /**
+     * Cuántas filas de saldo quedaron en la caché de una empresa, que son
+     * cuántos empleados activos tiene. Se suman las de todas.
+     */
+    public function contarSaldosRefrescados(int $cuantos): void
+    {
+        $this->saldosRefrescados += $cuantos;
     }
 
     public function contarEmpresaFallida(Tenant $empresa, Throwable $error): void
@@ -80,6 +91,11 @@ class ResumenDelProceso
         return $this->sinDestinatarios;
     }
 
+    public function saldosRefrescados(): int
+    {
+        return $this->saldosRefrescados;
+    }
+
     /**
      * @return list<array{empresa: string, motivo: string}>
      */
@@ -95,10 +111,11 @@ class ResumenDelProceso
     public function resumen(): string
     {
         return sprintf(
-            '%d empresas · %d alertas nuevas · %d ya enviadas · %d empresas con error',
+            '%d empresas · %d alertas nuevas · %d ya enviadas · %d saldos en caché · %d empresas con error',
             $this->empresas,
             $this->registradas,
             $this->repetidas,
+            $this->saldosRefrescados,
             count($this->fallidas),
         );
     }
