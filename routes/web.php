@@ -12,6 +12,7 @@ use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\IncapacidadController;
+use App\Http\Controllers\InicioController;
 use App\Http\Controllers\LicenciaController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\Proveedor\CatalogoController;
@@ -20,7 +21,6 @@ use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
 use App\Http\Controllers\TerminacionController;
 use App\Http\Controllers\VacacionController;
-use App\Presentacion\Formato;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -53,13 +53,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('acceso.salir');
 
     /*
-     * El saludo y la fecha de la sección 5.2. La fecha se arma en el servidor
-     * para que salga en la zona horaria de la aplicación —`America/Bogota`— y
-     * no en la del navegador de quien mira.
+     * El panel de inicio (documento 3, sección 5.2): el saludo, la fecha y el
+     * bloque de lo que exige atención.
+     *
+     * No lleva middleware de módulo porque `Inicio` es de todo usuario de una
+     * empresa. Quien decide qué tarjetas se pintan es `BloqueDeAccion`, con la
+     * misma política que responde en la ruta de destino de cada una.
      */
-    Route::get('/', fn () => Inertia::render('Inicio', [
-        'fecha' => Formato::diaCompleto(now()),
-    ]))->name('inicio');
+    Route::get('/', [InicioController::class, 'index'])->name('inicio');
 
     /*
      * Las secciones del menú (documento 3, tabla 4.2). Todavía están vacías

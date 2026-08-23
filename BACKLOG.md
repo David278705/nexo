@@ -856,11 +856,46 @@ la tarea, así que el número de antes no es un adorno: es el motivo.
   de `casoDeAislamiento()` porque aquí la fuga no se vería como el dato de otra empresa en pantalla:
   se vería como un total más alto de lo debido, que es la clase de error que nadie nota.
 
-### [ ] F4-03 · Panel de inicio, bloque de acción
+### [x] F4-03 · Panel de inicio, bloque de acción
 
 Las tarjetas de lo que exige atención, cada una enlazando al listado ya filtrado.
 **Hecho cuando:** pulsar «contratos por vencer» lleva al listado filtrado.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 12 · `prototipos/sistema.html`
+
+Hechas **las cuatro tarjetas del prototipo**, y el «hecho cuando» probado hasta el final: el enlace de
+«contratos vencen en 30 días» abre el listado y **trae exactamente la cifra que la tarjeta enseña**.
+`tests/Feature/PanelDeInicioTest.php`, 25 casos.
+
+- **`App\Inicio\BloqueDeAccion`, `TarjetaDeAccion` y `AtencionDelInicio`**, más el componente
+  compartido `TarjetaDeAccion.vue` y el `InicioController` —la ruta dejó de ser una función suelta—.
+  La pantalla no cuenta nada: la cifra, el texto, el tono y el destino llegan escritos.
+- **Las tres cifras acumuladas del capítulo 12 enlazan cada una a lo suyo**: 30 en grande y 60 y 90 al
+  pie, con `?vence=30|60|90`. Salen de `ListadoDeContratos::porVencer()`, la misma cuenta que la
+  cabecera del módulo, así que el panel y el listado **no pueden discrepar**. La de vencidos pide
+  `vence=todos&estado=vencido`, porque el listado abre en noventa días y el que venció en febrero es
+  justo el que más urge.
+- **Una tarjeta en cero no se pinta**, la misma decisión que `ResumenMensual` tomó con los correos: un
+  bloque llamado «Requiere tu atención» que enseña cuatro ceros enseña a no mirarlo. Cuando no queda
+  ninguna, la pantalla lo dice con una frase. Y **ninguna tarjeta lleva a un 403**: el módulo lo
+  decide `PoliticaDeModulos`, el mismo que responde en la ruta de destino.
+- **El filtro `atencion` del listado de empleados** es el destino de las dos tarjetas que no van a
+  contratos. No se ofrece en la barra —la tabla 11.3 fija lo que la barra ofrece, y nadie escoge
+  «periodos de prueba que terminan esta semana» de un desplegable— pero sí sale como etiqueta
+  removible, o quien pulsa la tarjeta vería un listado corto sin saber por qué.
+- **La tarjeta de periodo de prueba deja fuera al contrato de obra o labor**, que es lo que dice 9.6.
+  Las tres alertas todavía se lo mandan y eso es `REV-05`; esta pantalla no repite el error mientras
+  tanto.
+- **La cuarta tarjeta cuenta a quien ya acumuló un periodo completo y su etiqueta lo dice.**
+  «Vacaciones en riesgo» son dos poblaciones en 11.4 y la segunda —quien está por cumplir un año sin
+  disfrutar seis días continuos— tiene su propio correo mensual; llamarlas igual daría un número que
+  no es el del reporte. Los quince días los calcula `SaldoDeVacaciones::diasDeUnPeriodoCompleto()`,
+  que salió de dentro de `AcumulacionDeQuinceDias` para que no haya dos declaraciones del mismo quince.
+- **El panel abre en milésimas y está medido.** Resolver el bloque entero de una vez tardaba **4,8
+  segundos** con doscientos empleados, porque contar acumulación obliga a pedirle el saldo al motor
+  uno por uno —se calcula, no se guarda—. La tarjeta de vacaciones pasó a `Inertia::defer` y la
+  primera vuelta bajó a **0,007**. Las otras tres salidas se descartaron a propósito: leer la caché
+  la convertiría en la fuente de verdad sobre una persona, y tocar el motor por velocidad es donde se
+  rompen los números. La medición quedó como prueba con el umbral de dos segundos del documento.
 
 ### [ ] F4-04 · Panel de inicio, indicadores
 

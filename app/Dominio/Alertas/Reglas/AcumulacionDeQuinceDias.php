@@ -18,10 +18,10 @@ use Illuminate\Support\Carbon;
  * ## Los quince días no están escritos aquí
  *
  * Son los de un año de servicio: doce meses a 1,25 días, que es la constante
- * `dias_vacaciones_por_mes` del artículo 186 del CST. Se multiplica en lugar de
- * escribir un quince suelto porque son el mismo número legal visto de otra
- * forma, y un día en que la ley cambie la acumulación mensual, esta alerta
- * seguiría avisando de un periodo completo y no de una cifra vieja.
+ * `dias_vacaciones_por_mes` del artículo 186 del CST. Lo calcula
+ * `SaldoDeVacaciones::diasDeUnPeriodoCompleto()`, en el motor, porque desde
+ * F4-03 también lo pregunta la tarjeta de acción del panel de inicio y dos
+ * declaraciones del mismo quince se separarían solas.
  *
  * ## Se mira contra el fin del mes calendario, no contra el corte
  *
@@ -51,12 +51,6 @@ use Illuminate\Support\Carbon;
  */
 class AcumulacionDeQuinceDias extends ResumenMensual
 {
-    /**
-     * Los meses de un año de servicio. No es un umbral de criterio: es la
-     * definición del periodo completo que la alerta anuncia.
-     */
-    private const MESES_DEL_PERIODO = 12;
-
     public function tipo(): TipoDeAlerta
     {
         return TipoDeAlerta::AcumulacionDeQuinceDias;
@@ -85,7 +79,7 @@ class AcumulacionDeQuinceDias extends ResumenMensual
     {
         $cierre = $corte->copy()->endOfMonth()->startOfDay();
         $cierreAnterior = $corte->copy()->startOfMonth()->subDay();
-        $periodo = self::diasDeUnPeriodoCompleto();
+        $periodo = SaldoDeVacaciones::diasDeUnPeriodoCompleto();
 
         $lineas = [];
 
@@ -107,13 +101,5 @@ class AcumulacionDeQuinceDias extends ResumenMensual
     private function linea(Vinculacion $vinculacion, float $saldo): string
     {
         return $this->quien($vinculacion).' — '.Formato::diasDecimales($saldo).' acumulados.';
-    }
-
-    /**
-     * Los quince días del artículo 186, calculados y no escritos.
-     */
-    private static function diasDeUnPeriodoCompleto(): float
-    {
-        return self::MESES_DEL_PERIODO * (float) config('reglas_laborales.dias_vacaciones_por_mes');
     }
 }

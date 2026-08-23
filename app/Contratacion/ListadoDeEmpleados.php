@@ -2,6 +2,7 @@
 
 namespace App\Contratacion;
 
+use App\Inicio\AtencionDelInicio;
 use App\Listados\Listado;
 use App\Models\Vinculacion;
 use App\Presentacion\Formato;
@@ -22,8 +23,13 @@ use Illuminate\Http\Request;
  *
  * El filtrado, el ordenamiento y la paginación se resuelven en el servidor, y
  * el armazón —normalizar la dirección, ordenar, paginar— lo pone `Listado`.
- * Aquí queda solo lo que es de este listado: sus seis filtros, sus columnas
+ * Aquí queda solo lo que es de este listado: sus filtros, sus columnas
  * ordenables y sus filas.
+ *
+ * Seis de esos filtros son los cinco de la tabla 11.3 más la búsqueda, y son los
+ * que la barra ofrece. El séptimo, `atencion`, no se ofrece: es el destino de
+ * las tarjetas de acción del panel de inicio y su motivo está en
+ * `AtencionDelInicio`.
  *
  * @extends Listado<Vinculacion>
  */
@@ -39,6 +45,7 @@ class ListadoDeEmpleados extends Listado
         public readonly string $cargo,
         public readonly string $ingresoDesde,
         public readonly string $ingresoHasta,
+        public readonly ?AtencionDelInicio $atencion,
         string $orden,
         string $direccion,
         int $porPagina,
@@ -63,6 +70,9 @@ class ListadoDeEmpleados extends Listado
             cargo: self::texto($peticion, 'cargo'),
             ingresoDesde: self::fecha($peticion, 'ingresoDesde'),
             ingresoHasta: self::fecha($peticion, 'ingresoHasta'),
+            atencion: AtencionDelInicio::tryFrom(
+                self::filtro($peticion, 'atencion', AtencionDelInicio::valores())
+            ),
             orden: self::ordenPedido($peticion),
             direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
@@ -116,6 +126,16 @@ class ListadoDeEmpleados extends Listado
                 'clave' => 'ingresoHasta',
                 'texto' => 'Ingreso hasta: '.self::enFormatoColombiano($this->ingresoHasta),
             ];
+        }
+
+        /*
+         * El motivo con el que se llegó desde una tarjeta del panel de inicio.
+         * Sale como etiqueta aunque la barra no lo ofrezca, y precisamente por
+         * eso: sin ella, quien pulsa la tarjeta ve un listado corto sin ninguna
+         * pista de por qué le faltan empleados, y sin forma de volver a verlos.
+         */
+        if ($this->atencion instanceof AtencionDelInicio) {
+            $etiquetas[] = ['clave' => 'atencion', 'texto' => $this->atencion->etiqueta()];
         }
 
         return $etiquetas;
@@ -222,6 +242,12 @@ class ListadoDeEmpleados extends Listado
         if ($this->buscar !== '') {
             self::buscarPorNombreODocumento($consulta, $this->buscar);
         }
+
+        // El motivo de atención lo decide el motor de cálculo empleado por
+        // empleado, así que llega resuelto en identificadores.
+        if ($this->atencion instanceof AtencionDelInicio) {
+            $consulta->whereKey($this->atencion->identificadores());
+        }
     }
 
     /**
@@ -257,6 +283,7 @@ class ListadoDeEmpleados extends Listado
             'cargo' => $this->cargo,
             'ingresoDesde' => $this->ingresoDesde,
             'ingresoHasta' => $this->ingresoHasta,
+            'atencion' => $this->atencion instanceof AtencionDelInicio ? $this->atencion->value : '',
         ];
     }
 }

@@ -30,6 +30,13 @@ use Illuminate\Support\Carbon;
  */
 class SaldoDeVacaciones
 {
+    /**
+     * Los meses de servicio de un periodo completo de vacaciones. No es un
+     * umbral de criterio: es la definición del periodo que el artículo 186
+     * causa.
+     */
+    private const MESES_DEL_PERIODO = 12;
+
     private function __construct(
         public readonly Vinculacion $vinculacion,
         private readonly ?int $vacacionExcluida = null,
@@ -57,6 +64,26 @@ class SaldoDeVacaciones
         return $novedad instanceof Vacacion
             ? new self($this->vinculacion, $id, $this->licenciaExcluida)
             : new self($this->vinculacion, $this->vacacionExcluida, $id);
+    }
+
+    /**
+     * Los quince días de un periodo completo de vacaciones, calculados y no
+     * escritos.
+     *
+     * Son doce meses de servicio a 1,25 días, la constante `dias_vacaciones_por_mes`
+     * del artículo 186 del CST. Se multiplica en lugar de escribir un quince
+     * suelto porque son el mismo número legal visto de otra forma: el día en que
+     * la ley cambie la acumulación mensual, quien pregunte por un periodo
+     * completo seguirá recibiendo un periodo completo y no una cifra vieja.
+     *
+     * Vive en el motor y no en quien pregunta porque hoy preguntan dos: el
+     * resumen mensual `AcumulacionDeQuinceDias`, que avisa a quien lo completa
+     * ese mes, y la tarjeta de acción del panel de inicio, que cuenta a quien ya
+     * lo tiene. Dos declaraciones del mismo quince se separarían solas.
+     */
+    public static function diasDeUnPeriodoCompleto(): float
+    {
+        return self::MESES_DEL_PERIODO * (float) config('reglas_laborales.dias_vacaciones_por_mes');
     }
 
     /**

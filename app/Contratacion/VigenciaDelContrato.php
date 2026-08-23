@@ -46,8 +46,15 @@ class VigenciaDelContrato
     public const ESTADOS = [
         ['valor' => 'al_dia', 'texto' => 'Al día'],
         ['valor' => 'preaviso_pasado', 'texto' => 'Plazo de preaviso pasado'],
-        ['valor' => 'vencido', 'texto' => 'Vencido sin gestionar'],
+        ['valor' => self::VENCIDO, 'texto' => 'Vencido sin gestionar'],
     ];
+
+    /**
+     * El estado que la tarjeta de acción del panel de inicio pide por la
+     * dirección. Es constante y no un literal más porque desde F4-03 lo escriben
+     * tres sitios y el enlace que no coincidiera no filtraría nada.
+     */
+    public const VENCIDO = 'vencido';
 
     private function __construct(
         private readonly ?Carbon $vencimiento,
@@ -151,7 +158,7 @@ class VigenciaDelContrato
     public function estadoDeGestion(): string
     {
         if ($this->yaVencio()) {
-            return 'vencido';
+            return self::VENCIDO;
         }
 
         $preaviso = $this->diasParaElPreaviso();
@@ -173,7 +180,7 @@ class VigenciaDelContrato
     public function tono(): string
     {
         return match ($this->estadoDeGestion()) {
-            'vencido' => 'error',
+            self::VENCIDO => 'error',
             'preaviso_pasado' => 'advertencia',
             default => 'exito',
         };
@@ -203,7 +210,7 @@ class VigenciaDelContrato
             ->addDays(HistorialDeContrato::diasDePreaviso())
             ->toDateString();
 
-        if ($estado === 'vencido') {
+        if ($estado === self::VENCIDO) {
             $consulta->whereNotNull('fecha_fin')->whereDate('fecha_fin', '<', $dia);
 
             return;
