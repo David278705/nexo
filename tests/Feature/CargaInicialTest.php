@@ -1,0 +1,597 @@
+<?php
+
+use App\CargaInicial\ArchivoIlegible;
+use App\CargaInicial\CatalogoDePlantillas;
+use App\CargaInicial\Columna;
+use App\CargaInicial\LectorDeArchivo;
+use App\CargaInicial\Plantilla;
+use App\CargaInicial\Plantillas\PlantillaDeEmpleados;
+use App\CargaInicial\Plantillas\PlantillaDeIncapacidades;
+use App\CargaInicial\Plantillas\PlantillaDeMovimientos;
+use App\CargaInicial\Plantillas\PlantillaDePerfilSociodemografico;
+use App\CargaInicial\Plantillas\PlantillaDeVacaciones;
+use App\CargaInicial\ResultadoDeSimulacion;
+use App\CargaInicial\SimulacionDeCarga;
+use App\Models\Arl;
+use App\Models\Banco;
+use App\Models\CajaCompensacion;
+use App\Models\Ciudad;
+use App\Models\Departamento;
+use App\Models\Eps;
+use App\Models\FondoPension;
+use App\Models\Pais;
+use App\Models\Persona;
+use App\Models\Tenant;
+use App\Models\Vinculacion;
+use App\Multiempresa\ContextoTenant;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+/**
+ * El lector de plantillas y su modo simulación (F5-01, documento 2, capítulo 6).
+ *
+ * La prueba que da nombre a la tarea es «una plantilla con tres errores
+ * deliberados los señala por fila y no escribe nada», y está en el primer
+ * `describe`. Las demás cubren lo que la haría pasar por accidente: que las seis
+ * plantillas de verdad se lean, que una celda mala no se cuente dos veces y que
+ * las cinco plantillas que se vinculan por documento no acepten a quien no está
+ * en la planta.
+ */
+beforeEach(function () {
+    $this->empresa = Tenant::factory()->create(['nombre' => 'Comercializadora del Valle']);
+
+    Pais::query()->firstOrCreate(['codigo' => Pais::COLOMBIA], ['nombre' => 'Colombia', 'activo' => true]);
+
+    $this->antioquia = Departamento::factory()->create(['nombre' => 'Antioquia']);
+    $this->medellin = Ciudad::factory()->de($this->antioquia)->create(['nombre' => 'Medellín']);
+
+    Eps::query()->create(['nombre' => 'Sura EPS', 'activo' => true]);
+    FondoPension::query()->create(['nombre' => 'Protección', 'activo' => true]);
+    Arl::query()->create(['nombre' => 'ARL Sura', 'activo' => true]);
+    CajaCompensacion::query()->create(['nombre' => 'Comfama', 'activo' => true]);
+    Banco::query()->create(['nombre' => 'Bancolombia', 'activo' => true]);
+});
+
+/**
+ * Escribe un archivo de Excel con la estructura de una plantilla y las filas
+ * que le pase la prueba, indexadas por el título de cada columna.
+ *
+ * Los archivos se arman aquí y no se guardan en el repositorio a propósito: un
+ * `.xlsx` binario en `tests/` no se puede leer en una revisión, y el error
+ * deliberado que contiene deja de estar a la vista de quien lee la prueba.
+ *
+ * @param  list<array<string, mixed>>  $filas
+ * @param  list<string>|null  $titulos  para simular una plantilla con la estructura cambiada
+ */
+function archivoDeCarga(Plantilla $plantilla, array $filas, ?array $titulos = null, ?string $hoja = null): string
+{
+    $titulos ??= array_map(fn (Columna $columna): string => $columna->titulo, $plantilla->columnas());
+
+    $libro = new Spreadsheet;
+    $pagina = $libro->getActiveSheet();
+    $pagina->setTitle($hoja ?? $plantilla->hoja());
+    $pagina->fromArray($titulos, null, 'A1');
+
+    foreach ($filas as $numero => $fila) {
+        $pagina->fromArray(
+            array_map(fn (string $titulo): mixed => $fila[$titulo] ?? null, $titulos),
+            null,
+            'A'.($numero + 2),
+            // Sin la comparación estricta, un cero se confunde con una celda
+            // vacía y la bonificación de quien no la tiene desaparecería.
+            true,
+        );
+    }
+
+    $ruta = tempnam(sys_get_temp_dir(), 'carga').'.xlsx';
+    (new Xlsx($libro))->save($ruta);
+
+    return $ruta;
+}
+
+/**
+ * Una fila completa y correcta de la plantilla de empleados.
+ *
+ * @param  array<string, mixed>  $cambios
+ * @return array<string, mixed>
+ */
+function filaDeEmpleado(array $cambios = []): array
+{
+    return [
+        'Tipo de documento' => 'Cédula de ciudadanía',
+        'Número de documento' => '43887201',
+        'Primer nombre' => 'Carolina',
+        'Segundo nombre' => 'Andrea',
+        'Primer apellido' => 'Restrepo',
+        'Segundo apellido' => 'Vélez',
+        'Género' => 'Femenino',
+        'Fecha de nacimiento' => '14/07/1991',
+        'País de nacimiento' => 'Colombia',
+        'Departamento de nacimiento' => 'Antioquia',
+        'Ciudad de nacimiento' => 'Medellín',
+        'Fecha de expedición del documento' => '05/08/2009',
+        'Lugar de expedición del documento' => 'Medellín',
+        'Dirección de residencia' => 'Calle 33 # 74-20 Apto 502',
+        'Departamento de residencia' => 'Antioquia',
+        'Ciudad de residencia' => 'Medellín',
+        'EPS' => 'Sura EPS',
+        'Fondo de pensión' => 'Protección',
+        'ARL' => 'ARL Sura',
+        'Nivel de riesgo' => 'I',
+        'Caja de compensación' => 'Comfama',
+        'Cargo' => 'Coordinadora de Operaciones',
+        'Tipo de contrato' => 'Término indefinido',
+        'Fecha de ingreso' => '03/02/2022',
+        'Salario mensual' => 3200000,
+        'Bonificación mensual' => 0,
+        'Entidad bancaria' => 'Bancolombia',
+        'Días de vacaciones disponibles hoy' => '17,25',
+        ...$cambios,
+    ];
+}
+
+/**
+ * Corre la simulación dentro del contexto de la empresa de la prueba, que es
+ * como la corre el comando: sin contexto no habría planta contra la que
+ * comprobar un documento.
+ */
+function simular(Plantilla $plantilla, string $archivo): ResultadoDeSimulacion
+{
+    return app(ContextoTenant::class)->paraTenant(
+        test()->empresa,
+        fn () => app(SimulacionDeCarga::class)->ejecutar($plantilla, $archivo),
+    );
+}
+
+/**
+ * Un empleado ya cargado, para las plantillas de histórico.
+ */
+function empleadoDeLaPlanta(string $documento = '43887201', array $vinculacion = []): Vinculacion
+{
+    return app(ContextoTenant::class)->paraTenant(
+        test()->empresa,
+        fn (): Vinculacion => Vinculacion::factory()
+            ->de(Persona::factory()->conDocumento($documento)->create())
+            ->create($vinculacion),
+    );
+}
+
+describe('el caso obligatorio de F5-01', function () {
+    it('señala los tres errores deliberados por su número de fila y no escribe nada', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Número de documento' => '1017234567']),
+            filaDeEmpleado(['Número de documento' => '52998877', 'Fecha de ingreso' => 'catorce de julio']),
+            filaDeEmpleado(['Número de documento' => '79112233', 'EPS' => 'Sura']),
+            filaDeEmpleado(['Número de documento' => '1098765432', 'Días de vacaciones disponibles hoy' => null]),
+        ], );
+
+        $resultado = simular(new PlantillaDeEmpleados, $archivo);
+
+        expect($resultado->filasLeidas())->toBe(4)
+            ->and($resultado->filasConError())->toBe(3)
+            ->and($resultado->filasCorrectas())->toBe(1);
+
+        // Las filas del archivo, no el orden del registro: la 2 es la primera
+        // con datos porque la 1 son los títulos.
+        expect(array_map(fn ($error) => $error->fila, $resultado->errores))->toBe([3, 4, 5]);
+
+        expect($resultado->motivosDe(3)[0])->toContain('no es una fecha');
+        expect($resultado->motivosDe(4)[0])->toContain('no está en el catálogo');
+        expect($resultado->motivosDe(5)[0])->toContain('días de vacaciones disponibles hoy son obligatorios');
+    });
+
+    it('no escribe ni una fila en la base de datos', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        $resultado = simular(new PlantillaDeEmpleados, $archivo);
+
+        expect($resultado->hayErrores())->toBeFalse()
+            ->and(Persona::withoutGlobalScopes()->count())->toBe(0)
+            ->and(Vinculacion::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('entrega la fila limpia ya traducida a campos del sistema', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        $valores = simular(new PlantillaDeEmpleados, $archivo)->valores()[0];
+
+        expect($valores['tipo_documento'])->toBe('cedula_ciudadania')
+            ->and($valores['fecha_nacimiento'])->toBe('1991-07-14')
+            ->and($valores['nacimiento']['pais'])->toBe('CO')
+            ->and($valores['nacimiento']['ciudad'])->toBe(test()->medellin->id)
+            ->and($valores['residencia']['ciudad'])->toBe(test()->medellin->id)
+            ->and($valores['expedicion']['ciudad'])->toBe(test()->medellin->id)
+            ->and($valores['tipo_riesgo'])->toBe('riesgo_i')
+            ->and($valores['tipo_contrato'])->toBe('indefinido')
+            ->and($valores['eps_id'])->toBe(Eps::query()->first()?->id)
+            // El dinero sale como texto de precisión fija, nunca como coma
+            // flotante.
+            ->and($valores['salario'])->toBe('3200000.00')
+            ->and($valores['saldo_inicial_vacaciones'])->toBe(17.25);
+    });
+});
+
+describe('el lector', function () {
+    it('encuentra las seis plantillas de plantillas/ con todas sus columnas', function () {
+        $lector = app(LectorDeArchivo::class);
+
+        foreach (app(CatalogoDePlantillas::class)->todas() as $plantilla) {
+            $archivo = base_path('plantillas/'.nombreDelArchivo($plantilla->clave()));
+
+            $leido = $lector->leer($plantilla, $archivo);
+
+            expect($leido->titulosQueFaltan)->toBe([], "faltan columnas en «{$plantilla->nombre()}»")
+                ->and($leido->filas)->not->toBeEmpty();
+        }
+    });
+
+    it('traduce una fecha real de Excel a AAAA-MM-DD', function () {
+        $libro = new Spreadsheet;
+        $hoja = $libro->getActiveSheet();
+        $hoja->setTitle('Vacaciones');
+        $hoja->fromArray(['Número de documento', 'Día inicial de vacaciones', 'Día final de vacaciones'], null, 'A1');
+        $hoja->setCellValue('A2', '43887201');
+        $hoja->setCellValue('B2', 45842);
+        $hoja->getStyle('B2')->getNumberFormat()->setFormatCode('dd/mm/yyyy');
+        $hoja->setCellValue('C2', '15/07/2025');
+
+        $ruta = tempnam(sys_get_temp_dir(), 'carga').'.xlsx';
+        (new Xlsx($libro))->save($ruta);
+
+        empleadoDeLaPlanta();
+
+        $valores = simular(new PlantillaDeVacaciones, $ruta)->valores()[0];
+
+        expect($valores['fecha_inicio'])->toBe('2025-07-04')
+            ->and($valores['fecha_fin'])->toBe('2025-07-15');
+    });
+
+    it('lee la hoja aunque le hayan cambiado el nombre', function () {
+        empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+            'Día final de vacaciones' => '15/07/2025',
+        ]], hoja: 'Hoja1');
+
+        expect(simular(new PlantillaDeVacaciones, $archivo)->hayErrores())->toBeFalse();
+    });
+
+    it('avisa cuando el archivo es el de otra plantilla', function () {
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, []);
+
+        expect(fn () => simular(new PlantillaDeIncapacidades, $archivo))
+            ->toThrow(ArchivoIlegible::class, 'Incapacidades');
+    });
+
+    it('señala en la fila 1 la columna que falta y sigue leyendo el resto', function () {
+        $titulos = array_map(
+            fn (Columna $columna): string => $columna->titulo,
+            (new PlantillaDeVacaciones)->columnas(),
+        );
+
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+        ]], titulos: array_slice($titulos, 0, 2));
+
+        $resultado = simular(new PlantillaDeVacaciones, $archivo);
+
+        expect($resultado->errores[0]->fila)->toBe(1)
+            ->and($resultado->errores[0]->columna)->toBe('Día final de vacaciones')
+            ->and($resultado->errores[0]->motivo)->toContain('no trae la columna')
+            ->and($resultado->filasLeidas())->toBe(1);
+    });
+
+    it('salta las filas en blanco sin contarlas como error', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(),
+            [],
+            filaDeEmpleado(['Número de documento' => '1017234567']),
+        ]);
+
+        $resultado = simular(new PlantillaDeEmpleados, $archivo);
+
+        expect($resultado->filasLeidas())->toBe(2)
+            ->and($resultado->hayErrores())->toBeFalse();
+    });
+});
+
+describe('la validación de la plantilla de empleados', function () {
+    it('no reporta dos veces la misma celda', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Fecha de ingreso' => 'el año pasado']),
+        ]);
+
+        $resultado = simular(new PlantillaDeEmpleados, $archivo);
+
+        expect($resultado->motivosDe(2))->toHaveCount(1);
+    });
+
+    it('rechaza la fecha de ingreso futura, que el formulario sí admite', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Fecha de ingreso' => now()->addMonth()->format('d/m/Y')]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('no puede ser futura');
+    });
+
+    it('rechaza el documento repetido dentro del mismo archivo', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(),
+            filaDeEmpleado(),
+        ]);
+
+        $resultado = simular(new PlantillaDeEmpleados, $archivo);
+
+        expect($resultado->filasConError())->toBe(1)
+            ->and($resultado->motivosDe(3)[0])->toContain('ya está en la fila 2');
+    });
+
+    it('no acepta un municipio que no sea del departamento escrito', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Ciudad de residencia' => 'Cartagena']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('no es un municipio de Antioquia');
+    });
+
+    it('pide el departamento entre paréntesis cuando el lugar de expedición está repetido', function () {
+        $santander = Departamento::factory()->create(['nombre' => 'Santander']);
+        Ciudad::factory()->de($santander)->create(['nombre' => 'Albania']);
+        Ciudad::factory()->de($this->antioquia)->create(['nombre' => 'Albania']);
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Lugar de expedición del documento' => 'Albania']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('Hay más de un municipio llamado «Albania»');
+
+        $conDepartamento = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Lugar de expedición del documento' => 'Albania (Santander)']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $conDepartamento)->hayErrores())->toBeFalse();
+    });
+
+    it('deja el departamento y la ciudad del exterior como texto libre', function () {
+        Pais::query()->create(['codigo' => 'VE', 'nombre' => 'Venezuela', 'activo' => true]);
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'País de nacimiento' => 'Venezuela',
+                'Departamento de nacimiento' => 'Zulia',
+                'Ciudad de nacimiento' => 'Maracaibo',
+            ]),
+        ]);
+
+        $valores = simular(new PlantillaDeEmpleados, $archivo)->valores()[0];
+
+        expect($valores['nacimiento']['pais'])->toBe('VE')
+            ->and($valores['nacimiento']['ciudad'])->toBe('Maracaibo');
+    });
+
+    it('rechaza un salario escrito con punto de miles, que en Colombia es ambiguo', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Salario mensual' => '3.200.000']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('sin puntos de miles');
+    });
+
+    it('admite el nivel de riesgo escrito como número romano', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Nivel de riesgo' => 'IV']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->valores()[0]['tipo_riesgo'])->toBe('riesgo_iv');
+    });
+
+    it('exige la fecha de finalización al contrato a término fijo y la prohíbe al indefinido', function () {
+        $sinFecha = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Tipo de contrato' => 'Término fijo']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $sinFecha)->motivosDe(2)[0])
+            ->toContain('necesita fecha de finalización');
+
+        $conFechaDeMas = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Fecha de finalización del contrato' => '31/12/2026']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $conFechaDeMas)->motivosDe(2)[0])
+            ->toContain('Solo el contrato a término fijo');
+    });
+});
+
+describe('las plantillas que se vinculan por documento', function () {
+    it('no acepta un histórico de quien no está en la plantilla de empleados', function () {
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+            'Día final de vacaciones' => '15/07/2025',
+        ]]);
+
+        expect(simular(new PlantillaDeVacaciones, $archivo)->motivosDe(2)[0])
+            ->toContain('No hay ningún empleado activo con el documento 43887201');
+    });
+
+    it('no alcanza al empleado de otra empresa', function () {
+        $otra = Tenant::factory()->create(['nombre' => 'Otra empresa']);
+
+        app(ContextoTenant::class)->paraTenant($otra, fn () => Vinculacion::factory()
+            ->de(Persona::factory()->conDocumento('43887201')->create())
+            ->create());
+
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+            'Día final de vacaciones' => '15/07/2025',
+        ]]);
+
+        expect(simular(new PlantillaDeVacaciones, $archivo)->motivosDe(2)[0])
+            ->toContain('No hay ningún empleado');
+    });
+
+    it('acepta la incapacidad de un empleado activo y la traduce', function () {
+        $vinculacion = empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDeIncapacidades, [[
+            'Número de documento' => '43887201',
+            'Fecha de inicio' => '14/07/2025',
+            'Fecha de terminación' => '16/07/2025',
+            'Código de diagnóstico' => 'J06.9',
+            '¿Es prórroga?' => 'No',
+            'EPS que la expide' => 'Sura EPS',
+            'Origen' => 'Común',
+        ]]);
+
+        $valores = simular(new PlantillaDeIncapacidades, $archivo)->valores()[0];
+
+        expect($valores['vinculacion_id'])->toBe($vinculacion->id)
+            ->and($valores['es_prorroga'])->toBe('no')
+            ->and($valores['origen'])->toBe('comun');
+    });
+
+    it('traduce los nombres que la plantilla del perfil escribe distinto del sistema', function () {
+        empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDePerfilSociodemografico, [[
+            'Número de documento' => '43887201',
+            'Estado civil' => 'Unión libre',
+            'Nivel educativo alcanzado' => 'Bachillerato',
+            'Tipo de vivienda' => 'Arrendada',
+            'Estrato socioeconómico' => 3,
+            'Medio de transporte al trabajo' => 'Moto',
+            'Tiempo de desplazamiento' => 'De 30 min a 1 hora',
+        ]]);
+
+        $perfil = simular(new PlantillaDePerfilSociodemografico, $archivo)->valores()[0]['perfil'];
+
+        expect($perfil['estado_civil'])->toBe('union_libre')
+            ->and($perfil['nivel_educativo'])->toBe('bachiller')
+            ->and($perfil['medio_transporte'])->toBe('motocicleta')
+            ->and($perfil['tiempo_desplazamiento'])->toBe('entre_30_y_60_minutos');
+    });
+
+    it('rechaza el rango de desplazamiento que la plantilla ofrece y el sistema no tiene', function () {
+        empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDePerfilSociodemografico, [[
+            'Número de documento' => '43887201',
+            'Tiempo de desplazamiento' => 'Menos de 30 min',
+        ]]);
+
+        expect(simular(new PlantillaDePerfilSociodemografico, $archivo)->motivosDe(2)[0])
+            ->toContain('Menos de 15 minutos');
+    });
+
+    it('avisa si el último movimiento no cuadra con lo que informó la plantilla de empleados', function () {
+        empleadoDeLaPlanta('43887201', ['cargo' => 'Coordinadora de Operaciones', 'salario' => 3_200_000]);
+
+        $archivo = archivoDeCarga(new PlantillaDeMovimientos, [[
+            'Número de documento' => '43887201',
+            'Tipo de movimiento' => 'Promoción',
+            'Fecha de efectividad' => '01/08/2025',
+            'Cargo anterior' => 'Analista Senior',
+            'Cargo nuevo' => 'Coordinadora de Operaciones',
+            'Salario anterior' => 2700000,
+            'Salario nuevo' => 2900000,
+        ]]);
+
+        expect(simular(new PlantillaDeMovimientos, $archivo)->motivosDe(2)[0])
+            ->toContain('tendría que ser el mismo que informó la plantilla de empleados');
+    });
+
+    it('acepta el histórico de movimientos que cuadra con la planta', function () {
+        empleadoDeLaPlanta('43887201', ['cargo' => 'Coordinadora de Operaciones', 'salario' => 3_200_000]);
+
+        $archivo = archivoDeCarga(new PlantillaDeMovimientos, [
+            [
+                'Número de documento' => '43887201',
+                'Tipo de movimiento' => 'Aumento salarial',
+                'Fecha de efectividad' => '01/03/2024',
+                'Cargo anterior' => 'Analista Senior',
+                'Cargo nuevo' => 'Analista Senior',
+                'Salario anterior' => 2500000,
+                'Salario nuevo' => 2700000,
+            ],
+            [
+                'Número de documento' => '43887201',
+                'Tipo de movimiento' => 'Promoción',
+                'Fecha de efectividad' => '01/08/2025',
+                'Cargo anterior' => 'Analista Senior',
+                'Cargo nuevo' => 'Coordinadora de Operaciones',
+                'Salario anterior' => 2700000,
+                'Salario nuevo' => 3200000,
+            ],
+        ]);
+
+        expect(simular(new PlantillaDeMovimientos, $archivo)->hayErrores())->toBeFalse();
+    });
+});
+
+describe('el comando de simulación', function () {
+    it('enumera los motivos y termina en error sin escribir nada', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Días de vacaciones disponibles hoy' => null]),
+        ]);
+
+        $this->artisan('carga:simular', [
+            'empresa' => (string) $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => $archivo,
+        ])
+            ->expectsOutputToContain('Filas leídas: 1')
+            ->expectsOutputToContain('días de vacaciones disponibles hoy son obligatorios')
+            ->assertExitCode(1);
+
+        expect(Persona::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('confirma que el archivo está limpio', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        $this->artisan('carga:simular', [
+            'empresa' => (string) $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => $archivo,
+        ])
+            ->expectsOutputToContain('El archivo está limpio')
+            ->assertExitCode(0);
+    });
+
+    it('no acepta una plantilla que no existe', function () {
+        $this->artisan('carga:simular', [
+            'empresa' => (string) $this->empresa->id,
+            'plantilla' => 'nomina',
+            'archivo' => 'no importa',
+        ])
+            ->expectsOutputToContain('No existe la plantilla «nomina»')
+            ->assertExitCode(1);
+    });
+});
+
+/**
+ * El archivo de `plantillas/` que corresponde a cada plantilla del catálogo.
+ *
+ * Los nombres llevan número y paréntesis porque así se los entregan al cliente,
+ * y esta correspondencia es lo único que ata el código a esos nombres.
+ */
+function nombreDelArchivo(string $clave): string
+{
+    return match ($clave) {
+        'empleados' => '1 - Empleados actuales (obligatoria).xlsx',
+        'perfil' => '2 - Perfil sociodemografico (opcional).xlsx',
+        'incapacidades' => '3 - Historico de incapacidades (opcional).xlsx',
+        'vacaciones' => '4 - Historico de vacaciones (opcional).xlsx',
+        'licencias' => '5 - Historico de licencias y ausencias (opcional).xlsx',
+        'movimientos' => '6 - Historico de aumentos y promociones (opcional).xlsx',
+        default => throw new InvalidArgumentException("No hay archivo para «{$clave}»."),
+    };
+}

@@ -1023,12 +1023,42 @@ revisión que la levanta y necesita una decisión de David.
 
 ## Fase 5 — Carga inicial, demostración y panel completo
 
-### [ ] F5-01 · Lector de plantillas
+### [x] F5-01 · Lector de plantillas
 
 Lee las seis plantillas de `plantillas/`. Modo simulación que valida sin escribir y devuelve errores
 por número de fila con el motivo.
 **Hecho cuando:** una plantilla con tres errores deliberados los señala por fila y no escribe nada.
 **Fuente:** `docs/02-arquitectura-y-datos.md` cap. 6
+
+Hecho: `app/CargaInicial/` con `LectorDeArchivo`, `SimulacionDeCarga`, `ResultadoDeSimulacion`,
+`PlantaDeLaEmpresa`, `CatalogoDePlantillas` y las **seis** clases de `Plantillas/`, más el comando
+`carga:simular {empresa} {plantilla} {archivo}`. El «hecho cuando» está probado literalmente: un
+archivo con cuatro filas y tres errores deliberados —una fecha ilegible, una EPS que no está en el
+catálogo y el saldo vacío— devuelve tres errores en las filas 3, 4 y 5, y `personas` y `vinculaciones`
+siguen en cero.
+
+- **Las reglas de cada plantilla son las del formulario de su módulo, sin copiar ninguna.** La fila
+  traducida se le pasa a `RegistrarEmpleado`, `RegistrarIncapacidad`, `RegistrarVacacion`,
+  `RegistrarLicencia` o `RegistrarMovimiento`, y de ahí salen `rules()`, `messages()` y
+  `attributes()`. Si la plantilla tuviera reglas propias, tarde o temprano admitiría por archivo lo
+  que la pantalla rechaza.
+- **Lo que la plantilla añade son condiciones del archivo, no de la pantalla**, y cada una con su
+  motivo escrito: el saldo de vacaciones obligatorio (documento 2, 6.2: la única ausencia
+  bloqueante), la fecha de ingreso no futura —aquí van «únicamente las personas vinculadas hoy»—,
+  el documento sin repetir dentro del archivo, y la comprobación que la plantilla 6 promete en su
+  hoja de instrucciones: el último movimiento de cada persona tiene que cuadrar con el salario y el
+  cargo de la planta.
+- **El título es la llave y el número de fila es el del Excel.** Las columnas se buscan por nombre y
+  no por posición; la que falte se señala en la fila 1 y el resto del archivo se lee igual.
+- **Un error de digitación no puede acabar en un error de base de datos.** Cuando un municipio o un
+  departamento no se resuelven, los dos campos se vacían antes de validar: dejar ahí el nombre haría
+  que la comprobación del catálogo buscara un número donde hay letras.
+- `TipoDeCelda` estrenó `Dinero`, que sale como texto de dos decimales: la convención del proyecto es
+  que el dinero nunca viaje en coma flotante.
+- **Tres desajustes entre las plantillas y el sistema quedaron anotados en `ESTADO.md`**, no
+  resueltos por cuenta propia: «Sura» y «Sura EPS» en la fila de ejemplo, el código de diagnóstico
+  que la plantilla marca opcional y la columna exige, y el rango «Menos de 30 min» que el sistema
+  parte en dos.
 
 ### [ ] F5-02 · Ejecución de la carga
 
