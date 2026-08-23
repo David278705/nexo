@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Autorizacion\Modulo;
+use App\Contratacion\ListadoDeEmpleados;
 use App\Exports\MovimientosExport;
 use App\Http\Requests\RegistrarMovimiento;
 use App\Models\Movimiento;
@@ -43,6 +44,10 @@ class MovimientoController extends Controller
             'opciones' => [
                 'tipos' => TipoDeMovimiento::paraElegir(),
                 'tiposDelFormulario' => TipoDeMovimiento::paraElFormulario(),
+                // Los cargos que existen hoy en la empresa, para el filtro de
+                // «Cargo» (documento 1, 11.3). Es la misma lista del listado de
+                // empleados: los cargos son de la vinculación, no del módulo.
+                'cargos' => ListadoDeEmpleados::cargos(),
                 'tamanos' => ListadoDeMovimientos::TAMANOS_DE_PAGINA,
             ],
             /*

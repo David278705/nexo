@@ -207,9 +207,22 @@ class HistorialDeContrato
      */
     public function fechaLimiteDePreaviso(): ?Carbon
     {
-        $dias = (int) config('reglas_laborales.preaviso_dias');
+        return $this->fechaDeVencimiento()?->copy()->subDays(self::diasDePreaviso());
+    }
 
-        return $this->fechaDeVencimiento()?->copy()->subDays($dias);
+    /**
+     * Cuántos días antes del vencimiento hay que avisar.
+     *
+     * Se lee de la configuración y no de un 30 escrito a mano, y se lee **desde
+     * aquí** porque son tres los que preguntan lo mismo: esta fecha límite, el
+     * día en que disparan las alertas del preaviso (`ReglaDePreavisoDelFijo`) y
+     * el estado de gestión con el que se filtra el listado de contratos
+     * (`VigenciaDelContrato`). Tres lecturas sueltas de la misma clave son tres
+     * sitios donde acordarse el día que deje de ser una constante global.
+     */
+    public static function diasDePreaviso(): int
+    {
+        return (int) config('reglas_laborales.preaviso_dias');
     }
 
     /**

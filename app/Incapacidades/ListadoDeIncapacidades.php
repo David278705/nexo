@@ -2,6 +2,7 @@
 
 namespace App\Incapacidades;
 
+use App\Contratacion\FiltraPorEmpleado;
 use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
 use App\Models\Eps;
@@ -19,7 +20,11 @@ use Illuminate\Http\Request;
  *
  * El armazón —la dirección, el orden, la paginación y la consulta única que
  * comparten la pantalla y la exportación— lo pone `Listado`. Aquí queda solo lo
- * propio: sus tres filtros, sus columnas ordenables y sus filas.
+ * propio: sus cuatro filtros, sus columnas ordenables y sus filas.
+ *
+ * Los cuatro son los del documento 1, 11.3: rango de fechas, origen, EPS y
+ * empleado. El de empleado es la caja de búsqueda de `FiltraPorEmpleado`, la
+ * misma del listado de empleados.
  *
  * **El código de diagnóstico no se filtra ni se oculta aquí.** Quien llega a
  * este listado ya pasó el middleware `modulo:incapacidades`, que es el único
@@ -29,9 +34,11 @@ use Illuminate\Http\Request;
  */
 class ListadoDeIncapacidades extends Listado
 {
+    use FiltraPorEmpleado;
     use OrdenaPorEmpleado;
 
     protected function __construct(
+        public readonly string $buscar,
         public readonly string $desde,
         public readonly string $hasta,
         public readonly string $origen,
@@ -46,6 +53,7 @@ class ListadoDeIncapacidades extends Listado
     public static function desde(Request $peticion): self
     {
         return new self(
+            buscar: self::texto($peticion, 'buscar'),
             desde: self::fecha($peticion, 'desde'),
             hasta: self::fecha($peticion, 'hasta'),
             origen: self::filtro($peticion, 'origen', OrigenIncapacidad::valores()),
@@ -62,6 +70,10 @@ class ListadoDeIncapacidades extends Listado
     public function aplicados(): array
     {
         $etiquetas = [];
+
+        if ($this->buscar !== '') {
+            $etiquetas[] = ['clave' => 'buscar', 'texto' => 'Empleado: '.$this->buscar];
+        }
 
         if ($this->desde !== '') {
             $etiquetas[] = ['clave' => 'desde', 'texto' => 'Desde: '.self::enFormatoColombiano($this->desde)];
@@ -89,6 +101,11 @@ class ListadoDeIncapacidades extends Listado
      * módulo, y a esa pantalla no llega quien no tiene el permiso: no hay un
      * segundo lector de esta fila que necesite verla recortada.
      *
+     * `eps` es el único dato que la tabla no enseña —no cabe entre las nueve
+     * columnas y ya está como filtro—: está aquí porque el reporte de
+     * incapacidades del documento 1, 11.4 lo pide con origen, diagnóstico y
+     * días, y esos tres van a la exportación desde F2-04.
+     *
      * @return array<string, string|int>
      */
     public static function fila(Incapacidad $incapacidad): array
@@ -107,6 +124,7 @@ class ListadoDeIncapacidades extends Listado
             'diagnostico' => $incapacidad->codigo_diagnostico,
             'origen' => $incapacidad->origen->etiqueta(),
             'prorroga' => $incapacidad->es_prorroga ? 'Sí' : 'No',
+            'eps' => (string) $incapacidad->eps->getAttribute('nombre'),
         ];
     }
 
@@ -136,6 +154,10 @@ class ListadoDeIncapacidades extends Listado
      */
     protected function filtrar(Builder $consulta): void
     {
+        if ($this->buscar !== '') {
+            self::buscarAlEmpleadoDeLaNovedad($consulta, $this->buscar);
+        }
+
         if ($this->desde !== '') {
             $consulta->whereDate('fecha_inicio', '>=', $this->desde);
         }
@@ -176,6 +198,7 @@ class ListadoDeIncapacidades extends Listado
     protected function filtrosParaLaInterfaz(): array
     {
         return [
+            'buscar' => $this->buscar,
             'desde' => $this->desde,
             'hasta' => $this->hasta,
             'origen' => $this->origen,

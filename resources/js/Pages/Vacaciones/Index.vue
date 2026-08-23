@@ -13,6 +13,7 @@ import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
 import ModalDeNovedad from "@/Components/ModalDeNovedad.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 import Paginacion from "@/Components/Paginacion.vue";
+import Selector from "@/Components/Selector.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
 
 /*
@@ -52,14 +53,27 @@ const columnas = [
     { clave: "acciones", titulo: "Acciones" },
 ];
 
-const { pedir, ordenar, quitar, limpiar, urlExportar, textoExportar } =
-    useListado({
-        ruta: "/vacaciones",
-        filtros: () => props.filtros,
-        pagina: () => props.vacaciones,
-        tieneFiltros: () => props.tieneFiltros,
-        deLista: [],
-    });
+const {
+    busqueda,
+    buscar,
+    pedir,
+    ordenar,
+    quitar,
+    limpiar,
+    urlExportar,
+    textoExportar,
+} = useListado({
+    ruta: "/vacaciones",
+    filtros: () => props.filtros,
+    pagina: () => props.vacaciones,
+    tieneFiltros: () => props.tieneFiltros,
+    deLista: [],
+});
+
+const cargos = computed(() => [
+    { valor: "", texto: "Todos los cargos" },
+    ...props.opciones.cargos.map((cargo) => ({ valor: cargo, texto: cargo })),
+]);
 
 // El título de los cinco módulos lo decide `TipoDeNovedad` en el servidor, y
 // llega en la prop compartida `flujoDeNovedad`.
@@ -215,6 +229,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 @quitar="quitar"
                 @limpiar="limpiar"
             >
+                <div class="min-w-[250px]">
+                    <CampoTexto
+                        v-model="busqueda"
+                        etiqueta="Empleado"
+                        tipo="search"
+                        ayuda="Por nombre o documento"
+                        @update:model-value="buscar"
+                    />
+                </div>
+
                 <div class="min-w-[160px]">
                     <CampoFecha
                         :model-value="filtros.desde"
@@ -230,6 +254,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                         etiqueta="Hasta"
                         opcional
                         @update:model-value="pedir({ hasta: $event, page: 1 })"
+                    />
+                </div>
+
+                <div class="min-w-[190px]">
+                    <Selector
+                        :model-value="filtros.cargo"
+                        etiqueta="Cargo"
+                        :opciones="cargos"
+                        marcador="Todos los cargos"
+                        @update:model-value="pedir({ cargo: $event, page: 1 })"
                     />
                 </div>
             </BarraFiltros>

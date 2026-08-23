@@ -58,10 +58,18 @@ function montar(props = {}) {
     return mount(Index, {
         props: {
             vacaciones: { filas: [], pagina: 1, paginas: 1, total: 0, desde: null, hasta: null },
-            filtros: { desde: "", hasta: "", orden: "inicio", direccion: "desc", porPagina: 25 },
+            filtros: {
+                buscar: "",
+                desde: "",
+                hasta: "",
+                cargo: "",
+                orden: "inicio",
+                direccion: "desc",
+                porPagina: 25,
+            },
             aplicados: [],
             tieneFiltros: false,
-            opciones: { tamanos: [25, 50, 100] },
+            opciones: { cargos: ["Analista de compras"], tamanos: [25, 50, 100] },
             diasDeVacaciones: null,
             saldoDeVacaciones: null,
             ...props,

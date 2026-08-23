@@ -773,12 +773,45 @@ consulta en la sección Alertas.
 
 ## Fase 4 — Reportería y panel de inicio
 
-### [ ] F4-01 · Exportación y filtros por módulo
+### [x] F4-01 · Exportación y filtros por módulo
 
 Botón en cada módulo que respeta filtros y lo dice. Todas las exportaciones de novedades traen
 documento, nombre y cargo. Los filtros de cada módulo son los del documento 1.
 **Hecho cuando:** aplicar tres filtros y exportar produce exactamente esos registros con esas columnas.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 11
+
+Hecho: **los cinco filtros que faltaban de la tabla 11.3** y el «hecho cuando» probado de punta a
+punta —tres filtros puestos a la vez en vacaciones y la exportación trayendo exactamente el registro
+que la pantalla enseña—. `tests/Feature/ExportacionesYFiltrosTest.php`, 22 casos.
+
+- **`App\Contratacion\FiltraPorEmpleado`, el gemelo de `OrdenaPorEmpleado`.** Allí se ordena por los
+  datos de la persona y aquí se filtra por ellos, con la misma división: el listado que parte de
+  `vinculaciones` y el que parte de la tabla de la novedad, que tiene un salto más. El `concat_ws` de
+  la búsqueda **quedó escrito una sola vez**: `ListadoDeEmpleados` perdió su copia privada.
+- **«Empleado» es una caja de búsqueda y no un selector**, y es la misma de empleados: nombre completo
+  o documento, con la clave `buscar`, así que `useListado` la maneja sin cambiarle una línea. Un
+  desplegable de doscientas personas no se recorre, y quien registra una novedad sabe el nombre o la
+  cédula. La lleva incapacidades, vacaciones y licencias.
+- **«Cargo» es el cargo vigente de la vinculación**, el mismo que enseña la columna y va a la
+  exportación: filtrar por «Analista de compras» devuelve exactamente las filas que dicen eso. Ninguna
+  de las cinco tablas de novedad guarda el cargo del día del hecho. La lista de opciones es
+  `ListadoDeEmpleados::cargos()`, que ya existía. Lo llevan vacaciones y movimientos.
+- **«Estado del contrato» son los tres estados que la columna «Estado» ya pintaba** desde F1-08 —al
+  día, plazo de preaviso pasado, vencido sin gestionar—, con nombre para poder pedirlos por la
+  dirección. No es una regla nueva: `VigenciaDelContrato::estadoDeGestion()` es de donde ahora sale
+  `tono()`, así que el color de la fila y el filtro que la trae **no pueden discrepar**, y
+  `acotarAlEstado()` responde lo mismo en SQL. Tres pruebas lo vigilan: cada estado trae lo suyo, el
+  tono de cada fila filtrada es el que le toca, y los tres reparten entre ellos todos los contratos
+  sin dejar ninguno fuera.
+- **Las siete exportaciones ya traían documento, nombre completo y cargo** (11.2) desde su propia
+  tarea; lo que faltaba era una prueba que lo comprobara **en las siete de un tirón**, para que la
+  octava no pueda olvidarlo. La de incapacidades ganó la columna «EPS», que el reporte de 11.4 pide
+  junto al origen, el diagnóstico y los días.
+- **`HistorialDeContrato::diasDePreaviso()`** es nuevo y reúne las tres lecturas de
+  `reglas_laborales.preaviso_dias` que había suelta: la fecha límite, las alertas del preaviso y el
+  estado de gestión.
+- **Auditoría es el octavo módulo de la tabla 11.3 y queda fuera a propósito**: no tiene pantalla
+  todavía, y sus cuatro filtros llegan con `REV-04`.
 
 ### [ ] F4-02 · Caché de saldos
 

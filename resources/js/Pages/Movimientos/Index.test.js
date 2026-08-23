@@ -93,6 +93,7 @@ function montar(props = {}) {
                 desde: "",
                 hasta: "",
                 tipo: "todos",
+                cargo: "",
                 orden: "efectivo",
                 direccion: "desc",
                 porPagina: 25,
@@ -102,6 +103,7 @@ function montar(props = {}) {
             opciones: {
                 tipos: TIPOS,
                 tiposDelFormulario: TIPOS_DEL_FORMULARIO,
+                cargos: ["Analista Senior", "Coordinadora de Operaciones"],
                 tamanos: [25, 50, 100],
             },
             situacionActual: null,

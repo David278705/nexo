@@ -2,6 +2,7 @@
 
 namespace App\Licencias;
 
+use App\Contratacion\FiltraPorEmpleado;
 use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
 use App\Models\Licencia;
@@ -18,20 +19,21 @@ use Illuminate\Http\Request;
  *
  * El armazón —la dirección, el orden, la paginación y la consulta única que
  * comparten la pantalla y la exportación— lo pone `Listado`. Aquí queda solo
- * lo propio: el filtro de fechas y de tipo, las columnas ordenables y las
- * filas.
+ * lo propio: sus tres filtros, las columnas ordenables y las filas.
  *
- * **El filtro de tipo y el de rango de fechas son los únicos de esta tarea.**
- * El filtro de «Empleado» que también lista el documento 1, 11.3 es F4-01,
- * igual que en incapacidades y vacaciones.
+ * Los tres son los del documento 1, 11.3: rango de fechas, tipo de novedad y
+ * empleado. El último es la caja de búsqueda de `FiltraPorEmpleado`, la misma
+ * del listado de empleados.
  *
  * @extends Listado<Licencia>
  */
 class ListadoDeLicencias extends Listado
 {
+    use FiltraPorEmpleado;
     use OrdenaPorEmpleado;
 
     protected function __construct(
+        public readonly string $buscar,
         public readonly string $desde,
         public readonly string $hasta,
         public readonly string $tipo,
@@ -45,6 +47,7 @@ class ListadoDeLicencias extends Listado
     public static function desde(Request $peticion): self
     {
         return new self(
+            buscar: self::texto($peticion, 'buscar'),
             desde: self::fecha($peticion, 'desde'),
             hasta: self::fecha($peticion, 'hasta'),
             tipo: self::filtro($peticion, 'tipo', TipoDeLicencia::valores()),
@@ -60,6 +63,10 @@ class ListadoDeLicencias extends Listado
     public function aplicados(): array
     {
         $etiquetas = [];
+
+        if ($this->buscar !== '') {
+            $etiquetas[] = ['clave' => 'buscar', 'texto' => 'Empleado: '.$this->buscar];
+        }
 
         if ($this->desde !== '') {
             $etiquetas[] = ['clave' => 'desde', 'texto' => 'Desde: '.self::enFormatoColombiano($this->desde)];
@@ -111,6 +118,10 @@ class ListadoDeLicencias extends Listado
      */
     protected function filtrar(Builder $consulta): void
     {
+        if ($this->buscar !== '') {
+            self::buscarAlEmpleadoDeLaNovedad($consulta, $this->buscar);
+        }
+
         if ($this->desde !== '') {
             $consulta->whereDate('fecha_inicio', '>=', $this->desde);
         }
@@ -147,6 +158,7 @@ class ListadoDeLicencias extends Listado
     protected function filtrosParaLaInterfaz(): array
     {
         return [
+            'buscar' => $this->buscar,
             'desde' => $this->desde,
             'hasta' => $this->hasta,
             'tipo' => $this->tipo,

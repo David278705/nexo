@@ -21,6 +21,9 @@ use Maatwebsite\Excel\Concerns\WithMapping;
  * puede exportar ya pasó por `modulo:incapacidades`, el mismo permiso que
  * protege verlo en pantalla.
  *
+ * Lleva también la EPS, que el reporte de incapacidades del documento 1, 11.4
+ * pide junto al origen, el diagnóstico y los días.
+ *
  * @implements WithMapping<Incapacidad>
  */
 class IncapacidadesExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping
@@ -50,6 +53,7 @@ class IncapacidadesExport implements FromCollection, ShouldAutoSize, WithHeading
             'Código de diagnóstico',
             'Origen',
             'Prórroga',
+            'EPS',
         ];
     }
 
@@ -71,6 +75,7 @@ class IncapacidadesExport implements FromCollection, ShouldAutoSize, WithHeading
             (string) $fila['diagnostico'],
             (string) $fila['origen'],
             (string) $fila['prorroga'],
+            (string) $fila['eps'],
         ];
     }
 }

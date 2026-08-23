@@ -2,6 +2,7 @@
 
 namespace App\Movimientos;
 
+use App\Contratacion\FiltraPorEmpleado;
 use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
 use App\Models\Movimiento;
@@ -19,22 +20,26 @@ use Illuminate\Http\Request;
  *
  * El armazón —la dirección, el orden, la paginación y la consulta única que
  * comparten la pantalla y la exportación— lo pone `Listado`. Aquí queda solo lo
- * propio: el filtro de fechas y de tipo, las columnas ordenables y las filas.
+ * propio: sus tres filtros, las columnas ordenables y las filas.
  *
- * **El filtro de «Cargo» que también lista el documento 1, 11.3 es F4-01**,
- * igual que el de «Empleado» en los tres módulos de novedades: se hará para
- * todos a la vez, y adelantarlo en uno solo deja los otros con un filtro menos.
+ * Los tres son los del documento 1, 11.3: rango de fecha de efectividad, tipo
+ * de movimiento y cargo. El del cargo lo resuelve `FiltraPorEmpleado`, y es el
+ * **cargo vigente** del empleado: filtrar por «Coordinadora de Operaciones»
+ * trae los movimientos de quien hoy tiene ese cargo, incluida la promoción que
+ * se lo dio.
  *
  * @extends Listado<Movimiento>
  */
 class ListadoDeMovimientos extends Listado
 {
+    use FiltraPorEmpleado;
     use OrdenaPorEmpleado;
 
     protected function __construct(
         public readonly string $desde,
         public readonly string $hasta,
         public readonly string $tipo,
+        public readonly string $cargo,
         string $orden,
         string $direccion,
         int $porPagina,
@@ -48,6 +53,7 @@ class ListadoDeMovimientos extends Listado
             desde: self::fecha($peticion, 'desde'),
             hasta: self::fecha($peticion, 'hasta'),
             tipo: self::filtro($peticion, 'tipo', TipoDeMovimiento::valores()),
+            cargo: self::texto($peticion, 'cargo'),
             orden: self::ordenPedido($peticion),
             direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
@@ -71,6 +77,10 @@ class ListadoDeMovimientos extends Listado
 
         if ($this->tipo !== self::TODOS) {
             $etiquetas[] = ['clave' => 'tipo', 'texto' => 'Tipo: '.TipoDeMovimiento::from($this->tipo)->etiqueta()];
+        }
+
+        if ($this->cargo !== '') {
+            $etiquetas[] = ['clave' => 'cargo', 'texto' => 'Cargo: '.$this->cargo];
         }
 
         return $etiquetas;
@@ -130,6 +140,10 @@ class ListadoDeMovimientos extends Listado
         if ($this->tipo !== self::TODOS) {
             $consulta->where('tipo', $this->tipo);
         }
+
+        if ($this->cargo !== '') {
+            self::filtrarPorCargoDeLaNovedad($consulta, $this->cargo);
+        }
     }
 
     /**
@@ -157,6 +171,7 @@ class ListadoDeMovimientos extends Listado
             'desde' => $this->desde,
             'hasta' => $this->hasta,
             'tipo' => $this->tipo,
+            'cargo' => $this->cargo,
         ];
     }
 }

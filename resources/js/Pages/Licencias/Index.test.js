@@ -87,6 +87,7 @@ function montar(props = {}) {
                 hasta: null,
             },
             filtros: {
+                buscar: "",
                 desde: "",
                 hasta: "",
                 tipo: "todos",

@@ -54,14 +54,22 @@ const columnas = [
     { clave: "acciones", titulo: "Acciones" },
 ];
 
-const { pedir, ordenar, quitar, limpiar, urlExportar, textoExportar } =
-    useListado({
-        ruta: "/incapacidades",
-        filtros: () => props.filtros,
-        pagina: () => props.incapacidades,
-        tieneFiltros: () => props.tieneFiltros,
-        deLista: ["origen", "eps"],
-    });
+const {
+    busqueda,
+    buscar,
+    pedir,
+    ordenar,
+    quitar,
+    limpiar,
+    urlExportar,
+    textoExportar,
+} = useListado({
+    ruta: "/incapacidades",
+    filtros: () => props.filtros,
+    pagina: () => props.incapacidades,
+    tieneFiltros: () => props.tieneFiltros,
+    deLista: ["origen", "eps"],
+});
 
 const origenes = computed(() => [
     { valor: TODOS, texto: "Todos los orígenes" },
@@ -226,6 +234,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 @quitar="quitar"
                 @limpiar="limpiar"
             >
+                <div class="min-w-[250px]">
+                    <CampoTexto
+                        v-model="busqueda"
+                        etiqueta="Empleado"
+                        tipo="search"
+                        ayuda="Por nombre o documento"
+                        @update:model-value="buscar"
+                    />
+                </div>
+
                 <div class="min-w-[160px]">
                     <CampoFecha
                         :model-value="filtros.desde"

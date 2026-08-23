@@ -174,7 +174,7 @@ abstract class ReglaDePreavisoDelFijo implements ReglaDeAlerta
      */
     protected function diasDePreaviso(): int
     {
-        return (int) config('reglas_laborales.preaviso_dias');
+        return HistorialDeContrato::diasDePreaviso();
     }
 
     /**

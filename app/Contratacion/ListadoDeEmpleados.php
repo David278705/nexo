@@ -29,6 +29,7 @@ use Illuminate\Http\Request;
  */
 class ListadoDeEmpleados extends Listado
 {
+    use FiltraPorEmpleado;
     use OrdenaPorEmpleado;
 
     protected function __construct(
@@ -219,7 +220,7 @@ class ListadoDeEmpleados extends Listado
         }
 
         if ($this->buscar !== '') {
-            $this->buscarPorNombreODocumento($consulta);
+            self::buscarPorNombreODocumento($consulta, $this->buscar);
         }
     }
 
@@ -257,31 +258,5 @@ class ListadoDeEmpleados extends Listado
             'ingresoDesde' => $this->ingresoDesde,
             'ingresoHasta' => $this->ingresoHasta,
         ];
-    }
-
-    /**
-     * Busca por nombre o por documento en una sola caja.
-     *
-     * El nombre se compara concatenado para que «Juan Mejía» encuentre a quien
-     * tiene el apellido en otra columna, y con `ilike` para que las mayúsculas
-     * no importen. Va dentro de `whereHas`, así que la persona también pasa por
-     * el filtro de empresa de su propio trait.
-     *
-     * @param  Builder<Vinculacion>  $consulta
-     */
-    private function buscarPorNombreODocumento(Builder $consulta): void
-    {
-        $termino = '%'.$this->buscar.'%';
-
-        $consulta->whereHas('persona', function (Builder $persona) use ($termino): void {
-            $persona->where(function (Builder $campos) use ($termino): void {
-                $campos
-                    ->whereRaw(
-                        "concat_ws(' ', primer_nombre, segundo_nombre, primer_apellido, segundo_apellido) ilike ?",
-                        [$termino]
-                    )
-                    ->orWhere('numero_documento', 'ilike', $termino);
-            });
-        });
     }
 }

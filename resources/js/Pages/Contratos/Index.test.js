@@ -41,6 +41,7 @@ const filtros = {
     vence: "90",
     contrato: "todos",
     prorrogas: "todos",
+    estado: "todos",
     orden: "vence",
     direccion: "asc",
     porPagina: 25,
@@ -64,6 +65,12 @@ const opciones = {
         { valor: "1", texto: "1 o más" },
         { valor: "3", texto: "3 o más" },
         { valor: "todos", texto: "Cualquier número de prórrogas" },
+    ],
+    // Los tres estados de `VigenciaDelContrato::ESTADOS` (F4-01).
+    estados: [
+        { valor: "al_dia", texto: "Al día" },
+        { valor: "preaviso_pasado", texto: "Plazo de preaviso pasado" },
+        { valor: "vencido", texto: "Vencido sin gestionar" },
     ],
     tamanos: [25, 50, 100],
 };
@@ -164,6 +171,26 @@ describe("el listado de contratos", function () {
         // exactamente las cinco del servidor, sin un «Seleccione…» que no
         // significa nada aquí.
         expect(montar().findAll("select")[0].findAll("option")).toHaveLength(5);
+    });
+
+    it("ofrece los tres estados del contrato más «cualquier estado» (F4-01)", async function () {
+        const pantalla = montar();
+        const estado = pantalla.findAll("select")[3];
+
+        expect(estado.findAll("option").map((opcion) => opcion.text())).toEqual([
+            "Cualquier estado",
+            "Al día",
+            "Plazo de preaviso pasado",
+            "Vencido sin gestionar",
+        ]);
+
+        await estado.setValue("vencido");
+
+        expect(router.get).toHaveBeenCalledWith(
+            "/contratos",
+            expect.objectContaining({ estado: "vencido", page: 1 }),
+            expect.anything(),
+        );
     });
 
     it("avisa de los contratos que vencieron sin gestionar", function () {

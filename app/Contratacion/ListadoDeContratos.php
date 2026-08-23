@@ -25,8 +25,13 @@ use Illuminate\Support\Carbon;
  *
  * El armazón —la dirección, el orden, la paginación y la consulta única que
  * comparten la pantalla y la exportación— lo pone `Listado`, el mismo de
- * `ListadoDeEmpleados`. Aquí queda solo lo propio: sus tres filtros, sus
+ * `ListadoDeEmpleados`. Aquí queda solo lo propio: sus cuatro filtros, sus
  * columnas ordenables y sus filas.
+ *
+ * Los cuatro filtros son los del documento 1, 11.3: rango de vencimiento, tipo
+ * de contrato, número de prórrogas acumuladas y estado del contrato. El último
+ * lo resuelve `VigenciaDelContrato`, que es quien define los estados y quien
+ * los pinta en la columna.
  *
  * @extends Listado<Vinculacion>
  */
@@ -70,6 +75,7 @@ class ListadoDeContratos extends Listado
         public readonly string $vence,
         public readonly string $contrato,
         public readonly string $prorrogas,
+        public readonly string $estado,
         string $orden,
         string $direccion,
         int $porPagina,
@@ -86,6 +92,7 @@ class ListadoDeContratos extends Listado
             vence: self::filtro($peticion, 'vence', self::valoresDe(self::RANGOS_DE_VENCIMIENTO), self::VENCE_POR_DEFECTO),
             contrato: self::filtro($peticion, 'contrato', TipoContrato::valores()),
             prorrogas: self::filtro($peticion, 'prorrogas', self::valoresDe(self::RANGOS_DE_PRORROGAS)),
+            estado: self::filtro($peticion, 'estado', self::valoresDe(VigenciaDelContrato::ESTADOS)),
             orden: self::ordenPedido($peticion),
             direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
@@ -123,6 +130,13 @@ class ListadoDeContratos extends Listado
             $etiquetas[] = [
                 'clave' => 'prorrogas',
                 'texto' => 'Prórrogas: '.self::textoDe(self::RANGOS_DE_PRORROGAS, $this->prorrogas),
+            ];
+        }
+
+        if ($this->estado !== self::TODOS) {
+            $etiquetas[] = [
+                'clave' => 'estado',
+                'texto' => 'Estado: '.self::textoDe(VigenciaDelContrato::ESTADOS, $this->estado),
             ];
         }
 
@@ -218,6 +232,10 @@ class ListadoDeContratos extends Listado
         }
 
         $this->filtrarPorProrrogas($consulta);
+
+        if ($this->estado !== self::TODOS) {
+            VigenciaDelContrato::acotarAlEstado($consulta, $this->estado);
+        }
     }
 
     /**
@@ -252,6 +270,7 @@ class ListadoDeContratos extends Listado
             'vence' => $this->vence,
             'contrato' => $this->contrato,
             'prorrogas' => $this->prorrogas,
+            'estado' => $this->estado,
         ];
     }
 

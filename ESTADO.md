@@ -1,128 +1,99 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-23 · Tarea F3-06 (cerrada: entregabilidad y registro de envíos)
-**Verificación:** verde — Pint, PHPStan sin errores, **876** pruebas de Pest, build y 276 de Vitest.
-**Siguiente tarea:** F4-01 · Exportación y filtros por módulo. **Con F3-06 termina la fase 3**: las
-trece alertas del capítulo 9 están construidas, salen por un proveedor transaccional y quedan
-consultables.
+**Última sesión:** 2026-08-23 · Tarea F4-01 (cerrada: exportación y filtros por módulo)
+**Verificación:** verde — Pint, PHPStan sin errores, **898** pruebas de Pest, build y 277 de Vitest.
+**Siguiente tarea:** F4-02 · Caché de saldos.
 
 ## Qué se hizo
 
-- **Se recuperó el trabajo a medias de F3-06 sin `git stash pop`.** El comando no estaba disponible en
-  esta sesión, así que los quince archivos del stash se reconstruyeron leyéndolos con `git show` de
-  los dos commits del stash —el de los modificados y el de los no seguidos— y escribiéndolos a mano.
-  El resultado es el mismo contenido, con dos diferencias deliberadas que se explican abajo.
-- **`ProveedorDeCorreo`**: si el transporte configurado es transaccional y si el remitente ya salió del
-  dominio de ejemplo. Es lo único del proveedor que se puede comprobar desde dentro; SPF, DKIM y DMARC
-  viven en el DNS y ningún código los ve. Advierte y no bloquea.
-- **`.env.example` explica el proveedor de producción**: las cinco líneas de Postmark, Resend o SES
-  —los tres hablan SMTP, así que cambiar de uno a otro es cambiarlas—, los tres registros de DNS que
-  faltan y el comando para comprobarlo.
-- **`alertas:prueba <empresa o NIT> <correo>`**, el comando de `ProbarEntregabilidad`: manda el correo
-  de prueba **por el mismo camino que las alertas de verdad** y de forma síncrona, para poder mirar el
-  resultado ahí mismo sin arrancar un trabajador de la cola.
-- **`AlertaPorEnviar::deEntregabilidad()`**, con clave propia que lleva la hora. Es el único envío del
-  sistema que no es idempotente por día.
-- **`TipoDeAlerta::PruebaDeEntregabilidad` y `esDelCalendario()`**: un caso que no es una alerta,
-  debajo de la línea, del módulo `Configuracion`.
-- **El panel de alertas**: el módulo `Alertas` en el grupo «Sistema», `AlertasDelUsuario`,
-  `ListadoDeAlertas` sobre el armazón de `Listado`, `AlertaController`, la ruta `GET /alertas` y la
-  pantalla `Alertas/Index` sobre `useListado`, con el detalle en un modal. Ninguna ruta de escritura.
-- **`Formato::fechaYHora()`**, la única fecha de la casa con hora.
-- **`tests/Feature/PanelDeAlertasTest.php`, 25 casos**, más el de `EstructuraTest` que comprueba que la
-  sección de alertas lleva a su panel y no a una pantalla pendiente: el «hecho cuando», el comando, el registro de
-  envíos, el canal alterno con sus cinco casos de visibilidad y aislamiento, los filtros, el proveedor
-  y las dos guardas del tipo que no es del calendario.
+- **Los cinco filtros que faltaban de la tabla 11.3 del documento 1**: «Empleado» en incapacidades,
+  vacaciones y licencias; «Cargo» en vacaciones y movimientos; «Estado del contrato» en contratos. Con
+  eso, **los siete módulos con pantalla tienen exactamente los filtros que el documento 1 les da**.
+- **`App\Contratacion\FiltraPorEmpleado`**, el trait nuevo: la búsqueda por nombre o documento y el
+  filtro de cargo, cada uno en sus dos versiones —el listado que parte de `vinculaciones` y el que
+  parte de la tabla de la novedad—. Es el gemelo de `OrdenaPorEmpleado`, que ya hacía lo mismo para el
+  orden.
+- **`VigenciaDelContrato` ganó `ESTADOS`, `estadoDeGestion()` y `acotarAlEstado()`.** Los tres estados
+  son los que la columna «Estado» ya pintaba; lo nuevo es que tienen nombre y se pueden pedir por la
+  dirección.
+- **`HistorialDeContrato::diasDePreaviso()`**, que reúne las tres lecturas sueltas de
+  `reglas_laborales.preaviso_dias`.
+- **La exportación de incapacidades lleva ahora la EPS**, que el reporte del documento 1, 11.4 pide
+  junto al origen, el diagnóstico y los días.
+- **`tests/Feature/ExportacionesYFiltrosTest.php`, 22 casos**: el «hecho cuando» con tres filtros a la
+  vez, las tres columnas obligatorias en las siete exportaciones, cada filtro nuevo con su etiqueta
+  removible, los tres estados del contrato con su prueba de coherencia con el color, y el aislamiento
+  de los caminos nuevos.
+- Las cinco pantallas afectadas y las tres fábricas de props de Vitest que se quedaban cortas
+  (`Contratos`, `Vacaciones`, `Movimientos`, `Licencias`), más un caso nuevo de Vitest para el selector
+  de estado del contrato.
 
 ## Decisiones tomadas
 
-- **El fallo que la sesión pasada dejó anotado en `PanelDeAlertasTest.php:240` era de la prueba, no del
-  código, y se entendió antes de tocarlo.** El caso comparaba «Ana Torres» contra el nombre completo
-  que enseña la columna «Sobre», y `PersonaFactory` rellena el segundo nombre y el segundo apellido, así
-  que `nombreCompleto()` devolvía cuatro palabras. La corrección es que el ayudante
-  `empleadaConNombre()` use el estado `sinSegundosNombres()` que la fábrica ya tenía: si la prueba
-  dice de qué nombre habla, tiene que conocer el nombre entero. **No se tocó `nombreCompleto()` ni la
-  fila del listado**, que hacen lo correcto.
-- **`esDelCalendario()` no se quedó sin consumidor.** El stash lo traía declarado y sin usar; en vez de
-  borrarlo se le dio la guarda para la que existe: una prueba comprueba que **ninguna regla registrada
-  en el catálogo dispare un tipo que no es del calendario**, que es el error con consecuencias reales
-  —una regla registrada con este tipo mandaría correos de prueba a los clientes todas las mañanas— y
-  otra comprueba que sea el único caso fuera del calendario.
-- **El correo de prueba se guarda en `alertas_enviadas` y no en una tabla aparte.** Esa tabla *es* el
-  registro de envíos de la sección 5.5, y un correo de prueba que no dejara rastro no probaría
-  justamente lo que se está probando: que lo enviado queda registrado.
-- **La clave del correo de prueba lleva la hora, y eso rompe la idempotencia a propósito.** La regla
-  5.2 protege de que el proceso diario mande dos veces lo que nadie le pidió. Aquí ocurre lo
-  contrario: quien está corrigiendo el SPF de su dominio manda, mira la bandeja, corrige el registro
-  DNS y vuelve a mandar, todo la misma mañana, y cada intento tiene que dejar su propia fila.
-- **El panel enseña exactamente lo que el correo habría entregado.** `AlertasDelUsuario` usa el mismo
-  `TipoDeAlerta::modulo()` que `DestinatariosDeAlertas`, así que el canal alterno y el buzón no pueden
-  discrepar. Tener el módulo `Alertas` es el permiso para entrar a la pantalla; lo que hay dentro lo
-  siguen decidiendo los módulos que el usuario ya tenía. El filtro ofrece solo los tipos visibles:
-  una lista completa contaría qué alertas existen y dejaría deducir por el número de resultados si a
-  alguien le llegaron.
-- **El detalle viaja con la fila.** El asunto, el cuerpo y los destinatarios son los que se guardaron
-  el día del envío y no cambian nunca más, así que una segunda vuelta al servidor traería lo mismo. Y
-  son los que se enviaron, no los que se calcularían hoy.
-- **El listado abre por lo más reciente**, al revés que los otros ocho, porque un registro de envíos se
-  consulta siempre por lo de ayer o lo de la semana pasada.
-- **`Alertas` es el único módulo que no está en la tabla 4.2 del documento 3**, y no es un olvido: lo
-  pide el documento 2, sección 5.5, que se escribió después. Va en «Sistema» al lado de Auditoría
-  porque es lo mismo que ella: un registro de lo que el sistema hizo, de solo lectura.
-- **No se agregó un caso nuevo a `AislamientoTest`** porque `alertas_enviadas` ya tiene el suyo desde
-  F3-01, con los cuatro caminos. El aislamiento de la ruta real `/alertas` se prueba en
-  `PanelDeAlertasTest`, como hacen los otros módulos con la suya.
+- **«Empleado» es una caja de búsqueda y no un desplegable, y usa la clave `buscar`.** Una empresa de
+  doscientas personas produce un selector que no se recorre, y quien registra una novedad conoce el
+  nombre o la cédula. Reutilizar la clave de empleados tiene una consecuencia concreta: `useListado`
+  ya trae `busqueda` y `buscar()` con su espera de 400 ms, así que **el composable no se tocó** y las
+  cuatro cajas de búsqueda del sistema se comportan igual.
+- **«Cargo» filtra por el cargo vigente de la vinculación**, no por el que la persona tenía el día de
+  la novedad: ninguna de las cinco tablas lo guarda, y el vigente es el que la columna enseña y el que
+  va a la exportación. En movimientos eso significa que filtrar por «Coordinadora de Operaciones» trae
+  también la promoción que se lo dio, que es lo que se busca al preguntar por un cargo.
+- **«Estado del contrato» no inventó ningún estado.** El documento 1 pide el filtro y el documento 3,
+  5.4 no lo lista entre los tres de esa pantalla; la salida sin inventar nada fue **filtrar por la
+  columna que la tabla ya muestra**. `tono()` pasó a derivarse de `estadoDeGestion()`, así que hay una
+  sola definición del estado en PHP, y `acotarAlEstado()` es su traducción a SQL —hecha falta porque
+  filtrar en PHP obligaría a traer la empresa entera—. **La prueba que las mantiene juntas** recorre
+  las filas de cada estado comprobando su tono, y una tercera comprueba que los tres reparten entre
+  ellos todos los contratos sin dejar ninguno fuera.
+- **Un contrato sin plazo está «al día».** Indefinido y obra o labor no tienen fecha que se les pueda
+  pasar, y ya recibían el verde de `tono()`.
+- **Las siete exportaciones ya cumplían 11.2 y no se tocaron.** Lo que faltaba no era código sino la
+  prueba que lo comprueba en las siete a la vez: hoy la escribe un solo caso que recorre la lista, y
+  la octava exportación no puede olvidarlo sin ponerlo en rojo.
+- **Auditoría queda fuera de esta tarea a propósito.** Es el octavo módulo de la tabla 11.3 y no tiene
+  pantalla; sus cuatro filtros llegan con `REV-04`.
+- **El panel de alertas sigue sin exportación**, como decidió F3-06: el documento 2, 5.5 pide un
+  registro «consultable» y el capítulo 11 no lo lista entre los módulos que exportan.
 
 ## Preguntas para Angela
 
-- **Del correo de prueba, para confirmar y sin que frene nada: su texto.** Lo redactó el sistema y va a
-  la bandeja del cliente cuando se le configura el dominio, así que dice qué es, para qué sirve y pide
-  marcarlo como legítimo si cayó en no deseado. La decisión de fondo —que exista un correo de prueba y
-  que quede registrado— es del documento 2, no suya.
-- **Heredadas, las tres de sesiones anteriores**: los textos del correo de obra o labor, el texto del
-  contrato que vence el día mismo del tope y «acumula 3 prórrogas inferiores a un año».
+- **Del filtro «Estado del contrato», para confirmar y sin que frene nada: los tres nombres.** «Al
+  día», «Plazo de preaviso pasado» y «Vencido sin gestionar» los redactó el sistema a partir de lo que
+  la columna ya decía. Los estados en sí no son una decisión suya —son los que el propio documento y
+  el artículo 46 del CST producen—, solo cómo se llaman en el desplegable.
+- **Heredadas, las cuatro de sesiones anteriores**: el texto del correo de prueba de entregabilidad,
+  los textos del correo de obra o labor, el texto del contrato que vence el día mismo del tope y
+  «acumula 3 prórrogas inferiores a un año».
 
 ## Decisiones para David
 
-- **El proveedor transaccional está preparado pero no elegido.** El código funciona con los tres
-  candidatos sin cambiar una línea —los tres hablan SMTP— y `.env.example` dice qué poner en cada
-  caso, pero **hay que escoger uno, comprar o apuntar el dominio y crear SPF, DKIM y DMARC**. Hasta que
-  eso pase, `advertencia()` seguirá diciendo que lo configurado no sirve para producción, que es la
-  verdad. Es una decisión comercial y de infraestructura, no de código, y es la única parte del «hecho
-  cuando» que ninguna prueba puede cubrir: que llegue a **bandeja de entrada** y no a no deseado se
-  comprueba mandando el correo de verdad.
-- **Todas las heredadas siguen abiertas**: la regla de la fecha entre paréntesis fuera de los correos,
-  meses comerciales de treinta días, prórroga mínima, plantilla de carga, fondo de cesantías, la
-  prueba intermitente de `CatalogosTest`, el texto del empleado inactivo, PHP 8.2 contra el 8.3 que
-  pide `CLAUDE.md`, la frase del prototipo sobre el saldo negativo, y el resto de la lista larga de
-  REV-02.
+- **Todas las heredadas siguen abiertas**, empezando por la que no depende de código: **escoger el
+  proveedor transaccional, apuntar el dominio y crear SPF, DKIM y DMARC**, que es la única parte del
+  «hecho cuando» de F3-06 que ninguna prueba puede cubrir. Y detrás, la lista larga de REV-02: la
+  regla de la fecha entre paréntesis fuera de los correos, meses comerciales de treinta días, prórroga
+  mínima, plantilla de carga, fondo de cesantías, la prueba intermitente de `CatalogosTest`, el texto
+  del empleado inactivo, PHP 8.2 contra el 8.3 que pide `CLAUDE.md` y la frase del prototipo sobre el
+  saldo negativo.
 
 ## Notas para la próxima sesión
 
-- **`stash@{0}` sigue en el repositorio y ya no sirve para nada. Se puede borrar.** Su contenido está
-  en el commit de F3-06, reconstruido a mano porque `git stash pop` no estaba disponible en esta
-  sesión; `git stash drop` tampoco lo estaba. **No hay que aplicarlo**: traería la versión vieja de
-  `TipoDeAlerta` —con `ObraOLaborProlongada`— y volvería a meter el fallo del nombre completo en
-  `PanelDeAlertasTest`.
-- **Con F3-06 se cierra la fase 3.** Las trece alertas del capítulo 9 están construidas y probadas, y
-  ahora además salen por el camino que pide la sección 5.5 y quedan consultables.
-- **F4-01 es la siguiente y ya tiene deuda esperándola por escrito.** Tres módulos de novedades
-  —incapacidades, vacaciones y licencias—, movimientos y terminaciones dejaron anotado que les faltan
-  los filtros «Empleado» y «Cargo» del documento 1, y a incapacidades además la búsqueda por nombre.
-  Todo eso es F4-01. El panel de alertas **no** entra: no exporta y sus tres filtros son los suyos.
-- **El panel de alertas no tiene exportación y es una decisión, no un olvido.** El documento 2, 5.5
-  pide un registro «consultable», y el capítulo 11 no lo lista entre los módulos que exportan. Si
-  F4-01 decide que sí, `ListadoDeAlertas` ya arma la consulta única que necesitaría.
-- **El sitio que hay que mirar cuando llegue una empresa grande** sigue siendo el mismo: los dos
-  resúmenes de vacaciones y `CercaniaAlTope`, que recorren a todos los activos porque el saldo es una
-  función y no una columna. F4-02 —la caché de saldos— es lo que lo alivia.
-- **`REV-03`, `REV-04` y `REV-05` siguen al final del backlog. `REV-05` no es opcional**: hoy el
+- **F4-02 es la siguiente y es justo el alivio que llevan tres sesiones anotándose.** Los dos
+  resúmenes mensuales de vacaciones y `CercaniaAlTope` recorren a todos los activos porque el saldo es
+  una función y no una columna; la caché de saldos es lo que lo arregla. **Nunca fuente de verdad**: si
+  hay diferencia, manda el cálculo (documento 2, 3.4).
+- **F4-01 no tocó ninguna consulta de saldo**, así que el sitio que hay que mirar cuando llegue una
+  empresa grande sigue siendo el mismo.
+- **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** Su contenido está en el commit de
+  F3-06. **No hay que aplicarlo**: traería la versión vieja de `TipoDeAlerta`.
+- **La deuda de filtros del backlog quedó pagada entera.** Los avisos que F2-04, F2-05, F2-07 y F2-08
+  dejaron escritos en sus propias clases —«esto es F4-01»— se borraron al hacerlo, así que no queda
+  ningún comentario prometiendo un filtro que ya existe.
+- **`REV-03`, `REV-04` y `REV-05` siguen al final del backlog.** `REV-05` no es opcional: hoy el
   sistema le manda a un empleado de obra o labor las alertas de periodo de prueba, que no le
-  corresponden por ley. Y ahora se nota más, porque el panel de alertas las enseña en pantalla al lado
-  de las que sí le tocan.
-- **Aviso para F5-03:** el ambiente de demostración nace `en_prueba` y hoy no recibe alertas. Si tiene
-  que enseñar correos, esa tarea cambia una línea en
-  `ProcesoDiarioDeAlertas::empresasQueRecibenAlertas()`.
-- **Aviso para F5-05 y F5-06:** la consola del proveedor —todas las empresas, con reenvío— y la tarjeta
-  de salud del sistema ya tienen de dónde leer. `ProveedorDeCorreo::advertencia()` es la tarjeta, y
-  `AlertaEnviada` guarda destinatarios, estado, intentos y motivo del fallo desde F3-01.
+  corresponden por ley. **`REV-04` ganó un motivo más**: la pantalla de auditoría es la única de la
+  tabla 11.3 del documento 1 que sigue sin sus filtros, y esta tarea no pudo dárselos porque no hay
+  pantalla donde ponerlos.
+- **Si F4-03 filtra el listado de contratos desde una tarjeta del panel de inicio**, ya tiene por
+  dónde: `estado=vencido` con `vence=todos` es exactamente «los que vencieron sin gestionar», el mismo
+  número que la cabecera de contratos enseña en su aviso.

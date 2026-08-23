@@ -2,7 +2,9 @@
 
 namespace App\Contratacion;
 
+use App\Models\Vinculacion;
 use App\Presentacion\Formato;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -27,6 +29,26 @@ use Illuminate\Support\Carbon;
  */
 class VigenciaDelContrato
 {
+    /**
+     * El estado del contrato con el que se filtra el listado (documento 1,
+     * 11.3), que es exactamente el que ya enseña su columna «Estado».
+     *
+     * No son un enumerado nuevo ni una regla nueva: son los tres estados que
+     * `tono()` viene pintando desde F1-08 —verde, ámbar y rojo—, con un nombre
+     * cada uno para que se puedan pedir por la dirección. El texto los nombra
+     * por lo que hay que hacer con ellos, que es la pregunta de la pantalla:
+     *
+     * - **Al día:** todavía queda plazo para decidir, o el contrato no vence.
+     * - **Plazo de preaviso pasado:** se llegó a la fecha límite para avisar, y
+     *   a partir de ahí callar tiene consecuencia jurídica.
+     * - **Vencido sin gestionar:** la fecha pasó sin prórroga ni terminación.
+     */
+    public const ESTADOS = [
+        ['valor' => 'al_dia', 'texto' => 'Al día'],
+        ['valor' => 'preaviso_pasado', 'texto' => 'Plazo de preaviso pasado'],
+        ['valor' => 'vencido', 'texto' => 'Vencido sin gestionar'],
+    ];
+
     private function __construct(
         private readonly ?Carbon $vencimiento,
         private readonly ?Carbon $limiteDePreaviso,
@@ -121,22 +143,86 @@ class VigenciaDelContrato
     }
 
     /**
+     * En cuál de los tres estados de `ESTADOS` está el contrato hoy.
+     *
+     * Un contrato sin plazo —indefinido u obra o labor— está al día: no hay
+     * ninguna fecha que se le pueda pasar.
+     */
+    public function estadoDeGestion(): string
+    {
+        if ($this->yaVencio()) {
+            return 'vencido';
+        }
+
+        $preaviso = $this->diasParaElPreaviso();
+
+        return $preaviso !== null && $preaviso <= 0 ? 'preaviso_pasado' : 'al_dia';
+    }
+
+    /**
      * El color de la etiqueta de estado.
      *
      * El rojo solo cuando algo está mal de verdad, que aquí es un contrato que
      * venció sin que nadie registrara la prórroga ni la terminación. El ámbar
      * arranca el día en que se cumple la fecha límite del preaviso: a partir de
      * ahí, callar ya tiene consecuencia jurídica.
+     *
+     * Sale del estado de gestión y no de su propia cuenta, para que el color de
+     * la fila y el filtro que la trae no puedan discrepar.
      */
     public function tono(): string
     {
-        if ($this->yaVencio()) {
-            return 'error';
+        return match ($this->estadoDeGestion()) {
+            'vencido' => 'error',
+            'preaviso_pasado' => 'advertencia',
+            default => 'exito',
+        };
+    }
+
+    /**
+     * Acota una consulta de vinculaciones a uno de los tres estados.
+     *
+     * Es la otra cara de `estadoDeGestion()`: aquí la misma pregunta se
+     * responde en SQL, porque filtrar en PHP obligaría a traer la empresa
+     * entera para descartar la mayoría. Las dos definiciones tienen que decir
+     * lo mismo, y por eso viven pegadas y hay una prueba que recorre las filas
+     * de cada estado comprobando que su tono es el que le toca.
+     *
+     * Se filtra por `vinculaciones.fecha_fin`, que es el vencimiento vigente:
+     * la columna se mueve con cada prórroga junto al historial
+     * (`Vinculacion::registrarPeriodo()`), igual que en el filtro de rango de
+     * vencimiento de al lado.
+     *
+     * @param  Builder<Vinculacion>  $consulta
+     */
+    public static function acotarAlEstado(Builder $consulta, string $estado, ?Carbon $hoy = null): void
+    {
+        $dia = ($hoy ?? Carbon::today())->copy()->startOfDay()->toDateString();
+        $limite = ($hoy ?? Carbon::today())->copy()
+            ->startOfDay()
+            ->addDays(HistorialDeContrato::diasDePreaviso())
+            ->toDateString();
+
+        if ($estado === 'vencido') {
+            $consulta->whereNotNull('fecha_fin')->whereDate('fecha_fin', '<', $dia);
+
+            return;
         }
 
-        $preaviso = $this->diasParaElPreaviso();
+        if ($estado === 'preaviso_pasado') {
+            $consulta
+                ->whereNotNull('fecha_fin')
+                ->whereDate('fecha_fin', '>=', $dia)
+                ->whereDate('fecha_fin', '<=', $limite);
 
-        return $preaviso !== null && $preaviso <= 0 ? 'advertencia' : 'exito';
+            return;
+        }
+
+        // Al día: los que no vencen y los que vencen después de la fecha límite
+        // del preaviso.
+        $consulta->where(fn (Builder $contrato) => $contrato
+            ->whereNull('fecha_fin')
+            ->orWhereDate('fecha_fin', '>', $limite));
     }
 
     /**

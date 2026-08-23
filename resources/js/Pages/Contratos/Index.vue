@@ -45,10 +45,10 @@ const { pedir, ordenar, quitar, limpiar, abrir, urlExportar, textoExportar } =
         filtros: () => props.filtros,
         pagina: () => props.contratos,
         tieneFiltros: () => props.tieneFiltros,
-        // Los tres filtros son de lista, así que quitarlos los devuelve a
+        // Los cuatro filtros son de lista, así que quitarlos los devuelve a
         // «todos». El de vencimiento hace falta declararlo: llega por defecto
         // en «los próximos 90 días».
-        deLista: ["vence", "contrato", "prorrogas"],
+        deLista: ["vence", "contrato", "prorrogas", "estado"],
     });
 
 // No se llama `contratos` a propósito: esa es la prop con las filas, y una
@@ -56,6 +56,13 @@ const { pedir, ordenar, quitar, limpiar, abrir, urlExportar, textoExportar } =
 const tiposDeContrato = computed(() => [
     { valor: TODOS, texto: "Todos los contratos" },
     ...props.opciones.contratos,
+]);
+
+// Los tres estados que ya pinta la columna «Estado» (documento 1, 11.3). Los
+// nombra `VigenciaDelContrato`, que es también quien decide su color.
+const estados = computed(() => [
+    { valor: TODOS, texto: "Cualquier estado" },
+    ...props.opciones.estados,
 ]);
 
 // El aviso del prototipo: un contrato que venció sin preaviso quedó prorrogado
@@ -139,6 +146,16 @@ const avisoDeVencidos = computed(() => {
                         @update:model-value="
                             pedir({ prorrogas: $event, page: 1 })
                         "
+                    />
+                </div>
+
+                <div class="min-w-[220px]">
+                    <Selector
+                        :model-value="filtros.estado"
+                        etiqueta="Estado del contrato"
+                        :opciones="estados"
+                        :con-marcador="false"
+                        @update:model-value="pedir({ estado: $event, page: 1 })"
                     />
                 </div>
             </BarraFiltros>

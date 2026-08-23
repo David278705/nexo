@@ -63,6 +63,11 @@ const tipos = computed(() => [
     ...props.opciones.tipos,
 ]);
 
+const cargos = computed(() => [
+    { valor: "", texto: "Todos los cargos" },
+    ...props.opciones.cargos.map((cargo) => ({ valor: cargo, texto: cargo })),
+]);
+
 // El título de los cinco módulos lo decide `TipoDeNovedad` en el servidor, y
 // llega en la prop compartida `flujoDeNovedad`.
 const flujo = computed(() => usePage().props.flujoDeNovedad);
@@ -212,6 +217,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                         :opciones="tipos"
                         :con-marcador="false"
                         @update:model-value="pedir({ tipo: $event, page: 1 })"
+                    />
+                </div>
+
+                <div class="min-w-[190px]">
+                    <Selector
+                        :model-value="filtros.cargo"
+                        etiqueta="Cargo"
+                        :opciones="cargos"
+                        marcador="Todos los cargos"
+                        @update:model-value="pedir({ cargo: $event, page: 1 })"
                     />
                 </div>
             </BarraFiltros>

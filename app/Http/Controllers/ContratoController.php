@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Contratacion\DetalleDelContrato;
 use App\Contratacion\ListadoDeContratos;
 use App\Contratacion\TipoContrato;
+use App\Contratacion\VigenciaDelContrato;
 use App\Exports\ContratosExport;
 use App\Http\Requests\CambiarATerminoIndefinido;
 use App\Http\Requests\RenovarContrato;
@@ -45,6 +46,7 @@ class ContratoController extends Controller
                 'vencimientos' => ListadoDeContratos::RANGOS_DE_VENCIMIENTO,
                 'contratos' => TipoContrato::paraElegir(),
                 'prorrogas' => ListadoDeContratos::RANGOS_DE_PRORROGAS,
+                'estados' => VigenciaDelContrato::ESTADOS,
                 'tamanos' => ListadoDeContratos::TAMANOS_DE_PAGINA,
             ],
             'conteos' => [

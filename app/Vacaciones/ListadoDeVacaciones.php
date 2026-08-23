@@ -2,6 +2,7 @@
 
 namespace App\Vacaciones;
 
+use App\Contratacion\FiltraPorEmpleado;
 use App\Contratacion\OrdenaPorEmpleado;
 use App\Listados\Listado;
 use App\Models\Vacacion;
@@ -17,23 +18,24 @@ use Illuminate\Http\Request;
  *
  * El armazón —la dirección, el orden, la paginación y la consulta única que
  * comparten la pantalla y la exportación— lo pone `Listado`. Aquí queda solo
- * lo propio: el filtro de fechas, las columnas ordenables y las filas.
+ * lo propio: sus tres filtros, las columnas ordenables y las filas.
  *
- * **El filtro de rango de fechas es el único de esta tarea.** El documento 1,
- * 11.3 también lista «Empleado» y «Cargo» para este módulo, pero esos dos
- * filtros —igual que la búsqueda por nombre o documento que le falta a
- * incapacidades— son F4-01, que es la tarea que empareja los filtros de cada
- * módulo con el documento 1 completo.
+ * Los tres son los del documento 1, 11.3: rango de fechas, empleado y cargo.
+ * Los dos últimos los resuelve `FiltraPorEmpleado`, compartido con los otros
+ * cuatro listados que cuelgan de una vinculación.
  *
  * @extends Listado<Vacacion>
  */
 class ListadoDeVacaciones extends Listado
 {
+    use FiltraPorEmpleado;
     use OrdenaPorEmpleado;
 
     protected function __construct(
+        public readonly string $buscar,
         public readonly string $desde,
         public readonly string $hasta,
+        public readonly string $cargo,
         string $orden,
         string $direccion,
         int $porPagina,
@@ -44,8 +46,10 @@ class ListadoDeVacaciones extends Listado
     public static function desde(Request $peticion): self
     {
         return new self(
+            buscar: self::texto($peticion, 'buscar'),
             desde: self::fecha($peticion, 'desde'),
             hasta: self::fecha($peticion, 'hasta'),
+            cargo: self::texto($peticion, 'cargo'),
             orden: self::ordenPedido($peticion),
             direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
@@ -59,12 +63,20 @@ class ListadoDeVacaciones extends Listado
     {
         $etiquetas = [];
 
+        if ($this->buscar !== '') {
+            $etiquetas[] = ['clave' => 'buscar', 'texto' => 'Empleado: '.$this->buscar];
+        }
+
         if ($this->desde !== '') {
             $etiquetas[] = ['clave' => 'desde', 'texto' => 'Desde: '.self::enFormatoColombiano($this->desde)];
         }
 
         if ($this->hasta !== '') {
             $etiquetas[] = ['clave' => 'hasta', 'texto' => 'Hasta: '.self::enFormatoColombiano($this->hasta)];
+        }
+
+        if ($this->cargo !== '') {
+            $etiquetas[] = ['clave' => 'cargo', 'texto' => 'Cargo: '.$this->cargo];
         }
 
         return $etiquetas;
@@ -104,12 +116,20 @@ class ListadoDeVacaciones extends Listado
      */
     protected function filtrar(Builder $consulta): void
     {
+        if ($this->buscar !== '') {
+            self::buscarAlEmpleadoDeLaNovedad($consulta, $this->buscar);
+        }
+
         if ($this->desde !== '') {
             $consulta->whereDate('fecha_inicio', '>=', $this->desde);
         }
 
         if ($this->hasta !== '') {
             $consulta->whereDate('fecha_inicio', '<=', $this->hasta);
+        }
+
+        if ($this->cargo !== '') {
+            self::filtrarPorCargoDeLaNovedad($consulta, $this->cargo);
         }
     }
 
@@ -136,8 +156,10 @@ class ListadoDeVacaciones extends Listado
     protected function filtrosParaLaInterfaz(): array
     {
         return [
+            'buscar' => $this->buscar,
             'desde' => $this->desde,
             'hasta' => $this->hasta,
+            'cargo' => $this->cargo,
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Autorizacion\Modulo;
+use App\Contratacion\ListadoDeEmpleados;
 use App\Dominio\Calculo\MotorDeCalculo;
 use App\Exports\VacacionesExport;
 use App\Http\Requests\EditarVacacion;
@@ -40,6 +41,10 @@ class VacacionController extends Controller
                 fn (Vacacion $vacacion): array => ListadoDeVacaciones::fila($vacacion),
             ),
             'opciones' => [
+                // Los cargos que existen hoy en la empresa, para el filtro de
+                // «Cargo» (documento 1, 11.3). Es la misma lista del listado de
+                // empleados: los cargos son de la vinculación, no del módulo.
+                'cargos' => ListadoDeEmpleados::cargos(),
                 'tamanos' => ListadoDeVacaciones::TAMANOS_DE_PAGINA,
             ],
             /*
