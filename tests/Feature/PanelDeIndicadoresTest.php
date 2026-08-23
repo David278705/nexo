@@ -132,6 +132,27 @@ describe('el bloque de vacaciones', function () {
         expect($tarjeta['valor'])->toBe('5')
             ->and($tarjeta['nota'])->toBe('En 1 periodo registrado');
     });
+
+    it('de un periodo que todavía no termina cuenta los días vividos, no los pactados', function () {
+        $this->contexto->paraTenant($this->empresa, function (): void {
+            $vinculacion = Vinculacion::factory()->conIngreso('2024-01-15')->create();
+
+            // Empezó el lunes 10 y termina el viernes 21. Hoy es el lunes 17,
+            // así que van vividos del 10 al 17: seis días hábiles —sin los dos
+            // domingos ni los dos sábados—, no los diez del periodo entero.
+            Vacacion::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-08-10',
+                'fecha_fin' => '2026-08-21',
+            ]);
+
+            CacheDeSaldos::refrescar($this->hoy);
+        });
+
+        $tarjeta = tarjetaDelBloque(bloqueLlamado('Vacaciones'), 'Días disfrutados en agosto');
+
+        expect($tarjeta['valor'])->toBe('6')
+            ->and($tarjeta['nota'])->toBe('En 1 periodo registrado');
+    });
 });
 
 describe('el bloque de planta', function () {
@@ -400,6 +421,68 @@ describe('el aislamiento', function () {
         $tarjeta = tarjetaDelBloque(bloqueLlamado('Planta'), 'Empleados activos');
 
         expect($tarjeta['valor'])->toBe(1);
+    });
+
+    /*
+     * La misma escena, sembrada dos veces: una en la empresa vecina y otra en
+     * la propia. Cada bloque tiene que devolver el uno de la propia y nunca el
+     * dos de las dos juntas.
+     *
+     * Se siembran **las siete tablas de las que leen los seis bloques** —
+     * vinculaciones, personas, la caché de saldos, vacaciones, terminaciones,
+     * incapacidades, licencias y movimientos— porque una guardia que solo mire
+     * una de ellas deja las otras seis sin vigilar, y una guardia con agujeros
+     * es peor que no tenerla: se cree que cubre.
+     */
+    it('ninguno de los seis bloques cuenta las novedades de la empresa vecina', function (): void {
+        $escena = function (): void {
+            $persona = Persona::factory()->create(['genero' => 'femenino']);
+            $activa = Vinculacion::factory()
+                ->de($persona)
+                ->conIngreso('2024-01-01')
+                ->create(['cargo' => 'Analista de compras']);
+
+            Vacacion::factory()->de($activa)->create([
+                'fecha_inicio' => '2026-08-03',
+                'fecha_fin' => '2026-08-07',
+            ]);
+
+            Incapacidad::factory()->de($activa)->create([
+                'fecha_inicio' => '2026-08-10',
+                'fecha_fin' => '2026-08-11',
+            ]);
+
+            Licencia::factory()->de($activa)->create([
+                'tipo' => 'ausencia',
+                'fecha_inicio' => '2026-08-13',
+                'fecha_fin' => '2026-08-13',
+            ]);
+
+            Movimiento::factory()->de($activa)->create(['fecha_efectividad' => '2026-08-05']);
+
+            $saliente = Vinculacion::factory()->conIngreso('2024-01-01')->create();
+            $saliente->registrarTerminacion(TipoDeSalida::Renuncia, 'Estudios', Carbon::parse('2026-08-12'));
+
+            CacheDeSaldos::refrescar(test()->hoy);
+        };
+
+        $this->contexto->paraTenant(Tenant::factory()->create(['nombre' => 'Textiles del Norte']), $escena);
+        $this->contexto->paraTenant($this->empresa, $escena);
+
+        $vacaciones = bloqueLlamado('Vacaciones');
+        $ausentismo = bloqueLlamado('Ausentismo');
+        $composicion = bloqueLlamado('Composición');
+        $porGenero = collect($composicion['distribuciones'][1]['items'])->pluck('cuantos', 'etiqueta');
+
+        expect(tarjetaDelBloque($vacaciones, 'Personas con acumulación excesiva')['valor'])->toBe(1)
+            ->and(tarjetaDelBloque($vacaciones, 'Días disfrutados en agosto')['valor'])->toBe('5')
+            ->and(tarjetaDelBloque(bloqueLlamado('Planta'), 'Empleados activos')['valor'])->toBe(1)
+            ->and(tarjetaDelBloque(bloqueLlamado('Rotación'), 'Voluntaria / involuntaria')['valor'])->toBe('1 / 0')
+            ->and(tarjetaDelBloque($ausentismo, 'origen común')['valor'])->toBe(2)
+            ->and(tarjetaDelBloque($ausentismo, 'Ausencias no justificadas')['valor'])->toBe(1)
+            ->and(collect($composicion['distribuciones'][0]['items'])->pluck('cuantos', 'etiqueta')['Analista de compras'])->toBe(1)
+            ->and($porGenero->sum())->toBe(1)
+            ->and(tarjetaDelBloque(bloqueLlamado('Movimientos'), 'Aumentos y promociones')['valor'])->toBe(1);
     });
 });
 

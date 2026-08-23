@@ -201,7 +201,7 @@ final class Formato
     }
 
     /**
-     * Un porcentaje como se lee en un indicador: «4,2%», «0%».
+     * Un porcentaje como se lee en un indicador: «4,2%», «0,0%».
      *
      * Siempre a un decimal fijo, para que dos índices del mismo panel —rotación
      * y ausentismo— se lean con la misma precisión y no den la impresión de que

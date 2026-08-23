@@ -1,54 +1,43 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-23 · Tarea F4-04 (panel de inicio, indicadores)
-**Verificación:** verde — Pint, PHPStan sin errores, **962** pruebas de Pest, build y 286 de Vitest.
-**Siguiente tarea:** F4-05 · PUNTO DE CONTROL — revisión (ejecuta el skill `revisar`).
+**Última sesión:** 2026-08-23 · Tarea F4-05 (punto de control, revisión de la fase 4)
+**Verificación:** verde — Pint, PHPStan sin errores, **964** pruebas de Pest, build y 286 de Vitest.
+**Siguiente tarea:** F5-01 · Lector de plantillas.
 
 ## Qué se hizo
 
-- **F4-04, los seis bloques de indicadores del panel de inicio** (documento 1, 12.1): Vacaciones,
-  Planta, Rotación, Ausentismo, Composición y Movimientos, en el orden del documento, debajo del
-  bloque de acción de F4-03.
-- `App\Inicio\Indicadores\`: seis clases, una por bloque, más `BloqueDeIndicadores` como orquestador.
-  Cada bloque devuelve la misma forma —`titulo`, `tarjetas`, `distribuciones` y a veces `avisos`—, así
-  que `Pages/Inicio.vue` los pinta con un solo bucle. Llegan en la prop diferida `indicadores`.
-- `CacheDeSaldos` ganó `conAcumulacionExcesiva()`: un conteo agregado sobre la caché de saldos, para
-  que el bloque de Vacaciones no tenga que recorrer la planta persona por persona.
-- `resources/js/Components/DistribucionLista.vue`, componente nuevo: lista de conteos por categoría
-  con su barra proporcional, compartida por las seis distribuciones del panel.
-- `Formato` ganó dos ayudantes de presentación: `porcentaje()` y `mes()`.
-- `tests/Feature/PanelDeIndicadoresTest.php`, la batería nueva: un caso por indicador, los permisos
-  por módulo, el aislamiento entre empresas y la medición de los dos segundos con doscientos empleados
-  y la caché ya refrescada.
+- **F4-05, el punto de control.** Informe en `bitacora/revision-2026-08-23.md`. El alcance fueron
+  **once tareas**, no cuatro: la fase 3 entera —el motor de alertas, que nunca tuvo punto de control
+  propio—, `REV-05` y las cuatro de la fase 4.
+- **Aislamiento, seguridad y datos: sin hallazgos.** Las doce tablas de negocio con trait, RLS y caso
+  propio. Lo que F2-11 dejó señalado como el riesgo de la fase 3 —el contexto de empresa en segundo
+  plano— está bien resuelto: `EnviarAlerta` no usa `SerializesModels` y restablece el contexto a mano
+  desde dos números, `failed()` hace lo mismo, y el proceso diario recorre empresa por empresa.
+- **Arreglado: «Días disfrutados en agosto» contaba los días pactados y no los vividos.**
+  `IndicadoresDeVacaciones` recortaba el periodo solo por la fecha de inicio, así que una vacación del
+  20 al 30 de agosto aportaba sus ocho días hábiles el día 23. Ahora el fin se recorta contra hoy, con
+  el mismo idioma que `IndicadoresDeAusentismo` ya usaba para una incapacidad abierta. Caso nuevo en
+  `PanelDeIndicadoresTest`: del 10 al 21 de agosto, mirado el lunes 17, son seis días y no diez.
+- **Arreglado: la guardia de aislamiento del panel vigilaba uno de los seis bloques.** Solo comprobaba
+  Planta. Hay un caso nuevo que siembra la misma escena en dos empresas —las ocho tablas de las que
+  leen los seis bloques— y comprueba las nueve cifras.
+- **Documentado: las dos cuentas de días de `VigenciaDelContrato`.** Cuentan fuera del motor y la clase
+  no decía por qué. Ahora lo dice: son distancias con signo que solo alimentan texto de pantalla, y
+  ninguna cifra con consecuencia legal se cuenta ahí.
+- **`REV-06` es la tarea nueva**, al final del backlog.
 
 ## Decisiones tomadas
 
-- **Los índices de rotación y de ausentismo usan la fórmula estándar de cada indicador**, porque
-  ningún documento trae una fórmula y no es un valor legal: es aritmética del propio indicador, con el
-  mismo criterio de implementación con que F3-05 fijó la cadencia de los meses impares. Rotación:
-  salidas del mes sobre el promedio de activos del mismo mes, por cien. Ausentismo: días perdidos por
-  incapacidad sobre activos por días transcurridos del mes, por cien —ni el numerador ni el
-  denominador miran más allá de hoy, para no inflar el índice de los primeros días del mes con una
-  incapacidad certificada por adelantado—.
-- **«Días disfrutados en el periodo» (Vacaciones) se leyó como el mes en curso hasta hoy**, que es lo
-  que enseña el prototipo («Días disfrutados en agosto»). Es una decisión de implementación, no una
-  regla legal.
-- **«Principales motivos de salida» no recorta a un top.** No existe un criterio para decidir cuántos
-  son «los principales» —la misma razón por la que D.2 descartó un umbral para la obra o labor
-  prolongada—, así que se muestran todos los motivos del mes, de mayor a menor, sin cortar la lista.
-- **Composición queda con dos de sus cuatro indicadores bloqueados por D.4**, que sigue **BLOQUEANTE**
-  en el documento 6: faltan los cortes de los rangos de edad y de antigüedad. Cargo, género y la
-  antigüedad **promedio** —un número, no un reparto— sí se calculan enteros; el bloque trae un aviso
-  que dice de qué depende lo que falta, igual que hizo F1B-03 con las pestañas del panel del proveedor
-  que dependían de una decisión sin cerrar.
-- **Vacaciones lee de la caché de saldos y no del motor**, para las dos cifras que exigirían recorrer
-  la planta persona por persona («días acumulados» y «personas con acumulación excesiva»). Es la misma
-  razón de ser de la caché (F4-02): ninguna decisión sobre una persona concreta depende de que el
-  número sea exacto al segundo, así que la aproximación de la caché —nunca la fuente de verdad— es
-  aceptable aquí, a diferencia de la tarjeta de acción de `AtencionDelInicio`, que sí calcula en vivo
-  porque decide a quién enlaza el listado.
-- **Movimientos no agrega la proporción que el documento 12.2 descartó.** El reparto «2 aumentos · 1
-  promoción» es una nota que descompone la misma cifra total, no un indicador nuevo.
+- **El recorte de una novedad en curso se decide igual en los dos bloques que lo necesitan, pero sin
+  compartir función de conteo.** Ausentismo cuenta días corridos y vacaciones días hábiles: fundirlas
+  en una función con un parámetro sería la regla 3 al revés. Lo que se igualó es la decisión —hasta
+  hoy, no hasta el fin del periodo—, no la aritmética.
+- **`VigenciaDelContrato::diasParaVencer()` no se movió al motor.** Necesita una distancia **con
+  signo**, que ni `diasTranscurridos()` ni `diasDeAnticipacion()` dan, y añadir una tercera dejaría
+  cuatro funciones de calendario casi sinónimas: la manera de que algún día se escoja la equivocada.
+  Solo alimenta texto de pantalla; el número que va en un correo lo sigue calculando el motor.
+- **El `delete()` de `CacheDeSaldos` es la única excepción a la regla 4 y no es un descuido:** está
+  declarada y argumentada en su migración, junto con la de no auditarse.
 
 ## Preguntas para Angela
 
@@ -58,25 +47,33 @@
 
 ## Decisiones para David
 
+- **`REV-06`, nueva y tuya: acotar la regla de «la fecha entre paréntesis».** Es la **tercera**
+  revisión que la levanta. La regla de `.claude/rules/30-interfaz.md` la enuncia para toda la interfaz;
+  su fuente, el documento 1, 9.1, solo para los correos, donde el código la cumple literalmente. En
+  pantalla no la ha cumplido nunca y la fase 4 amplió la distancia. La recomendación está escrita en la
+  tarea, y también lo que costaría decidir lo contrario.
 - **D.4 sigue abierta y sigue bloqueando dos indicadores de Composición** —rangos de edad y de
-  antigüedad—. Es el único pendiente marcado **BLOQUEANTE** en el documento 6. El resto de F4-04 quedó
-  completo sin ella.
+  antigüedad—. Es el único pendiente marcado **BLOQUEANTE** en el documento 6.
 - **F3-06b sigue bloqueada y no la toma ninguna sesión.** Proveedor transaccional, `.env`, DNS
-  (SPF/DKIM/DMARC) y correr `alertas:prueba`. Hasta que se haga, ninguna alerta sale de la máquina.
-- **Todas las demás heredadas siguen abiertas.** Y detrás, la lista larga de REV-02 (ya cerrada como
-  tarea, pero con deuda menor pendiente en otros frentes): la regla de la fecha entre paréntesis fuera
-  de los correos, meses comerciales de treinta días, prórroga mínima, plantilla de carga, fondo de
-  cesantías, la prueba intermitente de `CatalogosTest`, el texto del empleado inactivo, PHP 8.2 contra
-  el 8.3 que pide `CLAUDE.md` y la frase del prototipo sobre el saldo negativo.
+  (SPF/DKIM/DMARC) y correr `alertas:prueba`. Todo el motor de alertas está construido y probado;
+  hasta que eso se haga, ningún correo sale de la máquina. Es lo único que separa al producto de
+  cumplir su promesa.
+- **Todas las demás heredadas siguen abiertas**: la regla de los meses comerciales de treinta días, la
+  prórroga mínima (B.3), la plantilla de carga, el fondo de cesantías, la prueba intermitente de
+  `CatalogosTest`, el texto del empleado inactivo, PHP 8.2 contra el 8.3 que pide `CLAUDE.md` y la
+  frase del prototipo sobre el saldo negativo.
 
 ## Notas para la próxima sesión
 
-- **La siguiente tarea es F4-05, punto de control de revisión.** Ejecuta el skill `revisar` sobre todo
-  lo construido en la fase 4 —F4-01 a F4-04— y deja lo encontrado arreglado o convertido en tareas
-  `REV-`.
-- **F4-04 no dejó ningún indicador del capítulo 12.1 sin construir salvo los dos de D.4.** Cuando esa
-  decisión llegue, falta añadir dos distribuciones más al bloque de Composición —mismo patrón que
-  cargo y género, con `DistribucionLista.vue` ya listo para reutilizar— y quitar el aviso.
-- **`REV-03` y `REV-04` siguen al final del backlog**, sin cambios.
+- **La siguiente tarea es F5-01, el lector de plantillas.** Arranca la fase 5 y es el primer sitio
+  donde entran datos que nadie digitó. `saldo_inicial` y `fecha_corte_saldo` existen en el motor desde
+  F2-02 justamente para eso: la carga no debe inventar periodos falsos para cuadrar un saldo.
+- **`REV-03` ya no está bloqueada.** David respondió las dos preguntas y la tarea trae la regla
+  escrita: eliminar es volver al pasado, y solo se puede deshacer el último de la lista. Sigue al final
+  del backlog, ahora con todo lo que necesita.
+- **`REV-04` y `REV-06` también siguen al final**, sin dependencias.
+- **`User`, `Acceso` e `Invitacion` siguen sin `SoftDeletes`**, abierto desde F1-13.
+  `DestinatariosDeAlertas` le dio un motivo nuevo: la lista de quién recibe cada alerta se deduce de
+  los usuarios de la empresa, y hoy no hay forma de sacar a alguien de ella sin borrarle la fila.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** Su contenido está en el commit de
   F3-06. **No hay que aplicarlo**: traería la versión vieja de `TipoDeAlerta`.

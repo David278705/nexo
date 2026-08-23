@@ -1004,9 +1004,20 @@ prop diferida de Inertia, `indicadores`, igual que la tarjeta de vacaciones acum
 - `resources/js/Components/DistribucionLista.vue` es el componente nuevo: una lista de conteos por
   categoría con su barra proporcional, compartida por las seis distribuciones del panel.
 
-### [ ] F4-05 · PUNTO DE CONTROL — revisión
+### [x] F4-05 · PUNTO DE CONTROL — revisión
 
 Ejecuta el skill `revisar`.
+
+Informe en `bitacora/revision-2026-08-23.md`. **Alcance: las once tareas desde el último punto de
+control** —la fase 3 entera, que no tenía uno propio, más REV-05 y las cuatro de la fase 4—.
+Aislamiento, seguridad y datos sin hallazgos: las doce tablas de negocio con trait, RLS y caso propio;
+el job de correo restablece el contexto de empresa y lo limpia aunque falle; el proceso diario recorre
+empresa por empresa; ningún conteo laboral fuera de `app/Dominio/Calculo/`. Se arreglaron dos cosas:
+**el indicador de días disfrutados contaba los días pactados de una vacación en curso y no los
+vividos**, al contrario de lo que decía su propio comentario y de lo que hace el bloque de ausentismo
+con una incapacidad abierta; y **la guardia de aislamiento del panel de indicadores solo vigilaba uno
+de los seis bloques**. Quedó `REV-06` por la regla de «la fecha entre paréntesis», que es la tercera
+revisión que la levanta y necesita una decisión de David.
 
 ---
 
@@ -1219,3 +1230,34 @@ valor anterior; el módulo sale de las cuatro listas de exclusión compartidas �
 > tarea pendiente que corrige algo que el sistema está haciendo mal **ahora mismo** —mandar tres
 > correos que por ley no corresponden—, y desde el final de la lista no se habría hecho hasta terminar
 > el proyecto entero.
+
+### [ ] REV-06 · Acotar la regla de «la fecha entre paréntesis»
+
+`.claude/rules/30-interfaz.md` la enuncia para **toda** la interfaz: «Toda referencia temporal lleva
+la fecha entre paréntesis: "Mañana (14 de junio)"». Su fuente —documento 1, 9.1— la enuncia solo para
+**los mensajes de las alertas**, y ahí el código la cumple al pie de la letra desde F3-02, con
+`ReferenciaTemporal` y sus pruebas.
+
+En pantalla, en cambio, el código nunca la ha cumplido y **la fase 4 amplió la distancia**: el panel
+de inicio escribe «Contratos vencen en 30 días», «Periodos de prueba terminan esta semana», «Días
+disfrutados en agosto» e «Índice de rotación de agosto», ninguna con fecha absoluta al lado. No es un
+descuido de F4-03 ni de F4-04: es lo que dibuja el prototipo, y una tarjeta que dijera «Contratos
+vencen en 30 días (22 de septiembre)» estaría diciendo la fecha de un corte, no la de ningún contrato.
+
+**Es una decisión de David sobre el texto de la regla, no trabajo de producto.** La recomendación,
+repetida ya en las revisiones de F1-13 y F2-11 y sin resolver desde entonces:
+
+- **En los correos, la regla se queda literal.** Ahí no hay ninguna columna al lado que salve la
+  frase, y es donde la fuente la enuncia.
+- **En pantalla, la versión débil**, que es la que el código ya cumple y el prototipo dibuja: una
+  referencia relativa necesita su fecha absoluta visible, en el mismo sitio o en la columna de al lado.
+
+**Hecho cuando:** `.claude/rules/30-interfaz.md` distingue los dos casos, y queda escrito en la propia
+regla que en pantalla basta con la fecha visible al lado. Si David decide lo contrario —que la regla
+vale literal también en pantalla—, entonces la tarea es al revés: repasar el panel de inicio y las ocho
+pantallas de listado poniendo la fecha entre paréntesis, y esta tarea deja de ser de una línea.
+
+**Motivo:** una regla que el código lleva tres revisiones incumpliendo deja de leerse como una regla.
+O se acota a lo que la sostiene el documento, o se cumple.
+**Fuente:** `.claude/rules/30-interfaz.md` · `docs/01-especificacion-funcional.md` 9.1 ·
+`bitacora/revision-2026-08-20.md` y `bitacora/revision-2026-08-22.md`

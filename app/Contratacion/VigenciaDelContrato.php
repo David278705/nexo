@@ -26,6 +26,19 @@ use Illuminate\Support\Carbon;
  * No se decide cuándo mandar un correo ni cuándo bloquear una prórroga. Aquí
  * solo se responde en qué día está el contrato; qué se hace con eso es del
  * motor de alertas (F3-04) y de las validaciones (F1-10).
+ *
+ * ## Por qué las dos cuentas de días de aquí no son del motor
+ *
+ * `diasParaVencer()` y `diasParaElPreaviso()` son **distancias de calendario con
+ * signo** —negativas cuando la fecha ya pasó—, y solo alimentan el texto que se
+ * lee en pantalla: «Vence en 26 días», «Vencido hace 4 días». No son ninguna de
+ * las tres reglas de conteo, que cuentan días trabajados o de novedad y por eso
+ * viven en el motor con nombres distintos.
+ *
+ * El número que sí va escrito en un correo —«en dos días (14 de junio)»— **no
+ * sale de aquí**: lo calcula `MotorDeCalculo::diasDeAnticipacion()` y lo redacta
+ * `ReferenciaTemporal`. Ninguna cifra con consecuencia legal se cuenta en esta
+ * clase, que es lo que hace que la excepción sea segura.
  */
 class VigenciaDelContrato
 {
