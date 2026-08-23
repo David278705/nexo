@@ -51,18 +51,19 @@ abstract class ReglaDePeriodoDePrueba implements ReglaDeAlerta
     private const MESES_DE_LA_VENTANA = 3;
 
     /**
-     * Las modalidades cuyo periodo de prueba es el general de dos meses, que
-     * son las que reciben las tres alertas de la sección 9.2.
+     * Las modalidades que reciben las tres alertas de la sección 9.2.
      *
-     * La obra o labor va con el indefinido y no aparte: no pacta plazo, así que
-     * no hay quinta parte que calcular y su periodo de prueba es el mismo de
-     * dos meses. La sección 9.6 dice expresamente que a esta modalidad «aplican
-     * también, cuando corresponda, las alertas de periodo de prueba», y las que
-     * le corresponden son las de su calendario, que es este.
+     * Es solo el indefinido. La obra o labor pacta el mismo periodo de prueba
+     * de dos meses, pero la sección 9.6 dice ahora, tras la revisión de Angela
+     * de agosto de 2026, que **no recibe ninguna de las tres**: no hay fecha de
+     * vencimiento previsible en esta modalidad, y estas alertas hablan del fin
+     * del periodo de prueba, no de un plazo del contrato. Antes de esa revisión
+     * el documento decía lo contrario y por eso obra o labor estaba aquí; la
+     * corrección es REV-05.
      *
      * @var list<TipoContrato>
      */
-    protected const PRUEBA_GENERAL = [TipoContrato::Indefinido, TipoContrato::ObraLabor];
+    protected const PRUEBA_GENERAL = [TipoContrato::Indefinido];
 
     /**
      * Las modalidades de contrato a las que aplica esta alerta.

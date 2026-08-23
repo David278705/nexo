@@ -208,15 +208,15 @@ describe('a quién le toca cada calendario', function () {
             ->and(alertasDe(new PruebaFijoVispera, $this->empresa, '2026-06-13'))->toBe([]);
     });
 
-    it('la obra o labor recibe las tres del periodo general, como dice la sección 9.6', function () {
+    it('la obra o labor no recibe ninguna de las tres, como dice la sección 9.6 tras la revisión de Angela', function () {
         empleadaEnPrueba(
             $this->empresa,
             Vinculacion::factory()->deObraOLabor()->conIngreso(INGRESO_DEL_EJEMPLO)
         );
 
-        expect(alertasDe(new PruebaIndefinidoUnMes, $this->empresa, '2026-05-14'))->toHaveCount(1)
-            ->and(alertasDe(new PruebaIndefinidoQuinceDias, $this->empresa, '2026-05-30'))->toHaveCount(1)
-            ->and(alertasDe(new PruebaIndefinidoVispera, $this->empresa, '2026-06-13'))->toHaveCount(1);
+        expect(alertasDe(new PruebaIndefinidoUnMes, $this->empresa, '2026-05-14'))->toBe([])
+            ->and(alertasDe(new PruebaIndefinidoQuinceDias, $this->empresa, '2026-05-30'))->toBe([])
+            ->and(alertasDe(new PruebaIndefinidoVispera, $this->empresa, '2026-06-13'))->toBe([]);
     });
 
     it('no se dispara si el empleado está inactivo', function () {

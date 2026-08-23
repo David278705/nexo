@@ -769,6 +769,33 @@ consulta en la sección Alertas.
   hora: «el 25 de diciembre» no le responde a un cliente que dice que a esa hora no le había llegado
   nada.
 
+### [!] F3-06b · Entregabilidad real — bloqueada: no es código, la hace David una vez
+
+**No la tome ninguna sesión.** Aquí no hay nada que programar: F3-06 dejó construido todo lo
+programable y sus pruebas en verde. Lo que falta está fuera del repositorio y solo lo puede hacer una
+persona con acceso a la cuenta del proveedor y al DNS del dominio.
+
+Existe como tarea propia porque **el «hecho cuando» de F3-06 —«un correo de prueba llega a bandeja de
+entrada»— no se cumplió**, y esa tarea quedó `[x]` de todos modos. Sin esto, el sistema manda los
+correos al archivo de registro y ninguna alerta sale de la máquina: la promesa que vende el producto
+no se está cumpliendo, aunque el backlog esté en verde y las pruebas pasen.
+
+Los cuatro pasos, en orden:
+
+1. Abrir cuenta en un proveedor transaccional —Postmark, Resend o SES—.
+2. Llenar las cinco líneas `MAIL_*` del `.env`. Hoy está en `MAIL_MAILER=log`, que es lo correcto para
+   desarrollo: el correo va a `storage/logs/laravel.log` y el flujo entero se puede recorrer sin
+   credenciales de nadie. Las cinco líneas de cada proveedor están comentadas en `.env.example`.
+3. Crear **SPF, DKIM y DMARC** en el DNS del dominio propio. Es la mitad que no vive en ningún archivo
+   del repositorio, y sin los tres el proveedor entrega y el buzón manda a spam.
+4. Correr `php artisan alertas:prueba <empresa> <correo>` y **mirar en qué carpeta cae**. Ese comando
+   manda por el mismo camino que las alertas de verdad, así que si ese correo llega a bandeja de
+   entrada, llegan todas. Es el único envío que no es idempotente por día, justamente para poder
+   corregir el DNS y reintentar la misma mañana.
+
+**Hecho cuando:** el correo de `alertas:prueba` llega a bandeja de entrada —no a spam— y queda su
+fila en el registro de envíos, consultable en la sección Alertas.
+
 ---
 
 ## Fase 4 — Reportería y panel de inicio
@@ -896,6 +923,40 @@ Hechas **las cuatro tarjetas del prototipo**, y el «hecho cuando» probado hast
   primera vuelta bajó a **0,007**. Las otras tres salidas se descartaron a propósito: leer la caché
   la convertiría en la fuente de verdad sobre una persona, y tocar el motor por velocidad es donde se
   rompen los números. La medición quedó como prueba con el umbral de dos segundos del documento.
+
+### [x] REV-05 · Quitar las alertas de periodo de prueba de obra o labor
+
+**Adelantada desde el final del backlog el 23 de agosto de 2026.** Es corta, y es la única pendiente
+que corrige algo que el sistema hace mal hoy: le manda a los empleados de obra o labor tres correos
+que por ley no les corresponden. Desde el final de la lista no se habría hecho hasta terminar todo.
+
+F3-03 construyó las tres alertas de periodo de prueba del contrato indefinido —al mes, a los 45 días,
+un día antes— y, apoyándose en que 9.6 decía «aplican también, cuando corresponda», las mandó también
+a los contratos de obra o labor. Angela ya respondió la pregunta que quedó abierta desde entonces:
+**a obra o labor no le va ninguna de las tres.** El documento 1, sección 9.6, ya se corrigió para
+decirlo así de claro.
+
+**Hay una segunda razón para hacerla ya, y llegó con F4-03:** la tarjeta de periodo de prueba del
+panel de inicio **sí** deja fuera a la obra o labor, porque esa tarea decidió no repetir el error en
+una pantalla nueva. Así que hoy el panel y el correo dicen cosas distintas sobre la misma persona.
+El que está bien es el panel.
+
+**Hecho cuando:** un empleado con contrato de obra o labor no genera ninguna de las tres alertas de
+periodo de prueba en ningún punto de su periodo de prueba, con prueba que lo demuestre; un empleado a
+término indefinido las sigue generando exactamente igual que antes; y el panel de inicio y el correo
+dejan de discrepar.
+**Fuente:** `docs/01-especificacion-funcional.md` 9.6
+
+Hecho: `ReglaDePeriodoDePrueba::PRUEBA_GENERAL` —de donde las tres alertas del indefinido leen sus
+modalidades— dejó de incluir `TipoContrato::ObraLabor`. El cambio fue de una sola línea porque las
+tres reglas ya delegaban en esa constante y ninguna repetía la lista de modalidades por su cuenta: es
+la razón de ser de la clase base. El contrato a término indefinido no se tocó y sigue generando las
+tres exactamente igual —hay prueba de eso mismo, que ya existía—. La prueba
+`'la obra o labor recibe las tres del periodo general, como dice la sección 9.6'` de
+`AlertasDePeriodoDePruebaTest.php`, que probaba justamente lo que ahora está mal, pasó a comprobar lo
+contrario: que ninguna de las tres se dispara. El panel de inicio no se tocó —ya dejaba fuera a la
+obra o labor desde F4-03— y con este cambio deja de discrepar con el correo, que era la segunda razón
+por la que esta tarea se adelantó.
 
 ### [ ] F4-04 · Panel de inicio, indicadores
 
@@ -1114,17 +1175,7 @@ valor anterior; el módulo sale de las cuatro listas de exclusión compartidas �
 
 **Fuente:** `docs/02-arquitectura-y-datos.md` 7.2 · `docs/03-diseno-e-interfaz.md` cap. 4
 
-### [ ] REV-05 · Quitar las alertas de periodo de prueba de obra o labor
-
-F3-03 construyó las tres alertas de periodo de prueba del contrato indefinido —al mes, a los 45 días,
-un día antes— y, apoyándose en que 9.6 decía «aplican también, cuando corresponda», las mandó también
-a los contratos de obra o labor. Angela ya respondió la pregunta que quedó abierta desde entonces:
-**a obra o labor no le va ninguna de las tres.** El documento 1, sección 9.6, ya se corrigió para
-decirlo así de claro.
-
-Hoy el sistema le sigue mandando esas tres alertas a los empleados de obra o labor. Hay que quitarlas.
-
-**Hecho cuando:** un empleado con contrato de obra o labor no genera ninguna de las tres alertas de
-periodo de prueba en ningún punto de su periodo de prueba, con prueba que lo demuestre; un empleado a
-término indefinido las sigue generando exactamente igual que antes.
-**Fuente:** `docs/01-especificacion-funcional.md` 9.6
+> `REV-05` estaba aquí y **se movió delante de F4-04** el 23 de agosto de 2026. El motivo: es la única
+> tarea pendiente que corrige algo que el sistema está haciendo mal **ahora mismo** —mandar tres
+> correos que por ley no corresponden—, y desde el final de la lista no se habría hecho hasta terminar
+> el proyecto entero.
