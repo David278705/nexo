@@ -3,6 +3,7 @@
 use App\Autorizacion\Modulo;
 use App\Autorizacion\SeccionDelPanel;
 use App\Catalogos\Ubicaciones;
+use App\Http\Controllers\Acceso\AccesoDePruebaController;
 use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\LicenciaController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\Proveedor\CargaInicialController;
 use App\Http\Controllers\Proveedor\CatalogoController;
+use App\Http\Controllers\Proveedor\DemostracionController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
@@ -49,6 +51,15 @@ Route::middleware('guest')->group(function () {
     Route::post('/invitacion/{token}', [InvitacionController::class, 'aceptar'])
         ->name('invitacion.aceptar');
 });
+
+/*
+ * El enlace de un acceso de prueba (documento 4, capítulo 10 y 12.1). No va en
+ * el grupo `guest`: a diferencia de las cuatro pantallas de arriba, entrar por
+ * aquí es válido tenga sesión o no quien lo abra —el controlador cierra la que
+ * hubiera antes de abrir la del ambiente de demostración—.
+ */
+Route::get('/prueba/{token}', [AccesoDePruebaController::class, 'entrar'])
+    ->name('demostracion.entrar');
 
 Route::middleware('auth')->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('acceso.salir');
@@ -410,7 +421,22 @@ Route::middleware(['auth', 'proveedor'])
                 ->name('proveedor.puesta-en-marcha.cargar');
 
             /*
-             * Las seis secciones restantes del capítulo 2. Existen desde ya,
+             * Demostración (documento 4, capítulo 10): el estado del ambiente
+             * ficticio, su botón de restaurar y los accesos de prueba con
+             * vigencia limitada.
+             */
+            Route::get('/'.SeccionDelPanel::Demostracion->value, [DemostracionController::class, 'index'])
+                ->name(SeccionDelPanel::Demostracion->nombreDeRuta());
+            Route::post('/'.SeccionDelPanel::Demostracion->value.'/restaurar', [DemostracionController::class, 'restaurar'])
+                ->name('proveedor.demostracion.restaurar');
+            Route::post('/'.SeccionDelPanel::Demostracion->value.'/accesos', [DemostracionController::class, 'generarAcceso'])
+                ->name('proveedor.demostracion.accesos.generar');
+            Route::post('/'.SeccionDelPanel::Demostracion->value.'/accesos/{acceso}/revocar', [DemostracionController::class, 'revocarAcceso'])
+                ->whereNumber('acceso')
+                ->name('proveedor.demostracion.accesos.revocar');
+
+            /*
+             * Las cuatro secciones restantes del capítulo 2. Existen desde ya,
              * como en el armazón del cliente, para que el menú del panel se
              * pueda recorrer entero: la dirección, el nombre de ruta y el
              * resaltado son los definitivos y solo falta el contenido.

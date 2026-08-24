@@ -1102,11 +1102,26 @@ noviembre, tres meses cerrados después.
   tramos intermedios, y 13.1 lo prohíbe con esas palabras: «no se inventan registros». La
   consecuencia está anotada en `ESTADO.md`.
 
-### [ ] F5-03 · Ambiente de demostración
+### [x] F5-03 · Ambiente de demostración
 
 Empresa ficticia poblada y proceso que la restaura cada noche. Accesos de prueba con vigencia limitada.
 **Hecho cuando:** el ambiente se restaura solo y siempre luce igual de poblado.
 **Fuente:** `docs/04-panel-del-proveedor.md` cap. 10
+
+Hecho: `AmbienteDeDemostracion` —una sola empresa marcada `es_ambiente_demo`, con índice único parcial
+que impide una segunda—, su planta fija de ocho personas con fechas relativas a hoy (periodo de
+prueba, contrato fijo por vencer, vacaciones, incapacidad, licencia, movimiento, obra o labor y una
+salida ya registrada), `restaurar()` —vacía con borrado lógico y vuelve a poblar dentro de una
+transacción— y el comando `demostracion:restaurar`, programado cada noche a las 3:00 a. m. La pantalla
+«Demostración» del panel —`DemostracionController`, `Pages/Proveedor/Demostracion.vue`— muestra el
+estado, el botón «Restaurar ahora» y los accesos de prueba. **`AccesosDePrueba` no trae ningún valor
+por omisión para la vigencia**: D.12 sigue sin decidir cuántos días dura un acceso, y el documento 4,
+12.1, dice que es David quien lo decide cada vez que lo genera, así que el formulario exige el número
+y no propone ninguno. El enlace `/prueba/{token}` loguea con la cuenta compartida de demostración
+—`Rol::Superadministrador` dentro del tenant demo— y `CerrarAccesoDePruebaExpirado` cierra la sesión
+si el acceso vence a la mitad de una visita, no solo al entrar. `CatalogosDelSistema` actualizó su fila
+de este umbral: ya no dice «sin decisión escrita» sino dónde vive el mecanismo y por qué sigue sin un
+número por defecto.
 
 ### [ ] F5-04 · Suscripciones y cobros
 

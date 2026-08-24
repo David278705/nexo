@@ -74,4 +74,17 @@ class TenantFactory extends Factory
     {
         return $this->state(fn () => ['sabado_laboral' => true]);
     }
+
+    /**
+     * El ambiente de demostración (documento 4, capítulo 10, F5-03). Solo una
+     * empresa de todas las que existan puede llevar esta bandera: el índice
+     * único parcial de la migración lo impide si una prueba intenta crear dos.
+     */
+    public function ambienteDeDemo(): static
+    {
+        return $this->state(fn () => [
+            'es_ambiente_demo' => true,
+            'estado' => Tenant::ESTADO_EN_PRUEBA,
+        ]);
+    }
 }

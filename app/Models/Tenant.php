@@ -56,6 +56,8 @@ class Tenant extends Model
         'plan_inicia_el',
         'certificado_camara_ruta',
         'certificado_camara_nombre',
+        'es_ambiente_demo',
+        'demo_restaurado_en',
     ];
 
     /**
@@ -71,6 +73,8 @@ class Tenant extends Model
             'ultimo_acceso_en' => 'datetime',
             'ultima_novedad_en' => 'datetime',
             'plan_inicia_el' => 'date',
+            'es_ambiente_demo' => 'boolean',
+            'demo_restaurado_en' => 'datetime',
         ];
     }
 
@@ -128,5 +132,17 @@ class Tenant extends Model
     public function usuarios(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * Los accesos de prueba emitidos hacia esta empresa. Solo tiene filas
+     * quien sea el ambiente de demostración: es la única a la que se genera
+     * un acceso de prueba (documento 4, capítulo 10).
+     *
+     * @return HasMany<AccesoDePrueba, $this>
+     */
+    public function accesosDePrueba(): HasMany
+    {
+        return $this->hasMany(AccesoDePrueba::class);
     }
 }

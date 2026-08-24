@@ -439,10 +439,11 @@ class CatalogosDelSistema
                 ],
                 [
                     'umbral' => 'Vigencia del usuario de demostración',
-                    'valor' => 'Sin decidir',
-                    'donde' => 'Llega con el ambiente de demostración (F5-03)',
-                    'estado' => 'Sin decisión escrita',
-                    'tono' => 'neutro',
+                    'valor' => 'La elige quien genera cada acceso',
+                    'donde' => 'App\Proveedor\AccesosDePrueba',
+                    'estado' => 'D.12 sigue sin un número por defecto: el documento 4, 12.1, dice que '
+                        .'es David quien lo decide cada vez, así que el formulario no trae ninguno puesto',
+                    'tono' => 'advertencia',
                 ],
                 [
                     'umbral' => 'Días de mora antes de suspender a un cliente',

@@ -23,3 +23,14 @@ Schedule::command('alertas:diarias')
     ->dailyAt('06:00')
     ->timezone('America/Bogota')
     ->withoutOverlapping();
+
+/**
+ * La restauración nocturna del ambiente de demostración (documento 4,
+ * capítulo 10): a las tres de la madrugada, cuando nadie lo está explorando,
+ * para que a las seis —cuando arrancan las alertas— ya luzca con la planta de
+ * siempre.
+ */
+Schedule::command('demostracion:restaurar')
+    ->dailyAt('03:00')
+    ->timezone('America/Bogota')
+    ->withoutOverlapping();

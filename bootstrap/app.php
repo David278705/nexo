@@ -1,6 +1,7 @@
 <?php
 
 use App\Autorizacion\SeccionDelPanel;
+use App\Http\Middleware\CerrarAccesoDePruebaExpirado;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolverTenant;
 use App\Http\Middleware\SegundoFactorVerificado;
@@ -29,6 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(
             remove: [SubstituteBindings::class],
             append: [
+                // Antes de resolver el tenant: si la sesión es la de un acceso
+                // de prueba ya vencido, la cierra y no hay usuario del que
+                // resolver nada.
+                CerrarAccesoDePruebaExpirado::class,
                 ResolverTenant::class,
                 SubstituteBindings::class,
                 HandleInertiaRequests::class,

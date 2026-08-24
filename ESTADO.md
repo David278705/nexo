@@ -1,65 +1,66 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-23 · Tarea F5-02 (ejecución de la carga)
-**Verificación:** verde — Pint, PHPStan sin errores, **1.018** pruebas de Pest, build y 296 de Vitest.
-**Siguiente tarea:** F5-03 · Ambiente de demostración.
+**Última sesión:** 2026-08-23 · Tarea F5-03 (ambiente de demostración)
+**Verificación:** verde — Pint, PHPStan sin errores, **1.038** pruebas de Pest, build y 303 de Vitest.
+**Siguiente tarea:** F5-04 · Suscripciones y cobros.
 
 ## Qué se hizo
 
-- **F5-02, la ejecución de la carga inicial.** `EjecucionDeCarga`, `ResultadoDeLaCarga`,
-  `CargaRechazada`, `HistorialDeCargas`, la tabla `cargas_iniciales` con su modelo `RegistroDeCarga`
-  y su factory, el `escribir()` de las seis plantillas y el comando
-  `carga:ejecutar {empresa} {plantilla} {archivo}`.
-- **La pantalla de puesta en marcha del panel**, que era la que F5-01 dejó sin construir a propósito:
-  `CargaInicialController` con sus tres rutas, `App\Proveedor\PuestaEnMarcha`, el `FormRequest`
-  `CargarPlantilla` y `Pages/Proveedor/PuestaEnMarcha.vue` con su prueba de Vitest. Los seis pasos del
-  documento 2, 6.1, están completos de punta a punta: subir, validar sin escribir, ver el informe por
-  fila, confirmar, la transacción y la constancia.
-- **El «hecho cuando» está probado literalmente.** Con el corte a fin de mes, quien informa 17,25 días
-  el 31 de agosto tiene 17,25 ese día y 21,0 el 30 de noviembre: el saldo de la plantilla más 1,25 por
-  cada uno de los tres meses cerrados desde el corte.
-- **Se aprovechó el trabajo sin commitear que había en `app/CargaInicial/`** —la ejecución, el
-  registro, el historial y los `escribir()`—, que estaba bien razonado y le faltaba todo lo de
-  alrededor: las pruebas, el caso de aislamiento, la pantalla y sus rutas. Lo único que se le corrigió
-  fueron dos usos innecesarios de `?->` que dejaban PHPStan en rojo.
+- **F5-03, el ambiente de demostración.** `App\Proveedor\AmbienteDeDemostracion` —una sola empresa
+  marcada `es_ambiente_demo` (índice único parcial en `tenants` que impide una segunda), su planta fija
+  de ocho personas y `restaurar()`, que vacía con borrado lógico y vuelve a poblar dentro de una
+  transacción—, el comando `demostracion:restaurar` programado cada noche a las 3:00 a. m.
+  `America/Bogota`, y la pantalla «Demostración» del panel —`DemostracionController`,
+  `Pages/Proveedor/Demostracion.vue`— con el estado, el botón «Restaurar ahora» y la lista de accesos
+  de prueba activos.
+- **Los accesos de prueba con vigencia limitada** (documento 4, capítulo 10 y 12.1). La tabla
+  `accesos_de_prueba` —sin `tenant_id` con trait ni RLS, igual que `invitaciones`—, el modelo
+  `AccesoDePrueba`, la clase `App\Proveedor\AccesosDePrueba` (generar, listar los activos, revocar) y
+  el enlace público `GET /prueba/{token}`, que loguea con la cuenta compartida
+  `demo@ambiente-nexo.local` (`Rol::Superadministrador` dentro del tenant demo, así que ve todos los
+  módulos). `CerrarAccesoDePruebaExpirado`, middleware nuevo en el grupo `web`, cierra la sesión si el
+  acceso vence a la mitad de una visita y no solo se comprueba al entrar.
+- **La planta fija tiene ocho situaciones, no datos al azar.** Periodo de prueba, contrato a término
+  fijo por vencer, vacaciones ya disfrutadas, una incapacidad reciente, una licencia no remunerada, un
+  aumento salarial, un contrato de obra o labor y una salida ya registrada (para los indicadores de
+  rotación). Las fechas son relativas a `Carbon::today()` y no fijas: así el contrato a término fijo
+  sigue venciendo pronto y la incapacidad sigue siendo reciente sin importar qué día se restaure, sin
+  dejar de ser exactamente la misma planta —el «hecho cuando» de la tarea, probado restaurando dos
+  veces y comparando los documentos de las ocho personas—.
+- **`CatalogosDelSistema` actualizó su fila pendiente.** «Vigencia del usuario de demostración» ya no
+  dice «sin decisión escrita»: dice dónde vive el mecanismo (`App\Proveedor\AccesosDePrueba`) y por qué
+  sigue sin un número por defecto.
 
 ## Decisiones tomadas
 
-- **La ejecución no recibe el informe que se enseñó: recibe el archivo y lo vuelve a simular entero.**
-  Entre validar y confirmar pasan minutos, y en esos minutos alguien pudo desactivar una EPS, subir
-  otro archivo o cargar la misma plantilla desde otra pestaña. Lo que se escribe es exactamente lo que
-  se acaba de validar. De paso es lo que permite no guardar el Excel en ninguna parte (documento 1,
-  13.1): llega, se lee dos veces y se va. El precio es que el archivo se sube dos veces, y la pantalla
-  lo hace sin volver a pedirlo porque el navegador conserva el que ya está elegido.
-- **Cada plantilla escribe por donde escribe su módulo**, por el mismo motivo por el que valida con
-  las reglas de su formulario: una fila cargada y una digitada tienen que acabar idénticas.
-  `PlantillaDeMovimientos` es la única excepción y está razonada en su propio comentario:
-  `Vinculacion::registrarMovimiento()` actualiza además el cargo y el salario vigentes tomando el
-  «anterior» de lo que rige hoy, y en un histórico eso es exactamente al revés.
-- **La dependencia entre plantillas se comprueba contra `cargas_iniciales`, no contra la planta.** Una
-  empresa puede tener empleados registrados por pantalla sin haber pasado nunca por la carga inicial;
-  contra la planta, la comprobación diría que sí a algo que nunca ocurrió.
-- **Volver a pasar la plantilla de empleados se rechaza fila por fila**, con el documento ya vinculado
-  como error del archivo. Cargarla dos veces no falla por sí solo: abre una segunda vinculación activa
-  a cada persona, y eso no se nota hasta que el listado enseña la planta entera repetida.
-- **El corte del saldo acota también el disfrute, no solo la acumulación.** Los «días disponibles hoy»
-  que informa la empresa ya vienen con lo disfrutado descontado, así que una vacación anterior al
-  corte cargada en el histórico se restaría dos veces. Sin esto, cargar la plantilla 4 —que es
-  opcional— le habría cambiado el saldo a todo el mundo.
-- **La pantalla enseña la tabla de las seis plantillas en vez de los cuatro pasos del prototipo.** Una
-  puesta en marcha no es una fila de pasos que se recorre una vez: es el mismo ciclo repetido hasta
-  seis veces, a veces en dos reuniones. Lo que hace falta al abrirla no es saber en qué paso se quedó,
-  sino qué plantillas de esa empresa ya entraron, con su fecha y sus filas. Eso es además el «resumen
-  final» del paso 5 del documento 3, 5.8.
-- **Validar y cargar son dos rutas distintas y no una con una casilla.** La única diferencia que
-  importa en toda la pantalla es que una escribe y la otra no; una casilla mal marcada sería una carga
-  que entra sin que nadie la haya confirmado.
-- **El archivo se comprueba por su extensión y no por su tipo MIME.** Un `.xlsx` es un zip por dentro
-  y el olfateo del sistema lo dice, así que `mimes:xlsx` rechazaría archivos correctos según la
-  máquina donde corra. La comprobación de verdad es que el lector lo abra.
-- **`HistorialDeCargas` recorre las empresas una por una**, con `ContextoTenant::paraTenant()`. No es
-  solo disciplina: `cargas_iniciales` tiene RLS, así que una consulta global no devolvería nada. El
-  `owner` cruza empresas entrando en cada una, no saltándose la puerta.
+- **D.12 no se resolvió inventando un número, se resolvió leyendo quién lo decide.** El documento 6
+  deja sin decidir «cuántos días dura un acceso de demostración», pero el documento 4, 12.1, ya dice
+  quién lo decide y cuándo: «David genera el acceso». Por eso `dias_de_vigencia` es un campo obligatorio
+  del formulario, sin ningún valor puesto de antemano, y no una constante de configuración con un
+  número propuesto —el patrón que sí se usó en `config/panel.php` para la salud de uso, y que aquí no
+  aplicaba porque esa vigencia sí está atribuida a una persona en el documento y esta también, y el
+  documento explícitamente la deja como una decisión por caso—.
+- **Hay una sola empresa de demostración, no una por prospecto.** «Accesos de prueba» son sesiones
+  temporales hacia el mismo ambiente ficticio compartido, no empresas nuevas: el capítulo 10 habla de
+  «el ambiente de demostración» en singular, y una empresa nueva por cada prospecto rompería el sentido
+  de «restaurarlo cada noche» —¿cuál de todas?—. El índice único parcial en `tenants.es_ambiente_demo`
+  lo hace cumplir en la base de datos, no solo en el código.
+- **`restaurar()` no reutiliza el `escribir()` de la carga inicial.** Ese espera filas ya validadas de
+  un archivo de Excel, y aquí no hay ningún archivo que inventar: se escribe directamente con los
+  modelos, igual que cualquier prueba del sistema. Ya estaba anotado así en la sesión de F5-02.
+- **Vaciar el ambiente es borrado lógico, no `truncate`.** La regla 4 del proyecto no hace una excepción
+  para los datos ficticios: cada restauración deja el rastro de la anterior en `deleted_at`, así que el
+  ambiente acumula filas muertas noche tras noche en vez de perder la historia. Probado explícitamente:
+  restaurar dos veces deja 8 personas vivas y 16 en total.
+- **Los datos de la planta son fijos, no `Faker`.** Un dato aleatorio sin semilla dejaría el ambiente
+  distinto cada noche, que es lo contrario de «siempre luce igual de poblado». Los nombres, los cargos y
+  los documentos son los mismos en cada restauración; solo las fechas son relativas a hoy.
+- **El acceso de prueba no es de un solo uso.** A diferencia de una invitación, dura varios días y el
+  mismo enlace sirve todas las veces que haga falta mientras no venza ni se revoque: lo único que
+  registra cada entrada es `ultimo_uso_en`.
+- **La cuenta compartida es `Superadministrador`, no un `Administrador` con módulos repartidos.** Un
+  prospecto que explora solo tiene que ver todo el sistema, igual que vería el capítulo 10 y no una
+  vista recortada por un permiso pensado para un empleado real.
 
 ## Preguntas para Angela
 
@@ -69,6 +70,9 @@
 - **Heredadas, las cinco de sesiones anteriores**: los tres nombres del filtro «Estado del contrato»,
   el texto del correo de prueba de entregabilidad, los textos del correo de obra o labor, el texto del
   contrato que vence el día mismo del tope y «acumula 3 prórrogas inferiores a un año».
+- **D.12 sigue formalmente abierta, aunque F5-03 ya no la bloquea.** Sigue sin existir un número
+  sugerido de referencia para cuando alguien pregunte «¿cuántos días le pongo normalmente a un acceso
+  de prueba?»; hoy el formulario no ofrece ninguno y quien lo genera decide caso por caso.
 
 ## Decisiones para David
 
@@ -94,20 +98,24 @@
 
 ## Notas para la próxima sesión
 
-- **La siguiente tarea es F5-03, el ambiente de demostración** (documento 4, capítulo 10): una empresa
-  ficticia poblada, un proceso que la restaura cada noche y accesos de prueba con vigencia limitada.
-  La carga inicial ya construida es la vía natural para poblarla, pero **el `escribir()` de cada
-  plantilla no es un seeder**: espera filas ya validadas y un archivo de Excel detrás.
-- **La sección «Demostración» del panel sigue siendo una pantalla pendiente**, igual que
-  Suscripciones, Alertas, Salud y Equipo. `SeccionDelPanel::pendientes()` es la lista y de ella salió
-  `PuestaEnMarcha` en esta sesión.
-- **El historial de cargas no ofrece «Ver informe» de una carga anterior**, que el capítulo 5 del
-  documento 4 menciona. No se construyó porque el informe no se guarda: el Excel no se conserva y de
-  la carga solo queda el nombre del archivo y el número de filas. Guardar el informe de errores de una
-  carga que sí entró tampoco tendría contenido —entra cuando no hay errores—; lo que tendría sentido
-  es guardar el de una simulación fallida, y eso es una decisión de producto, no un olvido.
+- **La siguiente tarea es F5-04, suscripciones y cobros** (documento 4, capítulo 6): las tablas
+  `planes`, `suscripciones` y `pagos`, con estado, mora y suspensión con constancia. Recuerda que la
+  tabla `planes` con precios depende de la decisión A.1, que sigue declarada pendiente en el documento
+  6 —el plan pactado de cada empresa hoy vive en las cuatro columnas `plan_*` de `tenants`, sin
+  catálogo detrás—. «Días de mora antes de suspender» es otro umbral que `CatalogosDelSistema` ya
+  declara «sin decidir, llega con F5-04»: la escalera del capítulo 6 propone 5, 15 y 30 días, pero es
+  una propuesta y no una decisión escrita.
+- **`SeccionDelPanel::pendientes()` perdió una sección más.** Quedan Suscripciones, Alertas, Salud y
+  Equipo; de ahí sale la siguiente que se construya.
+- **El ambiente de demostración no tiene todavía perfil sociodemográfico ni cargas de la carga
+  inicial.** `perfil_sociodemografico_habilitado` quedó en `false` para el tenant demo: si una futura
+  sesión quiere mostrar ese bloque en la demo, hay que activarlo y sumarlo a `poblar()`.
+- **La cuenta compartida de demostración (`demo@ambiente-nexo.local`) nace con una contraseña aleatoria
+  que nadie conoce.** Nadie necesita conocerla: se entra siempre por `/prueba/{token}`, nunca por el
+  formulario de acceso normal. Si alguna vez hiciera falta entrar con correo y contraseña, habría que
+  decidir esa contraseña aparte.
 - **`User`, `Acceso` e `Invitacion` siguen sin `SoftDeletes`**, abierto desde F1-13.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** Su contenido está en el commit de
   F3-06. **No hay que aplicarlo**: traería la versión vieja de `TipoDeAlerta`.
 - **`LEEME PRIMERO.md` y `scripts/vibe.ps1` siguen modificados y sin commitear**: son cambios del bucle
-  de desarrollo, ajenos a esta tarea y a la anterior.
+  de desarrollo, ajenos a esta tarea y a las anteriores.
