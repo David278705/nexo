@@ -3,6 +3,7 @@
 namespace App\Proveedor;
 
 use App\Listados\Listado;
+use App\Models\Suscripcion;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
@@ -12,22 +13,20 @@ use Illuminate\Http\Request;
 /**
  * El listado de empresas cliente del panel del proveedor (documento 4, 4.1).
  *
- * Es la pantalla desde la que se mira el negocio entero: ocho columnas, cuatro
- * filtros y una búsqueda por nombre o NIT. Dos de las ocho columnas todavía no
- * tienen de dónde salir y **se declaran en vez de inventarse**, que es el mismo
- * criterio con el que se construyó el inicio del panel:
+ * Es la pantalla desde la que se mira el negocio entero: ocho columnas, los
+ * cuatro filtros del documento y una búsqueda por nombre o NIT.
  *
- * - **Pago.** «Al día, por vencer o en mora con los días de atraso» sale de
- *   `suscripciones` y `pagos`, que son F5-04. Hasta entonces la columna dice que
- *   el dato todavía no existe, y su filtro no se ofrece: un filtro que no puede
- *   distinguir nada es peor que ninguno.
- * - **Empleados frente al plan.** El número de empleados sí es real —se cuentan
- *   los vigentes de cada empresa—; lo que no existe todavía es el nivel de plan
- *   con sus cupos cerrados, así que el tope es el que se pactó con el cliente y
- *   quedó escrito en `plan_empleados_incluidos`.
+ * **La columna «Pago» dejó de ser un hueco en F5-04.** «Al día, por vencer o en
+ * mora con los días de atraso» sale de la suscripción de cada empresa, y su
+ * filtro —el cuarto que pide el documento— ya se ofrece. Una empresa sin
+ * suscripción no cae en ninguno de los tres estados y su celda lo dice con
+ * palabras: no se le cobra todavía.
  *
- * El resaltado cuando los empleados superan el plan sí está, porque el documento
- * lo pide con nombre propio: «es una conversación de venta».
+ * El tope de empleados sigue saliendo de `plan_empleados_incluidos`, que desde
+ * F5-04 lo mantiene la propia suscripción: al abrirla o al cambiarle el plan, el
+ * nombre y los dos cupos del catálogo se copian a la empresa en la misma
+ * transacción. El resaltado cuando los empleados lo superan está porque el
+ * documento lo pide con nombre propio: «es una conversación de venta».
  *
  * Aquí no se escribe ni un `where('tenant_id', ...)`. Contar los empleados de
  * una empresa se hace **entrando en su contexto** con `ContextoTenant`, que es
@@ -42,17 +41,12 @@ use Illuminate\Http\Request;
  */
 class ListadoDeEmpresas extends Listado
 {
-    /**
-     * Lo que se enseña en la columna «Pago» mientras no existan las
-     * suscripciones. Un hueco declarado antes que una cifra inventada.
-     */
-    public const PAGO_PENDIENTE = 'Sin cobros todavía';
-
     protected function __construct(
         public readonly string $buscar,
         public readonly string $estado,
         public readonly string $plan,
         public readonly string $salud,
+        public readonly string $pago,
         string $orden,
         string $direccion,
         int $porPagina,
@@ -67,6 +61,7 @@ class ListadoDeEmpresas extends Listado
             estado: self::filtro($peticion, 'estado', EstadoDeEmpresa::valores()),
             plan: self::texto($peticion, 'plan'),
             salud: self::filtro($peticion, 'salud', SaludDeUso::valores()),
+            pago: self::filtro($peticion, 'pago', EstadoDeCobro::valores()),
             orden: self::ordenPedido($peticion),
             direccion: self::direccionPedida($peticion),
             porPagina: self::porPagina($peticion),
@@ -78,7 +73,9 @@ class ListadoDeEmpresas extends Listado
      */
     protected function base(): Builder
     {
-        return Tenant::query()->withCount('usuarios');
+        return Tenant::query()
+            ->withCount('usuarios')
+            ->with('suscripcion');
     }
 
     /**
@@ -96,6 +93,21 @@ class ListadoDeEmpresas extends Listado
 
         if ($this->salud !== self::TODOS) {
             SaludDeUso::from($this->salud)->filtrar($consulta, 'ultimo_acceso_en');
+        }
+
+        /*
+         * El filtro de estado de pago (documento 4, 4.1). Va sobre la
+         * suscripción y no sobre una columna de la empresa: quien no tenga
+         * suscripción no cae en ninguno de los tres estados, que es lo correcto
+         * —no se le cobra— y lo que `whereHas` hace solo.
+         */
+        if ($this->pago !== self::TODOS) {
+            $cobro = EstadoDeCobro::from($this->pago);
+
+            $consulta->whereHas('suscripcion', function (Builder $suscripcion) use ($cobro): void {
+                /** @var Builder<Suscripcion> $suscripcion */
+                $cobro->filtrar($suscripcion);
+            });
         }
 
         if ($this->buscar !== '') {
@@ -136,6 +148,13 @@ class ListadoDeEmpresas extends Listado
             ];
         }
 
+        if ($this->pago !== self::TODOS) {
+            $etiquetas[] = [
+                'clave' => 'pago',
+                'texto' => 'Pago: '.EstadoDeCobro::from($this->pago)->etiqueta(),
+            ];
+        }
+
         return $etiquetas;
     }
 
@@ -149,6 +168,7 @@ class ListadoDeEmpresas extends Listado
             'estado' => $this->estado,
             'plan' => $this->plan,
             'salud' => $this->salud,
+            'pago' => $this->pago,
         ];
     }
 
@@ -169,6 +189,9 @@ class ListadoDeEmpresas extends Listado
         $ultimoIngreso = $empresa->getAttribute('ultimo_acceso_en');
         $salud = SaludDeUso::segunElUltimoIngreso($ultimoIngreso);
         $estado = $empresa->estado;
+        // La relación viene ya cargada por `base()`: pedirla como propiedad y no
+        // con `->first()` es lo que evita una consulta por fila.
+        $suscripcion = $empresa->suscripcion;
 
         return [
             'id' => $empresa->getKey(),
@@ -184,7 +207,12 @@ class ListadoDeEmpresas extends Listado
             'uso' => $salud->etiqueta(),
             'usoTono' => $salud->tono(),
             'ingreso' => SaludDeUso::textoDelUltimoIngreso($ultimoIngreso),
-            'pago' => self::PAGO_PENDIENTE,
+            'pago' => $suscripcion instanceof Suscripcion
+                ? $suscripcion->textoDelCobro()
+                : EstadoDeCobro::SIN_SUSCRIPCION,
+            'pagoTono' => $suscripcion instanceof Suscripcion
+                ? $suscripcion->cobro()->tono()
+                : 'neutro',
             'estado' => $estado->etiqueta(),
             'estadoTono' => $estado->tono(),
         ];

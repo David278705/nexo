@@ -4,8 +4,12 @@ namespace App\Proveedor;
 
 use App\Auditoria\AccionAuditada;
 use App\Autenticacion\ResultadoDeAcceso;
+use App\Autorizacion\SeccionDelPanel;
 use App\Configuracion\ParametrosDeLaEmpresa;
 use App\Models\Auditoria;
+use App\Models\Pago;
+use App\Models\Plan;
+use App\Models\Suscripcion;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Multiempresa\ContextoTenant;
@@ -25,7 +29,7 @@ use Illuminate\Support\Carbon;
  * | Parámetros | Construida y **editable por el owner**, con constancia. |
  * | Usuarios | Construida. Último acceso, reenviar invitación y restablecer contraseña. |
  * | Uso | Construida con lo que ya se puede medir; las novedades por mes y los módulos que usa son de la fase 2. |
- * | Suscripción | Declarada. Plan, pagos y facturas son F5-04. |
+ * | Suscripción | Construida (F5-04). Plan, cobro, historial de facturas y sus cuatro acciones. |
  * | Alertas | Declarada. La consola de envíos es F3-06 y F5-05. |
  * | Bitácora | Declarada. La tabla `notas_cliente` es F5-07. |
  *
@@ -49,11 +53,6 @@ class FichaDeEmpresa
      * @var array<string, array{titulo: string, descripcion: string}>
      */
     public const PENDIENTES = [
-        'suscripcion' => [
-            'titulo' => 'La suscripción todavía no existe',
-            'descripcion' => 'El plan pactado se ve en el resumen. El historial de pagos, las '
-                .'facturas y el estado de cobro llegan con las tablas de suscripciones (F5-04).',
-        ],
         'alertas' => [
             'titulo' => 'Todavía no se ha enviado ninguna alerta',
             'descripcion' => 'El motor de avisos por correo es la fase 3. Cuando exista, aquí se '
@@ -95,8 +94,112 @@ class FichaDeEmpresa
             'perfil' => $this->perfil(),
             'usuarios' => $this->usuarios(),
             'uso' => $this->uso(),
+            'suscripcion' => $this->suscripcion(),
             'pendientes' => self::PENDIENTES,
         ];
+    }
+
+    /**
+     * La pestaña «Suscripción» (documento 4, 4.3): «plan, historial de pagos,
+     * facturas y estado».
+     *
+     * Es donde se actúa sobre un cliente concreto: registrar un pago, cambiarle
+     * el plan, suspenderlo y reactivarlo. La pantalla de Suscripciones del
+     * capítulo 6 es la del negocio entero y su única acción por fila es venir
+     * aquí, igual que en el prototipo.
+     *
+     * Una empresa sin suscripción no enseña un hueco: dice que no se le cobra
+     * todavía y desde dónde se le abre. Es el caso de las que están en prueba y
+     * de las que se crearon antes de que existiera el catálogo de planes.
+     *
+     * @return array<string, mixed>
+     */
+    public function suscripcion(): array
+    {
+        $suscripcion = $this->empresa->suscripcion()->first();
+
+        if (! $suscripcion instanceof Suscripcion) {
+            return [
+                'existe' => false,
+                'titulo' => 'A esta empresa no se le cobra todavía',
+                'descripcion' => 'No tiene suscripción abierta. Se le abre desde Suscripciones, '
+                    .'eligiendo uno de los planes del catálogo.',
+                'url' => SeccionDelPanel::Suscripciones->url(),
+            ];
+        }
+
+        $plan = $suscripcion->plan()->first();
+        $estado = $suscripcion->estado;
+        $cobro = $suscripcion->cobro();
+
+        return [
+            'existe' => true,
+            'id' => $suscripcion->getKey(),
+            'estado' => $estado->etiqueta(),
+            'estadoTono' => $estado->tono(),
+            'suspendida' => $suscripcion->estaSuspendida(),
+            'cobro' => $suscripcion->textoDelCobro(),
+            'cobroTono' => $cobro->tono(),
+            'diasDeAtraso' => $suscripcion->diasDeAtraso(),
+            'datos' => [
+                ['etiqueta' => 'Plan', 'valor' => $plan instanceof Plan ? $plan->comoSeLee() : Formato::VACIO],
+                ['etiqueta' => 'Valor mensual', 'valor' => Formato::dinero($suscripcion->valorMensual())],
+                [
+                    'etiqueta' => 'Próximo cobro',
+                    'valor' => Formato::fechaLarga($suscripcion->proxima_fecha_cobro),
+                ],
+                ['etiqueta' => 'Medio de pago', 'valor' => $suscripcion->medio_de_pago->etiqueta()],
+                [
+                    'etiqueta' => 'Cliente de pago desde',
+                    'valor' => Formato::fechaLarga($suscripcion->inicia_el),
+                ],
+                [
+                    'etiqueta' => 'El plan actual aplica desde',
+                    'valor' => Formato::fechaLarga($suscripcion->plan_aplica_desde),
+                ],
+            ],
+            /*
+             * La constancia de la suspensión, leída donde se toma la decisión de
+             * reactivar. Es lo que el capítulo 6 pide con «motivo y constancia»:
+             * la auditoría de la empresa guarda la línea, y esto es el mismo
+             * hecho a la vista de quien mira la ficha.
+             */
+            'suspension' => $suscripcion->estaSuspendida() ? [
+                'motivo' => (string) $suscripcion->getAttribute('motivo_de_suspension'),
+                'cuando' => Formato::fechaYHora($suscripcion->suspendida_en),
+            ] : null,
+            'reactivacion' => $suscripcion->reactivada_en !== null && ! $suscripcion->estaSuspendida() ? [
+                'motivo' => (string) $suscripcion->getAttribute('motivo_de_reactivacion'),
+                'cuando' => Formato::fechaYHora($suscripcion->reactivada_en),
+            ] : null,
+            'historial' => $this->historialDePagos($suscripcion),
+            'planes' => PanelDeSuscripciones::planesParaElegir(),
+            'aviso' => Suscripciones::AVISO_DE_LA_SUSPENSION,
+        ];
+    }
+
+    /**
+     * El historial de facturas y pagos, de la más reciente a la más antigua.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function historialDePagos(Suscripcion $suscripcion): array
+    {
+        return $suscripcion->pagos()
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (Pago $pago): array => [
+                'id' => $pago->getKey(),
+                'fecha' => Formato::fecha($pago->fecha),
+                'monto' => Formato::dinero($pago->monto),
+                'numeroFactura' => $pago->numero_factura ?? Formato::VACIO,
+                'estado' => $pago->estado->etiqueta(),
+                'tono' => $pago->estado->tono(),
+                'anulada' => $pago->estado->estaAnulada(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

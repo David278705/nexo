@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -20,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property EstadoDeEmpresa $estado
  * @property Carbon|null $ultimo_acceso_en
  * @property Carbon|null $ultima_novedad_en
+ * @property Suscripcion|null $suscripcion
  */
 class Tenant extends Model
 {
@@ -105,6 +107,19 @@ class Tenant extends Model
     }
 
     /**
+     * Si tiene el servicio suspendido (documento 4, capítulo 6).
+     *
+     * Lo pregunta `BloquearEmpresaSuspendida` en cada petición, y por eso el
+     * estado se lee de la empresa y no se guarda en la sesión: reactivar tiene
+     * que devolver el acceso en la petición siguiente, no cuando el usuario
+     * vuelva a entrar.
+     */
+    public function estaSuspendida(): bool
+    {
+        return $this->estado === EstadoDeEmpresa::Suspendida;
+    }
+
+    /**
      * Los inicios de sesión de esta empresa, exitosos y fallidos.
      *
      * `Acceso` no lleva `PerteneceATenant` —un intento fallido puede no tener
@@ -144,5 +159,20 @@ class Tenant extends Model
     public function accesosDePrueba(): HasMany
     {
         return $this->hasMany(AccesoDePrueba::class);
+    }
+
+    /**
+     * Su suscripción, si ya se le abrió una (documento 4, capítulo 6).
+     *
+     * Es `HasOne` porque el índice único parcial de la migración impide que una
+     * empresa tenga dos vivas. Una empresa sin suscripción no es un error: está
+     * en prueba, o se creó antes de que existiera el catálogo de planes, y en el
+     * listado su columna «Pago» lo dice con palabras.
+     *
+     * @return HasOne<Suscripcion, $this>
+     */
+    public function suscripcion(): HasOne
+    {
+        return $this->hasOne(Suscripcion::class);
     }
 }

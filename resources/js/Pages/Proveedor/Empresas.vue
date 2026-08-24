@@ -18,10 +18,10 @@ import TablaDatos from "@/Components/TablaDatos.vue";
  * entorno del cliente, aquí no se filtra nada: cada cambio vuelve a pedir la
  * página al servidor con los filtros en la dirección.
  *
- * Dos cosas que el prototipo enseña y esta pantalla dice en vez de fingir:
- * «Pago» no tiene todavía de dónde salir —las suscripciones son F5-04— y por eso
- * tampoco se ofrece su filtro. Un filtro que no puede distinguir nada estorba
- * más de lo que ayuda.
+ * Las ocho columnas y los cuatro filtros del documento están completos desde
+ * F5-04: «Pago» sale de la suscripción de cada empresa y su filtro ya se
+ * ofrece. Una empresa a la que no se le cobra todavía lo dice con palabras en su
+ * celda, no con una raya.
  */
 const props = defineProps({
     empresas: { type: Object, required: true },
@@ -30,7 +30,6 @@ const props = defineProps({
     tieneFiltros: { type: Boolean, default: false },
     opciones: { type: Object, required: true },
     conteos: { type: Array, default: () => [] },
-    pagoPendiente: { type: String, required: true },
     accion: { type: Object, required: true },
 });
 
@@ -51,7 +50,7 @@ const { busqueda, buscar, pedir, ordenar, quitar, limpiar, abrir } = useListado(
     ruta: "/proveedor/empresas",
     filtros: () => props.filtros,
     // El plan es texto libre —el nombre del plan—, así que ese vuelve a vacío.
-    deLista: ["estado", "salud"],
+    deLista: ["estado", "salud", "pago"],
 });
 
 const estados = computed(() => [
@@ -62,6 +61,11 @@ const estados = computed(() => [
 const saludes = computed(() => [
     { valor: TODOS, texto: "Toda la salud de uso" },
     ...props.opciones.saludes,
+]);
+
+const pagos = computed(() => [
+    { valor: TODOS, texto: "Todo el estado de pago" },
+    ...props.opciones.pagos,
 ]);
 
 const planes = computed(() => [
@@ -139,6 +143,16 @@ const resumenDeEstados = computed(() =>
                         @update:model-value="pedir({ salud: $event, page: 1 })"
                     />
                 </div>
+
+                <div class="min-w-[200px]">
+                    <Selector
+                        :model-value="filtros.pago"
+                        etiqueta="Estado de pago"
+                        :opciones="pagos"
+                        :con-marcador="false"
+                        @update:model-value="pedir({ pago: $event, page: 1 })"
+                    />
+                </div>
             </BarraFiltros>
 
             <TablaDatos
@@ -194,9 +208,7 @@ const resumenDeEstados = computed(() =>
                 </template>
 
                 <template #celda-pago="{ fila }">
-                    <span class="text-apoyo text-texto-terciario">
-                        {{ fila.pago }}
-                    </span>
+                    <Etiqueta :tono="fila.pagoTono">{{ fila.pago }}</Etiqueta>
                 </template>
 
                 <template #celda-estado="{ fila }">
@@ -223,8 +235,7 @@ const resumenDeEstados = computed(() =>
 
             <p class="mt-3 text-apoyo text-texto-terciario">
                 Cuando los empleados cargados superan los del plan, la celda se
-                resalta: es una conversación de venta. «{{ pagoPendiente }}»
-                mientras no existan las suscripciones.
+                resalta: es una conversación de venta.
             </p>
 
             <Paginacion

@@ -115,8 +115,9 @@ enum SeccionDelPanel: string
      * Van saliendo de aquí a medida que se construyen: `Inicio` nunca estuvo,
      * `Empresas` salió con su listado y su ficha (F1B-03), `Catalogos` con sus
      * cinco pestañas (F1B-04), `PuestaEnMarcha` con el asistente de carga
-     * inicial (F5-02) y `Demostracion` con el ambiente ficticio y sus accesos
-     * de prueba (F5-03).
+     * inicial (F5-02), `Demostracion` con el ambiente ficticio y sus accesos
+     * de prueba (F5-03) y `Suscripciones` con los planes, los cobros y la mora
+     * (F5-04).
      *
      * @return list<self>
      */
@@ -126,7 +127,14 @@ enum SeccionDelPanel: string
             self::cases(),
             fn (self $seccion) => ! in_array(
                 $seccion,
-                [self::Inicio, self::Empresas, self::Catalogos, self::PuestaEnMarcha, self::Demostracion],
+                [
+                    self::Inicio,
+                    self::Empresas,
+                    self::Catalogos,
+                    self::PuestaEnMarcha,
+                    self::Demostracion,
+                    self::Suscripciones,
+                ],
                 true,
             ),
         ));

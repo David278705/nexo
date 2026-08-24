@@ -447,10 +447,19 @@ class CatalogosDelSistema
                 ],
                 [
                     'umbral' => 'Días de mora antes de suspender a un cliente',
-                    'valor' => 'Sin decidir',
-                    'donde' => 'Llega con las suscripciones (F5-04)',
-                    'estado' => 'La escalera del capítulo 6 propone 5, 15 y 30 días',
-                    'tono' => 'neutro',
+                    'valor' => Formato::dias(EscaleraDeMora::diasParaSuspender()),
+                    'donde' => 'config/panel.php',
+                    'estado' => 'Es la propuesta del capítulo 6 —5, 15 y 30 días— y sigue sin '
+                        .'confirmar. Llegar a ese día no suspende a nadie solo: pone el aviso en '
+                        .'Suscripciones y el corte lo ejecuta una persona, con su motivo escrito',
+                    'tono' => 'advertencia',
+                ],
+                [
+                    'umbral' => 'Días antes del cobro para marcarlo «por vencer»',
+                    'valor' => Formato::dias((int) config('panel.cobro.dias_por_vencer')),
+                    'donde' => 'config/panel.php',
+                    'estado' => 'Propuesto, sin confirmar',
+                    'tono' => 'advertencia',
                 ],
             ],
             'nota' => 'Estos números no vienen de la ley: son decisiones del negocio. Los que ya '

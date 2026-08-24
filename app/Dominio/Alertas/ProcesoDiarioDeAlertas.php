@@ -125,8 +125,9 @@ class ProcesoDiarioDeAlertas
      *
      * «Activas» se lee como el estado `activa` de `EstadoDeEmpresa`, que es el
      * único sentido que esa palabra tiene en el resto del código. Deja fuera a
-     * las suspendidas —la suspensión es por mora (F5-04) y suspender no puede
-     * seguir prestando el servicio que se dejó de pagar— y también al ambiente
+     * las suspendidas —desde F5-04 la suspensión la ejecuta el panel con su
+     * motivo, y suspender no puede seguir prestando el servicio que se dejó de
+     * pagar: los cálculos siguen corriendo, los correos no— y también al ambiente
      * de demostración, que nace `en_prueba` y es de F5-03.
      *
      * @return LazyCollection<int, Tenant>

@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Presentacion\Formato;
 use App\Proveedor\CreacionDeEmpresa;
+use App\Proveedor\EstadoDeCobro;
 use App\Proveedor\EstadoDeEmpresa;
 use App\Proveedor\FichaDeEmpresa;
 use App\Proveedor\ListadoDeEmpresas;
@@ -60,10 +61,10 @@ class EmpresaController extends Controller
                 'estados' => EstadoDeEmpresa::paraElegir(),
                 'saludes' => SaludDeUso::paraElegir(),
                 'planes' => ListadoDeEmpresas::planes(),
+                'pagos' => EstadoDeCobro::paraElegir(),
                 'tamanos' => ListadoDeEmpresas::TAMANOS_DE_PAGINA,
             ],
             'conteos' => ListadoDeEmpresas::conteos(),
-            'pagoPendiente' => ListadoDeEmpresas::PAGO_PENDIENTE,
             'accion' => ['texto' => '+ Crear empresa', 'url' => '/'.SeccionDelPanel::PREFIJO.'/empresas/nueva'],
         ]);
     }

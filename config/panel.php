@@ -48,4 +48,53 @@ return [
 
     ],
 
+    /*
+    |----------------------------------------------------------------------
+    | El cobro y la escalera de mora
+    |----------------------------------------------------------------------
+    |
+    | El capítulo 6 del documento 4 pide el indicador de pago del listado de
+    | empresas —«al día, por vencer o en mora con los días de atraso»— y la
+    | escalera de la mora, y de esta última dice literalmente: «conviene
+    | definir la escalera: aviso a los 5 días de mora, segundo aviso a los
+    | 15, suspensión a los 30. **Los números son una decisión de ustedes**».
+    | El capítulo 17.3 la repite entre lo que sigue pendiente.
+    |
+    | Así que los números de aquí son **la propuesta del propio documento**,
+    | escrita en el único sitio donde se puede cambiar sin tocar lógica, y
+    | anotada en `ESTADO.md` bajo «Decisiones para David». No son una regla
+    | legal: son criterio comercial, igual que la salud de uso de arriba.
+    |
+    | Dos cosas que estos números **no** hacen, y es a propósito:
+    |
+    | - **No suspenden a nadie solos.** Llegar a los días de la escalera pone
+    |   el aviso en la pantalla de Suscripciones; suspender sigue siendo una
+    |   acción del owner, con su motivo escrito, porque el documento la pide
+    |   «con motivo y constancia» y un motivo no lo puede redactar un
+    |   proceso. Mientras la escalera sea una propuesta y no una decisión
+    |   escrita, automatizar el corte del servicio de un cliente que paga
+    |   sería tomarle a David una decisión que el documento le atribuye.
+    | - **No mandan ningún correo.** Los dos avisos de la escalera son
+    |   correos al cliente, y los correos del sistema salen del motor de
+    |   alertas del capítulo 9, que es de las empresas y sus empleados. Un
+    |   aviso de cobro es otra cosa y no tiene todavía tarea.
+    |
+    */
+    'cobro' => [
+
+        // A cuántos días del próximo cobro la columna «Pago» pasa de «al
+        // día» a «por vencer». No es un paso de la escalera —la escalera
+        // empieza cuando ya hay mora—, es el aviso de que el cobro viene:
+        // el prototipo lo enseña como «Vence en 3 días» en ámbar.
+        'dias_por_vencer' => 5,
+
+        // La escalera del capítulo 6, tal como el documento la propone.
+        'escalera_de_mora' => [
+            'primer_aviso' => 5,
+            'segundo_aviso' => 15,
+            'suspension' => 30,
+        ],
+
+    ],
+
 ];

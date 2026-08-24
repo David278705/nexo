@@ -6,7 +6,10 @@ import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
 import EstadoVacio from "@/Components/EstadoVacio.vue";
 import Etiqueta from "@/Components/Etiqueta.vue";
+import CampoFecha from "@/Components/CampoFecha.vue";
+import CampoTexto from "@/Components/CampoTexto.vue";
 import ListaDeDatos from "@/Components/ListaDeDatos.vue";
+import Modal from "@/Components/Modal.vue";
 import Pestanas from "@/Components/Pestanas.vue";
 import Selector from "@/Components/Selector.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
@@ -14,9 +17,15 @@ import TablaDatos from "@/Components/TablaDatos.vue";
 /*
  * La ficha de una empresa cliente (documento 4, 4.3).
  *
- * Siete pestañas: cuatro con contenido y tres que dicen de qué tarea depende lo
- * suyo. El texto de esas tres lo escribe el servidor, en `FichaDeEmpresa`, para
+ * Siete pestañas: cinco con contenido y dos que dicen de qué tarea depende lo
+ * suyo. El texto de esas dos lo escribe el servidor, en `FichaDeEmpresa`, para
  * que no haya que buscar en dos sitios qué falta.
+ *
+ * La pestaña «Suscripción» es la única con acciones sobre el cobro de este
+ * cliente —registrar un pago, cambiarle el plan, suspender y reactivar—, y está
+ * aquí y no en la pantalla de Suscripciones porque es aquí donde se mira un
+ * cliente con su historial delante. Las tres van por modal y ninguna es un
+ * «¿está seguro?»: cada una explica su consecuencia antes de pedir confirmar.
  *
  * La pestaña de parámetros es la única que escribe, y escribe en la
  * configuración de un cliente: por eso es un formulario con su botón y no tres
@@ -35,6 +44,7 @@ const props = defineProps({
     perfil: { type: Object, required: true },
     usuarios: { type: Array, default: () => [] },
     uso: { type: Object, required: true },
+    suscripcion: { type: Object, required: true },
     pendientes: { type: Object, required: true },
     volver: { type: String, required: true },
 });
@@ -87,6 +97,74 @@ function restablecerContrasena(usuario) {
 }
 
 const pendiente = computed(() => props.pendientes[activa.value] ?? null);
+
+/*
+ * Las cuatro acciones de la pestaña «Suscripción». Cada modal lleva su propio
+ * `useForm` porque cada uno envía a una dirección distinta, y el que decide qué
+ * se ve —suspender o reactivar— es el estado que llegó del servidor, nunca una
+ * bandera de la pantalla.
+ */
+const RUTA_SUSCRIPCION = computed(
+    () => `/proveedor/suscripciones/${props.suscripcion.id}`,
+);
+
+const modal = ref(null);
+
+const formularioDePago = useForm({ monto: "", fecha: "", numero_factura: "" });
+const formularioDePlan = useForm({ plan_id: "", aplica_desde: "" });
+const formularioDeMotivo = useForm({ motivo: "" });
+
+function cerrarModal() {
+    modal.value = null;
+}
+
+function registrarPago() {
+    formularioDePago.post(`${RUTA_SUSCRIPCION.value}/pagos`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            formularioDePago.reset();
+            cerrarModal();
+        },
+    });
+}
+
+function cambiarDePlan() {
+    formularioDePlan.put(`${RUTA_SUSCRIPCION.value}/plan`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            formularioDePlan.reset();
+            cerrarModal();
+        },
+    });
+}
+
+function guardarMotivo() {
+    const accion = props.suscripcion.suspendida ? "reactivar" : "suspender";
+
+    formularioDeMotivo.post(`${RUTA_SUSCRIPCION.value}/${accion}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            formularioDeMotivo.reset();
+            cerrarModal();
+        },
+    });
+}
+
+function anularPago(pago) {
+    router.post(
+        `${RUTA_SUSCRIPCION.value}/pagos/${pago.id}/anular`,
+        {},
+        { preserveScroll: true },
+    );
+}
+
+const columnasDelHistorial = [
+    { clave: "fecha", titulo: "Fecha" },
+    { clave: "monto", titulo: "Monto", numerica: true },
+    { clave: "numeroFactura", titulo: "Factura" },
+    { clave: "estado", titulo: "Estado" },
+    { clave: "acciones", titulo: "" },
+];
 </script>
 
 <template>
@@ -293,6 +371,124 @@ const pendiente = computed(() => props.pendientes[activa.value] ?? null);
                     </p>
                 </div>
 
+                <div v-else-if="activa === 'suscripcion'">
+                    <div
+                        v-if="!suscripcion.existe"
+                        class="rounded-[var(--radius-modal)] border border-borde bg-superficie"
+                    >
+                        <EstadoVacio
+                            :titulo="suscripcion.titulo"
+                            :descripcion="suscripcion.descripcion"
+                        >
+                            <Link :href="suscripcion.url">
+                                <Boton tipo="button">Ir a Suscripciones</Boton>
+                            </Link>
+                        </EstadoVacio>
+                    </div>
+
+                    <div v-else>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Etiqueta :tono="suscripcion.estadoTono">
+                                {{ suscripcion.estado }}
+                            </Etiqueta>
+                            <Etiqueta :tono="suscripcion.cobroTono">
+                                {{ suscripcion.cobro }}
+                            </Etiqueta>
+                        </div>
+
+                        <Aviso
+                            v-if="suscripcion.suspension"
+                            tono="error"
+                            class="mt-3"
+                        >
+                            Servicio suspendido el
+                            {{ suscripcion.suspension.cuando }}:
+                            {{ suscripcion.suspension.motivo }}
+                        </Aviso>
+
+                        <Aviso
+                            v-else-if="suscripcion.reactivacion"
+                            tono="informacion"
+                            class="mt-3"
+                        >
+                            Reactivado el {{ suscripcion.reactivacion.cuando }}:
+                            {{ suscripcion.reactivacion.motivo }}
+                        </Aviso>
+
+                        <div class="mt-4 grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+                            <div>
+                                <ListaDeDatos
+                                    titulo="Suscripción"
+                                    :campos="suscripcion.datos"
+                                />
+
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <Boton
+                                        tipo="button"
+                                        @click="modal = 'pago'"
+                                    >
+                                        Registrar pago
+                                    </Boton>
+                                    <Boton
+                                        tipo="button"
+                                        variante="secundario"
+                                        @click="modal = 'plan'"
+                                    >
+                                        Cambiar de plan
+                                    </Boton>
+                                    <Boton
+                                        tipo="button"
+                                        variante="secundario"
+                                        @click="modal = 'motivo'"
+                                    >
+                                        {{
+                                            suscripcion.suspendida
+                                                ? "Reactivar servicio"
+                                                : "Suspender servicio"
+                                        }}
+                                    </Boton>
+                                </div>
+
+                                <p class="mt-3 text-apoyo text-texto-terciario">
+                                    {{ suscripcion.aviso }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <h3 class="text-seccion font-semibold text-texto">
+                                    Historial de facturas y pagos
+                                </h3>
+
+                                <div class="mt-3">
+                                    <TablaDatos
+                                        :columnas="columnasDelHistorial"
+                                        :filas="suscripcion.historial"
+                                        :clicable="false"
+                                        titulo-vacio="Todavía no se ha registrado ningún pago"
+                                        descripcion-vacio="Cada pago que entre queda aquí con su número de factura, y no se borra nunca: si se registró mal, se anula."
+                                    >
+                                        <template #celda-estado="{ fila }">
+                                            <Etiqueta :tono="fila.tono">
+                                                {{ fila.estado }}
+                                            </Etiqueta>
+                                        </template>
+                                        <template #celda-acciones="{ fila }">
+                                            <Boton
+                                                v-if="!fila.anulada"
+                                                tipo="button"
+                                                variante="texto"
+                                                @click="anularPago(fila)"
+                                            >
+                                                Anular
+                                            </Boton>
+                                        </template>
+                                    </TablaDatos>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div
                     v-else
                     class="rounded-[var(--radius-modal)] border border-borde bg-superficie"
@@ -304,5 +500,131 @@ const pendiente = computed(() => props.pendientes[activa.value] ?? null);
                 </div>
             </div>
         </div>
+
+        <Modal
+            :abierto="modal === 'pago'"
+            titulo="Registrar un pago"
+            @cerrar="cerrarModal"
+        >
+            <div class="grid gap-4">
+                <CampoTexto
+                    v-model="formularioDePago.monto"
+                    tipo="number"
+                    etiqueta="Monto recibido"
+                    ayuda="Se escribe y no se deduce del plan: hay clientes que pagan dos meses juntos."
+                    :error="formularioDePago.errors.monto"
+                />
+                <CampoFecha
+                    v-model="formularioDePago.fecha"
+                    etiqueta="Fecha del pago"
+                    :error="formularioDePago.errors.fecha"
+                />
+                <CampoTexto
+                    v-model="formularioDePago.numero_factura"
+                    etiqueta="Número de factura"
+                    opcional
+                    ayuda="Opcional mientras la facturación electrónica no esté habilitada."
+                    :error="formularioDePago.errors.numero_factura"
+                />
+            </div>
+
+            <p class="mt-4 text-apoyo text-texto-secundario">
+                Al guardarlo, el próximo cobro se corre un mes desde la fecha que
+                tiene hoy. Pagar tarde no corre el calendario del cliente.
+            </p>
+
+            <template #pie>
+                <Boton variante="texto" tipo="button" @click="cerrarModal">
+                    Cancelar
+                </Boton>
+                <Boton
+                    tipo="button"
+                    :enviando="formularioDePago.processing"
+                    @click="registrarPago"
+                >
+                    Registrar pago
+                </Boton>
+            </template>
+        </Modal>
+
+        <Modal
+            :abierto="modal === 'plan'"
+            titulo="Cambiar de plan"
+            @cerrar="cerrarModal"
+        >
+            <div class="grid gap-4">
+                <Selector
+                    v-model="formularioDePlan.plan_id"
+                    etiqueta="Plan nuevo"
+                    :opciones="suscripcion.planes"
+                    :error="formularioDePlan.errors.plan_id"
+                />
+                <CampoFecha
+                    v-model="formularioDePlan.aplica_desde"
+                    etiqueta="Aplica desde"
+                    ayuda="Puede ser una fecha futura: se acuerda hoy y arranca el mes entrante."
+                    :error="formularioDePlan.errors.aplica_desde"
+                />
+            </div>
+
+            <p class="mt-4 text-apoyo text-texto-secundario">
+                El plan queda registrado con su fecha y el cambio se ve en la
+                auditoría de esta empresa. Los empleados y los usuarios incluidos
+                pasan a ser los del plan nuevo.
+            </p>
+
+            <template #pie>
+                <Boton variante="texto" tipo="button" @click="cerrarModal">
+                    Cancelar
+                </Boton>
+                <Boton
+                    tipo="button"
+                    :enviando="formularioDePlan.processing"
+                    @click="cambiarDePlan"
+                >
+                    Cambiar de plan
+                </Boton>
+            </template>
+        </Modal>
+
+        <Modal
+            :abierto="modal === 'motivo'"
+            :titulo="
+                suscripcion.suspendida
+                    ? 'Reactivar el servicio'
+                    : 'Suspender el servicio'
+            "
+            @cerrar="cerrarModal"
+        >
+            <p class="text-apoyo text-texto-secundario">
+                {{
+                    suscripcion.suspendida
+                        ? "Sus usuarios vuelven a entrar en la petición siguiente y encuentran todo donde lo dejaron."
+                        : suscripcion.aviso
+                }}
+            </p>
+
+            <div class="mt-4">
+                <CampoTexto
+                    v-model="formularioDeMotivo.motivo"
+                    etiqueta="Motivo"
+                    ayuda="Queda como constancia en la auditoría de esta empresa, y el cliente la puede ver."
+                    :error="formularioDeMotivo.errors.motivo"
+                />
+            </div>
+
+            <template #pie>
+                <Boton variante="texto" tipo="button" @click="cerrarModal">
+                    Cancelar
+                </Boton>
+                <Boton
+                    tipo="button"
+                    :enviando="formularioDeMotivo.processing"
+                    @click="guardarMotivo"
+                >
+                    {{ suscripcion.suspendida ? "Reactivar" : "Suspender" }}
+                </Boton>
+            </template>
+        </Modal>
     </ArmazonProveedor>
 </template>

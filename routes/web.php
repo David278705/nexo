@@ -22,6 +22,8 @@ use App\Http\Controllers\Proveedor\DemostracionController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
+use App\Http\Controllers\Proveedor\SuscripcionController;
+use App\Http\Controllers\ServicioSuspendidoController;
 use App\Http\Controllers\TerminacionController;
 use App\Http\Controllers\VacacionController;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +65,15 @@ Route::get('/prueba/{token}', [AccesoDePruebaController::class, 'entrar'])
 
 Route::middleware('auth')->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('acceso.salir');
+
+    /*
+     * La pantalla de un servicio suspendido (documento 4, capítulo 6). Es la
+     * única dirección que `BloquearEmpresaSuspendida` deja pasar, junto con
+     * cerrar sesión; a quien no esté suspendido lo devuelve al inicio, porque
+     * una pantalla que cuenta algo que ya no es cierto es peor que ninguna.
+     */
+    Route::get('/suspendido', [ServicioSuspendidoController::class, 'mostrar'])
+        ->name('suspendido');
 
     /*
      * El panel de inicio (documento 3, sección 5.2): el saludo, la fecha y el
@@ -419,6 +430,53 @@ Route::middleware(['auth', 'proveedor'])
                 ->name('proveedor.puesta-en-marcha.simular');
             Route::post('/'.SeccionDelPanel::PuestaEnMarcha->value.'/cargar', [CargaInicialController::class, 'cargar'])
                 ->name('proveedor.puesta-en-marcha.cargar');
+
+            /*
+             * Suscripciones y cobros (documento 4, capítulo 6).
+             *
+             * La división viene del prototipo: esta pantalla es la del negocio
+             * entero —el ingreso recurrente, la mora y el catálogo de planes—,
+             * así que de aquí salen solo las dos acciones que son de todos los
+             * clientes a la vez (el catálogo) y la de abrirle suscripción a una
+             * empresa. Las cuatro que son de un cliente concreto —cambiar de
+             * plan, registrar un pago, anularlo, suspender y reactivar— se
+             * disparan desde la ficha de su empresa y vuelven allí, aunque su
+             * dirección viva bajo este prefijo: el identificador es el de la
+             * suscripción y no el de la empresa.
+             *
+             * Suspender y reactivar son `POST` y no `PUT`: no reemplazan un
+             * valor, registran un hecho con su motivo y su fecha.
+             */
+            Route::get('/'.SeccionDelPanel::Suscripciones->value, [SuscripcionController::class, 'index'])
+                ->name(SeccionDelPanel::Suscripciones->nombreDeRuta());
+
+            Route::post('/'.SeccionDelPanel::Suscripciones->value.'/planes', [SuscripcionController::class, 'crearPlan'])
+                ->name('proveedor.suscripciones.planes.crear');
+            Route::put('/'.SeccionDelPanel::Suscripciones->value.'/planes/{plan}', [SuscripcionController::class, 'editarPlan'])
+                ->whereNumber('plan')
+                ->name('proveedor.suscripciones.planes.editar');
+            Route::post('/'.SeccionDelPanel::Suscripciones->value.'/planes/{plan}/estado', [SuscripcionController::class, 'alternarPlan'])
+                ->whereNumber('plan')
+                ->name('proveedor.suscripciones.planes.estado');
+
+            Route::post('/'.SeccionDelPanel::Suscripciones->value, [SuscripcionController::class, 'registrar'])
+                ->name('proveedor.suscripciones.registrar');
+
+            Route::put('/'.SeccionDelPanel::Suscripciones->value.'/{suscripcion}/plan', [SuscripcionController::class, 'cambiarDePlan'])
+                ->whereNumber('suscripcion')
+                ->name('proveedor.suscripciones.plan');
+            Route::post('/'.SeccionDelPanel::Suscripciones->value.'/{suscripcion}/pagos', [SuscripcionController::class, 'registrarPago'])
+                ->whereNumber('suscripcion')
+                ->name('proveedor.suscripciones.pagos');
+            Route::post('/'.SeccionDelPanel::Suscripciones->value.'/{suscripcion}/pagos/{pago}/anular', [SuscripcionController::class, 'anularPago'])
+                ->whereNumber(['suscripcion', 'pago'])
+                ->name('proveedor.suscripciones.pagos.anular');
+            Route::post('/'.SeccionDelPanel::Suscripciones->value.'/{suscripcion}/suspender', [SuscripcionController::class, 'suspender'])
+                ->whereNumber('suscripcion')
+                ->name('proveedor.suscripciones.suspender');
+            Route::post('/'.SeccionDelPanel::Suscripciones->value.'/{suscripcion}/reactivar', [SuscripcionController::class, 'reactivar'])
+                ->whereNumber('suscripcion')
+                ->name('proveedor.suscripciones.reactivar');
 
             /*
              * Demostración (documento 4, capítulo 10): el estado del ambiente

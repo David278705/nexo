@@ -9,7 +9,7 @@ use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Notificaciones\InvitacionAlSistema;
 use App\Notificaciones\RestablecerContrasena;
-use App\Proveedor\ListadoDeEmpresas;
+use App\Proveedor\EstadoDeCobro;
 use App\Proveedor\SaludDeUso;
 use Illuminate\Support\Facades\Notification;
 
@@ -86,15 +86,20 @@ describe('el listado de empresas', function () {
                 ->where('empresas.filas.1.excedePlan', false));
     });
 
-    it('declara que el pago todavía no tiene de dónde salir en vez de inventarlo', function () {
+    /*
+     * Hasta F5-04 esta prueba comprobaba que la columna «Pago» declaraba el
+     * hueco en vez de inventarlo. Ya no hay hueco: lo que se comprueba es que
+     * una empresa a la que todavía no se le cobra lo dice con palabras, y el
+     * resto del indicador vive en `SuscripcionesTest`.
+     */
+    it('dice que a una empresa sin suscripción no se le cobra todavía', function () {
         ownerEnElPanel();
 
         empresaConEmpleados('Distribuidora El Progreso', 1);
 
         $this->get('/proveedor/empresas')
             ->assertInertia(fn ($pagina) => $pagina
-                ->where('empresas.filas.0.pago', ListadoDeEmpresas::PAGO_PENDIENTE)
-                ->where('pagoPendiente', ListadoDeEmpresas::PAGO_PENDIENTE));
+                ->where('empresas.filas.0.pago', EstadoDeCobro::SIN_SUSCRIPCION));
     });
 
     it('reparte las tres franjas de salud de uso según el último ingreso', function () {
@@ -187,10 +192,11 @@ describe('la ficha de la empresa', function () {
                 ->has('pestanas', 7)
                 ->where('empresa.nombre', 'Distribuidora El Progreso S.A.S.')
                 ->where('resumen.alta.1', ['etiqueta' => 'Creada por', 'valor' => $owner->name])
-                // Las tres pestañas que dependen de tareas futuras lo dicen.
-                ->has('pendientes.suscripcion')
+                // Las dos pestañas que siguen dependiendo de tareas futuras lo
+                // dicen. «Suscripción» salió de la lista en F5-04.
                 ->has('pendientes.alertas')
-                ->has('pendientes.bitacora'));
+                ->has('pendientes.bitacora')
+                ->where('suscripcion.existe', false));
     });
 
     it('deja al owner editar un parámetro y lo anota en la auditoría de esa empresa', function () {

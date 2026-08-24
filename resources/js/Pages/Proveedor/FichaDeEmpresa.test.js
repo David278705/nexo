@@ -91,16 +91,47 @@ const props = {
         cifras: [{ etiqueta: "Empleados cargados", valor: "34" }],
         incompleto: "Las novedades por mes llegan en la fase 2.",
     },
+    suscripcion: {
+        existe: true,
+        id: 12,
+        estado: "Activa",
+        estadoTono: "exito",
+        suspendida: false,
+        cobro: "Mora de 22 días",
+        cobroTono: "error",
+        diasDeAtraso: 22,
+        datos: [
+            { etiqueta: "Plan", valor: "Pequeña · 50 empleados · 2 usuarios" },
+            { etiqueta: "Valor mensual", valor: "$ 380.000" },
+        ],
+        suspension: null,
+        reactivacion: null,
+        historial: [
+            {
+                id: 5,
+                fecha: "05/08/2026",
+                monto: "$ 380.000",
+                numeroFactura: "FE-1001",
+                estado: "Pagada",
+                tono: "exito",
+                anulada: false,
+            },
+        ],
+        planes: [{ valor: "2", texto: "Mediana · 200 empleados · 4 usuarios" }],
+        aviso: "Suspender bloquea el acceso pero no elimina nada.",
+    },
     pendientes: {
-        suscripcion: { titulo: "La suscripción todavía no existe", descripcion: "Es F5-04." },
         alertas: { titulo: "Todavía no se ha enviado ninguna alerta", descripcion: "Es la fase 3." },
         bitacora: { titulo: "La bitácora todavía no existe", descripcion: "Es F5-07." },
     },
     volver: "/proveedor/empresas",
 };
 
-function montar() {
-    return mount(FichaDeEmpresa, { props });
+function montar(cambios = {}) {
+    return mount(FichaDeEmpresa, {
+        props: { ...props, ...cambios },
+        attachTo: document.body,
+    });
 }
 
 async function irA(pantalla, titulo) {
@@ -160,10 +191,59 @@ describe("la ficha de la empresa", () => {
     it("dice de qué tarea depende cada pestaña que todavía no tiene contenido", async () => {
         const pantalla = montar();
 
-        await irA(pantalla, "Suscripción");
-        expect(pantalla.text()).toContain("La suscripción todavía no existe");
+        await irA(pantalla, "Alertas");
+        expect(pantalla.text()).toContain("Todavía no se ha enviado ninguna alerta");
 
         await irA(pantalla, "Bitácora");
         expect(pantalla.text()).toContain("La bitácora todavía no existe");
+    });
+
+    it("enseña la suscripción con su estado de cobro y su historial", async () => {
+        const pantalla = await irA(montar(), "Suscripción");
+
+        expect(pantalla.text()).toContain("Mora de 22 días");
+        expect(pantalla.text()).toContain("$ 380.000");
+        expect(pantalla.text()).toContain("FE-1001");
+        expect(pantalla.text()).toContain("Suspender servicio");
+    });
+
+    it("ofrece reactivar, y no suspender, lo que ya está suspendido", async () => {
+        const pantalla = await irA(
+            montar({
+                suscripcion: {
+                    ...props.suscripcion,
+                    suspendida: true,
+                    estado: "Suspendida",
+                    estadoTono: "error",
+                    suspension: {
+                        motivo: "Mora de 34 días, sin acuerdo de pago.",
+                        cuando: "23/08/2026, 9:15 a. m.",
+                    },
+                },
+            }),
+            "Suscripción",
+        );
+
+        expect(pantalla.text()).toContain("Reactivar servicio");
+        expect(pantalla.text()).not.toContain("Suspender servicio");
+        // La constancia se lee donde se decide reactivar.
+        expect(pantalla.text()).toContain("Mora de 34 días, sin acuerdo de pago.");
+    });
+
+    it("dice que a una empresa sin suscripción no se le cobra todavía", async () => {
+        const pantalla = await irA(
+            montar({
+                suscripcion: {
+                    existe: false,
+                    titulo: "A esta empresa no se le cobra todavía",
+                    descripcion: "No tiene suscripción abierta.",
+                    url: "/proveedor/suscripciones",
+                },
+            }),
+            "Suscripción",
+        );
+
+        expect(pantalla.text()).toContain("no se le cobra todavía");
+        expect(pantalla.text()).not.toContain("Registrar pago");
     });
 });

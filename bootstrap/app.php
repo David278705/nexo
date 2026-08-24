@@ -1,6 +1,7 @@
 <?php
 
 use App\Autorizacion\SeccionDelPanel;
+use App\Http\Middleware\BloquearEmpresaSuspendida;
 use App\Http\Middleware\CerrarAccesoDePruebaExpirado;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolverTenant;
@@ -36,6 +37,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 CerrarAccesoDePruebaExpirado::class,
                 ResolverTenant::class,
                 SubstituteBindings::class,
+                // Después de resolver el tenant, porque pregunta por la
+                // empresa en contexto: si su servicio está suspendido
+                // (documento 4, capítulo 6), lo único que se puede pedir es la
+                // pantalla que lo explica y cerrar sesión.
+                BloquearEmpresaSuspendida::class,
                 HandleInertiaRequests::class,
             ],
         );

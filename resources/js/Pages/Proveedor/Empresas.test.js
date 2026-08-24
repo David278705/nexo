@@ -46,7 +46,8 @@ const fila = {
     uso: "Activa",
     usoTono: "exito",
     ingreso: "17/08/2026",
-    pago: "Sin cobros todavía",
+    pago: "Mora de 22 días",
+    pagoTono: "error",
     estado: "Activa",
     estadoTono: "exito",
 };
@@ -65,6 +66,7 @@ const props = {
         estado: "todos",
         plan: "",
         salud: "todos",
+        pago: "todos",
         orden: "empresa",
         direccion: "asc",
         porPagina: 25,
@@ -75,6 +77,10 @@ const props = {
         estados: [{ valor: "activa", texto: "Activa" }],
         saludes: [{ valor: "sin_uso", texto: "Sin uso" }],
         planes: ["Pequeña"],
+        pagos: [
+            { valor: "al_dia", texto: "Al día" },
+            { valor: "en_mora", texto: "En mora" },
+        ],
         tamanos: [25, 50, 100],
     },
     conteos: [
@@ -82,7 +88,6 @@ const props = {
         { estado: "Suspendida", cuantas: 1, texto: "1 suspendida" },
         { estado: "En prueba", cuantas: 2, texto: "2 en prueba" },
     ],
-    pagoPendiente: "Sin cobros todavía",
     accion: { texto: "+ Crear empresa", url: "/proveedor/empresas/nueva" },
 };
 
@@ -122,8 +127,17 @@ describe("el listado de empresas del panel", () => {
         expect(fuera.html()).toContain("Supera los empleados incluidos en el plan");
     });
 
-    it("dice que el pago todavía no tiene de dónde salir", () => {
-        expect(montar().text()).toContain("Sin cobros todavía");
+    it("enseña el estado de pago que llega escrito del servidor", () => {
+        expect(montar().text()).toContain("Mora de 22 días");
+    });
+
+    it("ofrece filtrar por estado de pago", () => {
+        const opciones = montar()
+            .findAll("option")
+            .map((una) => una.text());
+
+        expect(opciones).toContain("Todo el estado de pago");
+        expect(opciones).toContain("En mora");
     });
 
     it("ofrece crear una empresa", () => {

@@ -1123,11 +1123,43 @@ si el acceso vence a la mitad de una visita, no solo al entrar. `CatalogosDelSis
 de este umbral: ya no dice «sin decisión escrita» sino dónde vive el mecanismo y por qué sigue sin un
 número por defecto.
 
-### [ ] F5-04 · Suscripciones y cobros
+### [x] F5-04 · Suscripciones y cobros
 
 Tablas `planes`, `suscripciones` y `pagos`. Estado, mora y suspensión con constancia.
 **Hecho cuando:** suspender bloquea el acceso sin borrar nada y reactivar lo restituye.
 **Fuente:** `docs/04-panel-del-proveedor.md` cap. 6
+
+Hecho: las tres tablas —`planes` global sin `tenant_id`, `suscripciones` con índice único parcial de
+una por empresa y `pagos` colgada de la suscripción—, los cinco enumerados (`EstadoDeSuscripcion`,
+`EstadoDeCobro`, `EstadoDeFactura`, `MedioDePago` y la clase `EscaleraDeMora`), `App\Proveedor\Suscripciones`
+con las seis escrituras, `PanelDeSuscripciones`, `SuscripcionController`, la pantalla
+`Proveedor/Suscripciones` con la tabla y las tres tarjetas del prototipo, y la pestaña «Suscripción»
+de la ficha de empresa con el historial de facturas y sus cuatro acciones.
+
+**El «hecho cuando» está probado de punta a punta.** `BloquearEmpresaSuspendida`, middleware nuevo del
+grupo `web`, manda a `/suspendido` a cualquier usuario de una empresa suspendida —salvo cerrar sesión y
+esa misma pantalla—, y reactivar devuelve el acceso **en la petición siguiente**, porque el estado se
+lee de la empresa en cada petición y no se guarda en la sesión. La prueba comprueba además que no se
+borró nada: el empleado cargado sigue vivo. La pantalla `ServicioSuspendido` dice las tres cosas que
+el documento 6, A.4 obliga a decir, incluida que la información se entrega si el cliente la pide.
+
+- **La escalera de mora avisa, no suspende.** Los números —5, 15 y 30 días— son la propuesta del
+  capítulo 6, que dice «los números son una decisión de ustedes», y viven en `config/panel.php` con el
+  precedente de la salud de uso. Llegar al último peldaño pone el aviso en la pantalla; el corte lo
+  ejecuta una persona con su motivo escrito, porque el documento pide «motivo y constancia» y 17.3
+  sigue listando la escalera entre lo pendiente. Hay prueba de que mirar la pantalla no suspende a nadie.
+- **`planes` nace vacía y es una decisión.** A.1 sigue aplazada, así que no hay seeder de precios: los
+  planes se dan de alta desde el panel y la tarjeta dice de qué decisión depende la tabla mientras esté
+  vacía. Al abrir una suscripción o cambiar de plan, el nombre y los dos cupos se copian a las columnas
+  `plan_*` de `tenants` en la misma transacción: son las que lee el listado de empresas desde F1B-02 y
+  dos sitios con planes distintos era el problema a evitar.
+- **La columna «Pago» del listado dejó de ser un hueco** y estrenó su filtro, el cuarto que pide 4.1.
+  Una empresa sin suscripción lo dice con palabras. La constancia de cada suspensión la escribe sola la
+  auditoría **de esa empresa**, y el motivo se guarda además en la suscripción para leerlo en la ficha.
+- **Un pago adelanta el cobro un mes desde la fecha que tenía**, no desde hoy: pagar tarde no corre el
+  calendario del cliente. Anularlo lo deshace exactamente y deja la fila en el historial, como eliminar
+  unas vacaciones con el saldo. No existe el estado «pendiente»: lo que dice que hay plata por cobrar es
+  la próxima fecha de cobro ya vencida, que es el mismo indicador de mora.
 
 ### [ ] F5-05 · Consola de alertas del proveedor
 
