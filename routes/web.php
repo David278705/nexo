@@ -18,6 +18,7 @@ use App\Http\Controllers\LicenciaController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\Proveedor\CargaInicialController;
 use App\Http\Controllers\Proveedor\CatalogoController;
+use App\Http\Controllers\Proveedor\ConsolaDeAlertasController;
 use App\Http\Controllers\Proveedor\DemostracionController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
@@ -494,7 +495,22 @@ Route::middleware(['auth', 'proveedor'])
                 ->name('proveedor.demostracion.accesos.revocar');
 
             /*
-             * Las cuatro secciones restantes del capítulo 2. Existen desde ya,
+             * La consola de alertas (documento 4, capítulo 7): todo lo enviado,
+             * de todas las empresas, con reenvío puntual.
+             *
+             * La empresa va delante en la dirección del reenvío, no solo la
+             * alerta: es lo que deja entrar en su contexto antes de buscarla, y
+             * lo que hace que reenviar la de una empresa con el identificador de
+             * otra responda 404 en vez de tocar lo que no debía.
+             */
+            Route::get('/'.SeccionDelPanel::Alertas->value, [ConsolaDeAlertasController::class, 'index'])
+                ->name(SeccionDelPanel::Alertas->nombreDeRuta());
+            Route::post('/'.SeccionDelPanel::Alertas->value.'/{empresa}/{alerta}/reenviar', [ConsolaDeAlertasController::class, 'reenviar'])
+                ->whereNumber(['empresa', 'alerta'])
+                ->name('proveedor.alertas.reenviar');
+
+            /*
+             * Las tres secciones restantes del capítulo 2. Existen desde ya,
              * como en el armazón del cliente, para que el menú del panel se
              * pueda recorrer entero: la dirección, el nombre de ruta y el
              * resaltado son los definitivos y solo falta el contenido.

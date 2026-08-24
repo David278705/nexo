@@ -1161,11 +1161,23 @@ el documento 6, A.4 obliga a decir, incluida que la información se entrega si e
   unas vacaciones con el saldo. No existe el estado «pendiente»: lo que dice que hay plata por cobrar es
   la próxima fecha de cobro ya vencida, que es el mismo indicador de mora.
 
-### [ ] F5-05 · Consola de alertas del proveedor
+### [x] F5-05 · Consola de alertas del proveedor
 
 Listado de todo lo enviado con filtros, estado y reenvío puntual. Vista de entregabilidad.
 **Hecho cuando:** se responde en menos de un minuto a «¿a quién y cuándo se envió esta alerta?».
 **Fuente:** `docs/04-panel-del-proveedor.md` cap. 7
+
+Hecho: `App\Proveedor\ConsolaDeAlertas`, el `ConsolaDeAlertasController` y la pantalla
+`Proveedor/Alertas`. **`alertas_enviadas` tiene el trait `PerteneceATenant` y su política de RLS, y
+la política no tiene excepción para el `owner`**: una sola consulta que cruce empresas no es posible,
+así que esta clase recorre las empresas una por una —como ya hace `ProcesoDiarioDeAlertas`—, filtra
+dentro del contexto de cada una y combina, ordena y pagina el resultado en memoria. Las ocho columnas
+del capítulo 7, los cuatro filtros y el reenvío puntual —que reencola con `EnviarAlerta` una alerta
+enviada o fallida, nunca una pendiente— quedan probados cruzando empresas de verdad. **La vista de
+entregabilidad cuenta entregadas contra fallidas, no contra rebotadas**: «rebotada» es un estado que
+hoy nadie escribe porque no hay proveedor de correo transaccional conectado (F3-06b), y la pantalla lo
+dice con esas palabras en vez de fingir una cifra que no se mide. `SeccionDelPanel::pendientes()`
+perdió la sección «Alertas».
 
 ### [ ] F5-06 · Salud del sistema y métricas
 

@@ -122,6 +122,35 @@ class AlertaEnviada extends Model
     }
 
     /**
+     * Si tiene sentido reenviarla desde la consola del proveedor (documento 4,
+     * capítulo 7).
+     *
+     * Una pendiente ya está en camino: la cola la va a intentar sola y forzarla
+     * otra vez no adelanta nada. Una enviada o una fallida sí, porque son
+     * exactamente los dos casos que motivan la acción —«nunca me llegó» y «se
+     * rechazó»—.
+     */
+    public function puedeReenviarse(): bool
+    {
+        return $this->estado !== EstadoDeAlerta::Pendiente;
+    }
+
+    /**
+     * La deja lista para que la cola la vuelva a intentar.
+     *
+     * El motivo del fallo anterior se borra: si el reenvío también falla, el
+     * trabajador de la cola escribe uno nuevo, y conservar el viejo contaría una
+     * historia que ya no es la vigente.
+     */
+    public function prepararParaReenvio(): void
+    {
+        $this->forceFill([
+            'estado' => EstadoDeAlerta::Pendiente,
+            'motivo_del_fallo' => null,
+        ])->save();
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
