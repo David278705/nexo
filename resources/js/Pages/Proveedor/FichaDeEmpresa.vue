@@ -152,11 +152,21 @@ function guardarMotivo() {
     });
 }
 
-function anularPago(pago) {
+// La fila del pago que se está a punto de anular, o nulo. El botón de la
+// tabla ya no anula directamente: abre esta confirmación con la fecha nueva
+// del cobro, que es la consecuencia que `Suscripciones::consecuenciaDeAnular`
+// ya trae calculada en la prop `suscripcion`.
+const pagoPorAnular = ref(null);
+
+function anularPago() {
+    if (pagoPorAnular.value === null) {
+        return;
+    }
+
     router.post(
-        `${RUTA_SUSCRIPCION.value}/pagos/${pago.id}/anular`,
+        `${RUTA_SUSCRIPCION.value}/pagos/${pagoPorAnular.value.id}/anular`,
         {},
-        { preserveScroll: true },
+        { preserveScroll: true, onSuccess: () => (pagoPorAnular.value = null) },
     );
 }
 
@@ -186,10 +196,18 @@ function guardarNota() {
     });
 }
 
-function quitarNota(nota) {
+// La nota que se está a punto de quitar, o nulo. Igual que con el pago: el
+// botón de la lista abre la confirmación en vez de borrar directamente.
+const notaPorQuitar = ref(null);
+
+function quitarNota() {
+    if (notaPorQuitar.value === null) {
+        return;
+    }
+
     router.delete(
-        `/proveedor/empresas/${props.empresa.id}/notas/${nota.id}`,
-        { preserveScroll: true },
+        `/proveedor/empresas/${props.empresa.id}/notas/${notaPorQuitar.value.id}`,
+        { preserveScroll: true, onSuccess: () => (notaPorQuitar.value = null) },
     );
 }
 
@@ -524,7 +542,7 @@ const columnasDeVisitas = [
                                                 v-if="!fila.anulada"
                                                 tipo="button"
                                                 variante="texto"
-                                                @click="anularPago(fila)"
+                                                @click="pagoPorAnular = fila"
                                             >
                                                 Anular
                                             </Boton>
@@ -571,7 +589,7 @@ const columnasDeVisitas = [
                                     <Boton
                                         tipo="button"
                                         variante="texto"
-                                        @click="quitarNota(nota)"
+                                        @click="notaPorQuitar = nota"
                                     >
                                         Quitar
                                     </Boton>
@@ -818,6 +836,50 @@ const columnasDeVisitas = [
                     @click="guardarMotivo"
                 >
                     {{ suscripcion.suspendida ? "Reactivar" : "Suspender" }}
+                </Boton>
+            </template>
+        </Modal>
+
+        <Modal
+            :abierto="pagoPorAnular !== null"
+            titulo="Anular el pago"
+            @cerrar="pagoPorAnular = null"
+        >
+            <p class="text-cuerpo text-texto">
+                Vas a anular el pago de
+                <strong>{{ pagoPorAnular?.monto }}</strong> del
+                {{ pagoPorAnular?.fecha }} ({{ pagoPorAnular?.numeroFactura }}).
+                La factura no se borra: queda marcada como anulada y sigue en
+                el historial. {{ suscripcion.consecuenciaDeAnular }}
+            </p>
+
+            <template #pie>
+                <Boton variante="texto" tipo="button" @click="pagoPorAnular = null">
+                    Cancelar
+                </Boton>
+                <Boton variante="destructivo" tipo="button" @click="anularPago">
+                    Anular el pago
+                </Boton>
+            </template>
+        </Modal>
+
+        <Modal
+            :abierto="notaPorQuitar !== null"
+            titulo="Quitar la nota"
+            @cerrar="notaPorQuitar = null"
+        >
+            <p class="text-cuerpo text-texto">
+                Vas a quitar la nota del {{ notaPorQuitar?.fecha }}:
+                «{{ notaPorQuitar?.texto }}». Deja de verse en la bitácora
+                interna del equipo; el cliente nunca la vio.
+            </p>
+
+            <template #pie>
+                <Boton variante="texto" tipo="button" @click="notaPorQuitar = null">
+                    Cancelar
+                </Boton>
+                <Boton variante="destructivo" tipo="button" @click="quitarNota">
+                    Quitar la nota
                 </Boton>
             </template>
         </Modal>

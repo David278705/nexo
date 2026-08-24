@@ -1325,10 +1325,26 @@ denegada sin motivo propio (`AuthorizationException`, el `abort(403)` que dispar
 de un 403 de negocio a la altura de `respond()`. Cinco pruebas nuevas en `TextosDeErrorTest.php`, con
 rutas efímeras registradas en el grupo `web` para no depender de un camino real del sistema.
 
-### [ ] F6-03 · Confirmaciones con consecuencia
+### [x] F6-03 · Confirmaciones con consecuencia
 
 Toda acción destructiva explica el efecto calculado, no pregunta «¿está seguro?».
 **Hecho cuando:** eliminar unas vacaciones dice cuántos días se devuelven y cómo queda el saldo.
+
+Hecho: el «hecho cuando» ya estaba cumplido desde F2-10, y las tres novedades del capítulo 6 nunca
+usaron un «¿está seguro?» genérico. Lo que faltaba era barrer el resto del sistema y el panel del
+proveedor buscando una acción destructiva **sin ninguna confirmación**, que es peor que el genérico
+que la tarea prohíbe. Aparecieron tres, las tres en el panel del proveedor y las tres disparaban
+`router.post`/`router.delete` directo desde el botón de la fila: **revocar un acceso de demostración**
+(`Demostracion.vue`), **quitar una nota de la bitácora** (`FichaDeEmpresa.vue`) y **anular un pago**
+(`FichaDeEmpresa.vue`). Las tres ganaron el mismo patrón que ya usaba `Catalogos.vue` para quitar un
+festivo: un `ref` con la fila señalada abre un `Modal` con el botón rojo, y la acción de verdad solo
+corre al confirmar. Revocar y quitar nota se redactan enteros en el cliente, con datos que la fila ya
+trae. **Anular un pago fue el único que necesitó una cuenta**: cuánto vuelve a ser el próximo cobro es
+`proxima_fecha_cobro` menos un mes con `subMonthNoOverflow`, la misma resta que ya hacía
+`Suscripciones::anularPago()` para el mensaje de después. Se sacó a `Suscripciones::consecuenciaDeAnular()`,
+de solo lectura, y `FichaDeEmpresa::suscripcion()` la manda ya calculada en la prop: la confirmación no
+recalcula nada, la lee. Seis pruebas nuevas —una de Pest para la cuenta y dos pares de Vitest, uno por
+acción, que primero comprueban que la confirmación no dispara nada por sí sola y luego que confirmar sí—.
 
 ### [ ] F6-04 · Indicadores de carga
 

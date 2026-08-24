@@ -5,6 +5,7 @@ import ArmazonProveedor from "@/Components/Proveedor/ArmazonProveedor.vue";
 import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
+import Modal from "@/Components/Modal.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
 import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
 
@@ -51,11 +52,20 @@ function generar() {
     });
 }
 
-function revocar(acceso) {
+// El acceso que se está a punto de revocar, o nulo. El botón de la fila abre
+// esta confirmación en vez de revocar directamente: revocar corta el enlace
+// de inmediato y no hay forma de deshacerlo.
+const porRevocar = ref(null);
+
+function revocar() {
+    if (porRevocar.value === null) {
+        return;
+    }
+
     router.post(
-        `${RUTA}/accesos/${acceso.id}/revocar`,
+        `${RUTA}/accesos/${porRevocar.value.id}/revocar`,
         {},
-        { preserveScroll: true },
+        { preserveScroll: true, onSuccess: () => (porRevocar.value = null) },
     );
 }
 
@@ -204,7 +214,7 @@ const columnas = [
                             <Boton
                                 tipo="button"
                                 variante="texto"
-                                @click="revocar(fila)"
+                                @click="porRevocar = fila"
                             >
                                 Revocar
                             </Boton>
@@ -219,5 +229,27 @@ const columnas = [
             que garantiza que la demostración siempre luzca igual de poblada,
             así un prospecto la haya dejado desordenada el día anterior.
         </Aviso>
+
+        <Modal
+            :abierto="porRevocar !== null"
+            titulo="Revocar el acceso"
+            @cerrar="porRevocar = null"
+        >
+            <p class="text-cuerpo text-texto">
+                Vas a revocar el acceso de
+                <strong>{{ porRevocar?.nombreProspecto }}</strong>. El enlace
+                deja de servir de inmediato, así el prospecto todavía no lo
+                haya usado.
+            </p>
+
+            <template #pie>
+                <Boton variante="texto" tipo="button" @click="porRevocar = null">
+                    Cancelar
+                </Boton>
+                <Boton variante="destructivo" tipo="button" @click="revocar">
+                    Revocar el acceso
+                </Boton>
+            </template>
+        </Modal>
     </ArmazonProveedor>
 </template>

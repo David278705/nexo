@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 
 const pagina = {
@@ -125,6 +125,7 @@ const props = {
         ],
         planes: [{ valor: "2", texto: "Mediana · 200 empleados · 4 usuarios" }],
         aviso: "Suspender bloquea el acceso pero no elimina nada.",
+        consecuenciaDeAnular: "El próximo cobro volverá al 5 de julio de 2026.",
     },
     bitacora: {
         titulo: "Bitácora del cliente",
@@ -194,6 +195,27 @@ async function irA(pantalla, titulo) {
     return pantalla;
 }
 
+/**
+ * Los modales viven en un `Teleport` al `body`, así que sus botones no están
+ * dentro del componente montado: se buscan en el documento, igual que en
+ * `Modal.test.js`.
+ */
+function botonDelModal(texto) {
+    return [...document.body.querySelectorAll('[role="dialog"] button')].find(
+        (uno) => uno.textContent.includes(texto),
+    );
+}
+
+function pulsar(elemento) {
+    elemento.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+beforeEach(() => {
+    enviar.mockClear();
+    eliminar.mockClear();
+    document.body.innerHTML = "";
+});
+
 describe("la ficha de la empresa", () => {
     it("abre en el resumen, con las siete pestañas del documento", () => {
         const pantalla = montar();
@@ -261,7 +283,7 @@ describe("la ficha de la empresa", () => {
         expect(pantalla.text()).toContain("18 minutos");
     });
 
-    it("quita una nota por su propia dirección", async () => {
+    it("pide confirmar antes de quitar una nota, con su texto", async () => {
         const pantalla = await irA(montar(), "Bitácora");
 
         const quitar = pantalla
@@ -269,6 +291,23 @@ describe("la ficha de la empresa", () => {
             .find((boton) => boton.text() === "Quitar");
 
         await quitar.trigger("click");
+
+        const dialogo = document.body.querySelector('[role="dialog"]');
+
+        expect(dialogo.textContent).toContain("Quedó clara");
+        expect(eliminar).not.toHaveBeenCalled();
+    });
+
+    it("quita una nota por su propia dirección al confirmar", async () => {
+        const pantalla = await irA(montar(), "Bitácora");
+
+        const quitar = pantalla
+            .findAll("button")
+            .find((boton) => boton.text() === "Quitar");
+
+        await quitar.trigger("click");
+        pulsar(botonDelModal("Quitar la nota"));
+        await pantalla.vm.$nextTick();
 
         expect(eliminar).toHaveBeenCalledWith(
             "/proveedor/empresas/7/notas/4",
@@ -327,6 +366,42 @@ describe("la ficha de la empresa", () => {
         expect(pantalla.text()).not.toContain("Suspender servicio");
         // La constancia se lee donde se decide reactivar.
         expect(pantalla.text()).toContain("Mora de 34 días, sin acuerdo de pago.");
+    });
+
+    it("pide confirmar antes de anular un pago, con la fecha nueva del cobro", async () => {
+        const pantalla = await irA(montar(), "Suscripción");
+
+        const anular = pantalla
+            .findAll("button")
+            .find((boton) => boton.text() === "Anular");
+
+        await anular.trigger("click");
+
+        const dialogo = document.body.querySelector('[role="dialog"]');
+
+        expect(dialogo.textContent).toContain("FE-1001");
+        expect(dialogo.textContent).toContain(
+            "El próximo cobro volverá al 5 de julio de 2026.",
+        );
+        expect(enviar).not.toHaveBeenCalled();
+    });
+
+    it("anula el pago al confirmar", async () => {
+        const pantalla = await irA(montar(), "Suscripción");
+
+        const anular = pantalla
+            .findAll("button")
+            .find((boton) => boton.text() === "Anular");
+
+        await anular.trigger("click");
+        pulsar(botonDelModal("Anular el pago"));
+        await pantalla.vm.$nextTick();
+
+        expect(enviar).toHaveBeenCalledWith(
+            "/proveedor/suscripciones/12/pagos/5/anular",
+            {},
+            expect.anything(),
+        );
     });
 
     it("dice que a una empresa sin suscripción no se le cobra todavía", async () => {

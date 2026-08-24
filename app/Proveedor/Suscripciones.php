@@ -215,6 +215,21 @@ class Suscripciones
     }
 
     /**
+     * Lo que le pasaría al próximo cobro si se anula un pago, calculado sin
+     * escribir nada.
+     *
+     * Es la misma cuenta que hace `anularPago()` —un mes atrás, con
+     * `subMonthNoOverflow`—, pero de solo lectura: la ficha la enseña **antes**
+     * de anular, en la confirmación, y no solo después en el mensaje de éxito.
+     */
+    public static function consecuenciaDeAnular(Suscripcion $suscripcion): string
+    {
+        $vuelveAl = $suscripcion->proxima_fecha_cobro->clone()->subMonthNoOverflow();
+
+        return 'El próximo cobro volverá al '.Formato::fechaLarga($vuelveAl).'.';
+    }
+
+    /**
      * Suspende el servicio: la suscripción y la empresa, en una transacción.
      *
      * El motivo es obligatorio y llega escrito por quien suspende. No hay motivo

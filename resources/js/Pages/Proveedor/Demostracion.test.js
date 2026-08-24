@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 
 const enviarFormulario = vi.fn();
@@ -44,12 +44,35 @@ const base = {
 };
 
 function montar(cambios = {}) {
-    return mount(Demostracion, { props: { ...base, ...cambios } });
+    return mount(Demostracion, {
+        props: { ...base, ...cambios },
+        attachTo: document.body,
+    });
 }
 
 function boton(pantalla, texto) {
     return pantalla.findAll("button").find((uno) => uno.text().includes(texto));
 }
+
+/**
+ * Los modales viven en un `Teleport` al `body`, así que sus botones no están
+ * dentro del componente montado: se buscan en el documento, igual que en
+ * `Modal.test.js`.
+ */
+function botonDelModal(texto) {
+    return [...document.body.querySelectorAll('[role="dialog"] button')].find(
+        (uno) => uno.textContent.includes(texto),
+    );
+}
+
+function pulsar(elemento) {
+    elemento.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+beforeEach(() => {
+    post.mockClear();
+    document.body.innerHTML = "";
+});
 
 describe("la pantalla de demostración", () => {
     it("enseña cuándo quedó restaurada y cuántas personas trae", () => {
@@ -104,10 +127,23 @@ describe("la pantalla de demostración", () => {
         expect(pantalla.text()).not.toContain("Cópialo y envíaselo");
     });
 
-    it("revoca el acceso de la fila correspondiente", async () => {
+    it("pide confirmar antes de revocar, con el nombre del prospecto", async () => {
         const pantalla = montar();
 
         await boton(pantalla, "Revocar").trigger("click");
+
+        const dialogo = document.body.querySelector('[role="dialog"]');
+
+        expect(dialogo.textContent).toContain("Comercializadora Prospecto S.A.S.");
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it("revoca el acceso de la fila correspondiente al confirmar", async () => {
+        const pantalla = montar();
+
+        await boton(pantalla, "Revocar").trigger("click");
+        pulsar(botonDelModal("Revocar el acceso"));
+        await pantalla.vm.$nextTick();
 
         expect(post).toHaveBeenCalledWith(
             "/proveedor/demostracion/accesos/4/revocar",

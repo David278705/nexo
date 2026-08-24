@@ -226,6 +226,12 @@ class FichaDeEmpresa
             'historial' => $this->historialDePagos($suscripcion),
             'planes' => PanelDeSuscripciones::planesParaElegir(),
             'aviso' => Suscripciones::AVISO_DE_LA_SUSPENSION,
+            /*
+             * La consecuencia de anular, calculada de antemano: la
+             * confirmación de la ficha la enseña antes de anular un pago, no
+             * solo en el mensaje de después.
+             */
+            'consecuenciaDeAnular' => Suscripciones::consecuenciaDeAnular($suscripcion),
         ];
     }
 

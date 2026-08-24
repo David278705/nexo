@@ -273,6 +273,14 @@ it('anular un pago lo deja en el historial y devuelve el cobro al mes anterior',
         ->and(Pago::query()->count())->toBe(1);
 });
 
+it('calcula la consecuencia de anular sin escribir nada, para la confirmación previa', function () {
+    $suscripcion = empresaConSuscripcion($this->plan, ['proxima_fecha_cobro' => '2026-08-01']);
+
+    expect(Suscripciones::consecuenciaDeAnular($suscripcion))
+        ->toBe('El próximo cobro volverá al 1 de julio de 2026.')
+        ->and($suscripcion->refresh()->proxima_fecha_cobro->toDateString())->toBe('2026-08-01');
+});
+
 it('no acepta dos pagos con el mismo número de factura', function () {
     $suscripcion = empresaConSuscripcion($this->plan);
     Pago::factory()->for($suscripcion, 'suscripcion')->create(['numero_factura' => 'FE-1001']);
@@ -403,7 +411,7 @@ it('enseña la sección de suscripciones con sus tres tarjetas', function () {
 });
 
 it('enseña la pestaña de suscripción de la ficha con su historial', function () {
-    $suscripcion = empresaConSuscripcion($this->plan);
+    $suscripcion = empresaConSuscripcion($this->plan, ['proxima_fecha_cobro' => '2026-08-01']);
     Pago::factory()->for($suscripcion, 'suscripcion')->create(['numero_factura' => 'FE-1001']);
 
     $this->actingAs(ownerEnElPanel())
@@ -413,7 +421,10 @@ it('enseña la pestaña de suscripción de la ficha con su historial', function 
             ->where('suscripcion.existe', true)
             ->where('suscripcion.estado', 'Activa')
             ->has('suscripcion.historial', 1)
-            ->where('suscripcion.historial.0.numeroFactura', 'FE-1001'));
+            ->where('suscripcion.historial.0.numeroFactura', 'FE-1001')
+            // La confirmación de anular un pago la lee antes de anular, no
+            // solo en el mensaje de después.
+            ->where('suscripcion.consecuenciaDeAnular', 'El próximo cobro volverá al 1 de julio de 2026.'));
 });
 
 it('dice en la ficha que a una empresa no se le cobra todavía', function () {
