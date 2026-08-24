@@ -165,29 +165,40 @@ function guardarFestivo() {
 // Quitar un festivo cambia el conteo de días hábiles de todas las empresas, así
 // que la confirmación dice qué pasa y no «¿está seguro?».
 const porQuitar = ref(null);
+const eliminandoFestivo = ref(false);
 
 function quitarFestivo() {
+    eliminandoFestivo.value = true;
     router.delete(`${RUTA}/festivos/${porQuitar.value.id}`, {
         preserveScroll: true,
         onSuccess: () => {
             porQuitar.value = null;
         },
+        onFinish: () => {
+            eliminandoFestivo.value = false;
+        },
     });
 }
 
+const alternandoEntidad = ref(null);
+
 function alternarEntidad(fila) {
+    alternandoEntidad.value = fila.id;
     router.post(
         `${RUTA}/entidades/${props.viendo.entidad}/${fila.id}/estado`,
         {},
-        { preserveScroll: true },
+        { preserveScroll: true, onFinish: () => (alternandoEntidad.value = null) },
     );
 }
 
+const alternandoCiudad = ref(null);
+
 function alternarCiudad(fila) {
+    alternandoCiudad.value = fila.id;
     router.post(
         `${RUTA}/ciudades/${fila.id}/estado`,
         {},
-        { preserveScroll: true },
+        { preserveScroll: true, onFinish: () => (alternandoCiudad.value = null) },
     );
 }
 
@@ -343,6 +354,7 @@ const listaActual = computed(
                             :titulo-codigo="entidades.codigo"
                             :titulo-vacio="`${listaActual} no tiene ninguna entidad cargada`"
                             descripcion-vacio="Mientras la lista esté vacía, ese campo no ofrece ninguna opción en el registro de empleado."
+                            :alternando="alternandoEntidad"
                             @editar="abrirEntidad"
                             @alternar="alternarEntidad"
                         />
@@ -385,6 +397,7 @@ const listaActual = computed(
                             :filas="ciudades.filas"
                             titulo-codigo="Código DANE"
                             titulo-vacio="Ese departamento no tiene municipios cargados"
+                            :alternando="alternandoCiudad"
                             @editar="abrirCiudad"
                             @alternar="alternarCiudad"
                         />
@@ -477,6 +490,7 @@ const listaActual = computed(
                 <Boton
                     variante="destructivo"
                     tipo="button"
+                    :enviando="eliminandoFestivo"
                     @click="quitarFestivo"
                 >
                     Quitar del calendario

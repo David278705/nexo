@@ -106,8 +106,14 @@ function guardarPlan() {
     formularioDePlan.post(`${RUTA}/planes`, opciones);
 }
 
+const alternandoPlan = ref(null);
+
 function alternarPlan(plan) {
-    router.post(`${RUTA}/planes/${plan.id}/estado`, {}, { preserveScroll: true });
+    alternandoPlan.value = plan.id;
+    router.post(`${RUTA}/planes/${plan.id}/estado`, {}, {
+        preserveScroll: true,
+        onFinish: () => (alternandoPlan.value = null),
+    });
 }
 
 function registrarSuscripcion() {
@@ -245,6 +251,7 @@ const puedeAbrirSuscripcion = computed(
                             <Boton
                                 tipo="button"
                                 variante="texto"
+                                :enviando="alternandoPlan === plan.id"
                                 @click="alternarPlan(plan)"
                             >
                                 {{ plan.activo ? "Desactivar" : "Activar" }}

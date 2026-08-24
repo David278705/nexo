@@ -1346,9 +1346,30 @@ de solo lectura, y `FichaDeEmpresa::suscripcion()` la manda ya calculada en la p
 recalcula nada, la lee. Seis pruebas nuevas —una de Pest para la cuenta y dos pares de Vitest, uno por
 acción, que primero comprueban que la confirmación no dispara nada por sí sola y luego que confirmar sí—.
 
-### [ ] F6-04 · Indicadores de carga
+### [x] F6-04 · Indicadores de carga
 
 En toda acción que tarde más de un instante.
+
+Hecho: `Boton.vue` gira un círculo junto al texto —que se queda puesto— mientras `enviando` es
+verdadero (documento 3, 2.5: «pantalla congelada» está mal, «indicador de carga» está bien).
+Deshabilitar y atenuar el botón, que ya hacía, no bastaba: se ve igual que un botón roto. Como la
+regla del documento 3 ya obligaba a deshabilitar el botón de guardar mientras envía, **casi todos los
+formularios ya pasaban `enviando`** a `Boton.vue` —los nueve `useForm` de Acceso, Empleados, la
+Configuración, el panel del proveedor y los cinco módulos de novedades—, así que la mayor parte de la
+tarea la resolvió ese único cambio, sin tocar ninguna pantalla. Lo que sí faltaba, tras barrer los 37
+componentes que usan `Boton`, eran **seis acciones que llaman `router.post`/`delete` directo y nunca
+guardaron su propio `enviando`** —ninguna tenía indicador de ningún tipo, ni siquiera el disabled
+genérico—: quitar un festivo, activar o desactivar una entidad o un municipio del catálogo (las tres
+en `Catalogos.vue`, con `TablaDeCatalogo.vue` ganando la prop `alternando` para el indicador por fila),
+anular un pago, quitar una nota de la bitácora, reenviar una invitación y reenviar el enlace de
+contraseña (las cuatro en `FichaDeEmpresa.vue`) y activar o desactivar un plan (`Suscripciones.vue`).
+Cada una ganó su propio `ref` —de fila cuando la tabla tiene más de una, con el `id` de la fila en
+curso— fijado antes de la petición y limpiado en `onFinish`. **Lo que no se tocó y es a propósito**:
+las navegaciones —`<Link>`, `router.get` de los filtros y `router.visit` de abrir una fila— ya las
+cubre la barra de progreso global de Inertia, configurada en `app.js` desde F0-09; y el botón de
+copiar al portapapeles no espera ninguna red, así que no le falta nada. Prueba nueva en
+`Formularios.test.js`: el círculo no aparece con `enviando: false` y sí con `enviando: true`, sin
+reemplazar el texto del botón.
 
 ### [ ] F6-05 · Pantallas pequeñas
 

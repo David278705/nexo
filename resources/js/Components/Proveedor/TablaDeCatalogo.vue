@@ -23,6 +23,10 @@ defineProps({
     tituloCodigo: { type: String, required: true },
     tituloVacio: { type: String, required: true },
     descripcionVacio: { type: String, default: "" },
+    // El identificador de la fila que se está activando o desactivando ahora
+    // mismo, o nulo. Solo esa fila enseña el indicador: las otras diez de la
+    // tabla no están esperando nada.
+    alternando: { type: [String, Number], default: null },
 });
 
 const emit = defineEmits(["editar", "alternar"]);
@@ -65,6 +69,7 @@ const columnas = [
                 <Boton
                     tipo="button"
                     variante="texto"
+                    :enviando="alternando === fila.id"
                     @click="emit('alternar', fila)"
                 >
                     {{ fila.activo ? "Desactivar" : "Activar" }}

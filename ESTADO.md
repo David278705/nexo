@@ -1,44 +1,42 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-24 · Tarea F6-03 (confirmaciones con consecuencia)
-**Verificación:** verde — Pint, PHPStan sin errores, **1.141** pruebas de Pest, build y **347** de Vitest.
-**Siguiente tarea:** F6-04 · Indicadores de carga.
+**Última sesión:** 2026-08-24 · Tarea F6-04 (indicadores de carga)
+**Verificación:** verde — Pint, PHPStan sin errores, **1.141** pruebas de Pest, build y **348** de Vitest.
+**Siguiente tarea:** F6-05 · Pantallas pequeñas.
 
 ## Qué se hizo
 
-- **F6-03, confirmaciones con consecuencia** (documento 3, 2.4 y 3.4). El «hecho cuando» de la tarea
-  —eliminar unas vacaciones dice cuántos días se devuelven y cómo queda el saldo— ya estaba cumplido
-  desde F2-10, y ninguna de las tres novedades del capítulo 6 usa un «¿está seguro?» genérico. Lo que
-  quedaba, según la nota de la sesión anterior, era barrer el resto del sistema y el panel del
-  proveedor buscando una acción destructiva que todavía preguntara así, o que no preguntara nada.
-- **Aparecieron tres acciones sin ninguna confirmación**, las tres en el panel del proveedor y las
-  tres disparando `router.post`/`router.delete` directo desde el botón de la fila, sin pasar por
-  ningún modal: revocar un acceso de demostración (`Demostracion.vue`), quitar una nota de la
-  bitácora de un cliente y anular un pago (las dos últimas en `FichaDeEmpresa.vue`). No preguntaban
-  «¿está seguro?»: no preguntaban nada, que es peor que lo que la tarea prohíbe.
-- **Las tres ganaron el mismo patrón que ya usaba `Catalogos.vue`** para quitar un festivo del
-  calendario: un `ref` que señala la fila abre un `Modal` con el texto de la consecuencia y el botón
-  rojo, y la acción de verdad —el `router.post`/`delete`— solo corre al confirmar.
-- **Revocar el acceso y quitar la nota se redactan enteros en el cliente**, con datos que la fila ya
-  trae (`nombreProspecto`, `texto` de la nota): no hace falta ninguna cuenta para saberlos.
-- **Anular un pago sí necesitaba una cuenta**: cuánto vuelve a ser el próximo cobro es
-  `proxima_fecha_cobro` menos un mes con `subMonthNoOverflow`, la misma resta que
-  `Suscripciones::anularPago()` ya hacía para el mensaje de después del hecho. Se sacó a un método
-  nuevo, `Suscripciones::consecuenciaDeAnular()`, de solo lectura —no escribe nada, solo la calcula—,
-  y `FichaDeEmpresa::suscripcion()` la manda ya calculada en la prop `consecuenciaDeAnular`: la
-  confirmación de la pantalla no recalcula nada, solo lee lo que el servidor ya mandó, igual que
-  `ConfirmacionDeBorrado` de las novedades.
+- **F6-04, indicadores de carga** (documento 3, 2.4 y 2.5). La sesión encontró `Boton.vue` y
+  `Formularios.test.js` ya modificados y sin commitear —el círculo que gira junto al texto mientras
+  `enviando` es verdadero, con su prueba— y siguió desde ahí en vez de rehacerlo: el cambio es correcto
+  y coincide exactamente con lo que pide la sección 2.5, «pantalla congelada» está mal, «indicador de
+  carga» está bien.
+- **Casi todos los formularios ya pasaban `enviando`** a `Boton.vue`, porque el documento 3 ya exigía
+  deshabilitar el botón de guardar mientras envía desde antes de esta fase: los nueve `useForm` de
+  Acceso, Empleados, la Configuración, el panel del proveedor y los cinco módulos de novedades. El
+  cambio de `Boton.vue` les dio el círculo a todos a la vez, sin tocar ninguna pantalla.
+- **Se barrieron los 37 componentes que usan `Boton`** buscando una acción que llame a
+  `router.post`/`router.delete` directo y no guarde su propio `enviando`. Aparecieron seis, ninguna con
+  indicador de ningún tipo: quitar un festivo, activar o desactivar una entidad y activar o desactivar
+  un municipio (las tres en `Catalogos.vue`), anular un pago, quitar una nota de la bitácora, reenviar
+  una invitación y reenviar el enlace de contraseña (las cuatro en `FichaDeEmpresa.vue`), y activar o
+  desactivar un plan (`Suscripciones.vue`).
+- **Cada una ganó su propio `ref`** —de fila, con el `id` de la fila en curso, cuando la tabla tiene más
+  de una posible a la vez— fijado antes de la petición y limpiado en `onFinish`. `TablaDeCatalogo.vue`
+  ganó la prop `alternando` para saber cuál de sus filas es la que está esperando.
+- **Lo que no se tocó, y es a propósito**: las navegaciones con `<Link>`, los filtros con `router.get` y
+  abrir una fila con `router.visit` ya los cubre la barra de progreso global de Inertia, configurada en
+  `app.js` desde F0-09. El botón de copiar al portapapeles no espera ninguna red.
 
 ## Decisiones tomadas
 
-- **La consecuencia de anular un pago es la misma para cualquier pago que se anule en ese momento**,
-  porque `Suscripciones::anularPago()` siempre resta un mes de la `proxima_fecha_cobro` **actual** de
-  la suscripción, no de una fecha propia de ese pago. Es el comportamiento que ya existía —no se tocó
-  en esta tarea—, así que la confirmación nueva lo hereda tal cual: un solo texto en la prop
-  `suscripcion`, no uno por fila del historial.
-- **No se tocó ningún texto de `¿está seguro?` porque no había ninguno que decir así.** El problema
-  real, en las tres acciones encontradas, era la ausencia total de confirmación y no la fórmula
-  genérica que la tarea nombra como ejemplo de lo que hay que evitar.
+- **La tarea no traía «Hecho cuando» ni «Fuente» en el backlog.** Se leyó el criterio de la sección 2.5
+  del documento 3 —la fila «Espera» de la tabla— como la fuente, y el «hecho cuando» se interpretó como
+  «ninguna acción que dispare una petición al servidor se queda sin ningún indicador», que es lo que se
+  verificó una por una.
+- **El indicador es siempre el mismo círculo de `Boton.vue` y no uno nuevo por pantalla.** Construir un
+  segundo indicador habría sido la misma corrección que ya evitó `ModalDeBorrado`/`ModalDeNovedad`: dos
+  formas de decir «espera» se separan a la primera corrección.
 
 ## Preguntas para Angela
 
@@ -79,11 +77,9 @@
 
 ## Notas para la próxima sesión
 
-- **La siguiente tarea es F6-04, indicadores de carga**: «En toda acción que tarde más de un
-  instante». No trae «Hecho cuando» propio en el backlog, así que conviene apoyarse en el documento 3
-  para el criterio exacto (spinner en botones que envían, estado deshabilitado mientras procesan,
-  etc.) y revisar cuáles de las pantallas existentes ya lo hacen —muchos botones ya usan `:enviando`
-  de `Boton.vue`— y cuáles no.
+- **La siguiente tarea es F6-05, pantallas pequeñas**: menú colapsable, tablas en tarjeta, modales a
+  pantalla completa. **Hecho cuando:** el sistema es usable a 375px de ancho. Fuente:
+  `docs/03-diseno-e-interfaz.md` 6.4.
 - **`REV-04` sigue pendiente**: el módulo `Auditoria` del entorno del cliente sigue siendo el último
   `SeccionPendiente`. El acceso del proveedor deja constancia en la auditoría del cliente desde F5-07,
   pero el cliente todavía no la puede mirar en ninguna pantalla.

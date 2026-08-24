@@ -82,19 +82,31 @@ const columnasDeUsuarios = [
     { clave: "acciones", titulo: "Acciones" },
 ];
 
+const reenviandoInvitacion = ref(null);
+
 function reenviarInvitacion(usuario) {
+    reenviandoInvitacion.value = usuario.id;
     router.post(
         `/proveedor/empresas/${props.empresa.id}/usuarios/${usuario.id}/invitacion`,
         {},
-        { preserveScroll: true },
+        {
+            preserveScroll: true,
+            onFinish: () => (reenviandoInvitacion.value = null),
+        },
     );
 }
 
+const restableciendoContrasena = ref(null);
+
 function restablecerContrasena(usuario) {
+    restableciendoContrasena.value = usuario.id;
     router.post(
         `/proveedor/empresas/${props.empresa.id}/usuarios/${usuario.id}/contrasena`,
         {},
-        { preserveScroll: true },
+        {
+            preserveScroll: true,
+            onFinish: () => (restableciendoContrasena.value = null),
+        },
     );
 }
 
@@ -157,16 +169,22 @@ function guardarMotivo() {
 // del cobro, que es la consecuencia que `Suscripciones::consecuenciaDeAnular`
 // ya trae calculada en la prop `suscripcion`.
 const pagoPorAnular = ref(null);
+const anulando = ref(false);
 
 function anularPago() {
     if (pagoPorAnular.value === null) {
         return;
     }
 
+    anulando.value = true;
     router.post(
         `${RUTA_SUSCRIPCION.value}/pagos/${pagoPorAnular.value.id}/anular`,
         {},
-        { preserveScroll: true, onSuccess: () => (pagoPorAnular.value = null) },
+        {
+            preserveScroll: true,
+            onSuccess: () => (pagoPorAnular.value = null),
+            onFinish: () => (anulando.value = false),
+        },
     );
 }
 
@@ -199,15 +217,21 @@ function guardarNota() {
 // La nota que se está a punto de quitar, o nulo. Igual que con el pago: el
 // botón de la lista abre la confirmación en vez de borrar directamente.
 const notaPorQuitar = ref(null);
+const quitandoNota = ref(false);
 
 function quitarNota() {
     if (notaPorQuitar.value === null) {
         return;
     }
 
+    quitandoNota.value = true;
     router.delete(
         `/proveedor/empresas/${props.empresa.id}/notas/${notaPorQuitar.value.id}`,
-        { preserveScroll: true, onSuccess: () => (notaPorQuitar.value = null) },
+        {
+            preserveScroll: true,
+            onSuccess: () => (notaPorQuitar.value = null),
+            onFinish: () => (quitandoNota.value = false),
+        },
     );
 }
 
@@ -402,6 +426,7 @@ const columnasDeVisitas = [
                                     v-if="fila.invitacionPendiente"
                                     tipo="button"
                                     variante="secundario"
+                                    :enviando="reenviandoInvitacion === fila.id"
                                     @click="reenviarInvitacion(fila)"
                                 >
                                     Reenviar invitación
@@ -409,6 +434,7 @@ const columnasDeVisitas = [
                                 <Boton
                                     tipo="button"
                                     variante="texto"
+                                    :enviando="restableciendoContrasena === fila.id"
                                     @click="restablecerContrasena(fila)"
                                 >
                                     Enviar enlace de contraseña
@@ -857,7 +883,12 @@ const columnasDeVisitas = [
                 <Boton variante="texto" tipo="button" @click="pagoPorAnular = null">
                     Cancelar
                 </Boton>
-                <Boton variante="destructivo" tipo="button" @click="anularPago">
+                <Boton
+                    variante="destructivo"
+                    tipo="button"
+                    :enviando="anulando"
+                    @click="anularPago"
+                >
                     Anular el pago
                 </Boton>
             </template>
@@ -878,7 +909,12 @@ const columnasDeVisitas = [
                 <Boton variante="texto" tipo="button" @click="notaPorQuitar = null">
                     Cancelar
                 </Boton>
-                <Boton variante="destructivo" tipo="button" @click="quitarNota">
+                <Boton
+                    variante="destructivo"
+                    tipo="button"
+                    :enviando="quitandoNota"
+                    @click="quitarNota"
+                >
                     Quitar la nota
                 </Boton>
             </template>

@@ -99,6 +99,22 @@ describe("Boton", () => {
 
         expect(componente.attributes("disabled")).toBeDefined();
     });
+
+    it("muestra un indicador de carga mientras envía, no solo el botón atenuado", () => {
+        const quieto = mount(Boton, {
+            props: { enviando: false },
+            slots: { default: "Guardar" },
+        });
+        const enviando = mount(Boton, {
+            props: { enviando: true },
+            slots: { default: "Guardar" },
+        });
+
+        expect(quieto.find(".animate-spin").exists()).toBe(false);
+        expect(enviando.find(".animate-spin").exists()).toBe(true);
+        // El texto sigue puesto: el círculo se agrega, no lo reemplaza.
+        expect(enviando.text()).toBe("Guardar");
+    });
 });
 
 describe("Etiqueta", () => {

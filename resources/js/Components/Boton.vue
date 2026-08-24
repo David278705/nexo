@@ -38,9 +38,22 @@ const estilos = computed(
     <button
         :type="tipo"
         :disabled="enviando || deshabilitado"
+        :aria-busy="enviando ? 'true' : undefined"
         class="inline-flex h-control items-center justify-center gap-2 rounded-[var(--radius-caja)] border px-4 text-tabla font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45"
         :class="[estilos, ancho ? 'w-full' : '']"
     >
+        <!--
+            Documento 3, sección 2.5: «Pantalla congelada» está mal, «indicador
+            de carga» está bien. Deshabilitar y atenuar el botón no basta —se ve
+            igual que un botón roto—, así que mientras envía gira este círculo
+            junto al texto, que se queda puesto: quien envía sigue viendo qué
+            acción está en curso.
+        -->
+        <span
+            v-if="enviando"
+            aria-hidden="true"
+            class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+        />
         <slot />
     </button>
 </template>
