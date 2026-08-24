@@ -10,12 +10,17 @@ use App\Http\Middleware\ResolverTenant;
 use App\Http\Middleware\SegundoFactorVerificado;
 use App\Http\Middleware\SoloProveedor;
 use App\Http\Middleware\VerificarModulo;
+use App\Presentacion\TextoDeError;
 use App\Proveedor\RegistroDeErrores;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -89,5 +94,56 @@ return Application::configure(basePath: dirname(__DIR__))
         // que entra a `RegistroDeErrores` es justo lo que hay que mirar.
         $exceptions->reportable(function (Throwable $error): void {
             RegistroDeErrores::registrar($error);
+        });
+
+        // Una autorización denegada sin `FormRequest::authorize()` ni política
+        // trae el mensaje por defecto de Laravel, en inglés: «This action is
+        // unauthorized.». Se cambia aquí y no en `TextoDeError`, porque
+        // `Handler::prepareException()` ya convirtió la excepción en
+        // `AccessDeniedHttpException` para cuando `respond()` la recibe más
+        // abajo, y a esa altura ya no queda un `AuthorizationException` que
+        // distinguir de un `abort(403, 'motivo de negocio')`.
+        $exceptions->map(AuthorizationException::class, fn (AuthorizationException $error): HttpException => new HttpException(
+            403, TextoDeError::SIN_PERMISO, $error
+        ));
+
+        // El documento 3, 6.3 escribe un texto para «Sin permiso», «Sesión
+        // expirada» y «Error inesperado»: sin esto, esas tres respuestas las
+        // contestaba la página de Laravel —en inglés la de una autorización
+        // sin motivo de negocio, con traza de depuración la de un error
+        // real—, que es justo el «mensaje escrito para programadores» que
+        // prohíbe F6-02. Se deja fuera el entorno local para no perder la
+        // traza mientras se programa; en pruebas sí se aplica, porque si no,
+        // no habría cómo comprobar que el texto correcto es el que de verdad
+        // se muestra.
+        $exceptions->respond(function (Response $respuesta, Throwable $error, Request $peticion) {
+            $estado = $respuesta->getStatusCode();
+
+            // El código de estado ya es 419 aquí sea cual sea la excepción de
+            // origen: `prepareException()` convierte `TokenMismatchException`
+            // en un `HttpException` antes de que `respond()` la reciba.
+            if ($estado === 419) {
+                return redirect()->route('acceso')->with('estado', TextoDeError::SESION_EXPIRADA);
+            }
+
+            if (app()->environment('local')) {
+                return $respuesta;
+            }
+
+            if ($estado === 403) {
+                return Inertia::render('Error', [
+                    'status' => 403,
+                    'mensaje' => TextoDeError::paraSinPermiso($error),
+                ])->toResponse($peticion)->setStatusCode(403);
+            }
+
+            if ($estado === 500) {
+                return Inertia::render('Error', [
+                    'status' => 500,
+                    'mensaje' => TextoDeError::ERROR_INESPERADO,
+                ])->toResponse($peticion)->setStatusCode(500);
+            }
+
+            return $respuesta;
         });
     })->create();

@@ -1302,11 +1302,28 @@ cuando el vacío es real. Prueba nueva en `Contratos/Index.test.js` para el caso
 contratos; los otros cinco no tenían prueba de ese texto y no se la inventé, porque cambiar solo el
 orden de dos valores que ya existían no necesitaba una nueva.
 
-### [ ] F6-02 · Textos del sistema
+### [x] F6-02 · Textos del sistema
 
 Todos los mensajes de error y confirmación revisados contra los textos definidos.
 **Hecho cuando:** ninguna pantalla muestra un mensaje escrito para programadores.
 **Fuente:** `docs/03-diseno-e-interfaz.md` 6.3
+
+Hecho: de los nueve textos de la tabla 6.3, seis ya estaban —los tres estados vacíos de F6-01, el
+documento inexistente de F2-03/F2-04, el «Incapacidad registrada.» de cada controlador y la
+confirmación de borrado de F2-10—; los tres que faltaban eran «Sin permiso», «Sesión expirada» y
+«Error inesperado», y **ninguno de los tres tenía pantalla propia**: los contestaba Laravel, en inglés
+la de una autorización sin motivo de negocio y con traza de depuración la de un error real. Nuevos
+`App\Presentacion\TextoDeError` —los tres textos literales, en un solo sitio— y `Pages/Error.vue`, sin
+armazón porque puede llegar antes de que el usuario quede resuelto en la petición. `bootstrap/app.php`
+gana un `respond()`: 419 vuelve a `/acceso` con el texto de sesión vencida en `estado`, y 403/500 usan
+`Error.vue` fuera del entorno local, para no perder la traza mientras se programa. **Un 403 de negocio
+no pierde su mensaje**: `TextoDeError::paraSinPermiso()` usa el de la excepción si lo trae —como el
+modo consulta del entorno del cliente (F5-07)— y el genérico solo si viene vacío. Una autorización
+denegada sin motivo propio (`AuthorizationException`, el `abort(403)` que dispara
+`CambiarATerminoIndefinido`) se remapea con `$exceptions->map()` antes de que
+`Handler::prepareException()` la convierta y le borre el rastro: sin eso, no hay forma de distinguirla
+de un 403 de negocio a la altura de `respond()`. Cinco pruebas nuevas en `TextosDeErrorTest.php`, con
+rutas efímeras registradas en el grupo `web` para no depender de un camino real del sistema.
 
 ### [ ] F6-03 · Confirmaciones con consecuencia
 

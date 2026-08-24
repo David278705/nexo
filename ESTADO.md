@@ -1,38 +1,48 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-24 · Tarea F6-01 (estados vacíos)
-**Verificación:** verde — Pint, PHPStan sin errores, **1.135** pruebas de Pest, build y **343** de Vitest.
-**Siguiente tarea:** F6-02 · Textos del sistema.
+**Última sesión:** 2026-08-24 · Tarea F6-02 (textos del sistema)
+**Verificación:** verde — Pint, PHPStan sin errores, **1.140** pruebas de Pest, build y **343** de Vitest.
+**Siguiente tarea:** F6-03 · Confirmaciones con consecuencia.
 
 ## Qué se hizo
 
-- **F6-01, estados vacíos** (documento 3, 6.3). Al revisar los siete listados —Empleados, Contratos,
-  Incapacidades, Vacaciones, Licencias, Movimientos, Terminaciones— resultó que ya tenían título,
-  descripción y botón de primera acción desde que se construyeron en fases anteriores: no era un
-  módulo por hacer, era encontrar los dos huecos que quedaban.
-- **A Contratos le faltaba el botón del caso realmente vacío.** El `accion-vacio` solo ofrecía «Quitar
-  filtros»; cuando de verdad no hay ningún contrato en la empresa —se ve poniendo el filtro de
-  vencimiento en «Todos los contratos»—, no había ninguna acción. Como un contrato nace de registrar un
-  empleado (F1-04), no de una pantalla propia, el botón nuevo es «Registrar empleado» hacia
-  `/empleados/nuevo`, igual que el de la pantalla de empleados.
-- **Los otros cinco tenían el título y la descripción cambiados de lugar.** El título se quedaba fijo
-  en «Aún no has registrado…» aunque el vacío fuera de un filtro sin resultados —lo cual miente si la
-  empresa sí tiene registros y el filtro los excluyó todos—, y «No encontramos resultados con estos
-  filtros.» vivía en la descripción, debajo del título equivocado. Quedaron como Empleados y Contratos,
-  que ya alternaban bien: el título dice qué pasó de verdad y la descripción con el botón de primera
-  acción solo aparece cuando el vacío es real, no filtrado.
-- Prueba nueva en `Contratos/Index.test.js` para el botón del caso sin filtros y sin contratos. Los
-  otros cinco no tenían prueba de ese texto exacto y no se les agregó una: cambiar el orden de dos
-  valores que ya existían no es una conducta nueva que necesite su propio caso.
+- **F6-02, textos del sistema** (documento 3, 6.3). De los nueve textos de la tabla, seis ya estaban
+  cubiertos por tareas anteriores: los tres estados vacíos (F6-01), el documento inexistente
+  (F2-03/F2-04), «Incapacidad registrada.» y sus equivalentes en cada controlador, y la confirmación de
+  borrado (F2-10). Los tres que faltaban —«Sin permiso», «Sesión expirada» y «Error inesperado»— no
+  tenían pantalla propia: los contestaba Laravel directamente, en inglés la de una autorización
+  denegada sin motivo de negocio (`AuthorizationException`, mensaje por defecto «This action is
+  unauthorized.») y con traza de depuración la de un error real. Eso es exactamente el «mensaje escrito
+  para programadores» que la tarea prohíbe.
+- **`App\Presentacion\TextoDeError`**, nuevo: los tres textos literales del documento, en un solo
+  sitio, junto a `App\Presentacion\Formato` que ya guardaba los de presentación.
+- **`resources/js/Pages/Error.vue`**, nuevo: sin armazón (menú, cabecera), porque un error real puede
+  llegar antes de que el usuario o la empresa queden resueltos en la petición.
+- **`bootstrap/app.php` gana un `respond()`** dentro de `withExceptions()`: 419 (sesión vencida por
+  CSRF) redirige a `/acceso` con el texto en la prop `estado` que `PanelDeAcceso.vue` ya sabía mostrar
+  desde la recuperación de contraseña; 403 y 500 renderizan `Error.vue`. **Se deja fuera el entorno
+  local** para no perder la traza de depuración mientras se programa; en `testing` sí se aplica, porque
+  si no, no habría cómo probarlo.
 
 ## Decisiones tomadas
 
-- **El botón de Contratos manda a registrar un empleado, no a "nuevo contrato".** No existe esa
-  pantalla: todo contrato nace de F1-04, y el botón de Empleados ya resuelve exactamente ese vacío.
-- **No se tocó el texto que ya tenían los siete listados**, solo el orden de título/descripción en los
-  cinco que lo tenían invertido y el botón que le faltaba a Contratos. El documento 3, 6.3 solo da el
-  texto literal de Empleados e Incapacidades; los demás siguen el mismo tono que ya traían desde su
-  propia tarea (F1-08, F2-05, F2-07, F2-08, F2-09), que no era parte de lo que había que arreglar hoy.
+- **Un 403 de negocio no pierde su mensaje.** `TextoDeError::paraSinPermiso()` usa el mensaje de la
+  excepción si no está vacío —como «Estás en el entorno del cliente en modo consulta…» de
+  `EntornoDeSoloLectura` (F5-07)— y el genérico del documento 3 solo cuando el `abort(403)` no trae
+  ninguno.
+- **Una autorización denegada sin motivo propio se remapea con `$exceptions->map()`, antes de que
+  `Handler::prepareException()` la convierta.** El único `FormRequest::authorize()` que hoy devuelve
+  `false` es `CambiarATerminoIndefinido` (fuera del término fijo, F1-11); sin este mapeo, a la altura de
+  `respond()` ya no queda un `AuthorizationException` que distinguir de un `abort(403, 'motivo de
+  negocio')` —Laravel convierte ambos casos a excepciones de mensaje no vacío antes de esa etapa—, así
+  que la única forma de no mostrar el inglés de Laravel era interceptarla más temprano.
+- **`TokenMismatchException` no se detecta por tipo en `respond()`, sino por el código 419.**
+  `prepareException()` también la transforma antes de que `respond()` la reciba, así que comprobar el
+  tipo original no funciona; el código de estado sí es estable.
+- **Cinco pruebas nuevas en `tests/Feature/TextosDeErrorTest.php`**, con rutas efímeras en el grupo
+  `web` (patrón ya usado por `AislamientoTest.php`) para no depender de un camino real del sistema para
+  cada uno de los cuatro casos. El primer segmento es `/prueba-de-error/` y no `/prueba/`, porque
+  `routes/web.php` ya usa `/prueba/{token}` para el acceso de demostración.
 
 ## Preguntas para Angela
 
@@ -73,10 +83,11 @@
 
 ## Notas para la próxima sesión
 
-- **La siguiente tarea es F6-02, textos del sistema.** Revisar todos los mensajes de error y
-  confirmación contra los textos del documento 3, 6.3 —la misma fuente que usó F6-01—; probablemente
-  toque, además de los ya cubiertos, los mensajes de sesión expirada, sin permiso y error inesperado,
-  que hoy nadie ha verificado uno por uno contra la tabla del documento.
+- **La siguiente tarea es F6-03, confirmaciones con consecuencia.** «Toda acción destructiva explica
+  el efecto calculado, no pregunta "¿está seguro?"». Las tres novedades del capítulo 6 ya lo hacen
+  desde F2-10 (`ConfirmacionDeBorrado`); lo que probablemente falta revisar es si queda alguna acción
+  destructiva fuera de esas tres —o alguna que todavía use un «¿estás seguro?» genérico— en el resto
+  del sistema y del panel del proveedor.
 - **`REV-04` sigue pendiente**: el módulo `Auditoria` del entorno del cliente sigue siendo el último
   `SeccionPendiente`. El acceso del proveedor deja constancia en la auditoría del cliente desde F5-07,
   pero el cliente todavía no la puede mirar en ninguna pantalla.
