@@ -1282,11 +1282,25 @@ del contexto de la empresa y con `Auditoria::deLaEmpresaActual()`, el mismo que 
 
 ## Fase 6 — Pulido
 
-### [ ] F6-01 · Estados vacíos
+### [x] F6-01 · Estados vacíos
 
 Los siete listados con su texto propio y su botón de primera acción.
 **Hecho cuando:** ninguna pantalla dice «No hay datos».
 **Fuente:** `docs/03-diseno-e-interfaz.md` 6.3
+
+Hecho: los siete listados ya tenían título, descripción y botón propios desde que se construyeron
+—esta tarea encontró y cerró dos huecos, no un módulo entero por hacer—. **A Contratos le faltaba el
+botón cuando de verdad no hay ningún contrato** —solo tenía «Quitar filtros» para el caso filtrado—:
+como un contrato nace de registrar un empleado y no de una acción propia, el botón nuevo es «Registrar
+empleado» hacia `/empleados/nuevo`, igual que el de la pantalla de empleados. **Y en los otros cinco
+—Incapacidades, Vacaciones, Licencias, Movimientos, Terminaciones— el título y la descripción tenían el
+texto al revés**: el título se quedaba fijo en «Aún no has registrado…» aunque la vacante fuera de un
+filtro sin resultados, y «No encontramos resultados con estos filtros.» vivía en la descripción en vez
+del título. Quedaron como Empleados y Contratos, que sí alternaban bien: el título dice qué pasó de
+verdad —sin registros o sin resultados del filtro— y la descripción con la primera acción solo aparece
+cuando el vacío es real. Prueba nueva en `Contratos/Index.test.js` para el caso sin filtros y sin
+contratos; los otros cinco no tenían prueba de ese texto y no se la inventé, porque cambiar solo el
+orden de dos valores que ya existían no necesitaba una nueva.
 
 ### [ ] F6-02 · Textos del sistema
 

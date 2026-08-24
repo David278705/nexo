@@ -263,10 +263,14 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 :clicable="false"
                 :orden-por="filtros.orden"
                 :orden-direccion="filtros.direccion"
-                titulo-vacio="Aún no has registrado salidas."
-                :descripcion-vacio="
+                :titulo-vacio="
                     tieneFiltros
                         ? 'No encontramos resultados con estos filtros.'
+                        : 'Aún no has registrado salidas.'
+                "
+                :descripcion-vacio="
+                    tieneFiltros
+                        ? ''
                         : 'Cuando registres una, aquí verás el tipo de salida, el motivo y la categoría de rotación.'
                 "
                 @ordenar="ordenar"

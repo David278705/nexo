@@ -237,10 +237,14 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 :clicable="false"
                 :orden-por="filtros.orden"
                 :orden-direccion="filtros.direccion"
-                titulo-vacio="Aún no has registrado aumentos ni promociones."
-                :descripcion-vacio="
+                :titulo-vacio="
                     tieneFiltros
                         ? 'No encontramos resultados con estos filtros.'
+                        : 'Aún no has registrado aumentos ni promociones.'
+                "
+                :descripcion-vacio="
+                    tieneFiltros
+                        ? ''
                         : 'Cuando registres uno, aquí verás el cargo y el salario anteriores frente a los nuevos.'
                 "
                 @ordenar="ordenar"

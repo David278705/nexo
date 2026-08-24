@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from "@inertiajs/vue3";
+import { Head, Link } from "@inertiajs/vue3";
 import { computed } from "vue";
 import { TODOS, useListado } from "@/Utilidades/useListado";
 import Armazon from "@/Components/Armazon.vue";
@@ -191,6 +191,10 @@ const avisoDeVencidos = computed(() => {
                     >
                         Quitar filtros
                     </Boton>
+
+                    <Link v-else href="/empleados/nuevo">
+                        <Boton tipo="button">Registrar empleado</Boton>
+                    </Link>
                 </template>
             </TablaDatos>
 

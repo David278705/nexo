@@ -274,10 +274,14 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 :clicable="false"
                 :orden-por="filtros.orden"
                 :orden-direccion="filtros.direccion"
-                titulo-vacio="Aún no has registrado vacaciones."
-                :descripcion-vacio="
+                :titulo-vacio="
                     tieneFiltros
                         ? 'No encontramos resultados con estos filtros.'
+                        : 'Aún no has registrado vacaciones.'
+                "
+                :descripcion-vacio="
+                    tieneFiltros
+                        ? ''
                         : 'Cuando registres unas, aquí verás el detalle y podrás exportarlo.'
                 "
                 @ordenar="ordenar"

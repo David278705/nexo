@@ -222,4 +222,25 @@ describe("el listado de contratos", function () {
         );
         expect(pantalla.text()).toContain("Quita los filtros para verlos todos.");
     });
+
+    it("ofrece registrar un empleado cuando no hay ningún contrato, sin filtros de por medio", function () {
+        const pantalla = montar({
+            contratos: {
+                filas: [],
+                pagina: 1,
+                paginas: 1,
+                total: 0,
+                desde: null,
+                hasta: null,
+            },
+            aplicados: [],
+            tieneFiltros: false,
+        });
+
+        expect(pantalla.text()).toContain("Aún no hay contratos registrados.");
+
+        const boton = pantalla.find("a[href='/empleados/nuevo']");
+        expect(boton.exists()).toBe(true);
+        expect(boton.text()).toContain("Registrar empleado");
+    });
 });

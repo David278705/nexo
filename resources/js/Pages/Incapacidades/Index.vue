@@ -291,10 +291,14 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 :clicable="false"
                 :orden-por="filtros.orden"
                 :orden-direccion="filtros.direccion"
-                titulo-vacio="Aún no has registrado incapacidades."
-                :descripcion-vacio="
+                :titulo-vacio="
                     tieneFiltros
                         ? 'No encontramos resultados con estos filtros.'
+                        : 'Aún no has registrado incapacidades.'
+                "
+                :descripcion-vacio="
+                    tieneFiltros
+                        ? ''
                         : 'Cuando registres una, aquí verás el detalle y podrás exportarlo.'
                 "
                 @ordenar="ordenar"
