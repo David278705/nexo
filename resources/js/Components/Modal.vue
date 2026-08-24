@@ -49,18 +49,18 @@ onBeforeUnmount(() => {
     <Teleport to="body">
         <div
             v-if="abierto"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-marca-oscuro/45 p-0 sm:p-6"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-marca-oscuro/45 p-0 lg:p-6"
             @click.self="emit('cerrar')"
         >
             <div
                 role="dialog"
                 aria-modal="true"
                 :aria-label="titulo"
-                class="flex h-full w-full flex-col overflow-hidden bg-superficie shadow-flotante sm:h-auto sm:max-h-[90vh] sm:rounded-[var(--radius-modal)]"
+                class="flex h-full w-full flex-col overflow-hidden bg-superficie shadow-flotante lg:h-auto lg:max-h-[90vh] lg:rounded-[var(--radius-modal)]"
                 :class="
                     ancho === 'ancho'
-                        ? 'sm:max-w-modal-ancho'
-                        : 'sm:max-w-modal-corto'
+                        ? 'lg:max-w-modal-ancho'
+                        : 'lg:max-w-modal-corto'
                 "
             >
                 <header

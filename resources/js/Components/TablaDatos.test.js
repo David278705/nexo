@@ -91,6 +91,82 @@ describe("TablaDatos", () => {
         expect(encabezados[1].attributes("aria-sort")).toBe("none");
     });
 
+    it("hasta 1024px pinta una tarjeta por registro con las tres columnas más importantes", () => {
+        const columnasConAcciones = [
+            { clave: "nombre", titulo: "Nombre" },
+            { clave: "cargo", titulo: "Cargo" },
+            { clave: "inicio", titulo: "Inicio" },
+            { clave: "fin", titulo: "Fin" },
+            { clave: "acciones", titulo: "Acciones" },
+        ];
+        const filasConAcciones = [
+            {
+                id: 1,
+                nombre: "Ana Torres",
+                cargo: "Analista",
+                inicio: "1 de julio",
+                fin: "5 de julio",
+                acciones: "Editar",
+            },
+        ];
+
+        const componente = mount(TablaDatos, {
+            props: { columnas: columnasConAcciones, filas: filasConAcciones },
+        });
+
+        const tarjeta = componente.find("ul li");
+
+        expect(tarjeta.text()).toContain("Nombre");
+        expect(tarjeta.text()).toContain("Ana Torres");
+        expect(tarjeta.text()).toContain("Cargo");
+        expect(tarjeta.text()).toContain("Analista");
+        expect(tarjeta.text()).toContain("Inicio");
+        expect(tarjeta.text()).toContain("1 de julio");
+        // El cuarto campo, «Fin», no cabe entre los tres más importantes.
+        expect(tarjeta.text()).not.toContain("Fin");
+    });
+
+    it("en la tarjeta la columna de acciones siempre se ve, no cuenta entre las tres", () => {
+        const columnasConAcciones = [
+            { clave: "nombre", titulo: "Nombre" },
+            { clave: "cargo", titulo: "Cargo" },
+            { clave: "inicio", titulo: "Inicio" },
+            { clave: "acciones", titulo: "Acciones" },
+        ];
+        const filasConAcciones = [
+            {
+                id: 1,
+                nombre: "Ana Torres",
+                cargo: "Analista",
+                inicio: "1 de julio",
+                acciones: "Editar",
+            },
+        ];
+
+        const componente = mount(TablaDatos, {
+            props: { columnas: columnasConAcciones, filas: filasConAcciones },
+        });
+
+        expect(componente.find("ul li").text()).toContain("Editar");
+    });
+
+    it("la tarjeta también avisa al pulsarla cuando la fila es clicable", async () => {
+        const componente = mount(TablaDatos, { props: { columnas, filas } });
+
+        await componente.find("ul li > div").trigger("click");
+
+        expect(componente.emitted("abrir")[0][0]).toEqual(filas[0]);
+    });
+
+    it("la tabla solo se ve desde 1024px y la tarjeta solo por debajo", () => {
+        const componente = mount(TablaDatos, { props: { columnas, filas } });
+
+        expect(componente.find("ul").classes()).toContain("lg:hidden");
+        expect(componente.find("table").element.parentElement.className).toContain(
+            "lg:block",
+        );
+    });
+
     it("sin registros muestra el estado vacío y no la palabra «no hay datos»", () => {
         const componente = mount(TablaDatos, {
             props: {

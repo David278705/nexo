@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import EstadoVacio from "@/Components/EstadoVacio.vue";
 
 /*
@@ -13,8 +14,15 @@ import EstadoVacio from "@/Components/EstadoVacio.vue";
  * El ordenamiento no se hace aquí: la columna pulsada se emite y el listado se
  * la pide al servidor, porque la tabla solo tiene delante una página de 25 y
  * ordenar esas 25 daría un orden falso.
+ *
+ * Hasta 1024px la tabla se reemplaza por una tarjeta por fila, con los tres
+ * campos más importantes (documento 3, sección 6.4): los tres primeros que no
+ * sean la columna de acciones, porque en todos los listados del sistema el
+ * orden de las columnas ya va de lo más identificador a lo más secundario. La
+ * columna de acciones, si existe, se enseña aparte y siempre, porque sin ella
+ * no se puede editar ni eliminar desde el celular.
  */
-defineProps({
+const props = defineProps({
     columnas: { type: Array, required: true },
     filas: { type: Array, required: true },
     // Campo que identifica la fila. `id` en todos los módulos.
@@ -34,6 +42,16 @@ defineProps({
 });
 
 const emit = defineEmits(["abrir", "ordenar"]);
+
+const columnaAcciones = computed(() =>
+    props.columnas.find((columna) => columna.clave === "acciones"),
+);
+
+const columnasTarjeta = computed(() =>
+    props.columnas
+        .filter((columna) => columna.clave !== "acciones")
+        .slice(0, 3),
+);
 
 // El lector de pantalla necesita saber por dónde está ordenada la tabla; la
 // flecha sola no se lo dice (documento 3, sección 3.5).
@@ -60,7 +78,58 @@ function sentido(columna, ordenPor, ordenDireccion) {
             </EstadoVacio>
         </div>
 
-        <div v-else class="max-h-[70vh] overflow-auto">
+        <ul v-else class="divide-y divide-borde lg:hidden">
+            <li v-for="fila in filas" :key="fila[clave]">
+                <div
+                    :tabindex="clicable ? 0 : undefined"
+                    class="flex flex-col gap-2 p-3"
+                    :class="
+                        clicable
+                            ? 'cursor-pointer hover:bg-superficie-resaltada'
+                            : ''
+                    "
+                    @click="clicable && emit('abrir', fila)"
+                    @keydown.enter="clicable && emit('abrir', fila)"
+                    @keydown.space.prevent="clicable && emit('abrir', fila)"
+                >
+                    <div
+                        v-for="columna in columnasTarjeta"
+                        :key="columna.clave"
+                        class="flex items-baseline justify-between gap-3"
+                    >
+                        <span class="text-apoyo text-texto-secundario">{{
+                            columna.titulo
+                        }}</span>
+                        <span
+                            class="text-tabla text-texto"
+                            :class="columna.numerica ? 'tabular-nums' : ''"
+                        >
+                            <slot
+                                :name="`celda-${columna.clave}`"
+                                :fila="fila"
+                            >
+                                {{ fila[columna.clave] }}
+                            </slot>
+                        </span>
+                    </div>
+
+                    <div
+                        v-if="columnaAcciones"
+                        class="flex justify-end gap-1 pt-1"
+                        @click.stop
+                    >
+                        <slot
+                            :name="`celda-${columnaAcciones.clave}`"
+                            :fila="fila"
+                        >
+                            {{ fila[columnaAcciones.clave] }}
+                        </slot>
+                    </div>
+                </div>
+            </li>
+        </ul>
+
+        <div v-if="filas.length > 0" class="hidden max-h-[70vh] overflow-auto lg:block">
             <table class="w-full border-collapse text-tabla">
                 <thead>
                     <tr>

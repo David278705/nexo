@@ -40,11 +40,20 @@ describe("Modal", () => {
 
     it("usa 800 px para el registro de novedades y 560 px para lo corto", () => {
         const corto = montar();
-        expect(document.body.innerHTML).toContain("sm:max-w-modal-corto");
+        expect(document.body.innerHTML).toContain("lg:max-w-modal-corto");
         corto.unmount();
 
         const ancho = montar({ ancho: "ancho" });
-        expect(document.body.innerHTML).toContain("sm:max-w-modal-ancho");
+        expect(document.body.innerHTML).toContain("lg:max-w-modal-ancho");
         ancho.unmount();
+    });
+
+    it("ocupa la pantalla completa hasta 1024px, no hasta 640px", () => {
+        const componente = montar();
+
+        expect(document.body.innerHTML).toContain("lg:h-auto");
+        expect(document.body.innerHTML).not.toContain("sm:h-auto");
+
+        componente.unmount();
     });
 });

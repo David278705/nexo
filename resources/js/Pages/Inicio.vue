@@ -67,7 +67,7 @@ const nombreDePila = computed(() => nombre.value.trim().split(/\s+/)[0] ?? "");
 
             <div
                 v-if="tarjetas.length > 0"
-                class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                class="mt-3 grid gap-3 lg:grid-cols-2 xl:grid-cols-4"
             >
                 <TarjetaDeAccion
                     v-for="accion in tarjetas"
@@ -111,7 +111,7 @@ const nombreDePila = computed(() => nombre.value.trim().split(/\s+/)[0] ?? "");
 
             <div
                 v-if="bloque.tarjetas.length > 0"
-                class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                class="mt-3 grid gap-3 lg:grid-cols-2 xl:grid-cols-4"
             >
                 <TarjetaIndicador
                     v-for="tarjeta in bloque.tarjetas"
@@ -126,7 +126,7 @@ const nombreDePila = computed(() => nombre.value.trim().split(/\s+/)[0] ?? "");
 
             <div
                 v-if="bloque.distribuciones.length > 0"
-                class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+                class="mt-3 grid gap-3 lg:grid-cols-2 xl:grid-cols-3"
             >
                 <div
                     v-for="distribucion in bloque.distribuciones"

@@ -34,7 +34,7 @@ defineProps({
         <h2 class="mt-6 text-cuerpo font-semibold text-texto">
             Requiere atención hoy
         </h2>
-        <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-3 grid gap-4 lg:grid-cols-3">
             <TarjetaDeAccion
                 v-for="tarjeta in atencion"
                 :key="tarjeta.etiqueta"
@@ -47,7 +47,7 @@ defineProps({
         </div>
 
         <h2 class="mt-8 text-cuerpo font-semibold text-texto">Negocio</h2>
-        <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="mt-3 grid gap-4 lg:grid-cols-4">
             <TarjetaIndicador
                 v-for="tarjeta in negocio"
                 :key="tarjeta.etiqueta"

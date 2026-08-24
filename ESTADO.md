@@ -1,42 +1,50 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-24 · Tarea F6-04 (indicadores de carga)
-**Verificación:** verde — Pint, PHPStan sin errores, **1.141** pruebas de Pest, build y **348** de Vitest.
-**Siguiente tarea:** F6-05 · Pantallas pequeñas.
+**Última sesión:** 2026-08-24 · Tarea F6-05 (pantallas pequeñas)
+**Verificación:** verde — Pint, PHPStan sin errores, **1.141** pruebas de Pest, build y **353** de Vitest.
+**Siguiente tarea:** F6-06 · Accesibilidad.
 
 ## Qué se hizo
 
-- **F6-04, indicadores de carga** (documento 3, 2.4 y 2.5). La sesión encontró `Boton.vue` y
-  `Formularios.test.js` ya modificados y sin commitear —el círculo que gira junto al texto mientras
-  `enviando` es verdadero, con su prueba— y siguió desde ahí en vez de rehacerlo: el cambio es correcto
-  y coincide exactamente con lo que pide la sección 2.5, «pantalla congelada» está mal, «indicador de
-  carga» está bien.
-- **Casi todos los formularios ya pasaban `enviando`** a `Boton.vue`, porque el documento 3 ya exigía
-  deshabilitar el botón de guardar mientras envía desde antes de esta fase: los nueve `useForm` de
-  Acceso, Empleados, la Configuración, el panel del proveedor y los cinco módulos de novedades. El
-  cambio de `Boton.vue` les dio el círculo a todos a la vez, sin tocar ninguna pantalla.
-- **Se barrieron los 37 componentes que usan `Boton`** buscando una acción que llame a
-  `router.post`/`router.delete` directo y no guarde su propio `enviando`. Aparecieron seis, ninguna con
-  indicador de ningún tipo: quitar un festivo, activar o desactivar una entidad y activar o desactivar
-  un municipio (las tres en `Catalogos.vue`), anular un pago, quitar una nota de la bitácora, reenviar
-  una invitación y reenviar el enlace de contraseña (las cuatro en `FichaDeEmpresa.vue`), y activar o
-  desactivar un plan (`Suscripciones.vue`).
-- **Cada una ganó su propio `ref`** —de fila, con el `id` de la fila en curso, cuando la tabla tiene más
-  de una posible a la vez— fijado antes de la petición y limpiado en `onFinish`. `TablaDeCatalogo.vue`
-  ganó la prop `alternando` para saber cuál de sus filas es la que está esperando.
-- **Lo que no se tocó, y es a propósito**: las navegaciones con `<Link>`, los filtros con `router.get` y
-  abrir una fila con `router.visit` ya los cubre la barra de progreso global de Inertia, configurada en
-  `app.js` desde F0-09. El botón de copiar al portapapeles no espera ninguna red.
+- **F6-05, pantallas pequeñas** (documento 3, 6.4). De los cuatro comportamientos que pide la sección,
+  tres ya estaban resueltos antes de esta tarea, dos completos y uno con un error de umbral:
+  - **El menú colapsable ya existía completo desde F0-10.** `Armazon.vue` lo abre por encima del
+    contenido hasta 1024px, con su botón en `EncabezadoApp.vue`. No se tocó nada.
+  - **Las tablas en tarjeta eran lo único que faltaba por completo.** `TablaDatos.vue` gana una
+    segunda vista, un `<ul>` de tarjetas visible solo `lg:hidden`, hermana de la tabla que pasa a
+    `hidden lg:block`. Las tres columnas de la tarjeta son **las tres primeras que no sean la de
+    acciones** —una regla mecánica y consistente, no un juicio distinto por cada una de las veinte
+    pantallas que usan el componente—. La columna de acciones, si existe, se enseña siempre y aparte,
+    con `@click.stop` para que un botón dentro de una tarjeta clicable no dispare también el `abrir`
+    de la fila. Los veinte componentes que usan `TablaDatos` heredan la tarjeta sin que se les tocara
+    una línea.
+  - **Los modales a pantalla completa estaban implementados con el prefijo equivocado.** `Modal.vue`
+    cambiaba a caja centrada desde `sm:` (640px) en vez de `lg:` (1024px): entre 640 y 1024px se veía
+    una caja fija de 560/800px en lugar de pantalla completa. Se corrigieron las cuatro clases; los
+    cinco modales que envuelven `Modal.vue` quedan arreglados de una vez.
+  - **El panel de inicio pasaba a dos columnas desde 640px.** `Inicio.vue` y `Proveedor/Inicio.vue`
+    cambiaron `sm:grid-cols-2` por `lg:grid-cols-2`, o se quitó el paso intermedio, para que la única
+    columna dure hasta 1024px. El orden de prioridad de los bloques ya lo decidía el servidor desde
+    F4-04.
+  - Pruebas nuevas en `TablaDatos.test.js` (la tarjeta, sus tres campos, la columna de acciones
+    siempre visible, el clic y los dos prefijos `lg:hidden`/`lg:block`) y en `Modal.test.js` (el
+    prefijo `lg:` y no `sm:`).
 
 ## Decisiones tomadas
 
-- **La tarea no traía «Hecho cuando» ni «Fuente» en el backlog.** Se leyó el criterio de la sección 2.5
-  del documento 3 —la fila «Espera» de la tabla— como la fuente, y el «hecho cuando» se interpretó como
-  «ninguna acción que dispare una petición al servidor se queda sin ningún indicador», que es lo que se
-  verificó una por una.
-- **El indicador es siempre el mismo círculo de `Boton.vue` y no uno nuevo por pantalla.** Construir un
-  segundo indicador habría sido la misma corrección que ya evitó `ModalDeBorrado`/`ModalDeNovedad`: dos
-  formas de decir «espera» se separan a la primera corrección.
+- **«Los tres campos más importantes» se leyó como una regla mecánica**: las tres primeras columnas
+  declaradas que no sean la de acciones, en vez de escoger a mano el mejor trío para cada uno de los
+  veinte listados. El orden de columnas de cada pantalla ya pone lo identificador primero —documento,
+  nombre, empresa— y lo secundario después; juzgar caso por caso habría sido una decisión subjetiva
+  repetida veinte veces, con más riesgo de inconsistencia que la regla simple. Si algún listado
+  concreto necesita otro trío, se puede añadir después una marca explícita por columna sin romper el
+  resto.
+- **La columna de acciones no cuenta entre los tres campos y siempre se ve.** Sin editar ni eliminar
+  desde la tarjeta, los tres módulos de novedades con edición (F2-10) quedarían sin esa función en el
+  celular, que es justo lo que el «hecho cuando» de F6-05 pide evitar.
+- **El breakpoint de todo el capítulo 6.4 es `lg` (1024px), el que ya usaba `Armazon.vue`.** El
+  proyecto no tiene `tailwind.config.js` —Tailwind 4 se configura en `resources/css/app.css`— y no
+  redefine los puntos de corte, así que `lg` es el de 1024px por defecto y no hubo que inventar nada.
 
 ## Preguntas para Angela
 
@@ -77,9 +85,15 @@
 
 ## Notas para la próxima sesión
 
-- **La siguiente tarea es F6-05, pantallas pequeñas**: menú colapsable, tablas en tarjeta, modales a
-  pantalla completa. **Hecho cuando:** el sistema es usable a 375px de ancho. Fuente:
-  `docs/03-diseno-e-interfaz.md` 6.4.
+- **La siguiente tarea es F6-06, accesibilidad**: contraste, recorrido con teclado, foco visible,
+  etiquetas reales, zoom al 200%. **Hecho cuando:** se completa un registro de novedad usando solo el
+  teclado. Esta tarea no trae «Fuente» explícita en el backlog; el capítulo relevante es
+  `docs/03-diseno-e-interfaz.md`, sección «Accesibilidad» (dentro del capítulo 3) y
+  `.claude/rules/30-interfaz.md`, que ya trae un resumen.
+- **La regla nueva de «tres campos más importantes» vive en un solo sitio**, el comentario de cabecera
+  de `TablaDatos.vue`. Si una futura tarea necesita que un listado concreto muestre un trío distinto al
+  de sus tres primeras columnas no-acciones, ahí es donde hay que abrir la puerta —una marca por
+  columna, no una reescritura del componente—.
 - **`REV-04` sigue pendiente**: el módulo `Auditoria` del entorno del cliente sigue siendo el último
   `SeccionPendiente`. El acceso del proveedor deja constancia en la auditoría del cliente desde F5-07,
   pero el cliente todavía no la puede mirar en ninguna pantalla.

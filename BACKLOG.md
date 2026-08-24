@@ -1371,11 +1371,34 @@ copiar al portapapeles no espera ninguna red, así que no le falta nada. Prueba 
 `Formularios.test.js`: el círculo no aparece con `enviando: false` y sí con `enviando: true`, sin
 reemplazar el texto del botón.
 
-### [ ] F6-05 · Pantallas pequeñas
+### [x] F6-05 · Pantallas pequeñas
 
 Menú colapsable, tablas en tarjeta, modales a pantalla completa.
 **Hecho cuando:** el sistema es usable a 375px de ancho.
 **Fuente:** `docs/03-diseno-e-interfaz.md` 6.4
+
+Hecho: los cuatro comportamientos de la sección 6.4, los tres primeros ya construidos parcial o
+totalmente antes de esta tarea. **El menú colapsable ya existía completo desde F0-10** —`Armazon.vue`
+lo abre por encima del contenido hasta 1024px, con su botón en `EncabezadoApp.vue`— y no se tocó.
+**Las tablas en tarjeta eran lo único que faltaba por completo**: `TablaDatos.vue` gana una segunda
+vista, un `<ul>` de tarjetas visible solo `lg:hidden`, hermana de la tabla que pasa a `hidden lg:block`;
+las tres columnas de la tarjeta son **las tres primeras que no sean la de acciones**, porque en los
+más de veinte listados del sistema el orden de columnas ya declara qué es lo identificador antes que
+lo secundario, y juzgar caso por caso cuál campo es «el más importante» en cada pantalla habría sido
+veinte decisiones subjetivas distintas en vez de una regla mecánica y consistente. La columna de
+acciones, si existe, se enseña siempre y aparte —sin ella no se puede editar ni eliminar desde el
+celular—, con `@click.stop` para que un botón dentro de una tarjeta clicable no dispare también el
+`abrir` de la fila. Los veinte componentes que usan `TablaDatos` heredan la tarjeta sin que se les
+tocara una línea. **Los modales a pantalla completa estaban implementados con el prefijo equivocado**:
+`Modal.vue` cambiaba a caja centrada desde `sm:` (640px) en vez de `lg:` (1024px), así que entre 640 y
+1024px se veía una caja fija de 560/800px en lugar de pantalla completa; se corrigieron las cuatro
+clases y los cinco modales que envuelven `Modal.vue` quedan arreglados de una vez. **El panel de
+inicio pasaba a dos columnas desde 640px**: `Inicio.vue` y `Proveedor/Inicio.vue` cambiaron
+`sm:grid-cols-2` por `lg:grid-cols-2` (o se quitó el paso intermedio donde ya había una columna mayor
+en `lg`), para que la única columna dure hasta 1024px como pide la sección. El orden de prioridad de
+los bloques del panel de inicio ya lo decidía el servidor desde F4-04 y no hubo que tocarlo. Pruebas
+nuevas en `TablaDatos.test.js` (la tarjeta, sus tres campos, la columna de acciones siempre visible, el
+clic y los dos prefijos `lg:hidden`/`lg:block`) y en `Modal.test.js` (el prefijo `lg:` y no `sm:`).
 
 ### [ ] F6-06 · Accesibilidad
 
