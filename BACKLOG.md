@@ -1060,13 +1060,47 @@ siguen en cero.
   que la plantilla marca opcional y la columna exige, y el rango «Menos de 30 min» que el sistema
   parte en dos.
 
-### [ ] F5-02 · Ejecución de la carga
+### [x] F5-02 · Ejecución de la carga
 
 Dentro de una transacción: o entra todo o no entra nada. Control de dependencias entre plantillas.
 Registro de la carga.
 **Hecho cuando:** tras cargar, el saldo de cada persona coincide con el de la plantilla más lo
 acumulado desde la fecha de corte.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 13
+
+Hecho: `EjecucionDeCarga`, `ResultadoDeLaCarga`, `CargaRechazada`, `HistorialDeCargas`, la tabla
+`cargas_iniciales` con su modelo `RegistroDeCarga`, el comando `carga:ejecutar` y **la pantalla de
+puesta en marcha del panel** —`CargaInicialController`, `App\Proveedor\PuestaEnMarcha`, el
+`FormRequest` `CargarPlantilla` y `Pages/Proveedor/PuestaEnMarcha.vue`—, que era la que F5-01 dejó
+sin construir a propósito porque su botón de confirmar es esta tarea. El «hecho cuando» está probado
+con el corte a fin de mes: quien informa 17,25 días el 31 de agosto tiene 17,25 ese día y 21 el 30 de
+noviembre, tres meses cerrados después.
+
+- **La ejecución no se fía del informe que se enseñó: vuelve a simular el archivo entero.** Entre
+  validar y confirmar pasan minutos y en esos minutos alguien pudo desactivar una EPS o subir otro
+  archivo. De paso es lo que permite no guardar el Excel en ninguna parte (documento 1, 13.1): llega,
+  se lee dos veces y se va.
+- **Cada plantilla escribe por donde escribe su módulo**, igual que valida con las reglas de su
+  formulario: `RegistroDeEmpleado`, las relaciones de la vinculación y `BloqueSociodemografico`. La
+  excepción es el histórico de movimientos, que no pasa por `registrarMovimiento()` porque ese método
+  actualiza además el cargo y el salario vigentes, y aquí los vigentes ya son correctos.
+- **La transacción está probada por donde de verdad se rompería**: no con un archivo malo —eso lo
+  para la simulación antes de escribir— sino con una escritura que falla en la segunda de tres filas.
+  No queda ni una persona ni el registro de la carga.
+- **La dependencia se comprueba contra `cargas_iniciales` y no contra la planta.** Una empresa puede
+  tener empleados registrados por pantalla sin haber pasado nunca por la carga, y contra la planta la
+  comprobación diría que sí a algo que nunca ocurrió.
+- **Volver a pasar la plantilla de empleados se rechaza fila por fila**: un documento ya vinculado y
+  activo es un error del archivo. Sin eso, la segunda pasada abriría una segunda vinculación a cada
+  persona y nadie lo notaría hasta ver la planta repetida en el listado.
+- **El corte del saldo acota también el disfrute.** `SaldoDeVacaciones` ya acotaba la acumulación
+  desde `fecha_corte_saldo`; ahora hace lo mismo con los días disfrutados, porque los «días
+  disponibles hoy» que informa la empresa ya vienen con el pasado descontado. Sin eso, cargar el
+  histórico de vacaciones —que es opcional— le habría cambiado el saldo a todo el mundo.
+- **Las dos columnas del contrato vigente siguen sin convertirse en tramos del historial, y es una
+  decisión.** Con un número de prórrogas y una sola fecha habría que inventarse las fechas de los
+  tramos intermedios, y 13.1 lo prohíbe con esas palabras: «no se inventan registros». La
+  consecuencia está anotada en `ESTADO.md`.
 
 ### [ ] F5-03 · Ambiente de demostración
 

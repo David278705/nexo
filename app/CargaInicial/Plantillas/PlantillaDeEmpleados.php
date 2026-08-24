@@ -9,6 +9,7 @@ use App\CargaInicial\FilaTraducida;
 use App\CargaInicial\PlantaDeLaEmpresa;
 use App\CargaInicial\Plantilla;
 use App\Contratacion\Genero;
+use App\Contratacion\RegistroDeEmpleado;
 use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoDocumento;
 use App\Contratacion\TipoRiesgo;
@@ -19,6 +20,7 @@ use App\Models\CajaCompensacion;
 use App\Models\Eps;
 use App\Models\FondoPension;
 use App\Models\Pais;
+use Illuminate\Support\Carbon;
 
 /**
  * La plantilla 1, «Empleados actuales», la única obligatoria y la que las otras
@@ -48,9 +50,16 @@ use App\Models\Pais;
  */
 class PlantillaDeEmpleados extends Plantilla
 {
+    /**
+     * La clave con la que las otras cinco preguntan si esta ya se procesó
+     * (documento 2, 6.3). Es constante y no solo el retorno de `clave()` para
+     * que la comprobación de la dependencia no tenga que construir la plantilla.
+     */
+    public const CLAVE = 'empleados';
+
     public function clave(): string
     {
-        return 'empleados';
+        return self::CLAVE;
     }
 
     public function nombre(): string
@@ -186,9 +195,62 @@ class PlantillaDeEmpleados extends Plantilla
             }
 
             $vistos[$documento] = $fila->numero;
+
+            // Y tampoco puede estar ya en la empresa. La carga es «un proceso
+            // de una sola vez» (documento 1, 13.1) y volver a pasar el mismo
+            // archivo no falla por sí solo: abriría una segunda vinculación
+            // activa a cada persona, que es la clase de duplicado que nadie ve
+            // hasta que el listado enseña a la planta entera repetida.
+            if ($planta->vinculacionActiva($documento) !== null) {
+                $errores[] = new ErrorDeCarga(
+                    $fila->numero,
+                    'Número de documento',
+                    "El documento {$documento} ya está vinculado y activo en esta empresa. ".
+                    'Quítelo del archivo: esta plantilla trae quienes todavía no están en el sistema.',
+                );
+            }
         }
 
         return $errores;
+    }
+
+    /**
+     * La vinculación entra por donde entra la del asistente de cuatro pasos:
+     * `RegistroDeEmpleado`, que reutiliza la persona si el documento ya existía
+     * y deja que el estado nazca activo solo (regla 5.3).
+     *
+     * Lo único que la carga añade son los dos datos del saldo, y **ninguno de
+     * los dos es un saldo guardado**: son el punto de partida del cálculo, que
+     * es justo lo que la regla 2 del proyecto permite. El corte es la fecha de
+     * la carga porque la plantilla pregunta por los «días de vacaciones
+     * disponibles **hoy**»; a partir de ahí el motor sigue acumulando solo.
+     *
+     * **Las dos columnas del contrato vigente no se convierten en tramos del
+     * historial y es una decisión, no un olvido.** «Fecha de inicio del contrato
+     * vigente» y «Prórrogas ya realizadas» viven en el sistema en
+     * `periodos_contractuales`, una fila por tramo con sus dos fechas. Con un
+     * número de prórrogas y una sola fecha, reconstruir la cadena obligaría a
+     * inventarse las fechas de los tramos intermedios, y el principio 13.1 del
+     * documento 1 lo prohíbe con esas palabras: «no se inventan registros». La
+     * consecuencia —que un contrato cargado con prórrogas anteriores arranque
+     * contando cero— está anotada en `ESTADO.md` para que la decida quien puede.
+     */
+    public function escribir(array $valores, Carbon $fechaDeLaCarga): void
+    {
+        app(RegistroDeEmpleado::class)->ejecutar([
+            ...$valores,
+            'fecha_corte_saldo' => $fechaDeLaCarga->toDateString(),
+        ]);
+    }
+
+    public function dependeDeLaPlanta(): bool
+    {
+        return false;
+    }
+
+    public function fechaDeCorte(Carbon $fechaDeLaCarga): ?Carbon
+    {
+        return $fechaDeLaCarga->copy();
     }
 
     protected function equivalencias(): array

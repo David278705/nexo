@@ -43,6 +43,43 @@ class CatalogoDePlantillas
         return array_map(fn (Plantilla $plantilla): string => $plantilla->clave(), $this->todas());
     }
 
+    /**
+     * El nombre con el que el cliente conoce esa plantilla.
+     *
+     * Un registro de carga guarda la clave, no el nombre, y quien lee el
+     * historial del panel espera «Histórico de incapacidades» y no
+     * «incapacidades». Devuelve la clave tal cual si alguna vez deja de existir:
+     * un historial es una constancia y no puede dejar de enseñarse porque el
+     * catálogo cambiara después.
+     */
+    public function nombreDe(string $clave): string
+    {
+        foreach ($this->todas() as $plantilla) {
+            if ($plantilla->clave() === $clave) {
+                return $plantilla->nombre();
+            }
+        }
+
+        return $clave;
+    }
+
+    /**
+     * Las seis plantillas tal como las consume un selector, en el orden de
+     * carga.
+     *
+     * @return list<array{valor: string, texto: string}>
+     */
+    public function paraElegir(): array
+    {
+        return array_map(
+            fn (Plantilla $plantilla): array => [
+                'valor' => $plantilla->clave(),
+                'texto' => $plantilla->nombre(),
+            ],
+            $this->todas(),
+        );
+    }
+
     public function de(string $clave): Plantilla
     {
         foreach ($this->todas() as $plantilla) {

@@ -33,6 +33,11 @@ use Illuminate\Support\Facades\DB;
  * Colombia va el identificador del catálogo y los textos quedan vacíos; si es
  * otro, al revés. Nunca las dos cosas, que es lo que obligaría meses después a
  * adivinar qué hay dentro de cada columna.
+ *
+ * **También es el camino de la carga inicial**, y por eso admite dos campos que
+ * el formulario nunca manda: el saldo de vacaciones informado por la empresa y
+ * su fecha de corte. Que la fila cargada y la digitada pasen por el mismo sitio
+ * es lo que hace que acaben idénticas en la base de datos.
  */
 class RegistroDeEmpleado
 {
@@ -159,6 +164,37 @@ class RegistroDeEmpleado
             'tipo_riesgo' => $datos['tipo_riesgo'],
             'caja_compensacion_id' => $datos['caja_compensacion_id'],
             'banco_id' => $datos['banco_id'],
+
+            ...$this->saldoDeLaCargaInicial($datos),
+        ];
+    }
+
+    /**
+     * El punto de partida del saldo de vacaciones, que solo trae la carga
+     * inicial (documento 1, 13.2).
+     *
+     * El formulario no manda ninguno de los dos y no debe: quien se registra por
+     * pantalla se está vinculando hoy, así que su saldo arranca en cero y
+     * acumula desde su fecha de ingreso. Los dos campos existen para la empresa
+     * que lleva diez años operando y que informa cuántos días tiene disponibles
+     * hoy cada persona, sin reconstruir los periodos del pasado.
+     *
+     * **No es un saldo guardado.** La regla 2 del proyecto prohíbe una columna
+     * que se sume y se reste; estos dos son el origen del cálculo, y
+     * `SaldoDeVacaciones` los lee sin tocarlos nunca.
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<string, mixed>
+     */
+    private function saldoDeLaCargaInicial(array $datos): array
+    {
+        if (! isset($datos['saldo_inicial_vacaciones'], $datos['fecha_corte_saldo'])) {
+            return [];
+        }
+
+        return [
+            'saldo_inicial_vacaciones' => $datos['saldo_inicial_vacaciones'],
+            'fecha_corte_saldo' => $datos['fecha_corte_saldo'],
         ];
     }
 }

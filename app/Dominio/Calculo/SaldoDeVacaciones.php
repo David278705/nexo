@@ -14,9 +14,15 @@ use Illuminate\Support\Carbon;
  * ```
  * saldo(fecha) = saldo_inicial
  *              + acumulación desde fecha_corte_saldo hasta fecha
- *              − días de vacaciones disfrutados
+ *              − días de vacaciones disfrutados desde fecha_corte_saldo
  *              − reducción por suspensiones, si la empresa lo tiene activo
  * ```
+ *
+ * **El corte acota los tres sumandos.** El saldo inicial que informa la carga
+ * son los días *disponibles* a esa fecha, es decir, lo acumulado menos lo ya
+ * disfrutado hasta ahí; contar otra vez cualquiera de las dos cosas lo dejaría
+ * mal. Sin corte no hay nada que acotar y el saldo arranca en cero desde el
+ * primer día trabajado.
  *
  * **No existe ninguna columna `saldo_vacaciones` que se sume y se reste.** Es lo
  * que hace que corregir la fecha de ingreso recalcule todo solo y que eliminar
@@ -123,15 +129,26 @@ class SaldoDeVacaciones
     }
 
     /**
-     * Los días hábiles de las vacaciones ya registradas cuyo inicio no es
-     * posterior a la fecha consultada.
+     * Los días hábiles de las vacaciones ya registradas cuyo inicio cae dentro
+     * del tramo que el saldo inicial todavía no cubre.
+     *
+     * **El corte acota los tres sumandos, no solo la acumulación.** Los «días de
+     * vacaciones disponibles hoy» que informa la carga inicial ya vienen con lo
+     * disfrutado descontado —es lo que significa «disponibles»—, así que una
+     * vacación anterior al corte que la empresa además cargue en el histórico se
+     * restaría dos veces. Con la acumulación pasa lo mismo y por eso arranca en
+     * `inicioDeLaAcumulacion()`; el disfrute arranca donde ella.
+     *
+     * Sin corte no hay nada que acotar: el saldo inicial es cero y cuentan todas.
      *
      * El borrado lógico es lo que hace que restituir el saldo no necesite una
      * operación inversa: una vacación eliminada deja de contar aquí sola.
      */
     private function diasDisfrutadosHasta(Carbon $fecha): int
     {
-        $vacaciones = $this->vinculacion->vacaciones()->where('fecha_inicio', '<=', $fecha);
+        $vacaciones = $this->vinculacion->vacaciones()
+            ->where('fecha_inicio', '<=', $fecha)
+            ->where('fecha_inicio', '>=', $this->inicioDeLaAcumulacion());
 
         if ($this->vacacionExcluida !== null) {
             $vacaciones->whereKeyNot($this->vacacionExcluida);

@@ -6,6 +6,7 @@ use App\CargaInicial\Columna;
 use App\CargaInicial\FilaTraducida;
 use App\Http\Requests\RegistrarLicencia;
 use App\Licencias\TipoDeLicencia;
+use Illuminate\Support\Carbon;
 
 /**
  * La plantilla 5, «Histórico de licencias, ausencias y suspensiones»
@@ -66,6 +67,26 @@ class PlantillaDeLicencias extends PlantillaDeHistorico
     public function mensajes(): array
     {
         return $this->formulario(new FilaTraducida(0))->messages();
+    }
+
+    /**
+     * Una sola tabla con su campo de clasificación, igual que el módulo, y sin
+     * columna de días: los cuenta el motor en días corridos.
+     *
+     * La advertencia de la hoja de instrucciones —que estos días reducen la
+     * acumulación de vacaciones— no cambia el saldo que informó la empresa, por
+     * lo mismo que en el histórico de vacaciones: la reducción vive dentro de la
+     * acumulación, y la acumulación arranca en la fecha de corte. Lo que estas
+     * filas sí hacen es dejar el histórico completo para las alertas y los
+     * informes.
+     */
+    public function escribir(array $valores, Carbon $fechaDeLaCarga): void
+    {
+        $this->empleado($valores)->licencias()->create([
+            'tipo' => $valores['tipo'],
+            'fecha_inicio' => $valores['fecha_inicio'],
+            'fecha_fin' => $valores['fecha_fin'],
+        ]);
     }
 
     private function formulario(FilaTraducida $fila): RegistrarLicencia

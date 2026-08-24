@@ -10,6 +10,7 @@ use App\CargaInicial\TextoDeCelda;
 use App\Http\Requests\RegistrarMovimiento;
 use App\Movimientos\TipoDeMovimiento;
 use App\Presentacion\Formato;
+use Illuminate\Support\Carbon;
 
 /**
  * La plantilla 6, «Histórico de aumentos y promociones» (documento 1, 8.1).
@@ -120,6 +121,41 @@ class PlantillaDeMovimientos extends PlantillaDeHistorico
         }
 
         return $errores;
+    }
+
+    /**
+     * **El único `escribir()` que no pasa por el método del módulo**, y el
+     * motivo es la diferencia entre registrar un movimiento y cargar el
+     * histórico de los que ya ocurrieron.
+     *
+     * `Vinculacion::registrarMovimiento()` hace dos cosas a la vez: agrega la
+     * fila y actualiza el cargo y el salario del empleado, tomando el «anterior»
+     * de lo que rige hoy. Aquí lo de hoy ya es correcto —lo informó la plantilla
+     * de empleados— y los anteriores vienen escritos en el archivo. Pasar por
+     * ahí pondría como valor anterior del primer movimiento del pasado el
+     * salario actual, que es exactamente al revés, y dejaría al empleado con el
+     * salario del movimiento más viejo si el archivo no viene ordenado.
+     *
+     * La coherencia entre el último movimiento y la planta ya la comprobó
+     * `revisarElConjunto()`, así que no actualizar nada aquí no deja ningún
+     * desajuste: es la comprobación la que garantiza que no hace falta.
+     */
+    public function escribir(array $valores, Carbon $fechaDeLaCarga): void
+    {
+        $tipo = TipoDeMovimiento::from((string) $valores['tipo']);
+        $cargoAnterior = (string) $valores['cargo_anterior'];
+        $cargoNuevo = $valores['cargo_nuevo'] ?? null;
+
+        $this->empleado($valores)->movimientos()->create([
+            'tipo' => $tipo,
+            'cargo_anterior' => $cargoAnterior,
+            // La regla del cargo repetido en el aumento salarial es del módulo y
+            // se le pregunta a él, no se copia aquí.
+            'cargo_nuevo' => $tipo->cargoResultante($cargoAnterior, is_string($cargoNuevo) ? $cargoNuevo : null),
+            'salario_anterior' => $valores['salario_anterior'],
+            'salario_nuevo' => $valores['salario_nuevo'],
+            'fecha_efectividad' => $valores['fecha_efectividad'],
+        ]);
     }
 
     /**

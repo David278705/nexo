@@ -1,8 +1,11 @@
 <?php
 
+use App\Autorizacion\SeccionDelPanel;
 use App\CargaInicial\ArchivoIlegible;
+use App\CargaInicial\CargaRechazada;
 use App\CargaInicial\CatalogoDePlantillas;
 use App\CargaInicial\Columna;
+use App\CargaInicial\EjecucionDeCarga;
 use App\CargaInicial\LectorDeArchivo;
 use App\CargaInicial\Plantilla;
 use App\CargaInicial\Plantillas\PlantillaDeEmpleados;
@@ -10,8 +13,10 @@ use App\CargaInicial\Plantillas\PlantillaDeIncapacidades;
 use App\CargaInicial\Plantillas\PlantillaDeMovimientos;
 use App\CargaInicial\Plantillas\PlantillaDePerfilSociodemografico;
 use App\CargaInicial\Plantillas\PlantillaDeVacaciones;
+use App\CargaInicial\ResultadoDeLaCarga;
 use App\CargaInicial\ResultadoDeSimulacion;
 use App\CargaInicial\SimulacionDeCarga;
+use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Models\Arl;
 use App\Models\Banco;
 use App\Models\CajaCompensacion;
@@ -21,9 +26,14 @@ use App\Models\Eps;
 use App\Models\FondoPension;
 use App\Models\Pais;
 use App\Models\Persona;
+use App\Models\RegistroDeCarga;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -576,6 +586,425 @@ describe('el comando de simulación', function () {
             ->assertExitCode(1);
     });
 });
+
+describe('la ejecución de la carga', function () {
+    it('deja el saldo en el que informó la plantilla más lo acumulado desde la fecha de corte', function () {
+        // El «Hecho cuando» de F5-02, con el corte a fin de mes para que la
+        // cuenta se lea de un vistazo: septiembre, octubre y noviembre son tres
+        // meses cerrados enteros, sin ninguna fracción de por medio.
+        $this->travelTo(Carbon::parse('2026-08-31'));
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Días de vacaciones disponibles hoy' => '17,25']),
+        ]);
+
+        $resultado = ejecutar(new PlantillaDeEmpleados, $archivo);
+
+        expect($resultado->filasCargadas())->toBe(1);
+
+        $saldos = app(ContextoTenant::class)->paraTenant(test()->empresa, function (): array {
+            $vinculacion = Vinculacion::query()->firstOrFail();
+
+            return [
+                'corte' => $vinculacion->fecha_corte_saldo?->toDateString(),
+                'alCorte' => SaldoDeVacaciones::de($vinculacion)->al(Carbon::parse('2026-08-31')),
+                'tresMesesDespues' => SaldoDeVacaciones::de($vinculacion)->al(Carbon::parse('2026-11-30')),
+            ];
+        });
+
+        expect($saldos['corte'])->toBe('2026-08-31')
+            // Al día del corte, exactamente lo que escribió la empresa: la
+            // acumulación arranca al día siguiente.
+            ->and($saldos['alCorte'])->toBe(17.25)
+            // Y tres meses después, esos mismos días más 1,25 por mes cerrado.
+            ->and($saldos['tresMesesDespues'])->toBe(21.0);
+    });
+
+    it('no escribe ni una fila cuando el archivo todavía tiene un error', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Número de documento' => '1017234567']),
+            filaDeEmpleado(['Número de documento' => '52998877', 'EPS' => 'Sura']),
+        ]);
+
+        expect(fn () => ejecutar(new PlantillaDeEmpleados, $archivo))
+            ->toThrow(CargaRechazada::class, 'No se guardó nada');
+
+        expect(Persona::withoutGlobalScopes()->count())->toBe(0)
+            ->and(RegistroDeCarga::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('no deja media planta cargada cuando la escritura se cae a mitad del archivo', function () {
+        // La transacción del paso 5 del documento 2, 6.1, probada por donde de
+        // verdad se rompería: no con un archivo malo —eso lo para la simulación
+        // antes de escribir nada— sino con una escritura que falla cuando ya
+        // entraron filas.
+        $plantilla = new class extends PlantillaDeEmpleados
+        {
+            public int $escritas = 0;
+
+            public function escribir(array $valores, Carbon $fechaDeLaCarga): void
+            {
+                $this->escritas++;
+
+                if ($this->escritas === 2) {
+                    throw new RuntimeException('la base de datos se cayó a mitad del archivo');
+                }
+
+                parent::escribir($valores, $fechaDeLaCarga);
+            }
+        };
+
+        $archivo = archivoDeCarga($plantilla, [
+            filaDeEmpleado(['Número de documento' => '1017234567']),
+            filaDeEmpleado(['Número de documento' => '52998877']),
+            filaDeEmpleado(['Número de documento' => '79112233']),
+        ]);
+
+        expect(fn () => ejecutar($plantilla, $archivo))->toThrow(RuntimeException::class);
+
+        expect(Persona::withoutGlobalScopes()->count())->toBe(0)
+            ->and(Vinculacion::withoutGlobalScopes()->count())->toBe(0)
+            ->and(RegistroDeCarga::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('deja constancia de qué archivo, cuántas filas, quién y cuándo', function () {
+        $this->travelTo(Carbon::parse('2026-08-31'));
+
+        $usuario = User::factory()->create(['name' => 'David']);
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Número de documento' => '1017234567']),
+            filaDeEmpleado(['Número de documento' => '52998877']),
+        ]);
+
+        ejecutar(new PlantillaDeEmpleados, $archivo, $usuario);
+
+        $registro = app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn (): RegistroDeCarga => RegistroDeCarga::query()->firstOrFail(),
+        );
+
+        expect($registro->plantilla)->toBe('empleados')
+            ->and($registro->archivo)->toBe('1 - Empleados actuales (obligatoria).xlsx')
+            ->and($registro->filas)->toBe(2)
+            ->and($registro->quien())->toBe('David')
+            // El corte del saldo queda escrito y no se deduce después de la
+            // hora de creación, que es un instante en UTC.
+            ->and($registro->fecha_corte_saldo?->toDateString())->toBe('2026-08-31');
+    });
+
+    it('dice «Consola» en la carga que no tiene a nadie autenticado detrás', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        expect(ejecutar(new PlantillaDeEmpleados, $archivo)->registro->quien())->toBe('Consola');
+    });
+
+    it('no deja cargar un histórico antes que la plantilla de empleados', function () {
+        // La planta existe, pero no entró por una carga: es exactamente el caso
+        // que la comprobación contra `cargas_iniciales` distingue y el que una
+        // comprobación contra la planta dejaría pasar.
+        empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+            'Día final de vacaciones' => '15/07/2025',
+        ]]);
+
+        expect(fn () => ejecutar(new PlantillaDeVacaciones, $archivo))
+            ->toThrow(CargaRechazada::class, 'no se ha procesado en esta empresa');
+
+        expect(Vacacion::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('carga el histórico en cuanto la plantilla de empleados ya entró', function () {
+        ejecutar(new PlantillaDeEmpleados, archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]));
+
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+            'Día final de vacaciones' => '15/07/2025',
+        ]]);
+
+        expect(ejecutar(new PlantillaDeVacaciones, $archivo)->filasCargadas())->toBe(1);
+
+        expect(Vacacion::withoutGlobalScopes()->count())->toBe(1);
+    });
+
+    it('no deja pasar dos veces la misma plantilla de empleados', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        ejecutar(new PlantillaDeEmpleados, $archivo);
+
+        // Volver a pasarla abriría una segunda vinculación activa a cada
+        // persona, que es el duplicado que nadie ve hasta que el listado enseña
+        // la planta entera repetida.
+        expect(fn () => ejecutar(new PlantillaDeEmpleados, $archivo))
+            ->toThrow(CargaRechazada::class, 'fila(s) con error');
+
+        expect(Vinculacion::withoutGlobalScopes()->count())->toBe(1);
+    });
+
+    it('no vuelve a descontar del saldo las vacaciones anteriores al corte', function () {
+        // El histórico de vacaciones es opcional (documento 1, 13.3) y cargarlo
+        // no puede cambiarle el saldo a nadie: los días disponibles que informó
+        // la empresa ya vienen con esos periodos descontados.
+        $this->travelTo(Carbon::parse('2026-08-31'));
+
+        ejecutar(new PlantillaDeEmpleados, archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Días de vacaciones disponibles hoy' => '17,25']),
+        ]));
+
+        $antes = saldoDeLaPlanta('43887201');
+
+        ejecutar(new PlantillaDeVacaciones, archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+            'Día final de vacaciones' => '15/07/2025',
+        ]]));
+
+        expect(saldoDeLaPlanta('43887201'))->toBe($antes)
+            ->and($antes)->toBe(17.25);
+    });
+});
+
+describe('el comando de ejecución', function () {
+    it('pide confirmación y no escribe nada si se le dice que no', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        $this->artisan('carga:ejecutar', [
+            'empresa' => (string) $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => $archivo,
+        ])
+            ->expectsConfirmation('Esto escribe en la base de datos. ¿Ejecutar la carga?', 'no')
+            ->expectsOutputToContain('No se hizo nada')
+            ->assertExitCode(0);
+
+        expect(Persona::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('carga el archivo limpio y dice cuántas filas entraron', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Número de documento' => '1017234567']),
+            filaDeEmpleado(['Número de documento' => '52998877']),
+        ]);
+
+        $this->artisan('carga:ejecutar', [
+            'empresa' => (string) $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => $archivo,
+        ])
+            ->expectsConfirmation('Esto escribe en la base de datos. ¿Ejecutar la carga?', 'yes')
+            ->expectsOutputToContain('Se cargaron 2 filas de «Empleados actuales».')
+            ->assertExitCode(0);
+
+        expect(Vinculacion::withoutGlobalScopes()->count())->toBe(2);
+    });
+
+    it('enumera los motivos y no escribe nada cuando el archivo tiene errores', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Días de vacaciones disponibles hoy' => null]),
+        ]);
+
+        $this->artisan('carga:ejecutar', [
+            'empresa' => (string) $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => $archivo,
+        ])
+            ->expectsConfirmation('Esto escribe en la base de datos. ¿Ejecutar la carga?', 'yes')
+            ->expectsOutputToContain('días de vacaciones disponibles hoy son obligatorios')
+            ->assertExitCode(1);
+
+        expect(Persona::withoutGlobalScopes()->count())->toBe(0);
+    });
+});
+
+describe('la pantalla de puesta en marcha', function () {
+    it('deja de ser una sección pendiente del panel', function () {
+        expect(SeccionDelPanel::pendientes())->not->toContain(SeccionDelPanel::PuestaEnMarcha);
+    });
+
+    it('enseña las seis plantillas en el orden de carga y el historial vacío', function () {
+        ownerEnElPanel();
+
+        $this->get('/proveedor/puesta-en-marcha')
+            ->assertOk()
+            ->assertInertia(fn ($pagina) => $pagina
+                ->component('Proveedor/PuestaEnMarcha')
+                ->has('plantillas', 6)
+                ->where('plantillas.0.valor', 'empleados')
+                ->where('viendo.plantilla', 'empleados')
+                ->where('estadoDeLaEmpresa', null)
+                ->has('historial', 0));
+    });
+
+    it('dice qué plantillas ya entraron en la empresa elegida', function () {
+        ownerEnElPanel();
+
+        ejecutar(new PlantillaDeEmpleados, archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]));
+
+        $this->get('/proveedor/puesta-en-marcha?empresa='.$this->empresa->id)
+            ->assertOk()
+            ->assertInertia(fn ($pagina) => $pagina
+                ->component('Proveedor/PuestaEnMarcha')
+                ->where('estadoDeLaEmpresa.plantaCargada', true)
+                ->where('estadoDeLaEmpresa.plantillas.0.cargada.filas', 1)
+                ->where('estadoDeLaEmpresa.plantillas.0.obligatoria', true)
+                ->where('estadoDeLaEmpresa.plantillas.1.cargada', null)
+                ->has('historial', 1)
+                ->where('historial.0.empresa', 'Comercializadora del Valle')
+                ->where('historial.0.plantilla', 'Empleados actuales'));
+    });
+
+    it('valida el archivo subido sin escribir nada y devuelve el informe por fila', function () {
+        ownerEnElPanel();
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Número de documento' => '1017234567']),
+            filaDeEmpleado(['Número de documento' => '52998877', 'EPS' => 'Sura']),
+        ]);
+
+        $this->post('/proveedor/puesta-en-marcha/simular', [
+            'empresa' => $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => plantillaSubida($archivo),
+        ])->assertRedirect('/proveedor/puesta-en-marcha?empresa='.$this->empresa->id.'&plantilla=empleados');
+
+        $this->get('/proveedor/puesta-en-marcha?empresa='.$this->empresa->id)
+            ->assertInertia(fn ($pagina) => $pagina
+                ->where('informe.filasLeidas', 2)
+                ->where('informe.filasCorrectas', 1)
+                ->where('informe.filasConError', 1)
+                ->where('informe.errores.0.fila', 3)
+                ->where('informe.errores.0.columna', 'EPS'));
+
+        expect(Persona::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('carga de verdad al confirmar y lo dice con el número de filas', function () {
+        ownerEnElPanel();
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        $this->post('/proveedor/puesta-en-marcha/cargar', [
+            'empresa' => $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => plantillaSubida($archivo),
+        ])->assertSessionHas('estado', 'Se cargaron 1 filas de «Empleados actuales».');
+
+        expect(Vinculacion::withoutGlobalScopes()->count())->toBe(1);
+
+        // La constancia guarda el nombre con el que llegó el archivo y a quién
+        // se le atribuye la carga, que aquí sí tiene sesión detrás.
+        $registro = app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn (): RegistroDeCarga => RegistroDeCarga::query()->firstOrFail(),
+        );
+
+        expect($registro->archivo)->toBe('1 - Empleados actuales (obligatoria).xlsx')
+            ->and($registro->quien())->not->toBe('Consola');
+    });
+
+    it('no escribe nada al confirmar un archivo con errores y devuelve el motivo', function () {
+        ownerEnElPanel();
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Días de vacaciones disponibles hoy' => null]),
+        ]);
+
+        $this->post('/proveedor/puesta-en-marcha/cargar', [
+            'empresa' => $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => plantillaSubida($archivo),
+        ])
+            ->assertSessionHasErrors('archivo')
+            ->assertSessionHas('informe');
+
+        expect(Persona::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('no deja confirmar un histórico antes que la plantilla de empleados', function () {
+        ownerEnElPanel();
+
+        empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDeVacaciones, [[
+            'Número de documento' => '43887201',
+            'Día inicial de vacaciones' => '04/07/2025',
+            'Día final de vacaciones' => '15/07/2025',
+        ]]);
+
+        $this->post('/proveedor/puesta-en-marcha/cargar', [
+            'empresa' => $this->empresa->id,
+            'plantilla' => 'vacaciones',
+            'archivo' => plantillaSubida($archivo, 'historico.xlsx'),
+        ])->assertSessionHasErrors('archivo');
+
+        expect(Vacacion::withoutGlobalScopes()->count())->toBe(0);
+    });
+
+    it('rechaza un archivo que no es de Excel sin llegar al lector', function () {
+        ownerEnElPanel();
+
+        $this->post('/proveedor/puesta-en-marcha/simular', [
+            'empresa' => $this->empresa->id,
+            'plantilla' => 'empleados',
+            'archivo' => UploadedFile::fake()->create('planta.csv', 12),
+        ])->assertSessionHasErrors('archivo');
+    });
+
+    it('no la abre nadie que no sea el owner', function () {
+        $usuario = User::factory()->create(['tenant_id' => $this->empresa->id]);
+
+        $this->actingAs($usuario)->get('/proveedor/puesta-en-marcha')->assertForbidden();
+
+        $this->actingAs($usuario)->post('/proveedor/puesta-en-marcha/cargar', [
+            'empresa' => $this->empresa->id,
+            'plantilla' => 'empleados',
+        ])->assertForbidden();
+    });
+});
+
+/**
+ * Ejecuta la carga dentro del contexto de la empresa de la prueba, que es como
+ * la ejecutan el comando y la pantalla.
+ */
+function ejecutar(Plantilla $plantilla, string $archivo, ?User $usuario = null): ResultadoDeLaCarga
+{
+    return app(ContextoTenant::class)->paraTenant(
+        test()->empresa,
+        fn (): ResultadoDeLaCarga => app(EjecucionDeCarga::class)->ejecutar(
+            $plantilla,
+            $archivo,
+            '1 - Empleados actuales (obligatoria).xlsx',
+            $usuario,
+        ),
+    );
+}
+
+/**
+ * El saldo de hoy de quien tenga ese documento en la planta.
+ */
+function saldoDeLaPlanta(string $documento): float
+{
+    return app(ContextoTenant::class)->paraTenant(test()->empresa, function () use ($documento): float {
+        $vinculacion = Vinculacion::query()
+            ->whereRelation('persona', 'numero_documento', $documento)
+            ->firstOrFail();
+
+        return SaldoDeVacaciones::de($vinculacion)->al(Carbon::now());
+    });
+}
+
+/**
+ * El archivo tal como llega de un formulario, sin copiarlo a ningún disco: el
+ * Excel no se conserva (documento 1, 13.1).
+ */
+function plantillaSubida(string $ruta, string $nombre = '1 - Empleados actuales (obligatoria).xlsx'): UploadedFile
+{
+    return new UploadedFile($ruta, $nombre, null, null, true);
+}
 
 /**
  * El archivo de `plantillas/` que corresponde a cada plantilla del catálogo.

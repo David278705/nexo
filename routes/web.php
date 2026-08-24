@@ -15,6 +15,7 @@ use App\Http\Controllers\IncapacidadController;
 use App\Http\Controllers\InicioController;
 use App\Http\Controllers\LicenciaController;
 use App\Http\Controllers\MovimientoController;
+use App\Http\Controllers\Proveedor\CargaInicialController;
 use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
@@ -392,7 +393,24 @@ Route::middleware(['auth', 'proveedor'])
                 ->name('proveedor.catalogos.festivos.quitar');
 
             /*
-             * Las siete secciones restantes del capítulo 2. Existen desde ya,
+             * Puesta en marcha (documento 4, capítulo 5): el asistente de carga
+             * inicial y el historial de cargas.
+             *
+             * Son tres direcciones y la diferencia entre las dos últimas es la
+             * única que importa de toda la pantalla: `simular` no escribe nada y
+             * `cargar` escribe. Por eso no son la misma ruta con una casilla de
+             * «esta vez sí»: una casilla mal marcada es una carga que entra sin
+             * que nadie la haya confirmado.
+             */
+            Route::get('/'.SeccionDelPanel::PuestaEnMarcha->value, [CargaInicialController::class, 'index'])
+                ->name(SeccionDelPanel::PuestaEnMarcha->nombreDeRuta());
+            Route::post('/'.SeccionDelPanel::PuestaEnMarcha->value.'/simular', [CargaInicialController::class, 'simular'])
+                ->name('proveedor.puesta-en-marcha.simular');
+            Route::post('/'.SeccionDelPanel::PuestaEnMarcha->value.'/cargar', [CargaInicialController::class, 'cargar'])
+                ->name('proveedor.puesta-en-marcha.cargar');
+
+            /*
+             * Las seis secciones restantes del capítulo 2. Existen desde ya,
              * como en el armazón del cliente, para que el menú del panel se
              * pueda recorrer entero: la dirección, el nombre de ruta y el
              * resaltado son los definitivos y solo falta el contenido.

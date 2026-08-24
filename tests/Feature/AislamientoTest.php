@@ -19,6 +19,7 @@ use App\Models\Movimiento;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
+use App\Models\RegistroDeCarga;
 use App\Models\SaldoEnCache;
 use App\Models\Tenant;
 use App\Models\Terminacion;
@@ -1049,6 +1050,19 @@ describe('saldos en caché', function () {
         expect($visto)->toBe(1);
     });
 });
+
+casoDeAislamiento('cargas iniciales', [
+    'tabla' => 'cargas_iniciales',
+    'modelo' => RegistroDeCarga::class,
+    'campo' => 'archivo',
+    // El nombre del archivo es el texto que se busca porque es el que el
+    // historial del panel enseña, y en una puesta en marcha suele llevar dentro
+    // el nombre del cliente. Además es la fila que decide si una empresa ya
+    // procesó su plantilla de empleados: una fuga aquí dejaría cargar un
+    // histórico en una empresa que nunca cargó su planta.
+    'migracion' => function (): void {},
+    'crear' => fn (string $archivo) => RegistroDeCarga::factory()->create(['archivo' => $archivo]),
+]);
 
 casoDeAislamiento('alertas enviadas', [
     'tabla' => 'alertas_enviadas',

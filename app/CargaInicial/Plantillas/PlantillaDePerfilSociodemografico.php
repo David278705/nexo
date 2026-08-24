@@ -4,6 +4,7 @@ namespace App\CargaInicial\Plantillas;
 
 use App\CargaInicial\CatalogosDeCarga;
 use App\CargaInicial\Columna;
+use App\CargaInicial\ErrorDeCarga;
 use App\CargaInicial\FilaTraducida;
 use App\CargaInicial\PlantaDeLaEmpresa;
 use App\CargaInicial\Plantilla;
@@ -13,6 +14,8 @@ use App\Contratacion\MedioTransporte;
 use App\Contratacion\NivelEducativo;
 use App\Contratacion\TiempoDesplazamiento;
 use App\Contratacion\TipoVivienda;
+use App\Models\Persona;
+use Illuminate\Support\Carbon;
 
 /**
  * La plantilla 2, «Perfil sociodemográfico» (documento 1, 5.2).
@@ -97,6 +100,50 @@ class PlantillaDePerfilSociodemografico extends Plantilla
                 'numero_documento',
             );
         }
+    }
+
+    /**
+     * El bloque está apagado: no hay nada que cargar y hay que decirlo.
+     *
+     * `BloqueSociodemografico::guardar()` no escribe nada cuando la empresa no
+     * tiene el parámetro encendido, y con razón. Pero una carga que informa
+     * «32 filas cargadas» y no escribe ninguna es peor que una que se niega: el
+     * proveedor se iría de la reunión creyendo que el perfil quedó puesto.
+     *
+     * Se avisa en la fila 1 porque no es de ninguna fila: es de la empresa.
+     */
+    public function revisarElConjunto(array $filas, PlantaDeLaEmpresa $planta): array
+    {
+        if ($filas === [] || BloqueSociodemografico::habilitado()) {
+            return [];
+        }
+
+        return [new ErrorDeCarga(
+            1,
+            null,
+            'Esta empresa no tiene habilitado el perfil sociodemográfico, así que nada de este archivo se guardaría. '.
+            'Actívelo en los parámetros de la empresa y vuelva a pasarlo.',
+        )];
+    }
+
+    /**
+     * El perfil se guarda por donde lo guarda el asistente: decide
+     * `BloqueSociodemografico`, que es quien sabe si la empresa lo tiene
+     * encendido y quien no crea la fila cuando no hay nada que poner.
+     *
+     * Cuelga de la persona y no de la vinculación (documento 1, 5.2), así que
+     * aquí se busca por documento y no por empleado activo.
+     */
+    public function escribir(array $valores, Carbon $fechaDeLaCarga): void
+    {
+        $persona = Persona::query()
+            ->conDocumento((string) $valores['numero_documento'])
+            ->firstOrFail();
+
+        /** @var array<string, mixed> $perfil */
+        $perfil = $valores['perfil'] ?? [];
+
+        BloqueSociodemografico::guardar($persona, $perfil);
     }
 
     public function reglas(FilaTraducida $fila): array

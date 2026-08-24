@@ -5,6 +5,7 @@ namespace App\CargaInicial\Plantillas;
 use App\CargaInicial\Columna;
 use App\CargaInicial\FilaTraducida;
 use App\Http\Requests\RegistrarVacacion;
+use Illuminate\Support\Carbon;
 
 /**
  * La plantilla 4, «Histórico de vacaciones» (documento 1, 6.4).
@@ -64,6 +65,28 @@ class PlantillaDeVacaciones extends PlantillaDeHistorico
     public function mensajes(): array
     {
         return $this->formulario(new FilaTraducida(0))->messages();
+    }
+
+    /**
+     * Cada periodo entra como una fila de `vacaciones`, y con eso queda
+     * descontado del saldo: `SaldoDeVacaciones` resta los días disfrutados al
+     * calcular, así que aquí no hay ninguna resta que hacer ni ninguna columna
+     * que ajustar.
+     *
+     * **Cargar este histórico no altera el saldo que informó la empresa.** Los
+     * periodos de aquí son anteriores al corte por definición —son el pasado— y
+     * el corte los deja fuera del descuento: los días disponibles que la empresa
+     * escribió ya vienen con ellos restados, y volver a restarlos sería contar
+     * dos veces el mismo disfrute. Lo resuelve `SaldoDeVacaciones`, que acota el
+     * disfrute igual que acota la acumulación, y por eso esta plantilla se puede
+     * cargar o no sin que el saldo de nadie cambie.
+     */
+    public function escribir(array $valores, Carbon $fechaDeLaCarga): void
+    {
+        $this->empleado($valores)->vacaciones()->create([
+            'fecha_inicio' => $valores['fecha_inicio'],
+            'fecha_fin' => $valores['fecha_fin'],
+        ]);
     }
 
     private function formulario(FilaTraducida $fila): RegistrarVacacion

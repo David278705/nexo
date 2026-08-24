@@ -7,6 +7,7 @@ use App\CargaInicial\Columna;
 use App\CargaInicial\FilaTraducida;
 use App\CargaInicial\PlantaDeLaEmpresa;
 use App\CargaInicial\Plantilla;
+use App\Models\Vinculacion;
 
 /**
  * Lo que comparten las cuatro plantillas de histórico —incapacidades,
@@ -52,6 +53,21 @@ abstract class PlantillaDeHistorico extends Plantilla
     protected function documento(): Columna
     {
         return Columna::texto('Número de documento', 'numero_documento');
+    }
+
+    /**
+     * El empleado al que se le cuelga la fila, ya resuelto por `completar()`.
+     *
+     * Va con `findOrFail` a propósito, aunque no pueda fallar: si algún día
+     * fallara, la transacción de la carga entera se cae y no entra nada, que es
+     * lo que corresponde. Un histórico colgado del empleado equivocado es peor
+     * que una carga que no se ejecuta.
+     *
+     * @param  array<string, mixed>  $valores
+     */
+    protected function empleado(array $valores): Vinculacion
+    {
+        return Vinculacion::query()->findOrFail($valores['vinculacion_id']);
     }
 
     /**

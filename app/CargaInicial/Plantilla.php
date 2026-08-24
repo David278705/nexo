@@ -2,11 +2,13 @@
 
 namespace App\CargaInicial;
 
+use Illuminate\Support\Carbon;
+
 /**
  * Una de las seis plantillas de `plantillas/`: qué columnas trae, dónde acaba
  * cada valor y qué tiene que cumplir una fila para poder cargarse.
  *
- * Toda plantilla responde tres preguntas, y conviene que sigan separadas:
+ * Toda plantilla responde cuatro preguntas, y conviene que sigan separadas:
  *
  * 1. **¿Cómo se lee cada celda?** Lo dicen sus `columnas()`, que atan el título
  *    escrito en el archivo con el campo del sistema y con la forma de leerlo.
@@ -18,6 +20,11 @@ namespace App\CargaInicial;
  *    formulario del módulo**. Es la decisión de fondo de toda la carga: si la
  *    plantilla tuviera reglas propias, tarde o temprano admitiría por archivo lo
  *    que la pantalla rechaza, y el cliente acabaría con dos verdades.
+ * 4. **¿Cómo se guarda?** Lo hace `escribir()`, y por el mismo motivo que las
+ *    reglas: **escribe por donde escribe el módulo**, para que una fila cargada
+ *    y una digitada acaben idénticas en la base de datos. Solo se llama desde
+ *    `EjecucionDeCarga`, es decir, con la fila ya validada y dentro de la
+ *    transacción única de la carga.
  *
  * `revisarElConjunto()` es la excepción: hay condiciones que ninguna fila puede
  * comprobar sola —un documento repetido dentro del mismo archivo, la coherencia
@@ -52,6 +59,47 @@ abstract class Plantilla
      * @return array<string, mixed>
      */
     abstract public function reglas(FilaTraducida $fila): array;
+
+    /**
+     * Guarda una fila ya validada.
+     *
+     * Recibe la fecha de la carga porque hay un dato que ninguna plantilla trae
+     * y que solo se sabe en este momento: el día al que se refieren los «días de
+     * vacaciones disponibles hoy» de la plantilla de empleados.
+     *
+     * No abre transacción ni comprueba nada. Lo primero lo hace
+     * `EjecucionDeCarga`, que envuelve el archivo entero —«o entra todo o no
+     * entra nada»—, y lo segundo ya pasó: la simulación no dejó llegar hasta
+     * aquí ninguna fila con error.
+     *
+     * @param  array<string, mixed>  $valores  una fila de `ResultadoDeSimulacion::valores()`
+     */
+    abstract public function escribir(array $valores, Carbon $fechaDeLaCarga): void;
+
+    /**
+     * Si esta plantilla necesita que la de empleados ya se haya procesado
+     * (documento 2, 6.3).
+     *
+     * Lo son cinco de las seis. La excepción se declara al revés —sobrescribe
+     * quien no depende— para que una plantilla nueva nazca dependiendo de la
+     * planta, que es el lado seguro del olvido.
+     */
+    public function dependeDeLaPlanta(): bool
+    {
+        return true;
+    }
+
+    /**
+     * La fecha de corte del saldo de vacaciones que deja esta carga, si deja
+     * alguna.
+     *
+     * Solo la plantilla de empleados: es la única que trae saldos. Las demás no
+     * mueven el punto de partida del cálculo.
+     */
+    public function fechaDeCorte(Carbon $fechaDeLaCarga): ?Carbon
+    {
+        return null;
+    }
 
     /**
      * Lo que no sale de una sola celda: ubicaciones encadenadas, el empleado

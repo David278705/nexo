@@ -7,6 +7,7 @@ use App\CargaInicial\FilaTraducida;
 use App\Http\Requests\RegistrarIncapacidad;
 use App\Incapacidades\OrigenIncapacidad;
 use App\Models\Eps;
+use Illuminate\Support\Carbon;
 
 /**
  * La plantilla 3, «Histórico de incapacidades» (documento 1, 6.3).
@@ -70,6 +71,27 @@ class PlantillaDeIncapacidades extends PlantillaDeHistorico
     public function mensajes(): array
     {
         return $this->formulario(new FilaTraducida(0))->messages();
+    }
+
+    /**
+     * Entra por la misma relación que usa el controlador del módulo y **sin
+     * columna de días**: los cuenta el motor a partir de las dos fechas cada vez
+     * que alguien los pide.
+     *
+     * El «sí/no» de la prórroga se traduce aquí igual que en el formulario, que
+     * lo convierte con `RegistrarIncapacidad::esProrroga()`. La columna es
+     * booleana: guardar ahí la cadena «no» la dejaría valiendo verdadero.
+     */
+    public function escribir(array $valores, Carbon $fechaDeLaCarga): void
+    {
+        $this->empleado($valores)->incapacidades()->create([
+            'fecha_inicio' => $valores['fecha_inicio'],
+            'fecha_fin' => $valores['fecha_fin'],
+            'codigo_diagnostico' => $valores['codigo_diagnostico'],
+            'es_prorroga' => $valores['es_prorroga'] === 'si',
+            'eps_id' => $valores['eps_id'],
+            'origen' => $valores['origen'],
+        ]);
     }
 
     private function formulario(FilaTraducida $fila): RegistrarIncapacidad
