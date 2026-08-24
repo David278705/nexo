@@ -223,6 +223,28 @@ describe("el flujo compartido de novedades", () => {
         componente.unmount();
     });
 
+    it("mueve el foco al modal grande al pasar del documento al formulario", async () => {
+        const componente = montar({ empleado: encontrada });
+
+        escribir("43887201");
+        await nextTick();
+        boton("Continuar").dispatchEvent(new Event("click"));
+        // Dos vueltas de `nextTick`: una para que el modal pequeño se
+        // desmonte y el grande se monte, y otra para que `Modal` ponga el
+        // foco dentro de su propio diálogo (documento 3, sección 3.5). Sin
+        // esto el foco se pierde en el `body` y quien registra con el
+        // teclado no puede seguir completando la novedad.
+        await nextTick();
+        await nextTick();
+
+        const dialogos = document.body.querySelectorAll('[role="dialog"]');
+        expect(dialogos).toHaveLength(1);
+        expect(dialogos[0].getAttribute("aria-label")).toBe("Nueva incapacidad");
+        expect(dialogos[0].contains(document.activeElement)).toBe(true);
+
+        componente.unmount();
+    });
+
     it("avisa al módulo que hay que guardar, con el empleado", async () => {
         const componente = montar({ empleado: encontrada });
 

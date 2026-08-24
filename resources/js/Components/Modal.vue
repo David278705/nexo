@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, watch } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 /*
  * Modal del sistema (documento 3, sección 3.4): 560 px para formularios cortos
@@ -18,20 +18,96 @@ const props = defineProps({
 
 const emit = defineEmits(["cerrar"]);
 
-function alPulsarTecla(evento) {
-    if (evento.key === "Escape" && props.abierto) {
-        emit("cerrar");
+const contenedor = ref(null);
+
+// El elemento que tenía el foco antes de abrir, para devolvérselo al cerrar
+// (documento 3, sección 3.5): quien abrió el modal con el teclado no puede
+// perder su sitio en la pantalla de atrás.
+let elementoActivoAlAbrir = null;
+
+const SELECTOR_FOCABLES =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function elementosFocables() {
+    if (!contenedor.value) {
+        return [];
+    }
+
+    return [...contenedor.value.querySelectorAll(SELECTOR_FOCABLES)];
+}
+
+/*
+ * El foco no sale del diálogo mientras está abierto: quien tabula desde el
+ * último campo vuelve al primero, en vez de caer en la pantalla que el modal
+ * tapa. Sin esto, «todo se puede recorrer con el teclado, con el foco
+ * visible» (documento 3, sección 3.5) es falso apenas hay algo detrás.
+ */
+function atraparFoco(evento) {
+    const focables = elementosFocables();
+
+    if (focables.length === 0) {
+        evento.preventDefault();
+        return;
+    }
+
+    const primero = focables[0];
+    const ultimo = focables[focables.length - 1];
+    const activo = document.activeElement;
+    const foraDelModal = !contenedor.value.contains(activo);
+
+    if (evento.shiftKey && (activo === primero || foraDelModal)) {
+        evento.preventDefault();
+        ultimo.focus();
+    } else if (!evento.shiftKey && (activo === ultimo || foraDelModal)) {
+        evento.preventDefault();
+        primero.focus();
     }
 }
 
-// El fondo no se desplaza mientras el modal está encima.
+function alPulsarTecla(evento) {
+    if (!props.abierto) {
+        return;
+    }
+
+    if (evento.key === "Escape") {
+        emit("cerrar");
+    } else if (evento.key === "Tab") {
+        atraparFoco(evento);
+    }
+}
+
 watch(
     () => props.abierto,
-    (abierto) => {
+    async (abierto) => {
+        // El fondo no se desplaza mientras el modal está encima.
         if (typeof document !== "undefined") {
             document.body.style.overflow = abierto ? "hidden" : "";
         }
+
+        if (abierto) {
+            elementoActivoAlAbrir = document.activeElement;
+            await nextTick();
+
+            /*
+             * Un formulario propio —el campo del documento de
+             * `ModalDeNovedad`, por ejemplo— ya pudo llevarse el foco a
+             * donde le corresponde. Solo se pone el primero de reserva
+             * cuando nadie lo hizo, que es lo que le pasa al resto de
+             * modales del sistema.
+             */
+            if (contenedor.value && !contenedor.value.contains(document.activeElement)) {
+                elementosFocables()[0]?.focus();
+            }
+        } else if (
+            elementoActivoAlAbrir &&
+            typeof document !== "undefined" &&
+            document.body.contains(elementoActivoAlAbrir)
+        ) {
+            elementoActivoAlAbrir.focus();
+            elementoActivoAlAbrir = null;
+        }
     },
+    { immediate: true },
 );
 
 onMounted(() => document.addEventListener("keydown", alPulsarTecla));
@@ -53,6 +129,7 @@ onBeforeUnmount(() => {
             @click.self="emit('cerrar')"
         >
             <div
+                ref="contenedor"
                 role="dialog"
                 aria-modal="true"
                 :aria-label="titulo"

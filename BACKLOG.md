@@ -1400,10 +1400,32 @@ los bloques del panel de inicio ya lo decidía el servidor desde F4-04 y no hubo
 nuevas en `TablaDatos.test.js` (la tarjeta, sus tres campos, la columna de acciones siempre visible, el
 clic y los dos prefijos `lg:hidden`/`lg:block`) y en `Modal.test.js` (el prefijo `lg:` y no `sm:`).
 
-### [ ] F6-06 · Accesibilidad
+### [x] F6-06 · Accesibilidad
 
 Contraste, recorrido con teclado, foco visible, etiquetas reales, zoom al 200%.
 **Hecho cuando:** se completa un registro de novedad usando solo el teclado.
+
+Hecho: de las cinco exigencias del documento 3, 3.5, cuatro ya estaban resueltas desde antes —la
+paleta cumple 4,5:1 con sus tríos fondo/borde/texto, `:focus-visible` global en `app.css`,
+`CampoTexto`/`Selector`/`CampoFecha` con `<label for>` real y `TablaDatos` ya recorría filas y
+tarjetas con `tabindex`, Enter y Espacio—. **Lo que faltaba, y era justo lo que rompía el «hecho
+cuando», era `Modal.vue`: no atrapaba el foco.** Dos fallas concretas: quien tabulaba desde el
+último campo del modal caía en la pantalla de atrás en vez de volver al primero, y al pasar del
+paso del documento al formulario grande de `ModalDeNovedad` —el modal pequeño se desmonta y el
+grande se monta— el foco se perdía en el `body`, así que completar una novedad solo con teclado se
+cortaba a la mitad. `Modal.vue` gana una referencia a su propio diálogo, `atraparFoco()` que
+intercepta Tab y Shift+Tab en los bordes (incluida la fuga hacia atrás si el foco ya estaba fuera),
+y un `watch` con `immediate: true` sobre `abierto` que pone el foco dentro al abrir —solo si nadie
+adentro ya se lo llevó, como hace `ModalDeNovedad` con el campo del documento— y lo devuelve a quien
+abrió el modal al cerrar. Como es el único componente que envuelven los cinco modales del sistema,
+el arreglo alcanza a `ModalDeBorrado`, `ModalDeRenovacion` y `ModalDeCambioAIndefinido` sin tocarlos.
+Pruebas nuevas en `Modal.test.js` (el foco inicial, el atrapado en los dos sentidos, la fuga que se
+corrige en el siguiente tabulador, y la devolución del foco al cerrar) y en `ModalDeNovedad.test.js`
+(el foco llega al modal grande al pasar del documento al formulario). **Sin navegador real de por
+medio**: el proyecto no tiene Playwright ni `user-event`, así que las pruebas comprueban el mecanismo
+—`document.activeElement`, `preventDefault()`— con los mismos `dispatchEvent` que ya usaba
+`Modal.test.js` para Escape, no una sesión de teclado de punta a punta en un navegador. Verificar el
+flujo completo a mano en un navegador sigue pendiente y queda anotado en `ESTADO.md`.
 
 ### [ ] F6-07 · Operación
 
