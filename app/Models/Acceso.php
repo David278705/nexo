@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Autenticacion\ResultadoDeAcceso;
+use Database\Factories\AccesoFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,6 +18,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Acceso extends Model
 {
+    /** @use HasFactory<AccesoFactory> */
+    use HasFactory;
+
     /**
      * Solo hay fecha de creación. Un acceso no se actualiza jamás, así que
      * `updated_at` sería una columna que siempre repite a la otra.

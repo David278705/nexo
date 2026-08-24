@@ -34,3 +34,12 @@ Schedule::command('demostracion:restaurar')
     ->dailyAt('03:00')
     ->timezone('America/Bogota')
     ->withoutOverlapping();
+
+/**
+ * La foto mensual del negocio (F5-06, documento 4, 3.2): el día 1, a primera
+ * hora, antes de que nada del nuevo mes haya cambiado el total.
+ */
+Schedule::command('metricas:capturar-mes')
+    ->monthlyOn(1, '00:10')
+    ->timezone('America/Bogota')
+    ->withoutOverlapping();

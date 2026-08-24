@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Proveedor;
 use App\Autorizacion\SeccionDelPanel;
 use App\Http\Controllers\Controller;
 use App\Presentacion\Formato;
+use App\Proveedor\PanelDeInicio;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,16 +13,12 @@ use Inertia\Response;
 /**
  * Las pantallas del panel del proveedor.
  *
- * Quedan aquí el inicio y las secciones que todavía no tienen contenido propio,
- * que son las de la fase 5. «Empresas» ya no pasa por aquí —tiene su listado y
- * su ficha en `EmpresaController`— ni «Catálogos» —los tiene en
- * `CatalogoController`—, pero las direcciones, la puerta del rol y el segundo
- * factor de las que faltan son los definitivos desde ya.
- *
- * Ninguna pantalla de aquí inventa indicadores. El capítulo 3 del documento 4
- * describe un inicio con clientes en riesgo, ingreso recurrente y correos del
- * mes; ni las suscripciones ni la consola de envíos existen todavía, y un número
- * de mentira en el panel del negocio es peor que un hueco declarado.
+ * Quedan aquí el inicio y las secciones que todavía no tienen contenido propio.
+ * «Empresas» ya no pasa por aquí —tiene su listado y su ficha en
+ * `EmpresaController`—, ni «Catálogos» —los tiene en `CatalogoController`—, ni
+ * «Salud» —la tiene en `SaludController` desde F5-06—, pero las direcciones, la
+ * puerta del rol y el segundo factor de las que faltan son los definitivos
+ * desde ya.
  */
 class PanelController extends Controller
 {
@@ -29,6 +26,7 @@ class PanelController extends Controller
     {
         return Inertia::render('Proveedor/Inicio', [
             'fecha' => Formato::diaCompleto(Carbon::now()),
+            ...PanelDeInicio::paraLaPantalla(),
         ]);
     }
 

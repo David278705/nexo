@@ -74,4 +74,23 @@ describe("TarjetaDeAccion", () => {
         expect(normal.html()).not.toContain("error");
         expect(grave.html()).toContain("bg-error-fondo");
     });
+
+    /*
+     * El verde es del bloque de atención del panel del proveedor (F5-06,
+     * documento 4, 3.1): las tarjetas que informan que algo que se vigila
+     * está bien, como el proceso diario que sí corrió.
+     */
+    it("se pinta de verde cuando le pasan el tono de éxito", () => {
+        const bien = mount(TarjetaDeAccion, { props: { ...props, tono: "exito" } });
+
+        expect(bien.html()).toContain("bg-exito-fondo");
+    });
+
+    it("acepta un valor de texto, no solo un conteo", () => {
+        const tarjeta = mount(TarjetaDeAccion, {
+            props: { ...props, valor: "OK" },
+        });
+
+        expect(tarjeta.text()).toContain("OK");
+    });
 });

@@ -8,6 +8,7 @@ use App\Http\Middleware\ResolverTenant;
 use App\Http\Middleware\SegundoFactorVerificado;
 use App\Http\Middleware\SoloProveedor;
 use App\Http\Middleware\VerificarModulo;
+use App\Proveedor\RegistroDeErrores;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -71,5 +72,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // La salud del sistema del panel del proveedor (F5-06, documento 4,
+        // capítulo 9) pide «errores de la aplicación de las últimas 24
+        // horas». Laravel ya descarta antes de llegar aquí lo que nunca fue
+        // un error de negocio —validación, 404, autorización—, así que lo
+        // que entra a `RegistroDeErrores` es justo lo que hay que mirar.
+        $exceptions->reportable(function (Throwable $error): void {
+            RegistroDeErrores::registrar($error);
+        });
     })->create();

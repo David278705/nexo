@@ -1,22 +1,24 @@
 <script setup>
 import { Head } from "@inertiajs/vue3";
 import ArmazonProveedor from "@/Components/Proveedor/ArmazonProveedor.vue";
-import Aviso from "@/Components/Aviso.vue";
+import TarjetaDeAccion from "@/Components/TarjetaDeAccion.vue";
+import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
 
 /*
  * El inicio del panel: «el estado del negocio y lo que requiere atención hoy»
- * (documento 4, capítulo 3).
+ * (documento 4, capítulo 3), en ese orden.
  *
- * Las seis tarjetas de atención y los siete indicadores de negocio no están
- * aquí, y no por olvido: se alimentan de las suscripciones, de la consola de
- * envíos y de las métricas de uso, que no existen todavía. Enseñarlos con ceros
- * o con números inventados sería peor que declarar el hueco, porque el panel del
- * negocio se revisa cada mes justamente para decidir con él.
- *
- * La fecha llega escrita desde el servidor, en la zona horaria de la aplicación.
+ * Las seis tarjetas de atención y los siete indicadores de negocio llegan ya
+ * calculados de `App\Proveedor\PanelDeInicio`: la pantalla no cuenta ni
+ * decide nada, solo los pinta. `TarjetaDeAccion` es el mismo componente del
+ * bloque de acción del cliente (documento 3, 5.2) —una cifra que enlaza a
+ * donde se puede actuar— y `TarjetaIndicador` el de las cifras de negocio,
+ * que ya usa la consola de alertas del proveedor.
  */
 defineProps({
     fecha: { type: String, required: true },
+    atencion: { type: Array, required: true },
+    negocio: { type: Array, required: true },
 });
 </script>
 
@@ -29,17 +31,33 @@ defineProps({
         </h1>
         <p class="mt-1 text-apoyo text-texto-secundario">{{ fecha }}</p>
 
-        <Aviso
-            tono="informacion"
-            titulo="El panel ya está de pie; los indicadores llegan con sus datos"
-            class="mt-6"
-        >
-            Las tarjetas de atención y las cifras del negocio del capítulo 3 se
-            alimentan de las suscripciones, de la consola de envíos y de las
-            métricas de uso. Mientras esas tres no existan, aquí no se enseña
-            ningún número: un indicador inventado en el panel del negocio es peor
-            que un hueco declarado. Lo que sí funciona ya es la puerta —solo el
-            proveedor, con segundo factor— y las nueve secciones del menú.
-        </Aviso>
+        <h2 class="mt-6 text-cuerpo font-semibold text-texto">
+            Requiere atención hoy
+        </h2>
+        <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <TarjetaDeAccion
+                v-for="tarjeta in atencion"
+                :key="tarjeta.etiqueta"
+                :valor="tarjeta.valor"
+                :etiqueta="tarjeta.etiqueta"
+                :enlace="tarjeta.enlace"
+                :accion="tarjeta.accion"
+                :tono="tarjeta.tono"
+            />
+        </div>
+
+        <h2 class="mt-8 text-cuerpo font-semibold text-texto">Negocio</h2>
+        <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <TarjetaIndicador
+                v-for="tarjeta in negocio"
+                :key="tarjeta.etiqueta"
+                :valor="tarjeta.valor"
+                :etiqueta="tarjeta.etiqueta"
+                :variacion="tarjeta.variacion"
+                :tendencia="tarjeta.tendencia"
+                :nota="tarjeta.nota"
+                :nota-tono="tarjeta.notaTono"
+            />
+        </div>
     </ArmazonProveedor>
 </template>

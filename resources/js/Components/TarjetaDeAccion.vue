@@ -14,32 +14,47 @@ import { computed } from "vue";
  * que puede mirar los datos de la empresa.
  */
 const props = defineProps({
-    valor: { type: Number, required: true },
+    /*
+     * Casi siempre un conteo, pero no siempre: el bloque de atención del
+     * panel del proveedor (documento 4, 3.1) tiene dos tarjetas de estado
+     * —«OK», «2027», «Al día»— que no son un número que se pueda sumar.
+     */
+    valor: { type: [String, Number], required: true },
     etiqueta: { type: String, required: true },
     enlace: { type: String, required: true },
     accion: { type: String, required: true },
     /*
-     * El rojo solo cuando algo está mal de verdad, que en este bloque es el
-     * contrato que venció sin que nadie lo gestionara.
+     * El rojo solo cuando algo está mal de verdad —en el bloque del cliente,
+     * el contrato que venció sin que nadie lo gestionara— y el verde solo
+     * cuando una tarjeta informa que algo que se vigila está bien, que es lo
+     * que necesita el bloque de atención del panel del proveedor (F5-06,
+     * documento 4, 3.1): el proceso diario que sí corrió, el calendario de
+     * festivos que sí está completo.
      */
     tono: {
         type: String,
         default: "",
-        validator: (valor) => ["", "error"].includes(valor),
+        validator: (valor) => ["", "error", "exito"].includes(valor),
     },
     // Las cifras acumuladas que acompañan a la principal, cada una con su
     // propio destino: «7 en 60 días · 9 en 90 días».
     extras: { type: Array, default: () => [] },
 });
 
-const estiloDelBorde = computed(() =>
-    props.tono === "error"
-        ? "border-error-borde bg-error-fondo"
-        : "border-borde bg-superficie",
+const estiloDelBorde = computed(
+    () =>
+        ({
+            error: "border-error-borde bg-error-fondo",
+            exito: "border-exito-borde bg-exito-fondo",
+        })[props.tono] ?? "border-borde bg-superficie",
 );
 
-const estiloDeLaCifra = computed(() =>
-    props.tono === "error" ? "text-error-texto" : "text-texto",
+const estiloDeLaCifra = computed(
+    () =>
+        ({
+            error: "text-error-texto",
+            exito: "text-exito-texto",
+        })[props.tono] ?? "text-texto",
 );
 </script>
 

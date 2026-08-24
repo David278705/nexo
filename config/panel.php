@@ -80,6 +80,37 @@ return [
     |   aviso de cobro es otra cosa y no tiene todavía tarea.
     |
     */
+    /*
+    |----------------------------------------------------------------------
+    | Clientes en riesgo
+    |----------------------------------------------------------------------
+    |
+    | La tarjeta de atención del inicio del panel (documento 4, 3.1) pide
+    | «empresas cuyo uso cayó de forma marcada frente al mes anterior». El
+    | documento no fija qué es «de forma marcada» —a diferencia de «clientes
+    | sin arrancar», que sí trae sus dos números en el propio texto («creada
+    | hace más de una semana con menos de cinco empleados»)—, así que estos
+    | dos sí son criterio comercial y viven aquí, con el mismo espíritu que
+    | `salud_de_uso`: una propuesta, anotada en `ESTADO.md`.
+    |
+    | Se mide contando los inicios de sesión exitosos de la empresa —tabla
+    | `accesos`— en dos ventanas seguidas de treinta días. Si la ventana
+    | actual cae a la mitad o menos de la anterior, y hubo algo que perder,
+    | la empresa entra a la tarjeta.
+    |
+    */
+    'riesgo_de_cancelacion' => [
+
+        // El tamaño de cada ventana que se compara.
+        'ventana_dias' => 30,
+
+        // Hasta qué porcentaje de la ventana anterior sigue siendo una caída
+        // «de forma marcada». 50 significa que el uso se redujo a la mitad
+        // o más.
+        'caida_minima_porcentaje' => 50,
+
+    ],
+
     'cobro' => [
 
         // A cuántos días del próximo cobro la columna «Pago» pasa de «al

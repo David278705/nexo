@@ -1179,11 +1179,58 @@ hoy nadie escribe porque no hay proveedor de correo transaccional conectado (F3-
 dice con esas palabras en vez de fingir una cifra que no se mide. `SeccionDelPanel::pendientes()`
 perdió la sección «Alertas».
 
-### [ ] F5-06 · Salud del sistema y métricas
+### [x] F5-06 · Salud del sistema y métricas
 
 Estado del proceso diario, cola, errores, copias de seguridad y las métricas de negocio del panel.
 **Hecho cuando:** el inicio del panel muestra las tarjetas de atención y las cifras del negocio.
 **Fuente:** `docs/04-panel-del-proveedor.md` cap. 3 y 9
+
+Hecho: **`Proveedor/Inicio`** reescrita con las seis tarjetas de atención (3.1) y los siete
+indicadores de negocio (3.2) —`App\Proveedor\PanelDeInicio`—, y **`Proveedor/Salud`** nueva, con el
+proceso diario, la cola y los errores de aplicación —`App\Proveedor\SaludDelSistema`—, que le quita a
+`Salud` la última salida de `SeccionDelPanel::pendientes()`: solo queda `Equipo`. Dos piezas de datos
+eran nuevas de verdad y las anticipaba el propio comentario de `ResumenDelProceso` desde F3-01:
+- **`ejecuciones_de_alertas`**, el historial de corridas del proceso diario. `EnviarAlertasDiarias`
+  mide la duración con `hrtime()` —lo único que `ResumenDelProceso` no podía saber de sí mismo— y
+  `RegistroDeEjecuciones` la guarda junto a los conteos que ya traía. De aquí salen «procesos fallidos»
+  del inicio y el historial de la pantalla de salud.
+- **`errores_aplicacion`**, con `App\Proveedor\RegistroDeErrores` enganchado al `reportable()` de
+  `bootstrap/app.php`, que hasta hoy estaba vacío. Laravel ya descarta antes de llegar ahí lo que nunca
+  fue un error de negocio —validación, 404, autorización—, así que la tabla no se llena de ruido.
+
+**La cola no necesitaba tabla nueva**: `jobs` y `failed_jobs` son el andamiaje estándar de Laravel
+desde el primer día y nadie los había leído. `App\Proveedor\ColaDeTrabajos` los consulta y el
+reintento delega en el propio `queue:retry` del framework.
+
+**Las copias de seguridad no se inventan.** La decisión A.5 del documento 6 aplaza esa infraestructura
+a propósito «hasta que exista producto»: sin ella no hay ninguna fecha real que enseñar, y la pantalla
+lo dice con esas palabras en vez de fingir un «03:15, automática, de hoy» como el prototipo. Es la
+misma disciplina de F5-05 con la tasa de rebote.
+
+**«Con la variación frente al mes anterior» necesitaba una foto que no existía.** El estado de una
+empresa cambia sin dejar historia propia y el ingreso recurrente depende del plan que tenía cada
+suscripción ese día, no el de hoy. `metricas_mensuales` —una fila por mes, capturada el día 1 por
+`metricas:capturar-mes`— es la pieza nueva; el primer mes de vida del sistema no tiene con qué
+comparar, y la tarjeta lo dice en vez de mostrar una variación de mentira.
+
+Tres números del documento no estaban en ninguna tabla y se resolvieron así, cada uno con su rastro en
+el código:
+- **«Clientes en riesgo» no tiene un umbral escrito en el documento** —solo «cayó de forma marcada»—,
+  así que la ventana de comparación (30 días contra los 30 anteriores) y el porcentaje de caída (50%)
+  quedaron en `config/panel.php`, con el mismo criterio que `salud_de_uso`: propuesta, no ley.
+- **«Cliente sin arrancar» sí trae sus dos números en el propio texto** —una semana, cinco
+  empleados—, así que esos van como constantes en `PanelDeInicio`, no en la configuración.
+- **«Bajas de clientes» y «cancelación acumulada» se leen del borrado lógico de `tenants`.** Es la
+  única forma de dar de baja una empresa que la regla 4 permite, aunque hoy ninguna pantalla ofrezca
+  esa acción —así que el número es honesto en cero, no inventado—.
+
+Pruebas nuevas en `InicioDelProveedorTest.php` (las seis tarjetas, los siete indicadores, el
+aislamiento del ambiente de demostración) y `SaludDelSistemaTest.php` (el historial no duplica por
+corrida, el registro de errores, la cola y su reintento, que las copias no inventan fecha y que el
+espacio de la base de datos sale de Postgres). `TarjetaDeAccion` —del bloque de acción del cliente,
+documento 3, 5.2— se reutilizó para las seis tarjetas de atención en vez de duplicarla: ganó el tono
+`exito` y un `valor` que acepta texto además de número, con sus dos pruebas nuevas en
+`TarjetaDeAccion.test.js`.
 
 ### [ ] F5-07 · Bitácora y acceso al entorno del cliente
 

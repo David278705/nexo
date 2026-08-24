@@ -62,12 +62,22 @@ class PanelDeSuscripciones
 
     /**
      * «$ 4.180.000 de ingreso recurrente mensual», como el prototipo.
+     */
+    public static function ingresoRecurrente(): string
+    {
+        return Formato::dinero(self::ingresoRecurrenteMensual());
+    }
+
+    /**
+     * El mismo total, sin formatear: lo que necesita el inicio del panel
+     * (F5-06, documento 4, 3.2) para comparar contra el mes anterior, algo
+     * que no se puede hacer con el texto ya escrito.
      *
      * Suma solo las activas: una suscripción suspendida no está produciendo
      * ingreso, y contarla haría que el número más importante del negocio subiera
      * justo cuando un cliente deja de pagar.
      */
-    public static function ingresoRecurrente(): string
+    public static function ingresoRecurrenteMensual(): float
     {
         $total = 0.0;
 
@@ -77,7 +87,7 @@ class PanelDeSuscripciones
             }
         }
 
-        return Formato::dinero($total);
+        return $total;
     }
 
     /**

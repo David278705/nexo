@@ -117,7 +117,9 @@ enum SeccionDelPanel: string
      * cinco pestañas (F1B-04), `PuestaEnMarcha` con el asistente de carga
      * inicial (F5-02), `Demostracion` con el ambiente ficticio y sus accesos
      * de prueba (F5-03), `Suscripciones` con los planes, los cobros y la mora
-     * (F5-04) y `Alertas` con la consola de envíos y el reenvío puntual (F5-05).
+     * (F5-04), `Alertas` con la consola de envíos y el reenvío puntual (F5-05)
+     * y `Salud` con el historial del proceso diario, la cola y los errores
+     * de aplicación (F5-06). Solo queda `Equipo`.
      *
      * @return list<self>
      */
@@ -135,6 +137,7 @@ enum SeccionDelPanel: string
                     self::Demostracion,
                     self::Suscripciones,
                     self::Alertas,
+                    self::Salud,
                 ],
                 true,
             ),

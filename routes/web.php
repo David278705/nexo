@@ -22,6 +22,7 @@ use App\Http\Controllers\Proveedor\ConsolaDeAlertasController;
 use App\Http\Controllers\Proveedor\DemostracionController;
 use App\Http\Controllers\Proveedor\EmpresaController;
 use App\Http\Controllers\Proveedor\PanelController;
+use App\Http\Controllers\Proveedor\SaludController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
 use App\Http\Controllers\Proveedor\SuscripcionController;
 use App\Http\Controllers\ServicioSuspendidoController;
@@ -510,9 +511,19 @@ Route::middleware(['auth', 'proveedor'])
                 ->name('proveedor.alertas.reenviar');
 
             /*
-             * Las tres secciones restantes del capítulo 2. Existen desde ya,
-             * como en el armazón del cliente, para que el menú del panel se
-             * pueda recorrer entero: la dirección, el nombre de ruta y el
+             * Salud del sistema (documento 4, capítulo 9): el historial del
+             * proceso diario, la cola, los errores de aplicación y las
+             * copias de seguridad.
+             */
+            Route::get('/'.SeccionDelPanel::Salud->value, [SaludController::class, 'index'])
+                ->name(SeccionDelPanel::Salud->nombreDeRuta());
+            Route::post('/'.SeccionDelPanel::Salud->value.'/cola/{uuid}/reintentar', [SaludController::class, 'reintentarTrabajo'])
+                ->name('proveedor.salud.cola.reintentar');
+
+            /*
+             * Las secciones restantes del capítulo 2. Existen desde ya, como
+             * en el armazón del cliente, para que el menú del panel se pueda
+             * recorrer entero: la dirección, el nombre de ruta y el
              * resaltado son los definitivos y solo falta el contenido.
              */
             foreach (SeccionDelPanel::pendientes() as $seccion) {

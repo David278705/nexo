@@ -248,6 +248,38 @@ final class ConsolaDeAlertas
     }
 
     /**
+     * Cuántas alertas fallaron en las últimas 24 horas, de todas las
+     * empresas: la tarjeta «Alertas fallidas» del inicio del panel (F5-06,
+     * documento 4, 3.1).
+     *
+     * Es el mismo recorrido empresa por empresa que `entregabilidadDelMes()`
+     * —la política de RLS de `alertas_enviadas` no tiene excepción para el
+     * `owner`—, con la ventana de tiempo que pide esta tarjeta y no la del
+     * mes. Mira `updated_at` y no `fecha_programada`: `marcarFallida()` no
+     * toca `enviada_en` —nunca se envió—, así que lo que importa aquí es
+     * cuándo se supo que falló, que es cuándo se actualizó la fila.
+     */
+    public static function alertasFallidasUltimoDia(): int
+    {
+        $desde = Carbon::now()->subDay();
+        $fallidas = 0;
+
+        foreach (Tenant::query()->orderBy('id')->get() as $empresa) {
+            app(ContextoTenant::class)->paraTenant(
+                $empresa,
+                function () use ($desde, &$fallidas): void {
+                    $fallidas += AlertaEnviada::query()
+                        ->where('estado', EstadoDeAlerta::Fallida->value)
+                        ->where('updated_at', '>=', $desde)
+                        ->count();
+                }
+            );
+        }
+
+        return $fallidas;
+    }
+
+    /**
      * Todas las filas que cumplen los filtros, de todas las empresas que toca
      * consultar, ya ordenadas.
      *
