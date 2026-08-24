@@ -1232,12 +1232,51 @@ documento 3, 5.2— se reutilizó para las seis tarjetas de atención en vez de 
 `exito` y un `valor` que acepta texto además de número, con sus dos pruebas nuevas en
 `TarjetaDeAccion.test.js`.
 
-### [ ] F5-07 · Bitácora y acceso al entorno del cliente
+### [x] F5-07 · Bitácora y acceso al entorno del cliente
 
 Tabla `notas_cliente`. Acceso del owner al entorno de una empresa, de solo lectura, registrado en la
 auditoría **de esa empresa** y visible para ella.
 **Hecho cuando:** entrar como cliente deja constancia que el propio cliente puede ver.
 **Fuente:** `docs/04-panel-del-proveedor.md` 4.4
+
+Hecho: la pestaña «Bitácora» —`notas_cliente`, `App\Proveedor\BitacoraDelCliente`— y el acceso al
+entorno —`visitas_al_entorno`, `App\Proveedor\AccesoAlEntorno`—, con el botón «Entrar como el
+cliente» y su modal del prototipo. `FichaDeEmpresa::PENDIENTES` se quedó con una sola entrada:
+solo «Alertas».
+
+**Las dos condiciones de software del 4.4 se cumplen en el servidor, no en la pantalla:**
+
+- **La constancia la escribe el observador, no el código.** Entrar guarda una fila de
+  `visitas_al_entorno` con la empresa visitada, así que la línea de auditoría cae en la auditoría
+  **de esa empresa**, con el `owner` como autor y el motivo escrito dentro. Salir la cierra, y esa es
+  una segunda línea: sin ella la constancia diría que el proveedor entró y nunca se fue.
+- **De solo lectura por defecto**, con `EntornoDeSoloLectura` en la pila del grupo `web`: durante una
+  visita solo pasan `GET`, `HEAD` y `OPTIONS`, más salir del entorno y cerrar sesión. Está puesto por
+  verbo y no por pantalla para que un módulo que se construya dentro de un año quede protegido sin
+  tocar ese archivo. Activar la escritura es expreso, se marca en el modal y **deja un registro
+  aparte**: una segunda línea de auditoría sobre la misma fila, que es lo que el documento pide con
+  esas palabras.
+- La tercera condición —que el contrato y el acuerdo de tratamiento de datos lo mencionen— es de
+  papel: A.2 y A.6, y sigue abierta.
+
+**El contexto de empresa lo sigue decidiendo el servidor.** La sesión guarda solo el identificador de
+la visita; de qué empresa es lo dice la fila. `ResolverTenant` la lee al empezar la petición, después
+de intentar resolver la empresa del usuario, así que ningún usuario de empresa puede caer en otra por
+este camino. `PoliticaDeModulos` le abre al `owner` todos los módulos **solo durante una visita** —el
+comentario que anunciaba esta tarea desde F0-06 desapareció—, y `FueraDeUnaVisita` cierra el panel
+mientras se está dentro: o se está en el panel, o se está dentro de un cliente, nunca en los dos.
+`BloquearEmpresaSuspendida` estrenó excepción para el `owner`, que desde hoy sí tiene empresa en
+contexto: lo que la suspensión bloquea es el acceso del cliente, y el suspendido es justo el que
+llama a reclamar.
+
+**La bitácora es lo contrario de la visita y por eso `NotaCliente` no se audita.** Es el primer
+modelo de la lista `SIN_AUDITAR` que entra por confidencialidad y no por ruido: la línea llevaría el
+texto de la nota —«llamó molesto», «se le prometió revisarlo»— a la única tabla que el cliente puede
+leer entera. La nota ya guarda autor y fecha, no se edita, y quitarla es borrado lógico.
+
+**La pantalla del cliente donde el cliente lee esa constancia sigue siendo `REV-04`**, que es la tarea
+que le da pantalla a la auditoría. La prueba lo comprueba por el único camino que hoy existe: dentro
+del contexto de la empresa y con `Auditoria::deLaEmpresaActual()`, el mismo que usará esa pantalla.
 
 ---
 

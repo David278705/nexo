@@ -3,6 +3,7 @@
 namespace App\Autorizacion;
 
 use App\Models\User;
+use App\Proveedor\AccesoAlEntorno;
 
 /**
  * Quién puede entrar a qué módulo. Es el único sitio donde se decide.
@@ -20,12 +21,21 @@ class PoliticaDeModulos
 {
     public function puedeAcceder(User $usuario, Modulo $modulo): bool
     {
-        // El `owner` no entra al entorno del cliente por esta puerta. Su sitio
-        // es el panel del proveedor, y cuando se le dé acceso al entorno de una
-        // empresa (F5-07) será de solo lectura y quedando en la auditoría de
-        // esa empresa. Mientras eso no exista, aquí es un no.
+        /*
+         * El `owner` no entra al entorno del cliente por esta puerta salvo
+         * durante una visita registrada (documento 4, 4.4). Su sitio es el panel
+         * del proveedor; lo que abre esta puerta es haber entrado de forma
+         * expresa al entorno de una empresa, con su motivo escrito y su
+         * constancia en la auditoría de ella.
+         *
+         * Durante la visita ve todos los módulos, como el superadministrador de
+         * esa empresa: entra a resolver un problema que el cliente no sabe
+         * describir y no se sabe de antemano en qué módulo está. **Lo que no
+         * puede es escribir**: de eso responde `EntornoDeSoloLectura`, en el
+         * servidor y en cada petición. Aquí se decide qué se ve, no qué se toca.
+         */
         if ($usuario->esOwner()) {
-            return false;
+            return app(AccesoAlEntorno::class)->enCurso() !== null;
         }
 
         // Un usuario de empresa sin empresa no debería existir. Si existe, no

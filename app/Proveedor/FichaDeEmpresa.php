@@ -31,7 +31,7 @@ use Illuminate\Support\Carbon;
  * | Uso | Construida con lo que ya se puede medir; las novedades por mes y los módulos que usa son de la fase 2. |
  * | Suscripción | Construida (F5-04). Plan, cobro, historial de facturas y sus cuatro acciones. |
  * | Alertas | Declarada. La consola de envíos es F3-06 y F5-05. |
- * | Bitácora | Declarada. La tabla `notas_cliente` es F5-07. |
+ * | Bitácora | Construida (F5-07). Las notas internas y el historial de visitas al entorno. |
  *
  * **Aquí no hay `tenant_actual()`.** El `owner` no tiene empresa y el middleware
  * no le fija ninguna, así que todo lo que consulte tablas de negocio —hoy los
@@ -57,11 +57,6 @@ class FichaDeEmpresa
             'titulo' => 'Todavía no se ha enviado ninguna alerta',
             'descripcion' => 'El motor de avisos por correo es la fase 3. Cuando exista, aquí se '
                 .'verá todo lo enviado a esta empresa con su resultado.',
-        ],
-        'bitacora' => [
-            'titulo' => 'La bitácora todavía no existe',
-            'descripcion' => 'Las notas internas sobre el cliente —llamadas, quejas y promesas— '
-                .'necesitan su propia tabla, que llega en F5-07.',
         ],
     ];
 
@@ -95,7 +90,63 @@ class FichaDeEmpresa
             'usuarios' => $this->usuarios(),
             'uso' => $this->uso(),
             'suscripcion' => $this->suscripcion(),
+            'bitacora' => $this->bitacora(),
+            'acceso' => self::acceso(),
             'pendientes' => self::PENDIENTES,
+        ];
+    }
+
+    /**
+     * La pestaña «Bitácora» (documento 4, 4.3), con sus dos mitades.
+     *
+     * Las **notas** son del equipo del proveedor y el cliente no las ve. Las
+     * **visitas al entorno** son lo contrario: cada una está también en la
+     * auditoría de esa empresa, que él sí puede leer. Van juntas porque son la
+     * misma pregunta —qué ha pasado con este cliente— y separadas en la pantalla
+     * porque una se le puede leer en voz alta y la otra no.
+     *
+     * @return array<string, mixed>
+     */
+    public function bitacora(): array
+    {
+        return [
+            'titulo' => BitacoraDelCliente::TITULO,
+            'ayuda' => BitacoraDelCliente::AYUDA,
+            'ayudaDeLaNota' => BitacoraDelCliente::AYUDA_DE_LA_NOTA,
+            'vacia' => [
+                'titulo' => BitacoraDelCliente::VACIA_TITULO,
+                'descripcion' => BitacoraDelCliente::VACIA_DESCRIPCION,
+            ],
+            'notas' => BitacoraDelCliente::de($this->empresa)->notas(),
+            'visitas' => [
+                'titulo' => 'Accesos del proveedor al entorno',
+                'ayuda' => 'Cada uno está también en la auditoría de esta empresa: el cliente los '
+                    .'ve, con el motivo escrito y con quién entró.',
+                'vacio' => 'Nadie del equipo ha entrado al entorno de este cliente.',
+                'filas' => AccesoAlEntorno::historial($this->empresa),
+            ],
+        ];
+    }
+
+    /**
+     * Los textos del modal de «Entrar como el cliente» (documento 4, 4.4).
+     *
+     * Las tres condiciones se leen antes de entrar y por eso viajan con la
+     * pantalla. Están escritas en `AccesoAlEntorno`, que es quien las hace
+     * cumplir, y no aquí: leerlas en un sitio y cumplirlas en otro es como se
+     * separan.
+     *
+     * @return array<string, mixed>
+     */
+    public static function acceso(): array
+    {
+        return [
+            'titulo' => 'Entrar al entorno del cliente',
+            'boton' => 'Entrar como el cliente',
+            'tituloCondiciones' => AccesoAlEntorno::TITULO_DE_LAS_CONDICIONES,
+            'condiciones' => AccesoAlEntorno::CONDICIONES,
+            'ayudaDelMotivo' => AccesoAlEntorno::AYUDA_DEL_MOTIVO,
+            'etiquetaDeEscritura' => AccesoAlEntorno::ETIQUETA_DE_ESCRITURA,
         ];
     }
 

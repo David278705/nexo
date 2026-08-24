@@ -17,12 +17,18 @@ const pagina = {
 };
 
 const enviar = vi.fn();
+const eliminar = vi.fn();
 
 vi.mock("@inertiajs/vue3", async (importarOriginal) => ({
     ...(await importarOriginal()),
     Head: { name: "Head", template: "<span />" },
     usePage: () => pagina,
-    router: { post: (...argumentos) => enviar(...argumentos), get: vi.fn(), visit: vi.fn() },
+    router: {
+        post: (...argumentos) => enviar(...argumentos),
+        delete: (...argumentos) => eliminar(...argumentos),
+        get: vi.fn(),
+        visit: vi.fn(),
+    },
     Link: {
         name: "Link",
         props: ["href"],
@@ -120,9 +126,53 @@ const props = {
         planes: [{ valor: "2", texto: "Mediana · 200 empleados · 4 usuarios" }],
         aviso: "Suspender bloquea el acceso pero no elimina nada.",
     },
+    bitacora: {
+        titulo: "Bitácora del cliente",
+        ayuda: "Es interna del equipo: el cliente no la ve.",
+        ayudaDeLaNota: "Lo que se habló, en una o dos frases.",
+        vacia: {
+            titulo: "Todavía no hay notas de este cliente",
+            descripcion: "Aquí queda lo que se habló con él.",
+        },
+        notas: [
+            {
+                id: 4,
+                fecha: "12/08/2026",
+                autor: "Angela",
+                texto: "Llamó Ana María por el cálculo de una licencia. Quedó clara.",
+            },
+        ],
+        visitas: {
+            titulo: "Accesos del proveedor al entorno",
+            ayuda: "Cada uno está también en la auditoría de esta empresa.",
+            vacio: "Nadie del equipo ha entrado al entorno de este cliente.",
+            filas: [
+                {
+                    id: 2,
+                    cuando: "23/08/2026, 9:15 a. m.",
+                    quien: "David Lozano",
+                    motivo: "Revisar el cálculo que reportó Ana María.",
+                    modo: "Consulta",
+                    tono: "neutro",
+                    duracion: "18 minutos",
+                },
+            ],
+        },
+    },
+    acceso: {
+        titulo: "Entrar al entorno del cliente",
+        boton: "Entrar como el cliente",
+        tituloCondiciones: "Tres condiciones que no son negociables",
+        condiciones: [
+            "Queda registrado en la auditoría de esa empresa, visible para el cliente.",
+            "Es de solo lectura. Modificar datos exige activarlo de forma expresa.",
+            "El acuerdo de tratamiento de datos lo contempla.",
+        ],
+        ayudaDelMotivo: "Queda en el registro. Escriba algo que tenga sentido dentro de seis meses.",
+        etiquetaDeEscritura: "Necesito modificar datos, no solo consultar",
+    },
     pendientes: {
         alertas: { titulo: "Todavía no se ha enviado ninguna alerta", descripcion: "Es la fase 3." },
-        bitacora: { titulo: "La bitácora todavía no existe", descripcion: "Es F5-07." },
     },
     volver: "/proveedor/empresas",
 };
@@ -193,9 +243,58 @@ describe("la ficha de la empresa", () => {
 
         await irA(pantalla, "Alertas");
         expect(pantalla.text()).toContain("Todavía no se ha enviado ninguna alerta");
+    });
 
-        await irA(pantalla, "Bitácora");
-        expect(pantalla.text()).toContain("La bitácora todavía no existe");
+    it("enseña la bitácora con sus notas y dice que es interna", async () => {
+        const pantalla = await irA(montar(), "Bitácora");
+
+        expect(pantalla.text()).toContain("el cliente no la ve");
+        expect(pantalla.text()).toContain("12/08/2026 · Angela");
+        expect(pantalla.text()).toContain("Quedó clara");
+    });
+
+    it("enseña, al lado de las notas, los accesos que el cliente sí ve", async () => {
+        const pantalla = await irA(montar(), "Bitácora");
+
+        expect(pantalla.text()).toContain("Accesos del proveedor al entorno");
+        expect(pantalla.text()).toContain("Revisar el cálculo que reportó Ana María.");
+        expect(pantalla.text()).toContain("18 minutos");
+    });
+
+    it("quita una nota por su propia dirección", async () => {
+        const pantalla = await irA(montar(), "Bitácora");
+
+        const quitar = pantalla
+            .findAll("button")
+            .find((boton) => boton.text() === "Quitar");
+
+        await quitar.trigger("click");
+
+        expect(eliminar).toHaveBeenCalledWith(
+            "/proveedor/empresas/7/notas/4",
+            expect.anything(),
+        );
+    });
+
+    it("enseña las tres condiciones antes de entrar al entorno del cliente", async () => {
+        const pantalla = montar();
+
+        const entrar = pantalla
+            .findAll("button")
+            .find((boton) => boton.text() === "Entrar como el cliente");
+
+        await entrar.trigger("click");
+
+        // El modal viaja a `body` con `Teleport`, así que se lee de ahí y no
+        // del componente, como en `Modal.test.js`.
+        const dialogo = document.body.querySelector('[role="dialog"]');
+
+        expect(dialogo.textContent).toContain("Tres condiciones que no son negociables");
+        expect(dialogo.textContent).toContain("visible para el cliente");
+        expect(dialogo.textContent).toContain("Motivo del acceso");
+        expect(dialogo.textContent).toContain("Necesito modificar datos, no solo consultar");
+
+        pantalla.unmount();
     });
 
     it("enseña la suscripción con su estado de cobro y su historial", async () => {

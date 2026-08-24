@@ -9,9 +9,12 @@ use App\Configuracion\ParametrosDeLaEmpresa;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CrearEmpresa;
 use App\Http\Requests\GuardarParametrosDeEmpresa;
+use App\Http\Requests\RegistrarNotaDelCliente;
+use App\Models\NotaCliente;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Presentacion\Formato;
+use App\Proveedor\BitacoraDelCliente;
 use App\Proveedor\CreacionDeEmpresa;
 use App\Proveedor\EstadoDeCobro;
 use App\Proveedor\EstadoDeEmpresa;
@@ -194,6 +197,48 @@ class EmpresaController extends Controller
             ->route('proveedor.empresas.ficha', $empresa)
             ->with('estado', 'Se envió a '.$usuario->getAttribute('email').' el enlace para definir '
                 .'una contraseña nueva. Nadie más puede verla ni escribirla por él.');
+    }
+
+    /**
+     * Escribe una nota en la bitácora de ese cliente (documento 4, 4.3).
+     *
+     * Es interna del equipo del proveedor: no se le enseña al cliente por
+     * ninguna vía, y por eso `NotaCliente` no se audita —el porqué completo está
+     * en su migración—. La confirmación lo dice con esas palabras, para que
+     * quien escribe sepa siempre a quién le está escribiendo.
+     */
+    public function agregarNota(RegistrarNotaDelCliente $peticion, Tenant $empresa): RedirectResponse
+    {
+        /** @var User $autor */
+        $autor = $peticion->user();
+
+        BitacoraDelCliente::de($empresa)->anotar($autor, $peticion->texto());
+
+        return redirect()
+            ->route('proveedor.empresas.ficha', $empresa)
+            ->with('estado', BitacoraDelCliente::confirmacion($empresa));
+    }
+
+    /**
+     * Quita una nota de la bitácora.
+     *
+     * Borrado lógico, como todo en el sistema: la fila se queda y deja de
+     * aparecer. Y como en las dos acciones sobre usuarios, se comprueba que la
+     * nota sea de la empresa de la dirección —lo hace `BitacoraDelCliente`—, o
+     * bastaría cambiar un número para borrar la nota de otro cliente.
+     */
+    public function eliminarNota(Tenant $empresa, int $nota): RedirectResponse
+    {
+        $bitacora = BitacoraDelCliente::de($empresa);
+        $encontrada = $bitacora->nota($nota);
+
+        abort_unless($encontrada instanceof NotaCliente, 404);
+
+        $encontrada->delete();
+
+        return redirect()
+            ->route('proveedor.empresas.ficha', $empresa)
+            ->with('estado', BitacoraDelCliente::CONFIRMACION_DE_BORRADO);
     }
 
     /**

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { usePage } from "@inertiajs/vue3";
 import BarraLateral from "@/Components/BarraLateral.vue";
 import EncabezadoApp from "@/Components/EncabezadoApp.vue";
+import FranjaDeVisita from "@/Components/FranjaDeVisita.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 
 /*
@@ -38,6 +39,13 @@ const usuario = computed(() => pagina.props.usuario);
  * visible» del documento 3, sección 2.5, quedaba a medias.
  */
 const estado = computed(() => pagina.props.estado ?? "");
+
+/*
+ * La visita del proveedor al entorno de este cliente (documento 4, 4.4). Es
+ * nula en toda petición normal: la franja solo existe mientras el proveedor
+ * está dentro, y el cliente no la ve nunca.
+ */
+const visita = computed(() => pagina.props.visita ?? null);
 const modulos = computed(() => props.secciones ?? usuario.value?.modulos ?? []);
 const urlActual = computed(() => pagina.url.split("?")[0]);
 
@@ -109,6 +117,8 @@ watch(urlActual, () => {
         </div>
 
         <div class="flex min-w-0 flex-1 flex-col">
+            <FranjaDeVisita v-if="visita" :visita="visita" />
+
             <EncabezadoApp
                 v-if="usuario"
                 :empresa="encabezado ?? usuario.empresa ?? ''"

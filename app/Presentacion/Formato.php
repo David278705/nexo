@@ -129,6 +129,32 @@ final class Formato
     }
 
     /**
+     * «1 minuto», «18 minutos», «1 hora y 5 minutos».
+     *
+     * Es lo que duró una visita del proveedor al entorno de un cliente
+     * (documento 4, 4.4), leída en el historial de su ficha. Va aparte de
+     * `tiempoTranscurrido()` porque aquella cuenta meses y años, y una visita de
+     * soporte se mide en minutos: pasarle los minutos a la otra escribiría
+     * «0 meses».
+     */
+    public static function minutos(int $cantidad): string
+    {
+        $cantidad = max(0, $cantidad);
+        $horas = intdiv($cantidad, 60);
+        $restantes = $cantidad % 60;
+
+        $enMinutos = $restantes === 1 ? '1 minuto' : $restantes.' minutos';
+
+        if ($horas === 0) {
+            return $enMinutos;
+        }
+
+        $enHoras = $horas === 1 ? '1 hora' : $horas.' horas';
+
+        return $restantes === 0 ? $enHoras : $enHoras.' y '.$enMinutos;
+    }
+
+    /**
      * Un tiempo transcurrido como se dice en voz alta: «3 años y 9 meses»,
      * «un año», «9 meses», «un mes».
      *

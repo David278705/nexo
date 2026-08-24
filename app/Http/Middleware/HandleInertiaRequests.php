@@ -7,6 +7,7 @@ use App\Autorizacion\PoliticaDeModulos;
 use App\Autorizacion\SeccionDelPanel;
 use App\Models\User;
 use App\Novedades\EmpleadoDeNovedad;
+use App\Proveedor\AccesoAlEntorno;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,6 +47,13 @@ class HandleInertiaRequests extends Middleware
              */
             'flujoDeNovedad' => fn (): array => EmpleadoDeNovedad::textos(),
             EmpleadoDeNovedad::PROP => EmpleadoDeNovedad::prop($request),
+            /*
+             * La franja de «estás dentro del entorno de un cliente» (documento
+             * 4, 4.4). Es nula en toda petición normal, así que para el cliente
+             * no existe; solo la ve el proveedor mientras está dentro, y la ve
+             * en todas las pantallas porque en todas está mirando datos ajenos.
+             */
+            'visita' => fn (): ?array => app(AccesoAlEntorno::class)->paraLaFranja(),
         ];
     }
 
@@ -98,12 +106,20 @@ class HandleInertiaRequests extends Middleware
 
         $permitidos = app(PoliticaDeModulos::class)->modulosPermitidos($usuario);
 
+        /*
+         * De qué empresa habla el encabezado. Casi siempre la del usuario; para
+         * el `owner` dentro de una visita, la que está visitando (documento 4,
+         * 4.4). Sin esto el encabezado quedaría vacío justo cuando más importa
+         * saber de quién son los datos que se están mirando.
+         */
+        $empresa = $usuario->tenant ?? app(AccesoAlEntorno::class)->empresaVisitada();
+
         return [
             'nombre' => $usuario->name,
             'correo' => $usuario->email,
             'rol' => $usuario->rol->value,
-            'empresa' => $usuario->tenant?->nombre,
-            'nit' => $usuario->tenant?->nit,
+            'empresa' => $empresa?->getAttribute('nombre'),
+            'nit' => $empresa?->getAttribute('nit'),
             'modulos' => array_map(fn (Modulo $modulo) => [
                 'clave' => $modulo->value,
                 'etiqueta' => $modulo->etiqueta(),

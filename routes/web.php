@@ -21,6 +21,7 @@ use App\Http\Controllers\Proveedor\CatalogoController;
 use App\Http\Controllers\Proveedor\ConsolaDeAlertasController;
 use App\Http\Controllers\Proveedor\DemostracionController;
 use App\Http\Controllers\Proveedor\EmpresaController;
+use App\Http\Controllers\Proveedor\EntornoDelClienteController;
 use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SaludController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
@@ -76,6 +77,18 @@ Route::middleware('auth')->group(function () {
      */
     Route::get('/suspendido', [ServicioSuspendidoController::class, 'mostrar'])
         ->name('suspendido');
+
+    /*
+     * Salir del entorno de un cliente (documento 4, 4.4).
+     *
+     * Vive aquí, en el entorno del cliente, y no bajo el prefijo del panel: es
+     * donde se está cuando hace falta, y durante una visita el panel está
+     * cerrado. Es de las dos únicas direcciones que `EntornoDeSoloLectura` deja
+     * pasar aunque no sean de lectura —la otra es cerrar sesión—, porque las dos
+     * son de salida y ninguna toca datos del cliente.
+     */
+    Route::post('/entorno/salir', [EntornoDelClienteController::class, 'salir'])
+        ->name('entorno.salir');
 
     /*
      * El panel de inicio (documento 3, sección 5.2): el saludo, la fecha y el
@@ -316,6 +329,9 @@ Route::middleware('auth')->group(function () {
  * 3. `segundo-factor` — ¿ya escribió su código? Solo envuelve las nueve
  *    secciones; las cuatro direcciones de activar y verificar quedan fuera,
  *    porque son las que hay que poder ver sin haberlo verificado.
+ * 4. `fuera-de-visita` — ¿está dentro del entorno de un cliente? Si lo está, el
+ *    panel no se pide: se sale primero (documento 4, 4.4). Va con las nueve
+ *    secciones, dentro del segundo factor.
  */
 Route::middleware(['auth', 'proveedor'])
     ->prefix(SeccionDelPanel::PREFIJO)
@@ -330,7 +346,7 @@ Route::middleware(['auth', 'proveedor'])
         Route::post('/verificacion', [SegundoFactorController::class, 'comprobar'])
             ->name('proveedor.verificacion.comprobar');
 
-        Route::middleware('segundo-factor')->group(function () {
+        Route::middleware(['segundo-factor', 'fuera-de-visita'])->group(function () {
             Route::get('/', [PanelController::class, 'inicio'])
                 ->name(SeccionDelPanel::Inicio->nombreDeRuta());
 
@@ -376,6 +392,29 @@ Route::middleware(['auth', 'proveedor'])
             Route::post('/empresas/{empresa}/usuarios/{usuario}/contrasena', [EmpresaController::class, 'restablecerContrasena'])
                 ->whereNumber(['empresa', 'usuario'])
                 ->name('proveedor.empresas.contrasena');
+
+            /*
+             * La bitácora interna de la pestaña «Bitácora» (4.3). Se escribe y
+             * se quita; no se edita: una nota es un registro de lo que pasó, y
+             * lo que se escribió en agosto tiene que seguir diciendo en febrero
+             * lo que se escribió en agosto.
+             */
+            Route::post('/empresas/{empresa}/notas', [EmpresaController::class, 'agregarNota'])
+                ->whereNumber('empresa')
+                ->name('proveedor.empresas.notas');
+            Route::delete('/empresas/{empresa}/notas/{nota}', [EmpresaController::class, 'eliminarNota'])
+                ->whereNumber(['empresa', 'nota'])
+                ->name('proveedor.empresas.notas.eliminar');
+
+            /*
+             * Entrar al entorno de esa empresa (4.4). Es la acción con más
+             * consecuencias del panel entero y por eso es un `POST` con motivo
+             * obligatorio: abre una visita, deja constancia en la auditoría del
+             * cliente y cambia la empresa en contexto de quien la ejecuta.
+             */
+            Route::post('/empresas/{empresa}/entorno', [EntornoDelClienteController::class, 'entrar'])
+                ->whereNumber('empresa')
+                ->name('proveedor.empresas.entorno');
 
             /*
              * Catálogos (documento 4, capítulo 8). Una pantalla con cinco

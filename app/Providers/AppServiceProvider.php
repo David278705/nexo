@@ -23,6 +23,7 @@ use App\Dominio\Alertas\Reglas\UltimaRenovacionCorta;
 use App\Models\User;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
+use App\Proveedor\AccesoAlEntorno;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -36,6 +37,12 @@ class AppServiceProvider extends ServiceProvider
         // Singleton: la empresa se resuelve una sola vez por petición y todo
         // el sistema lee de la misma instancia.
         $this->app->singleton(ContextoTenant::class);
+
+        // La visita del proveedor al entorno de un cliente (documento 4, 4.4),
+        // también singleton y por lo mismo: la preguntan `ResolverTenant`, la
+        // política de módulos, los dos middleware de la visita y las props
+        // compartidas, y la fila se busca una sola vez por petición.
+        $this->app->singleton(AccesoAlEntorno::class);
 
         // El catálogo de reglas de alerta, también singleton: es una lista que
         // se llena al arrancar y que el proceso diario recorre. Cada tarea de

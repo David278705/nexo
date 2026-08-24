@@ -3,6 +3,8 @@
 use App\Autorizacion\SeccionDelPanel;
 use App\Http\Middleware\BloquearEmpresaSuspendida;
 use App\Http\Middleware\CerrarAccesoDePruebaExpirado;
+use App\Http\Middleware\EntornoDeSoloLectura;
+use App\Http\Middleware\FueraDeUnaVisita;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolverTenant;
 use App\Http\Middleware\SegundoFactorVerificado;
@@ -43,6 +45,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 // (documento 4, capítulo 6), lo único que se puede pedir es la
                 // pantalla que lo explica y cerrar sesión.
                 BloquearEmpresaSuspendida::class,
+                // La segunda condición no negociable del documento 4, 4.4: si
+                // quien pide es el proveedor dentro del entorno de un cliente,
+                // solo pasan las peticiones de lectura. Va en la pila y no en
+                // cada ruta para que ningún módulo futuro se quede fuera.
+                EntornoDeSoloLectura::class,
                 HandleInertiaRequests::class,
             ],
         );
@@ -55,6 +62,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'modulo' => VerificarModulo::class,
             'proveedor' => SoloProveedor::class,
             'segundo-factor' => SegundoFactorVerificado::class,
+            // O se está en el panel, o se está dentro del entorno de un
+            // cliente (documento 4, 4.4), nunca en los dos a la vez.
+            'fuera-de-visita' => FueraDeUnaVisita::class,
         ]);
 
         // Las dos direcciones del acceso. Sin esto, Laravel busca la ruta

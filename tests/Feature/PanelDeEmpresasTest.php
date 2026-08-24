@@ -192,10 +192,11 @@ describe('la ficha de la empresa', function () {
                 ->has('pestanas', 7)
                 ->where('empresa.nombre', 'Distribuidora El Progreso S.A.S.')
                 ->where('resumen.alta.1', ['etiqueta' => 'Creada por', 'valor' => $owner->name])
-                // Las dos pestañas que siguen dependiendo de tareas futuras lo
-                // dicen. «Suscripción» salió de la lista en F5-04.
+                // La única pestaña que sigue dependiendo de una tarea futura lo
+                // dice. «Suscripción» salió de la lista en F5-04 y «Bitácora»
+                // en F5-07.
                 ->has('pendientes.alertas')
-                ->has('pendientes.bitacora')
+                ->has('bitacora.notas')
                 ->where('suscripcion.existe', false));
     });
 

@@ -6,6 +6,7 @@ use App\Models\Acceso;
 use App\Models\AlertaEnviada;
 use App\Models\Auditoria;
 use App\Models\Invitacion;
+use App\Models\NotaCliente;
 use App\Models\SaldoEnCache;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
@@ -51,6 +52,14 @@ class ObservadorDeAuditoria
         // correo —el registro, el intento y el envío— contando lo que la propia
         // tabla cuenta mejor.
         AlertaEnviada::class,
+
+        // La bitácora interna sobre un cliente (documento 4, 4.3) es el único
+        // modelo que se salta por confidencialidad y no por ruido: la línea
+        // llevaría el texto de la nota —«llamó molesto», «se le prometió
+        // revisarlo»— a la auditoría **de esa empresa**, que es la única tabla
+        // del sistema que el cliente puede leer entera. La nota ya guarda su
+        // autor y su fecha, y nadie la edita: es un registro, no un dato.
+        NotaCliente::class,
 
         // La caché de saldos no guarda información: guarda una copia de lo que
         // el motor calcula, y la reescribe entera cada noche. Auditarla dejaría

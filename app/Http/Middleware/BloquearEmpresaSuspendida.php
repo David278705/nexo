@@ -47,6 +47,16 @@ class BloquearEmpresaSuspendida
             return $siguiente($peticion);
         }
 
+        // El `owner` dentro de una visita al entorno de un cliente (documento 4,
+        // 4.4). Desde F5-07 sí tiene empresa en contexto, así que sin esta línea
+        // el proveedor sería el único que no podría entrar a mirar los datos de
+        // un cliente suspendido —que es justo cuando hay que mirarlos, porque el
+        // cliente llama para reclamar y no puede enseñar su pantalla—. Lo que la
+        // suspensión bloquea es el acceso **del cliente**.
+        if ($peticion->user()?->esOwner() === true) {
+            return $siguiente($peticion);
+        }
+
         if (in_array($peticion->route()?->getName(), self::PERMITIDAS, true)) {
             return $siguiente($peticion);
         }

@@ -45,6 +45,8 @@ const props = defineProps({
     usuarios: { type: Array, default: () => [] },
     uso: { type: Object, required: true },
     suscripcion: { type: Object, required: true },
+    bitacora: { type: Object, required: true },
+    acceso: { type: Object, required: true },
     pendientes: { type: Object, required: true },
     volver: { type: String, required: true },
 });
@@ -165,6 +167,43 @@ const columnasDelHistorial = [
     { clave: "estado", titulo: "Estado" },
     { clave: "acciones", titulo: "" },
 ];
+
+/*
+ * La bitácora interna (4.3) y el acceso al entorno del cliente (4.4).
+ *
+ * Van juntos en la pantalla porque son la misma pregunta —qué ha pasado con
+ * este cliente— pero son lo contrario en visibilidad: la nota es interna del
+ * equipo y la visita queda en la auditoría de la empresa, que él sí lee. Los
+ * dos textos que lo dicen los escribe el servidor.
+ */
+const formularioDeNota = useForm({ texto: "" });
+const formularioDeAcceso = useForm({ motivo: "", escritura: false });
+
+function guardarNota() {
+    formularioDeNota.post(`/proveedor/empresas/${props.empresa.id}/notas`, {
+        preserveScroll: true,
+        onSuccess: () => formularioDeNota.reset(),
+    });
+}
+
+function quitarNota(nota) {
+    router.delete(
+        `/proveedor/empresas/${props.empresa.id}/notas/${nota.id}`,
+        { preserveScroll: true },
+    );
+}
+
+function entrarAlEntorno() {
+    formularioDeAcceso.post(`/proveedor/empresas/${props.empresa.id}/entorno`);
+}
+
+const columnasDeVisitas = [
+    { clave: "cuando", titulo: "Cuándo" },
+    { clave: "quien", titulo: "Quién" },
+    { clave: "motivo", titulo: "Motivo" },
+    { clave: "modo", titulo: "Modo" },
+    { clave: "duracion", titulo: "Duración" },
+];
 </script>
 
 <template>
@@ -191,6 +230,14 @@ const columnasDelHistorial = [
                     </Etiqueta>
                 </p>
             </div>
+
+            <Boton
+                tipo="button"
+                variante="secundario"
+                @click="modal = 'entorno'"
+            >
+                {{ acceso.boton }}
+            </Boton>
         </div>
 
         <dl
@@ -490,6 +537,95 @@ const columnasDelHistorial = [
                 </div>
 
                 <div
+                    v-else-if="activa === 'bitacora'"
+                    class="grid gap-4 lg:grid-cols-2"
+                >
+                    <section
+                        class="rounded-[var(--radius-caja)] border border-borde bg-superficie p-4"
+                    >
+                        <h3 class="text-seccion font-semibold text-texto">
+                            {{ bitacora.titulo }}
+                        </h3>
+                        <p class="mt-1 text-apoyo text-texto-secundario">
+                            {{ bitacora.ayuda }}
+                        </p>
+
+                        <EstadoVacio
+                            v-if="bitacora.notas.length === 0"
+                            :titulo="bitacora.vacia.titulo"
+                            :descripcion="bitacora.vacia.descripcion"
+                        />
+
+                        <ol v-else class="mt-4">
+                            <li
+                                v-for="nota in bitacora.notas"
+                                :key="nota.id"
+                                class="border-l-2 border-borde py-2 pl-3"
+                            >
+                                <div
+                                    class="flex items-baseline justify-between gap-3"
+                                >
+                                    <p class="text-apoyo text-texto-terciario">
+                                        {{ nota.fecha }} · {{ nota.autor }}
+                                    </p>
+                                    <Boton
+                                        tipo="button"
+                                        variante="texto"
+                                        @click="quitarNota(nota)"
+                                    >
+                                        Quitar
+                                    </Boton>
+                                </div>
+                                <p class="text-cuerpo text-texto">
+                                    {{ nota.texto }}
+                                </p>
+                            </li>
+                        </ol>
+
+                        <form class="mt-4" @submit.prevent="guardarNota">
+                            <CampoTexto
+                                v-model="formularioDeNota.texto"
+                                etiqueta="Nueva nota"
+                                :ayuda="bitacora.ayudaDeLaNota"
+                                :error="formularioDeNota.errors.texto"
+                            />
+
+                            <div class="mt-3">
+                                <Boton
+                                    :enviando="formularioDeNota.processing"
+                                    :deshabilitado="!formularioDeNota.texto"
+                                >
+                                    Guardar nota
+                                </Boton>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section>
+                        <h3 class="text-seccion font-semibold text-texto">
+                            {{ bitacora.visitas.titulo }}
+                        </h3>
+                        <p class="mt-1 mb-3 text-apoyo text-texto-secundario">
+                            {{ bitacora.visitas.ayuda }}
+                        </p>
+
+                        <TablaDatos
+                            :columnas="columnasDeVisitas"
+                            :filas="bitacora.visitas.filas"
+                            :clicable="false"
+                            :titulo-vacio="bitacora.visitas.vacio"
+                            :descripcion-vacio="acceso.condiciones[0]"
+                        >
+                            <template #celda-modo="{ fila }">
+                                <Etiqueta :tono="fila.tono">
+                                    {{ fila.modo }}
+                                </Etiqueta>
+                            </template>
+                        </TablaDatos>
+                    </section>
+                </div>
+
+                <div
                     v-else
                     class="rounded-[var(--radius-modal)] border border-borde bg-superficie"
                 >
@@ -500,6 +636,65 @@ const columnasDelHistorial = [
                 </div>
             </div>
         </div>
+
+        <Modal
+            :abierto="modal === 'entorno'"
+            :titulo="acceso.titulo"
+            @cerrar="cerrarModal"
+        >
+            <p class="text-apoyo text-texto-secundario">
+                Vas a entrar al sistema de <b>{{ empresa.nombre }}</b> con tu
+                propia cuenta, no con la de nadie de la empresa.
+            </p>
+
+            <Aviso
+                tono="advertencia"
+                :titulo="acceso.tituloCondiciones"
+                class="mt-3"
+            >
+                <ul>
+                    <li
+                        v-for="condicion in acceso.condiciones"
+                        :key="condicion"
+                    >
+                        · {{ condicion }}
+                    </li>
+                </ul>
+            </Aviso>
+
+            <div class="mt-4">
+                <CampoTexto
+                    v-model="formularioDeAcceso.motivo"
+                    etiqueta="Motivo del acceso"
+                    :ayuda="acceso.ayudaDelMotivo"
+                    :error="formularioDeAcceso.errors.motivo"
+                />
+            </div>
+
+            <label
+                class="mt-4 flex items-start gap-2 text-apoyo text-texto-secundario"
+            >
+                <input
+                    v-model="formularioDeAcceso.escritura"
+                    type="checkbox"
+                    class="mt-1"
+                />
+                <span>{{ acceso.etiquetaDeEscritura }}</span>
+            </label>
+
+            <template #pie>
+                <Boton variante="texto" tipo="button" @click="cerrarModal">
+                    Cancelar
+                </Boton>
+                <Boton
+                    tipo="button"
+                    :enviando="formularioDeAcceso.processing"
+                    @click="entrarAlEntorno"
+                >
+                    Entrar
+                </Boton>
+            </template>
+        </Modal>
 
         <Modal
             :abierto="modal === 'pago'"
