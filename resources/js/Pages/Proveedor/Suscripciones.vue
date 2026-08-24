@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, router, useForm } from "@inertiajs/vue3";
+import { Head, Link, useForm } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import ArmazonProveedor from "@/Components/Proveedor/ArmazonProveedor.vue";
 import Aviso from "@/Components/Aviso.vue";
@@ -11,6 +11,7 @@ import Etiqueta from "@/Components/Etiqueta.vue";
 import Modal from "@/Components/Modal.vue";
 import Selector from "@/Components/Selector.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
+import { usarAccionPorFila } from "@/Utilidades/usarAccionPorFila.js";
 
 /*
  * Suscripciones (documento 4, capítulo 6, y la pantalla del prototipo).
@@ -106,14 +107,11 @@ function guardarPlan() {
     formularioDePlan.post(`${RUTA}/planes`, opciones);
 }
 
-const alternandoPlan = ref(null);
+const { activo: alternandoPlan, ejecutar: ejecutarAlternarPlan } =
+    usarAccionPorFila();
 
 function alternarPlan(plan) {
-    alternandoPlan.value = plan.id;
-    router.post(`${RUTA}/planes/${plan.id}/estado`, {}, {
-        preserveScroll: true,
-        onFinish: () => (alternandoPlan.value = null),
-    });
+    ejecutarAlternarPlan(plan.id, `${RUTA}/planes/${plan.id}/estado`);
 }
 
 function registrarSuscripcion() {

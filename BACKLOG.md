@@ -1427,16 +1427,35 @@ medio**: el proyecto no tiene Playwright ni `user-event`, así que las pruebas c
 `Modal.test.js` para Escape, no una sesión de teclado de punta a punta en un navegador. Verificar el
 flujo completo a mano en un navegador sigue pendiente y queda anotado en `ESTADO.md`.
 
-### [ ] F6-07 · Operación
+### [!] F6-07 · Operación — bloqueada: depende de A.5, sin decidir
 
 Monitoreo de errores en producción. Copias de seguridad automáticas y **una restauración probada de
 principio a fin**.
 **Hecho cuando:** existe una copia que se restauró y funcionó.
 
-### [ ] F6-08 · REVISIÓN FINAL
+Bloqueada: `docs/06-decisiones-pendientes.md` A.5 (infraestructura y copias de seguridad) sigue sin
+resolver — no hay plataforma administrada ni infraestructura propia decidida, así que no existe dónde
+producir la copia ni cómo restaurarla. Sin esa decisión, cualquier proveedor de monitoreo o estrategia
+de copias sería inventado. Anotado como bloqueante para esta tarea desde varias sesiones atrás.
+
+### [x] F6-08 · REVISIÓN FINAL
 
 Ejecuta el skill `revisar` completo y escribe en `ESTADO.md` el listado de lo que falta para poder
 vender, tomándolo de `docs/06-decisiones-pendientes.md`.
+
+Informe en `bitacora/revision-2026-08-24.md`. Alcance: las trece tareas desde F4-05 —la fase 5 entera,
+que no tuvo punto de control propio, y la fase 6— más el barrido completo de las cinco secciones sobre
+todo lo construido. **Aislamiento y motor sin hallazgos**: las trece tablas de negocio con trait, RLS y
+caso propio, las nueve tablas nuevas del panel sin trait y cada una diciendo por qué, y los diez casos
+obligatorios pasando sin ninguna cuenta laboral fuera de `app/Dominio/Calculo/`. **Se arreglaron tres
+cosas**: revocar un acceso de prueba no echaba a quien ya estaba dentro —el middleware miraba una fecha
+copiada a la sesión en vez de preguntar por la fila, así que el panel decía «revocado» mientras el
+prospecto seguía navegando—; los errores de la aplicación de F5-06 se copiaban a la auditoría del
+cliente, que es la única tabla que él puede leer entera; y la acción por fila del panel, copiada seis
+veces en cuatro pantallas, quedó en `usarAccionPorFila.js` con sus nueve casos. Quedó `REV-07` por la
+auditoría que llena cada noche la restauración del ambiente de demostración. El listado de lo que falta
+para vender está en `ESTADO.md`, casilla por casilla de la tabla G del documento 6: de las dieciséis,
+cuatro cerradas, dos a medias y diez que no puede cerrar el repositorio.
 
 ---
 
@@ -1522,6 +1541,31 @@ claro.
 **Hecho cuando:** las dos preguntas están respondidas, los dos módulos tienen sus acciones con la
 consecuencia escrita antes de ejecutarla, y `TipoDeNovedad::tituloDeEdicion()` deja de devolver nulo
 para ellos.
+
+### [ ] REV-07 · La restauración nocturna llena la auditoría del ambiente de demostración
+
+Cada noche a las tres, `demostracion:restaurar` borra la planta entera del ambiente de demostración
+—ocho personas con sus vinculaciones, sus periodos contractuales y sus novedades— y la vuelve a crear.
+El observador de auditoría hace lo que le toca: escribe una línea por cada fila borrada y otra por cada
+fila creada. Sin autor, porque quien escribe es un proceso en consola, y todas las noches.
+
+**Motivo:** hoy no lo ve nadie porque la auditoría no tiene pantalla. El día que `REV-04` se la dé, la
+pantalla que un prospecto abre dentro del ambiente de demostración —que es justamente el sitio donde se
+enseña el producto— será una lista de miles de líneas contando que el sistema se borró solo de
+madrugada. Va delante de `REV-04` para que ese ruido no exista cuando la pantalla llegue.
+
+Es el mismo problema que ya resolvieron `SaldoEnCache` y las tres tablas de F5-06, pero **no se
+resuelve igual**: `Persona`, `Vinculacion` y las novedades sí tienen que auditarse en las empresas
+reales, así que la lista `SIN_AUDITAR` del observador no sirve aquí. Lo que falta es poder escribir sin
+auditar en un tramo concreto de código, y decidir si el ambiente de demostración es el único que puede
+usarlo. Esa decisión es el grueso de la tarea; hacer que la restauración lo use es lo de menos.
+
+**Hecho cuando:** dos restauraciones seguidas del ambiente de demostración no dejan ninguna línea nueva
+en `auditoria`, y hay prueba; y una edición cualquiera en una empresa real sigue dejando la suya —la
+prueba que lo vigila ya existe y no se toca—.
+
+**Fuente:** `docs/02-arquitectura-y-datos.md` 7.2 · `docs/04-panel-del-proveedor.md` cap. 10 ·
+`bitacora/revision-2026-08-24.md`
 
 ### [ ] REV-04 · Pantalla de auditoría
 

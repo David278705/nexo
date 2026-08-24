@@ -71,7 +71,8 @@ class DemostracionController extends Controller
 
         return $this->volver()->with(
             'estado',
-            'El acceso de '.$acceso->getAttribute('nombre_prospecto').' quedó revocado: el enlace ya no sirve.',
+            'El acceso de '.$acceso->getAttribute('nombre_prospecto')
+                .' quedó revocado: el enlace ya no sirve y, si estaba dentro, se le cerró la sesión.',
         );
     }
 

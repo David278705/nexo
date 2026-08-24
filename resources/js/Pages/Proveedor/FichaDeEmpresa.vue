@@ -13,6 +13,7 @@ import Modal from "@/Components/Modal.vue";
 import Pestanas from "@/Components/Pestanas.vue";
 import Selector from "@/Components/Selector.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
+import { usarAccionPorFila } from "@/Utilidades/usarAccionPorFila.js";
 
 /*
  * La ficha de una empresa cliente (documento 4, 4.3).
@@ -82,31 +83,23 @@ const columnasDeUsuarios = [
     { clave: "acciones", titulo: "Acciones" },
 ];
 
-const reenviandoInvitacion = ref(null);
+const { activo: reenviandoInvitacion, ejecutar: ejecutarReenvio } =
+    usarAccionPorFila();
 
 function reenviarInvitacion(usuario) {
-    reenviandoInvitacion.value = usuario.id;
-    router.post(
+    ejecutarReenvio(
+        usuario.id,
         `/proveedor/empresas/${props.empresa.id}/usuarios/${usuario.id}/invitacion`,
-        {},
-        {
-            preserveScroll: true,
-            onFinish: () => (reenviandoInvitacion.value = null),
-        },
     );
 }
 
-const restableciendoContrasena = ref(null);
+const { activo: restableciendoContrasena, ejecutar: ejecutarRestablecimiento } =
+    usarAccionPorFila();
 
 function restablecerContrasena(usuario) {
-    restableciendoContrasena.value = usuario.id;
-    router.post(
+    ejecutarRestablecimiento(
+        usuario.id,
         `/proveedor/empresas/${props.empresa.id}/usuarios/${usuario.id}/contrasena`,
-        {},
-        {
-            preserveScroll: true,
-            onFinish: () => (restableciendoContrasena.value = null),
-        },
     );
 }
 

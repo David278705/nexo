@@ -11,6 +11,7 @@ import Modal from "@/Components/Modal.vue";
 import Pestanas from "@/Components/Pestanas.vue";
 import Selector from "@/Components/Selector.vue";
 import TablaDatos from "@/Components/TablaDatos.vue";
+import { usarAccionPorFila } from "@/Utilidades/usarAccionPorFila.js";
 
 /*
  * Los catálogos del sistema (documento 4, capítulo 8).
@@ -180,26 +181,21 @@ function quitarFestivo() {
     });
 }
 
-const alternandoEntidad = ref(null);
+const { activo: alternandoEntidad, ejecutar: ejecutarAlternarEntidad } =
+    usarAccionPorFila();
 
 function alternarEntidad(fila) {
-    alternandoEntidad.value = fila.id;
-    router.post(
+    ejecutarAlternarEntidad(
+        fila.id,
         `${RUTA}/entidades/${props.viendo.entidad}/${fila.id}/estado`,
-        {},
-        { preserveScroll: true, onFinish: () => (alternandoEntidad.value = null) },
     );
 }
 
-const alternandoCiudad = ref(null);
+const { activo: alternandoCiudad, ejecutar: ejecutarAlternarCiudad } =
+    usarAccionPorFila();
 
 function alternarCiudad(fila) {
-    alternandoCiudad.value = fila.id;
-    router.post(
-        `${RUTA}/ciudades/${fila.id}/estado`,
-        {},
-        { preserveScroll: true, onFinish: () => (alternandoCiudad.value = null) },
-    );
+    ejecutarAlternarCiudad(fila.id, `${RUTA}/ciudades/${fila.id}/estado`);
 }
 
 function cerrar() {

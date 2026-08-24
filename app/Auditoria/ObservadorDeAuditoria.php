@@ -5,7 +5,10 @@ namespace App\Auditoria;
 use App\Models\Acceso;
 use App\Models\AlertaEnviada;
 use App\Models\Auditoria;
+use App\Models\EjecucionDeAlertas;
+use App\Models\ErrorDeAplicacion;
 use App\Models\Invitacion;
+use App\Models\MetricaMensual;
 use App\Models\NotaCliente;
 use App\Models\SaldoEnCache;
 use App\Models\Tenant;
@@ -66,6 +69,16 @@ class ObservadorDeAuditoria
         // una línea sin autor por empleado y por noche contando que un número
         // derivado se volvió a derivar.
         SaldoEnCache::class,
+
+        // Las tres tablas de F5-06 son del sistema entero, no de una empresa:
+        // no tienen `tenant_id` y las escribe un proceso en consola, no una
+        // persona. Sin esta exclusión, `empresaDe()` y `Auth::id()` caen a
+        // null y cada error, cada corrida nocturna y cada cierre de mes deja
+        // una línea de auditoría sin autor y sin empresa — la misma razón que
+        // ya justifica `AlertaEnviada` y `SaldoEnCache` arriba.
+        ErrorDeAplicacion::class,
+        EjecucionDeAlertas::class,
+        MetricaMensual::class,
     ];
 
     /**

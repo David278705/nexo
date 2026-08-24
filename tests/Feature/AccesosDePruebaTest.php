@@ -1,14 +1,15 @@
 <?php
 
 use App\Http\Controllers\Acceso\AccesoDePruebaController;
+use App\Http\Middleware\CerrarAccesoDePruebaNoVigente;
 use App\Models\AccesoDePrueba;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Proveedor\AccesosDePrueba;
 use App\Proveedor\AmbienteDeDemostracion;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /**
  * Los accesos de prueba con vigencia limitada (F5-03, documento 4, capítulo
@@ -16,8 +17,8 @@ use Illuminate\Support\Str;
  * que lo explore solo. David genera el acceso».
  *
  * Lo que se comprueba: el enlace deja entrar mientras es vigente, deja de
- * servir en cuanto vence o se revoca, y una visita ya abierta se cierra sola
- * si el acceso vence a la mitad —no solo se comprueba al entrar—.
+ * servir en cuanto vence o se revoca, y una visita ya abierta se cierra sola en
+ * los dos casos —la vigencia no se comprueba solo al entrar—.
  */
 beforeEach(function () {
     $this->demo = Tenant::factory()->ambienteDeDemo()->create();
@@ -72,14 +73,31 @@ it('un token que no corresponde a ningún acceso no deja entrar', function () {
 });
 
 it('cierra la sesión de una visita ya abierta cuando el acceso vence a la mitad', function () {
-    $usuario = app(AmbienteDeDemostracion::class)->usuarioDeDemostracion();
+    $acceso = AccesoDePrueba::factory()->for($this->demo, 'tenant')->vencido()->create();
 
-    $respuesta = $this
-        ->withSession(['acceso_de_prueba_expira_en' => Carbon::now()->subMinute()->toIso8601String()])
-        ->actingAs($usuario)
-        ->get('/');
+    $respuesta = visitaAbiertaCon($acceso)->get('/');
 
     $respuesta->assertRedirect(route('acceso'));
+    $respuesta->assertSessionHas('estado', CerrarAccesoDePruebaNoVigente::VENCIDO);
+    expect(Auth::check())->toBeFalse();
+});
+
+/*
+ * La otra mitad de la revocación. Cortar el enlace no sirve de nada si el
+ * prospecto que ya está dentro sigue navegando: el panel diría «revocado»
+ * mientras él mira el ambiente de demostración.
+ */
+it('cierra la sesión de una visita ya abierta en cuanto se revoca el acceso', function () {
+    $acceso = AccesoDePrueba::factory()->for($this->demo, 'tenant')->create();
+
+    visitaAbiertaCon($acceso)->get('/')->assertOk();
+
+    app(AccesosDePrueba::class)->revocar($acceso);
+
+    $respuesta = visitaAbiertaCon($acceso)->get('/');
+
+    $respuesta->assertRedirect(route('acceso'));
+    $respuesta->assertSessionHas('estado', CerrarAccesoDePruebaNoVigente::REVOCADO);
     expect(Auth::check())->toBeFalse();
 });
 
@@ -102,6 +120,18 @@ it('revocar corta el acceso antes de su vencimiento', function () {
 
     $respuesta->assertRedirect(route('acceso'));
 });
+
+/**
+ * Una visita ya abierta con ese acceso: la sesión trae su marca y el usuario
+ * autenticado es el que comparten todos los accesos de prueba, que es
+ * exactamente lo que deja `AccesoDePruebaController::entrar()`.
+ */
+function visitaAbiertaCon(AccesoDePrueba $acceso): TestCase
+{
+    return test()
+        ->withSession([CerrarAccesoDePruebaNoVigente::CLAVE => (int) $acceso->getKey()])
+        ->actingAs(app(AmbienteDeDemostracion::class)->usuarioDeDemostracion());
+}
 
 /**
  * El token en claro no se puede reconstruir desde el modelo —solo se guarda

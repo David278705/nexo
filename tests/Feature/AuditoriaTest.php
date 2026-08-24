@@ -4,9 +4,12 @@ use App\Auditoria\AccionAuditada;
 use App\Auditoria\AuditoriaInmutable;
 use App\Models\Acceso;
 use App\Models\Auditoria;
+use App\Models\EjecucionDeAlertas;
 use App\Models\Eps;
+use App\Models\ErrorDeAplicacion;
 use App\Models\Incapacidad;
 use App\Models\Invitacion;
+use App\Models\MetricaMensual;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Vinculacion;
@@ -203,6 +206,21 @@ it('no audita el registro de accesos ni las invitaciones', function () {
     ]);
 
     expect(Auditoria::query()->whereIn('modelo', [Acceso::class, Invitacion::class])->count())->toBe(0);
+});
+
+it('no audita los errores de aplicación, las ejecuciones de alertas ni las métricas mensuales', function () {
+    // Las tres son del sistema entero, no de una empresa: no tienen tenant_id
+    // y las escribe un proceso en consola, no una persona. Sin la exclusión,
+    // cada línea quedaría con tenant_id y user_id en blanco.
+    ErrorDeAplicacion::factory()->create();
+    EjecucionDeAlertas::factory()->create();
+    MetricaMensual::factory()->create();
+
+    expect(Auditoria::query()->whereIn('modelo', [
+        ErrorDeAplicacion::class,
+        EjecucionDeAlertas::class,
+        MetricaMensual::class,
+    ])->count())->toBe(0);
 });
 
 it('no permite editar una línea de auditoría', function () {

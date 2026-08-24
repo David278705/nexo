@@ -2,7 +2,7 @@
 
 use App\Autorizacion\SeccionDelPanel;
 use App\Http\Middleware\BloquearEmpresaSuspendida;
-use App\Http\Middleware\CerrarAccesoDePruebaExpirado;
+use App\Http\Middleware\CerrarAccesoDePruebaNoVigente;
 use App\Http\Middleware\EntornoDeSoloLectura;
 use App\Http\Middleware\FueraDeUnaVisita;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -40,9 +40,9 @@ return Application::configure(basePath: dirname(__DIR__))
             remove: [SubstituteBindings::class],
             append: [
                 // Antes de resolver el tenant: si la sesión es la de un acceso
-                // de prueba ya vencido, la cierra y no hay usuario del que
-                // resolver nada.
-                CerrarAccesoDePruebaExpirado::class,
+                // de prueba que ya venció o que se revocó, la cierra y no hay
+                // usuario del que resolver nada.
+                CerrarAccesoDePruebaNoVigente::class,
                 ResolverTenant::class,
                 SubstituteBindings::class,
                 // Después de resolver el tenant, porque pregunta por la

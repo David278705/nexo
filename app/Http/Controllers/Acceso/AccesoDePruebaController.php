@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Acceso;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\CerrarAccesoDePruebaNoVigente;
 use App\Models\AccesoDePrueba;
 use App\Proveedor\AccesosDePrueba;
 use App\Proveedor\AmbienteDeDemostracion;
@@ -21,9 +22,10 @@ use Illuminate\Support\Facades\Auth;
  * que se registra en cada entrada es solo `ultimo_uso_en`.
  *
  * **La vigencia se comprueba aquí y de nuevo en cada petición.** Aquí decide
- * si el enlace todavía sirve para entrar; `CerrarAccesoDePruebaExpirado` es
- * quien cierra la sesión que ya entró el día en que el acceso vence a la
- * mitad de una visita.
+ * si el enlace todavía sirve para entrar; `CerrarAccesoDePruebaNoVigente` es
+ * quien cierra la sesión que ya entró cuando el acceso vence —o lo revocan— a
+ * la mitad de una visita. Por eso lo que se deja en la sesión es **cuál** es el
+ * acceso y no cuándo vencía: una fecha copiada no se entera de la revocación.
  */
 class AccesoDePruebaController extends Controller
 {
@@ -53,8 +55,8 @@ class AccesoDePruebaController extends Controller
         Auth::login($this->ambiente->usuarioDeDemostracion());
         $peticion->session()->regenerate();
         $peticion->session()->put(
-            'acceso_de_prueba_expira_en',
-            $acceso->getAttribute('expira_en')->toIso8601String(),
+            CerrarAccesoDePruebaNoVigente::CLAVE,
+            (int) $acceso->getKey(),
         );
 
         $this->accesos->registrarUso($acceso);

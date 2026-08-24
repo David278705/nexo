@@ -239,7 +239,8 @@ const columnas = [
                 Vas a revocar el acceso de
                 <strong>{{ porRevocar?.nombreProspecto }}</strong>. El enlace
                 deja de servir de inmediato, así el prospecto todavía no lo
-                haya usado.
+                haya usado, y si está dentro ahora mismo se le cierra la sesión
+                en la siguiente pantalla que abra.
             </p>
 
             <template #pie>

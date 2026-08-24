@@ -1,11 +1,12 @@
 <script setup>
-import { Head, router } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { Head } from "@inertiajs/vue3";
+import { computed } from "vue";
 import ArmazonProveedor from "@/Components/Proveedor/ArmazonProveedor.vue";
 import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
 import EstadoVacio from "@/Components/EstadoVacio.vue";
 import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
+import { usarAccionPorFila } from "@/Utilidades/usarAccionPorFila.js";
 
 /*
  * Salud del sistema (documento 4, capítulo 9): «lo que hay que mirar cada
@@ -40,16 +41,11 @@ const procesoDeHoy = computed(() => {
     };
 });
 
-const reintentando = ref(null);
+const { activo: reintentando, ejecutar: ejecutarReintento } =
+    usarAccionPorFila();
 
 function reintentar(uuid) {
-    reintentando.value = uuid;
-
-    router.post(
-        `/proveedor/salud/cola/${uuid}/reintentar`,
-        {},
-        { preserveScroll: true, onFinish: () => (reintentando.value = null) },
-    );
+    ejecutarReintento(uuid, `/proveedor/salud/cola/${uuid}/reintentar`);
 }
 </script>
 
