@@ -1684,7 +1684,7 @@ filtrar por acción en vez de fiarse del orden para no toparse con eso.
 > correos que por ley no corresponden—, y desde el final de la lista no se habría hecho hasta terminar
 > el proyecto entero.
 
-### [ ] REV-06 · Acotar la regla de «la fecha entre paréntesis»
+### [!] REV-06 · Acotar la regla de «la fecha entre paréntesis» — bloqueada: David no ha elegido entre las dos opciones
 
 `.claude/rules/30-interfaz.md` la enuncia para **toda** la interfaz: «Toda referencia temporal lleva
 la fecha entre paréntesis: "Mañana (14 de junio)"». Su fuente —documento 1, 9.1— la enuncia solo para

@@ -1,54 +1,32 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-24 · `REV-04` (pantalla de auditoría)
-**Verificación:** verde — Pint, PHPStan sin errores, **1.181** pruebas de Pest, build y **385** de
-Vitest.
-**Siguiente tarea:** `REV-06` — Acotar la regla de «la fecha entre paréntesis». Es una decisión de
-David sobre el texto de una regla, no trabajo de producto: la tarea en sí queda lista para
-implementarse en cuanto él decida entre las dos opciones que ya están escritas en el backlog.
+**Última sesión:** 2026-08-24 · `REV-06` (bloqueada)
+**Verificación:** verde — sin cambios de código esta sesión; el estado sigue siendo el de `REV-04`:
+Pint, PHPStan sin errores, 1.181 pruebas de Pest, build y 385 de Vitest.
+**Siguiente tarea:** No queda ninguna `[ ]` en el backlog. Las dos únicas pendientes están
+bloqueadas: `F3-06b` (operación de David, no código), `F6-07` (operación de David, no código) y
+ahora `REV-06` (decisión de David sobre el texto de una regla). El backlog de tareas de producto
+está agotado hasta que David resuelva alguna de las tres.
 
 ## Qué se hizo
 
-`REV-04` le dio pantalla al módulo de auditoría, el último `SeccionPendiente` del entorno del
-cliente. La sesión llegó con trabajo ya empezado sin comitear —`ListadoDeAuditoria`,
-`ModuloDelRegistro`, `AuditoriaController` y las rutas y pruebas de estructura ya ajustadas—; esta
-sesión lo completó, lo verificó y lo cerró.
-
-- **`Auditoria/Index.vue`, la pieza que faltaba.** Sobre el mismo armazón que Alertas: cuatro
-  filtros —rango de fechas, usuario, módulo y acción—, tabla con `useListado` y panel lateral con el
-  detalle completo, campo por campo, de lo que cambió. No hay botón de crear ni columna de acciones:
-  es de solo lectura, como pide la tarea.
-- **El bucle de `SeccionPendiente` en `routes/web.php` se borró entero.** Con Auditoría cubierta, los
-  once casos de `Modulo` ya tenían todos ruta propia, así que el `foreach` que rellenaba lo que
-  faltaba quedó con una condición que PHPStan marcó como siempre verdadera y un `Route::get()` que
-  nunca se ejecutaba. Era código muerto y no una limpieza aparte: lo dejó muerto el propio cierre de
-  la tarea.
-- **Defecto real encontrado al escribir la prueba del «hecho cuando».** `ListadoDeAuditoria::valorLegible()`
-  solo reconocía una fecha en `AAAA-MM-DD` exacto, pero lo que la auditoría guarda para una columna de
-  fecha no siempre llega así —depende de cómo Eloquent serializó ese valor concreto al detectarlo como
-  «sucio»—, así que editar una vacación de verdad mostraba `2026-07-31T05:00:00.000000Z` en vez de
-  `31/07/2026`. Se amplió el reconocimiento a cualquier prefijo de fecha con hora opcional y se lleva
-  a la zona horaria de la aplicación antes de formatear, para que una marca de tiempo en UTC no
-  corra el día.
-- **`codigo_diagnostico` se comprobó, no se tocó.** El observador ya lo enmascara con `(oculto)` desde
-  F2-04 para cualquier acción —no solo al editar—, así que la propia línea de creación de una
-  incapacidad ya lo trae seguro. La prueba nueva lo comprueba en el HTML de la pantalla y en cada
-  valor de `cambios`.
-- **`componenteDe()` de `FlujoDeNovedadTest.php` no tenía nada que sacarle.** Auditoría nunca fue un
-  módulo del flujo de novedades, así que nunca estuvo en esa lista; la única lista que de verdad tenía
-  pendiente el módulo era `routes/web.php`, y ya se limpió.
-- **`tests/Feature/PantallaDeAuditoriaTest.php`, nuevo.** El «hecho cuando» completo —editar y
-  eliminar una vacación se ven con autor, fecha y valor anterior—, el código de diagnóstico oculto,
-  los tres filtros, el 403 sin el módulo y el aislamiento entre empresas.
+- Se tomó `REV-06`, la primera `[ ]` del backlog. La propia tarea dice, en su propio texto, que es
+  «una decisión de David sobre el texto de una regla, no trabajo de producto», y su «Hecho cuando»
+  ofrece dos redacciones distintas según lo que David elija para `.claude/rules/30-interfaz.md`.
+- Se revisó que la regla siga sin acotar (`.claude/rules/30-interfaz.md` línea 75, sigue diciendo
+  «toda referencia temporal» sin distinguir correos de pantalla) y que ningún documento —tampoco
+  `docs/06-decisiones-pendientes.md`, que no la menciona— registre que David ya haya decidido entre
+  las dos opciones escritas en el backlog.
+- No había nada que implementar sin inventar la decisión: cualquiera de las dos redacciones cambia
+  qué se considera correcto en las ocho pantallas de listado y en el panel de inicio, así que
+  escribirla a criterio propio sería inventar una regla de producto, justo lo que la sesión tiene
+  prohibido.
+- Se marcó `REV-06` como `[!]` en `BACKLOG.md` con el motivo, y no se tomó ninguna tarea siguiente,
+  como manda el procedimiento de bloqueo.
 
 ## Decisiones tomadas
 
-- **La regla de conteo del observador no se tocó.** `codigo_diagnostico` sigue en `OCULTAS`
-  aplicándose a las cuatro acciones, no solo a editar; la pantalla nueva se apoya en eso en vez de
-  volver a decidir qué esconder, como ya decía el comentario de `ListadoDeAuditoria`.
-- **El defecto de `valorLegible()` se arregló ahí mismo, en vez de dejarlo para otra tarea.** Es un
-  error de la misma clase que REV-04 escribió esta sesión, lo encontró la propia prueba del «hecho
-  cuando» de la tarea, y dejarlo roto habría dejado la pantalla mintiendo la fecha de un cambio real.
+- Ninguna. No se implementó código porque la tarea es en sí misma la decisión pendiente.
 
 ## Preguntas para Angela
 
@@ -56,31 +34,40 @@ sesión lo completó, lo verificó y lo cerró.
 
 ## Decisiones para David
 
-- **`REV-06` te espera a ti**, igual que las heredadas de sesiones anteriores — ver el detalle en el
-  historial de `git log` de este archivo si hace falta releerlas: `F6-07` (los cuatro pasos de la
-  restauración de prueba en Railway); los tres nombres del filtro «Estado del contrato»; el texto del
-  correo de prueba de entregabilidad; los textos del correo de obra o labor; el texto del contrato que
-  vence el día del tope; «acumula 3 prórrogas inferiores a un año»; D.12 (no hay número sugerido de
-  referencia para la vigencia de un acceso de prueba); D.4 (rangos de edad y de antigüedad, la única
-  BLOQUEANTE); verificar a mano en un navegador el flujo de F6-06; el menú desplegable en pantallas
-  pequeñas que no atrapa el foco; el mínimo del motivo de una visita al entorno; el umbral de
-  «clientes en riesgo» y la escalera de mora; un contrato a término fijo cargado con prórrogas
+- **`REV-06` sigue esperándote**: elige entre las dos opciones ya escritas en el backlog para
+  `.claude/rules/30-interfaz.md`:
+  - **Opción A (la recomendada, repetida desde F1-13 y F2-11):** la regla de «fecha entre
+    paréntesis» se queda literal solo en los correos de alertas —que es donde el documento 1, 9.1,
+    la exige y donde el código ya la cumple desde F3-02—. En pantalla basta con que la referencia
+    relativa tenga su fecha absoluta visible al lado, en el mismo sitio o en la columna contigua,
+    que es lo que el código ya hace y lo que dibuja el prototipo.
+  - **Opción B:** la regla vale literal también en pantalla. Si se elige esta, `REV-06` deja de ser
+    una tarea de una línea: hay que repasar el panel de inicio y las ocho pantallas de listado
+    agregando la fecha entre paréntesis a cada referencia relativa que hoy no la lleva.
+  - Mientras no se decida, esta tarea seguirá bloqueada y el backlog de producto no tiene ninguna
+    tarea `[ ]` disponible para la próxima sesión automática.
+- Todas las heredadas de sesiones anteriores siguen abiertas — ver el detalle en el historial de
+  `git log` de este archivo si hace falta releerlas: `F6-07` (los cuatro pasos de la restauración de
+  prueba en Railway); los tres nombres del filtro «Estado del contrato»; el texto del correo de
+  prueba de entregabilidad (`F3-06b`); los textos del correo de obra o labor; el texto del contrato
+  que vence el día del tope; «acumula 3 prórrogas inferiores a un año»; D.12 (no hay número sugerido
+  de referencia para la vigencia de un acceso de prueba); D.4 (rangos de edad y de antigüedad, la
+  única BLOQUEANTE); verificar a mano en un navegador el flujo de F6-06; el menú desplegable en
+  pantallas pequeñas que no atrapa el foco; el mínimo del motivo de una visita al entorno; el umbral
+  de «clientes en riesgo» y la escalera de mora; un contrato a término fijo cargado con prórrogas
   anteriores arrancando en cero; la plantilla 1 sin país de expedición; `User`/`Acceso`/`Invitacion`
   sin `SoftDeletes`; los meses comerciales de treinta días; la prórroga mínima (B.3); el fondo de
-  cesantías; la prueba intermitente de `CatalogosTest`; el texto del empleado inactivo; PHP 8.2 contra
-  el 8.3 que pide `CLAUDE.md`; y la frase del prototipo sobre el saldo negativo.
-- **Nueva, anotada para cuando alguien vuelva a tocar el armazón de listados (no es de esta tarea):**
-  `App\Listados\Listado::ordenar()` desempata siempre con `orderBy('id', 'asc')`, sin importar la
-  `direccion` pedida. Con `direccion=desc` y varias filas creadas en el mismo segundo —exactamente lo
-  que pasa en una prueba rápida—, dos filas empatadas en `created_at` terminan en el orden del `id`
-  ascendente, no descendente, así que «lo más reciente primero» deja de ser cierto entre empates. No
-  se corrigió aquí porque REV-04 no lo pedía y es del armazón compartido por las nueve pantallas de
-  listado, no solo de auditoría; la prueba de esta pantalla lo esquivó filtrando por acción en vez de
-  fiarse del orden.
+  cesantías; la prueba intermitente de `CatalogosTest`; el texto del empleado inactivo; PHP 8.2
+  contra el 8.3 que pide `CLAUDE.md`; y la frase del prototipo sobre el saldo negativo.
+- **`App\Listados\Listado::ordenar()` desempata siempre con `orderBy('id', 'asc')`**, sin importar la
+  `direccion` pedida, anotado desde `REV-04`: con `direccion=desc` y filas creadas en el mismo
+  segundo, «lo más reciente primero» deja de ser cierto entre empates. Sigue sin tarea propia porque
+  es del armazón compartido por las nueve pantallas de listado.
 
 ## Notas para la próxima sesión
 
-- **Toma `REV-06`.** Es una línea de `.claude/rules/30-interfaz.md` que depende de una decisión de
-  David entre dos opciones ya escritas en el propio backlog; si para cuando se retome sigue sin
-  decidir, marca `[!]` con el motivo y para ahí, como manda el procedimiento.
+- **El backlog no tiene ninguna `[ ]` pendiente.** Antes de repetir esta búsqueda, revisa si David
+  dejó resuelta alguna de las tres bloqueadas (`REV-06`, `F3-06b`, `F6-07`) en este archivo o en el
+  propio `BACKLOG.md`. Si ninguna se resolvió, no hay tarea de producto que tomar: dilo y termina,
+  como pide el punto 1 del procedimiento cuando no queda ninguna `[ ]`.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
