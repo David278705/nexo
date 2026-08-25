@@ -105,28 +105,6 @@ it('muestra en el encabezado la empresa donde se está trabajando', function () 
         );
 });
 
-it('navega a la sección de cada módulo que el usuario tiene', function () {
-    $empresa = Tenant::factory()->create();
-    $usuario = usuarioDe($empresa, Rol::Superadministrador);
-
-    foreach (Modulo::cases() as $modulo) {
-        // Todos menos Auditoría ya tienen pantalla propia; esa sigue siendo
-        // sección pendiente hasta su tarea.
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Terminaciones, Modulo::Alertas, Modulo::Configuracion], true)) {
-            continue;
-        }
-
-        $this->actingAs($usuario)
-            ->get($modulo->url())
-            ->assertOk()
-            ->assertInertia(fn ($pagina) => $pagina
-                ->component('SeccionPendiente')
-                ->where('titulo', $modulo->etiqueta())
-                ->etc()
-            );
-    }
-});
-
 it('lleva la sección de empleados a su listado, no a una sección pendiente', function () {
     $empresa = Tenant::factory()->create();
     $usuario = usuarioDe($empresa, Rol::Superadministrador);
@@ -205,6 +183,16 @@ it('lleva la sección de contratos a su listado, no a una sección pendiente', f
         ->get(Modulo::Contratos->url())
         ->assertOk()
         ->assertInertia(fn ($pagina) => $pagina->component('Contratos/Index')->etc());
+});
+
+it('lleva la sección de auditoría a su listado, no a una sección pendiente', function () {
+    $empresa = Tenant::factory()->create();
+    $usuario = usuarioDe($empresa, Rol::Superadministrador);
+
+    $this->actingAs($usuario)
+        ->get(Modulo::Auditoria->url())
+        ->assertOk()
+        ->assertInertia(fn ($pagina) => $pagina->component('Auditoria/Index')->etc());
 });
 
 it('devuelve 403 en la sección real de un módulo sin permiso', function () {

@@ -9,6 +9,7 @@ use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
 use App\Http\Controllers\Acceso\SesionController;
 use App\Http\Controllers\AlertaController;
+use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
@@ -311,6 +312,16 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
+     * Auditoría (REV-04, documento 1, 8.2). Una sola dirección y de solo
+     * lectura, como Alertas: es el registro de lo que ya se hizo, y eso no
+     * se corrige desde una pantalla.
+     */
+    Route::middleware('modulo:'.Modulo::Auditoria->value)->group(function () {
+        Route::get('/auditoria', [AuditoriaController::class, 'index'])
+            ->name(Modulo::Auditoria->nombreDeRuta());
+    });
+
+    /*
      * Configuración (documento 3, sección 5.7). El módulo es solo del
      * superadministrador y eso ya lo decide `PoliticaDeModulos`: aquí basta
      * declararlo como cualquier otro.
@@ -325,17 +336,6 @@ Route::middleware('auth')->group(function () {
             ->name('configuracion.parametros');
     });
 
-    foreach (Modulo::cases() as $modulo) {
-        if (in_array($modulo, [Modulo::Inicio, Modulo::Empleados, Modulo::Contratos, Modulo::Incapacidades, Modulo::Vacaciones, Modulo::Licencias, Modulo::Movimientos, Modulo::Terminaciones, Modulo::Alertas, Modulo::Configuracion], true)) {
-            continue;
-        }
-
-        Route::get($modulo->url(), fn () => Inertia::render('SeccionPendiente', [
-            'titulo' => $modulo->etiqueta(),
-        ]))
-            ->middleware('modulo:'.$modulo->value)
-            ->name($modulo->nombreDeRuta());
-    }
 });
 
 /*

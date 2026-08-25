@@ -207,6 +207,7 @@ describe("Las pantallas de listado no reescriben el armazón", () => {
         "resources/js/Pages/Movimientos/Index.vue",
         "resources/js/Pages/Terminaciones/Index.vue",
         "resources/js/Pages/Alertas/Index.vue",
+        "resources/js/Pages/Auditoria/Index.vue",
     ];
 
     const COPIADO = [

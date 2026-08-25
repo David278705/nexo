@@ -1629,7 +1629,7 @@ ninguna línea— y cuatro en `AuditoriaTest.php` para el mecanismo: se abre den
 fuera de ella y sin ninguna empresa en contexto, y se vuelve a cerrar aunque la función que ejecuta
 falle.
 
-### [ ] REV-04 · Pantalla de auditoría
+### [x] REV-04 · Pantalla de auditoría
 
 El módulo `Auditoria` está en el menú, la tabla y el observador existen desde F0-08, y **ninguna tarea
 del backlog le da pantalla**: es el último `SeccionPendiente` del entorno del cliente y no hay nada en
@@ -1653,6 +1653,31 @@ valor anterior; el módulo sale de las cuatro listas de exclusión compartidas �
 `useListado.test.js`—; y hay prueba de que el código de diagnóstico no aparece.
 
 **Fuente:** `docs/02-arquitectura-y-datos.md` 7.2 · `docs/03-diseno-e-interfaz.md` cap. 4
+
+Hecho: `ListadoDeAuditoria` sobre el armazón de `Listado` (REV-01/02), con sus cuatro filtros —rango
+de fechas, usuario, módulo y acción—, `ModuloDelRegistro` traduciendo cada modelo auditado a la
+sección del menú donde vive (`Persona` y `Vinculacion` se reparten entre Empleados y Contratos, como
+no tienen módulo propio), `AuditoriaController` y la pantalla `Auditoria/Index` sobre `useListado`
+(REV-02), con el detalle —valor anterior y nuevo, campo por campo— en el panel lateral, igual que el
+de Alertas. **El módulo salió de las tres listas de exclusión que seguían vivas** —`routes/web.php`,
+que además dejó sin ningún caso el bucle de `SeccionPendiente` porque ya no queda ningún módulo sin
+pantalla propia, y se borró entero; y `EstructuraTest.php`, con su caso nuevo—; `componenteDe()` de
+`FlujoDeNovedadTest.php` nunca tuvo a Auditoría en su lista porque no es un módulo del flujo de
+novedades, así que no había nada que sacarle. **`codigo_diagnostico` sigue oculto**: como el
+observador ya lo enmascara con `(oculto)` desde F2-04 para cualquier acción, no solo al editar, la
+propia línea de creación de una incapacidad lo trae seguro y hay prueba de que no aparece ni en el
+HTML de la pantalla ni en ningún valor de `cambios`. **Se encontró y se corrigió un defecto real al
+escribir la prueba del «hecho cuando»**: `valorLegible()` solo reconocía una fecha en `AAAA-MM-DD`
+exacto, pero el valor que guarda la auditoría para una columna de fecha no siempre llega así —depende
+de cómo Eloquent la serializó para el registro dirty en ese momento concreto—, así que una edición
+real mostraba `2026-07-31T05:00:00.000000Z` en vez de `31/07/2026`. Se amplió el reconocimiento a
+cualquier prefijo de fecha con hora opcional, y se lleva a la zona horaria de la aplicación antes de
+formatear para que una marca de tiempo en UTC no cambie el día. **Nota para la próxima sesión que
+toque el armazón de listados:** el desempate de `Listado::ordenar()` es siempre `orderBy('id', 'asc')`
+sin importar la dirección pedida; con `direccion=desc` y varias filas creadas en el mismo segundo, dos
+elementos empatados en `created_at` terminan en el orden del `id` ascendente, no descendente. No se
+tocó aquí —es del armazón compartido y REV-04 no lo pedía—, pero la prueba de esta pantalla tuvo que
+filtrar por acción en vez de fiarse del orden para no toparse con eso.
 
 > `REV-05` estaba aquí y **se movió delante de F4-04** el 23 de agosto de 2026. El motivo: es la única
 > tarea pendiente que corrige algo que el sistema está haciendo mal **ahora mismo** —mandar tres

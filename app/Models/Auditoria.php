@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property AccionAuditada $accion
  * @property array<string, mixed>|null $valores_anteriores
  * @property array<string, mixed>|null $valores_nuevos
+ * @property-read User|null $usuario
  */
 class Auditoria extends Model
 {

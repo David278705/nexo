@@ -30,4 +30,17 @@ enum AccionAuditada: string
             self::Restaurado => 'Restaurado',
         };
     }
+
+    /**
+     * El tono de la etiqueta en la pantalla de auditoría (REV-04), como los del
+     * documento 3, sección 3.4: rojo solo cuando algo se elimina de verdad.
+     */
+    public function tono(): string
+    {
+        return match ($this) {
+            self::Creado, self::Restaurado => 'exito',
+            self::Editado => 'advertencia',
+            self::Eliminado => 'error',
+        };
+    }
 }
