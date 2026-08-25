@@ -28,6 +28,23 @@ enum TipoDeMovimiento: string
     }
 
     /**
+     * El nombre del tipo con su artículo, para meterlo dentro de una frase:
+     * «Vas a eliminar **el aumento salarial** del 15 de agosto de 2026 de…».
+     *
+     * Existe porque el género no se deduce de la etiqueta: «el aumento
+     * salarial» pero «la promoción». Armar el artículo en
+     * `ConfirmacionDeBorrado` obligaría a que la frase supiera de gramática de
+     * un enumerado que no es suyo.
+     */
+    public function conArticulo(): string
+    {
+        return match ($this) {
+            self::AumentoSalarial => 'el aumento salarial',
+            self::Promocion => 'la promoción',
+        };
+    }
+
+    /**
      * Lo que el tipo significa, entre paréntesis en el selector del formulario:
      * «Aumento salarial — mismo cargo». Son los dos textos del prototipo.
      */

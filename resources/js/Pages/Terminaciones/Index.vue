@@ -2,6 +2,7 @@
 import { Head, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import { TODOS, useListado } from "@/Utilidades/useListado";
+import { useNovedad } from "@/Utilidades/useNovedad";
 import Armazon from "@/Components/Armazon.vue";
 import Aviso from "@/Components/Aviso.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
@@ -9,6 +10,7 @@ import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
 import Etiqueta from "@/Components/Etiqueta.vue";
+import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
 import ModalDeNovedad from "@/Components/ModalDeNovedad.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 import Paginacion from "@/Components/Paginacion.vue";
@@ -35,6 +37,10 @@ import TablaDatos from "@/Components/TablaDatos.vue";
  *
  * La categoría de rotación de la tabla tampoco se calcula aquí: llega en la
  * fila, con su tono, deducida del tipo de salida (documento 1, 7.4).
+ *
+ * Desde REV-03 la salida también **se corrige y se elimina**, y eliminarla no
+ * es quitar una fila: devuelve al empleado a activo y con él vuelven todas sus
+ * alertas. La consecuencia la escribe el servidor y se lee antes de confirmar.
  */
 const props = defineProps({
     terminaciones: { type: Object, required: true },
@@ -43,6 +49,7 @@ const props = defineProps({
     tieneFiltros: { type: Boolean, default: false },
     opciones: { type: Object, required: true },
     avisoDeTerminacion: { type: String, default: null },
+    novedad: { type: Object, default: null },
 });
 
 const columnas = [
@@ -53,6 +60,7 @@ const columnas = [
     { clave: "tipo", titulo: "Tipo de salida" },
     { clave: "motivo", titulo: "Motivo" },
     { clave: "rotacion", titulo: "Rotación" },
+    { clave: "acciones", titulo: "Acciones" },
 ];
 
 const { pedir, ordenar, quitar, limpiar, urlExportar, textoExportar } =
@@ -80,10 +88,12 @@ const motivosDelFiltro = computed(() => [
 // El título de los cinco módulos lo decide `TipoDeNovedad` en el servidor, y
 // llega en la prop compartida `flujoDeNovedad`.
 const flujo = computed(() => usePage().props.flujoDeNovedad);
-const titulo = computed(
-    () =>
-        flujo.value.tipos.find((tipo) => tipo.clave === "terminacion")?.titulo ??
-        "Registrar terminación",
+const clase = computed(() =>
+    flujo.value.tipos.find((tipo) => tipo.clave === "terminacion"),
+);
+const titulo = computed(() => clase.value?.titulo ?? "Registrar terminación");
+const tituloEdicion = computed(
+    () => clase.value?.tituloEdicion ?? "Editar terminación",
 );
 
 const abierto = ref(false);
@@ -128,11 +138,25 @@ const puedeGuardar = computed(
  * Al cambiar el tipo de salida, el motivo anterior deja de tener sentido: los
  * de un tipo no son los de otro. Si el tipo trae motivo automático se rellena
  * solo; si no, el campo vuelve a estar sin elegir.
+ *
+ * **Se pregunta si el motivo sigue siendo válido en vez de borrarlo siempre**, y
+ * no es una optimización: al abrir la corrección de una salida (REV-03) el
+ * formulario recibe el tipo y el motivo guardados, y borrar el motivo por el
+ * simple hecho de que el tipo acaba de llegar dejaría vacío el campo del
+ * registro que se está corrigiendo.
  */
 watch(
     () => form.tipo_salida,
     () => {
-        form.motivo = motivoAutomatico.value ?? "";
+        if (motivoAutomatico.value !== null) {
+            form.motivo = motivoAutomatico.value;
+
+            return;
+        }
+
+        if (!(dependencia.value?.motivos ?? []).includes(form.motivo)) {
+            form.motivo = "";
+        }
     },
 );
 
@@ -161,14 +185,38 @@ function guardar() {
 }
 
 /*
+ * Corregir y eliminar (REV-03). El mismo formulario y el mismo modal del
+ * registro, con los valores puestos; la consecuencia del borrado —que el
+ * empleado vuelve a estar activo y a recibir alertas— la escribe el servidor.
+ */
+const {
+    editando,
+    borrando,
+    borradoAbierto,
+    enviando: eliminando,
+    abrirEdicion,
+    abrirBorrado,
+    cerrar: cerrarNovedad,
+    guardarEdicion,
+    confirmarBorrado,
+} = useNovedad({
+    ruta: "/terminaciones",
+    form,
+    novedad: () => props.novedad,
+});
+
+/*
  * En cuanto el modal resuelve al empleado se pide la frase de la confirmación,
  * que lleva su nombre. Mismo patrón de recarga parcial que la situación actual
  * del salario en movimientos: el texto lo escribe el servidor.
+ *
+ * Al corregir no se pide: el aviso cuenta lo que va a pasar al registrar la
+ * salida, y con la salida ya registrada no queda nada que advertir.
  */
 watch(
     () => form.vinculacion_id,
     (vinculacion_id) => {
-        if (!vinculacion_id) {
+        if (!vinculacion_id || editando.value) {
             return;
         }
 
@@ -181,6 +229,36 @@ watch(
         });
     },
 );
+
+/*
+ * Registrar y corregir son el mismo modal, igual que en los otros cuatro
+ * módulos del flujo: uno solo montado, que sabe cuál de las dos cosas hace.
+ */
+const modalAbierto = computed(() => abierto.value || editando.value !== null);
+const tituloDelModal = computed(() =>
+    editando.value ? tituloEdicion.value : titulo.value,
+);
+
+function cerrarElModal() {
+    if (editando.value) {
+        cerrarNovedad();
+        form.reset();
+
+        return;
+    }
+
+    cerrarModal();
+}
+
+function guardarElModal() {
+    if (editando.value) {
+        guardarEdicion();
+
+        return;
+    }
+
+    guardar();
+}
 
 const confirmacion = computed(() => usePage().props.estado ?? "");
 const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
@@ -279,6 +357,32 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                     <Etiqueta :tono="fila.tono">{{ fila.rotacion }}</Etiqueta>
                 </template>
 
+                <!--
+                    Corregir y eliminar (REV-03). Aquí no hace falta la guardia
+                    del «más reciente» de movimientos: un empleado tiene una
+                    sola salida registrada, así que la que se ve es siempre la
+                    última. Ninguno de los dos es un botón rojo suelto en la
+                    tabla: el destructivo vive dentro de la confirmación.
+                -->
+                <template #celda-acciones="{ fila }">
+                    <div class="flex items-center gap-1">
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirEdicion(fila)"
+                        >
+                            Editar
+                        </Boton>
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirBorrado(fila)"
+                        >
+                            Eliminar
+                        </Boton>
+                    </div>
+                </template>
+
                 <template #accion-vacio>
                     <Boton
                         v-if="tieneFiltros"
@@ -310,15 +414,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
         </div>
 
         <ModalDeNovedad
-            :abierto="abierto"
-            :titulo="titulo"
+            :abierto="modalAbierto"
+            :titulo="tituloDelModal"
             :flujo="flujo"
             :empleado="empleadoDeNovedad"
+            :edicion="editando"
             :enviando="form.processing"
             :deshabilitado="!puedeGuardar"
-            @cerrar="cerrarModal"
+            @cerrar="cerrarElModal"
             @seleccionado="seleccionado"
-            @guardar="guardar"
+            @guardar="guardarElModal"
         >
             <div class="grid gap-4 sm:grid-cols-2">
                 <CampoFecha
@@ -351,9 +456,27 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 />
             </div>
 
-            <Aviso v-if="avisoDeTerminacion" tono="advertencia" class="mt-4">
+            <Aviso
+                v-if="avisoDeTerminacion && !editando"
+                tono="advertencia"
+                class="mt-4"
+            >
                 {{ avisoDeTerminacion }}
             </Aviso>
         </ModalDeNovedad>
+
+        <!--
+            La confirmación del documento 3, 2.4, con la consecuencia ya
+            escrita: «Carlos Ramírez volverá a estar activo y a recibir
+            alertas». La frase entera llega del servidor.
+        -->
+        <ModalDeBorrado
+            :abierto="borradoAbierto"
+            titulo="Eliminar terminación"
+            :mensaje="borrando?.confirmacion ?? ''"
+            :enviando="eliminando"
+            @cerrar="cerrarNovedad"
+            @confirmar="confirmarBorrado"
+        />
     </Armazon>
 </template>

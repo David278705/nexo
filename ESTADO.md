@@ -1,11 +1,30 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-24 · Tarea F6-08 (revisión final)
-**Verificación:** verde — Pint, PHPStan sin errores, **1.143** pruebas de Pest, build y **368** de Vitest.
-**Siguiente tarea:** REV-03 · Editar y eliminar movimientos y terminaciones.
+**Última sesión:** 2026-08-24 · REV-03 (editar y eliminar movimientos y terminaciones), cerrada a mano
+por David después de que el bucle se cortara por el límite de uso a mitad del trabajo.
+**Verificación:** verde — Pint, PHPStan sin errores, **1.166** pruebas de Pest, build y **384** de Vitest.
+**Siguiente tarea:** REV-07 · La restauración nocturna llena la auditoría del ambiente de demostración.
 
-**El backlog de las seis fases está terminado.** Quedan cuatro tareas `REV-` y dos `[!]` que no son
-código: F3-06b (entregabilidad real) y F6-07 (operación, bloqueada por A.5).
+**El backlog de las seis fases está terminado.** Quedan tres tareas `REV-` y dos `[!]` que no son
+código: F3-06b (entregabilidad real, la hace David) y F6-07 (operación, **ya desbloqueada** — A.5 se
+resolvió con Railway el 23 de agosto, ver más abajo).
+
+## Cómo quedó REV-03, cerrada fuera del bucle automático
+
+El backend, sus `FormRequest` y las pruebas de Pest —incluidas las dos nuevas de
+`AislamientoTest.php`— ya estaban completos y en verde cuando la sesión se cortó: el registro de esa
+vuelta decía literalmente «You've hit your session limit · resets 7:20pm», una frase que
+`scripts/vibe.ps1` no tenía en su lista de patrones, así que el script la reportó como un error
+genérico de código 1 en vez de la pausa normal por límite de uso. **Ya está corregida** —se agregó
+`session limit` a `$patronLimite`— para que la próxima vez lo diga bien.
+
+Lo único que faltaba era el frontend: una prueba de Vitest en `Terminaciones/Index.test.js` buscaba el
+campo «Tipo de salida» en todo el documento en vez de dentro del modal abierto, y como la barra de
+filtros tiene un campo con la misma etiqueta, encontraba ese en vez del formulario de edición
+—devolviendo siempre «todos»—. **Era un defecto de la prueba, no del componente**: el componente ya
+guardaba y mostraba bien el tipo y el motivo. Corregido acotando la búsqueda al `[role="dialog"]`
+cuando hay uno abierto, siguiendo el mismo patrón que ya usaba `abrirYSeleccionar()` en ese archivo.
+Verificado con `composer verificar` completo en verde antes de marcar la tarea y commitear.
 
 ## Qué se hizo
 

@@ -309,6 +309,82 @@ class Vinculacion extends Model
     }
 
     /**
+     * Corrige un movimiento ya registrado (REV-03).
+     *
+     * Escribe en los dos sitios de siempre, y por el mismo motivo que
+     * `registrarMovimiento()`: si el movimiento dice ahora que el salario quedó
+     * en otra cifra, el registro principal del empleado tiene que decir lo
+     * mismo. **Solo se corrige el más reciente** —lo comprueba el controlador
+     * con `Movimiento::esElMasReciente()`—, así que los valores nuevos de esta
+     * fila son siempre los vigentes.
+     *
+     * Lo que **no** se toca es la foto de lo anterior: el cargo y el salario
+     * que regían antes del movimiento son un hecho de aquel día, no un dato que
+     * la corrección pueda cambiar. De ahí sale también el cargo con el que se
+     * queda un aumento salarial, que repite el de partida.
+     */
+    public function corregirMovimiento(
+        Movimiento $movimiento,
+        TipoDeMovimiento $tipo,
+        ?string $cargoPedido,
+        string $salarioNuevo,
+        Carbon $fechaEfectividad,
+    ): Movimiento {
+        return DB::transaction(function () use ($movimiento, $tipo, $cargoPedido, $salarioNuevo, $fechaEfectividad): Movimiento {
+            $cargoNuevo = $tipo->cargoResultante((string) $movimiento->cargo_anterior, $cargoPedido);
+
+            $movimiento->update([
+                'tipo' => $tipo,
+                'cargo_nuevo' => $cargoNuevo,
+                'salario_nuevo' => $salarioNuevo,
+                'fecha_efectividad' => $fechaEfectividad,
+            ]);
+
+            $this->fill(['cargo' => $cargoNuevo, 'salario' => $salarioNuevo]);
+
+            if ($this->isDirty()) {
+                $this->save();
+            }
+
+            $this->unsetRelation('movimientos');
+
+            return $movimiento;
+        });
+    }
+
+    /**
+     * Deshace un movimiento (REV-03): «eliminar es volver al pasado».
+     *
+     * Devuelve al empleado el cargo y el salario que tenía justo antes de que
+     * el movimiento se registrara —los que la propia fila guardó como
+     * anteriores— y la elimina. Después, el empleado queda indistinguible de
+     * como estaba, sin rastro de que el movimiento existió.
+     *
+     * Las dos escrituras van juntas por lo mismo que al registrar: un fallo en
+     * medio dejaría al empleado con el salario devuelto y el movimiento todavía
+     * en el histórico, o al revés.
+     *
+     * **Solo se deshace el más reciente**, y esa guardia es de quien llama.
+     */
+    public function deshacerMovimiento(Movimiento $movimiento): void
+    {
+        DB::transaction(function () use ($movimiento): void {
+            $this->fill([
+                'cargo' => (string) $movimiento->cargo_anterior,
+                'salario' => $movimiento->getAttribute('salario_anterior'),
+            ]);
+
+            if ($this->isDirty()) {
+                $this->save();
+            }
+
+            $movimiento->delete();
+
+            $this->unsetRelation('movimientos');
+        });
+    }
+
+    /**
      * La terminación que cerró esta vinculación, si ya se registró.
      *
      * Es una sola: lo que termina es el vínculo, y un vínculo termina una vez.
@@ -360,6 +436,69 @@ class Vinculacion extends Model
             $this->setRelation('terminacion', $terminacion);
 
             return $terminacion;
+        });
+    }
+
+    /**
+     * Corrige una salida ya registrada (REV-03).
+     *
+     * Es la única de las cuatro que **no** escribe en dos sitios: el empleado
+     * ya está inactivo y sigue estándolo, se corrija lo que se corrija. Lo que
+     * cambia de rebote no se guarda en ninguna columna —la categoría de
+     * rotación la deduce el tipo, y la fecha de salida la lee
+     * `fechaDeSalida()`—, así que corregir la fila es todo lo que hay que
+     * hacer.
+     *
+     * El motivo con el que queda lo decide `TipoDeSalida`, igual que al
+     * registrar: en la expiración del plazo y en la obra terminada se
+     * autocompleta y se ignora el que llegue.
+     */
+    public function corregirTerminacion(
+        Terminacion $terminacion,
+        TipoDeSalida $tipo,
+        ?string $motivoPedido,
+        Carbon $fechaSalida,
+        ?string $observaciones = null,
+    ): Terminacion {
+        $terminacion->update([
+            'tipo_salida' => $tipo,
+            'motivo' => $tipo->motivoResultante($motivoPedido),
+            'fecha_salida' => $fechaSalida,
+            'observaciones' => $observaciones,
+        ]);
+
+        $this->setRelation('terminacion', $terminacion);
+
+        return $terminacion;
+    }
+
+    /**
+     * Deshace una terminación (REV-03): «eliminar es volver al pasado».
+     *
+     * Devuelve al empleado a activo y elimina la salida. Con él vuelven todas
+     * sus alertas, sin que haya que reactivar ninguna: el motor recorre
+     * empleados activos, así que dejar de estar inactivo es volver a entrar en
+     * los avisos —igual que registrar la salida fue lo único que hizo falta
+     * para dejar de recibirlos—.
+     *
+     * **`fecha_fin` no se toca**, y es deliberado: `registrarTerminacion()`
+     * tampoco la escribe. En un contrato a término fijo esa columna es la fecha
+     * hasta la que se pactó el contrato, un dato anterior a la salida y ajeno a
+     * ella; borrarla al deshacer no sería volver al pasado, sería perder algo
+     * que el pasado tenía.
+     */
+    public function deshacerTerminacion(Terminacion $terminacion): void
+    {
+        DB::transaction(function () use ($terminacion): void {
+            $this->reactivar();
+            $this->save();
+
+            $terminacion->delete();
+
+            // La relación deja de existir: quien la tuviera cargada seguiría
+            // creyendo que esta vinculación tiene salida, y `fechaDeSalida()`
+            // devolvería una fecha de un registro eliminado.
+            $this->unsetRelation('terminacion');
         });
     }
 
@@ -420,6 +559,19 @@ class Vinculacion extends Model
     public function desactivar(): void
     {
         $this->setAttribute('estado', EstadoVinculacion::Inactivo);
+    }
+
+    /**
+     * El único camino de vuelta, y lo recorre solo `deshacerTerminacion()`.
+     *
+     * Se expone igual que `desactivar()` y por la misma razón invertida: nadie
+     * puede «poner activo» a un empleado desde una pantalla, solo eliminar la
+     * salida que lo desactivó, que es una acción con su confirmación y su línea
+     * en la auditoría.
+     */
+    public function reactivar(): void
+    {
+        $this->setAttribute('estado', EstadoVinculacion::Activo);
     }
 
     /**

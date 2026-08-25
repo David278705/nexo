@@ -857,6 +857,36 @@ describe('movimientos, por sus rutas reales', function () {
             ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
     });
 
+    it('no corrige ni elimina el movimiento de otra empresa, ni se le resuelve su detalle (REV-03)', function () {
+        $this->actingAs($this->usuarioB)
+            ->put('/movimientos/'.$this->movimientoDeLaA->getKey(), [
+                'tipo' => 'aumento_salarial',
+                'salario_nuevo' => '9000000',
+                'fecha_efectividad' => '2026-08-15',
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($this->usuarioB)
+            ->delete('/movimientos/'.$this->movimientoDeLaA->getKey())
+            ->assertNotFound();
+
+        // Y la prop que lleva la ficha del empleado y la consecuencia
+        // calculada tampoco contesta por una fila ajena.
+        $detalle = $this->actingAs($this->usuarioB)
+            ->get('/movimientos?'.http_build_query(['novedad' => $this->movimientoDeLaA->getKey()]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Movimientos/Index',
+                'X-Inertia-Partial-Data' => 'novedad',
+            ]);
+
+        expect($detalle->json()['props']['novedad'])->toBeNull()
+            ->and($detalle->getContent())->not->toContain(SECRETO_DE_LA_A)
+            ->and($this->contexto->paraTenant($this->empresaA, fn () => (float) Vinculacion::query()
+                ->findOrFail($this->movimientoDeLaA->vinculacion_id)
+                ->getAttribute('salario')))->toBe(1800000.0);
+    });
+
     it('la empresa dueña sí ve su movimiento por los dos caminos', function () {
         Excel::fake();
 
@@ -951,6 +981,38 @@ describe('terminaciones, por sus rutas reales', function () {
 
         expect($respuesta->json()['props']['avisoDeTerminacion'])->toBeNull()
             ->and($respuesta->getContent())->not->toContain('SigueActivo');
+    });
+
+    it('no corrige ni elimina la terminación de otra empresa, ni revive a su empleado (REV-03)', function () {
+        $this->actingAs($this->usuarioB)
+            ->put('/terminaciones/'.$this->terminacionDeLaA->getKey(), [
+                'tipo_salida' => 'renuncia',
+                'motivo' => 'Motivos de salud',
+                'fecha_salida' => '2026-08-31',
+            ])
+            ->assertNotFound();
+
+        $this->actingAs($this->usuarioB)
+            ->delete('/terminaciones/'.$this->terminacionDeLaA->getKey())
+            ->assertNotFound();
+
+        $detalle = $this->actingAs($this->usuarioB)
+            ->get('/terminaciones?'.http_build_query(['novedad' => $this->terminacionDeLaA->getKey()]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Terminaciones/Index',
+                'X-Inertia-Partial-Data' => 'novedad',
+            ]);
+
+        // La consulta pasa por el global scope, que ya descarta lo eliminado:
+        // que siga contando uno es que ni se borró ni se corrigió nada.
+        $sigueEnPie = $this->contexto->paraTenant($this->empresaA, fn () => Terminacion::query()
+            ->where('motivo', $this->terminacionDeLaA->motivo)
+            ->count());
+
+        expect($detalle->json()['props']['novedad'])->toBeNull()
+            ->and($detalle->getContent())->not->toContain(SECRETO_DE_LA_A)
+            ->and($sigueEnPie)->toBe(1);
     });
 
     it('la empresa dueña sí ve su terminación por los dos caminos', function () {

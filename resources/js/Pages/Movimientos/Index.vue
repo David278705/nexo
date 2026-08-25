@@ -2,11 +2,13 @@
 import { Head, router, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 import { TODOS, useListado } from "@/Utilidades/useListado";
+import { useNovedad } from "@/Utilidades/useNovedad";
 import Armazon from "@/Components/Armazon.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
+import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
 import ModalDeNovedad from "@/Components/ModalDeNovedad.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 import Paginacion from "@/Components/Paginacion.vue";
@@ -28,6 +30,11 @@ import TablaDatos from "@/Components/TablaDatos.vue";
  * 2. **En un aumento salarial el cargo no se digita**: se repite el actual y el
  *    campo queda de solo lectura. Quien decide de verdad es el servidor
  *    (`TipoDeMovimiento::cargoResultante()`); aquí solo se refleja.
+ * 3. **Solo el movimiento más reciente de cada empleado se corrige o se
+ *    elimina** (REV-03). Las demás filas no ofrecen las acciones y dicen por
+ *    qué: eliminar devuelve el cargo y el salario anteriores, y con otro
+ *    movimiento encima ya no hay un «antes» claro al que volver. Quien lo
+ *    decide es el servidor, en la prop `reversible` de cada fila.
  */
 const props = defineProps({
     movimientos: { type: Object, required: true },
@@ -36,6 +43,7 @@ const props = defineProps({
     tieneFiltros: { type: Boolean, default: false },
     opciones: { type: Object, required: true },
     situacionActual: { type: Object, default: null },
+    novedad: { type: Object, default: null },
 });
 
 const columnas = [
@@ -47,6 +55,7 @@ const columnas = [
     { clave: "salarioAnterior", titulo: "Salario anterior", numerica: true },
     { clave: "salarioNuevo", titulo: "Salario nuevo", numerica: true },
     { clave: "efectivo", titulo: "Efectivo desde", ordenable: true },
+    { clave: "acciones", titulo: "Acciones" },
 ];
 
 const { pedir, ordenar, quitar, limpiar, urlExportar, textoExportar } =
@@ -71,10 +80,14 @@ const cargos = computed(() => [
 // El título de los cinco módulos lo decide `TipoDeNovedad` en el servidor, y
 // llega en la prop compartida `flujoDeNovedad`.
 const flujo = computed(() => usePage().props.flujoDeNovedad);
+const clase = computed(() =>
+    flujo.value.tipos.find((tipo) => tipo.clave === "movimiento"),
+);
 const titulo = computed(
-    () =>
-        flujo.value.tipos.find((tipo) => tipo.clave === "movimiento")?.titulo ??
-        "Nuevo movimiento salarial",
+    () => clase.value?.titulo ?? "Nuevo movimiento salarial",
+);
+const tituloEdicion = computed(
+    () => clase.value?.tituloEdicion ?? "Editar movimiento salarial",
 );
 
 const abierto = ref(false);
@@ -89,8 +102,41 @@ const form = useForm({
 
 const esPromocion = computed(() => form.tipo === "promocion");
 
-const cargoActual = computed(() => props.situacionActual?.cargo ?? "");
-const salarioActual = computed(() => props.situacionActual?.salario ?? "");
+/*
+ * Editar y eliminar (REV-03). El mismo formulario y el mismo modal del
+ * registro, con los valores puestos; la consecuencia del borrado —a qué cargo y
+ * a qué salario vuelve el empleado— la escribe el servidor.
+ */
+const {
+    editando,
+    borrando,
+    borradoAbierto,
+    enviando: eliminando,
+    abrirEdicion,
+    abrirBorrado,
+    cerrar: cerrarNovedad,
+    guardarEdicion,
+    confirmarBorrado,
+} = useNovedad({
+    ruta: "/movimientos",
+    form,
+    novedad: () => props.novedad,
+});
+
+/*
+ * El punto de partida del movimiento. Al registrar es la situación vigente del
+ * empleado, que llega en `situacionActual`; al corregir son el cargo y el
+ * salario que esta misma fila guardó como anteriores, porque el empleado ya
+ * lleva encima los nuevos y preguntárselo a él enseñaría el resultado en la
+ * casilla del punto de partida. Los dos los escribe el servidor.
+ */
+const cargoActual = computed(
+    () => editando.value?.contexto.cargo ?? props.situacionActual?.cargo ?? "",
+);
+const salarioActual = computed(
+    () =>
+        editando.value?.contexto.salario ?? props.situacionActual?.salario ?? "",
+);
 
 /*
  * En un aumento salarial el campo enseña el cargo actual y no lo que haya en el
@@ -142,7 +188,9 @@ function guardar() {
 watch(
     () => form.vinculacion_id,
     (vinculacion_id) => {
-        if (!vinculacion_id) {
+        // Al corregir no se pregunta: el punto de partida es el que guardó el
+        // propio movimiento, y el del empleado sería el resultado de este.
+        if (!vinculacion_id || editando.value) {
             return;
         }
 
@@ -155,6 +203,37 @@ watch(
         });
     },
 );
+
+/*
+ * Registrar y corregir son el mismo modal —el usuario no está aprendiendo una
+ * pantalla nueva—, así que la pantalla monta uno solo y le dice cuál de las dos
+ * cosas está haciendo. Es lo mismo que hacen las tres novedades del capítulo 6.
+ */
+const modalAbierto = computed(() => abierto.value || editando.value !== null);
+const tituloDelModal = computed(() =>
+    editando.value ? tituloEdicion.value : titulo.value,
+);
+
+function cerrarElModal() {
+    if (editando.value) {
+        cerrarNovedad();
+        form.reset();
+
+        return;
+    }
+
+    cerrarModal();
+}
+
+function guardarElModal() {
+    if (editando.value) {
+        guardarEdicion();
+
+        return;
+    }
+
+    guardar();
+}
 
 const confirmacion = computed(() => usePage().props.estado ?? "");
 const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
@@ -249,6 +328,35 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 "
                 @ordenar="ordenar"
             >
+                <!--
+                    Solo el movimiento más reciente del empleado se corrige o se
+                    elimina (REV-03). En las demás filas no se ofrecen las
+                    acciones y se dice por qué, en vez de ofrecerlas para
+                    retirarlas después con un error.
+                -->
+                <template #celda-acciones="{ fila }">
+                    <div v-if="fila.reversible" class="flex items-center gap-1">
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirEdicion(fila)"
+                        >
+                            Editar
+                        </Boton>
+                        <Boton
+                            tipo="button"
+                            variante="texto"
+                            @click="abrirBorrado(fila)"
+                        >
+                            Eliminar
+                        </Boton>
+                    </div>
+
+                    <span v-else class="text-tabla text-texto-secundario">
+                        Hay uno posterior
+                    </span>
+                </template>
+
                 <template #accion-vacio>
                     <Boton
                         v-if="tieneFiltros"
@@ -280,15 +388,16 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
         </div>
 
         <ModalDeNovedad
-            :abierto="abierto"
-            :titulo="titulo"
+            :abierto="modalAbierto"
+            :titulo="tituloDelModal"
             :flujo="flujo"
             :empleado="empleadoDeNovedad"
+            :edicion="editando"
             :enviando="form.processing"
             :deshabilitado="!puedeGuardar"
-            @cerrar="cerrarModal"
+            @cerrar="cerrarElModal"
             @seleccionado="seleccionado"
-            @guardar="guardar"
+            @guardar="guardarElModal"
         >
             <div class="grid gap-4 sm:grid-cols-2">
                 <Selector
@@ -335,5 +444,19 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 />
             </div>
         </ModalDeNovedad>
+
+        <!--
+            La confirmación del documento 3, 2.4, con la consecuencia calculada:
+            «El salario de Carolina Restrepo Vélez volverá a $ 2.700.000». La
+            frase entera llega del servidor.
+        -->
+        <ModalDeBorrado
+            :abierto="borradoAbierto"
+            titulo="Eliminar movimiento"
+            :mensaje="borrando?.confirmacion ?? ''"
+            :enviando="eliminando"
+            @cerrar="cerrarNovedad"
+            @confirmar="confirmarBorrado"
+        />
     </Armazon>
 </template>

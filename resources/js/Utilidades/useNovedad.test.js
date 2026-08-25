@@ -141,13 +141,18 @@ describe("editar y eliminar una novedad", () => {
     });
 
     /*
-     * Lo mismo que comprueba `useListado.test.js`: que las tres pantallas usen
-     * el composable y no vuelvan a escribir su copia.
+     * Lo mismo que comprueba `useListado.test.js`: que las cinco pantallas usen
+     * el composable y no vuelvan a escribir su copia. Movimientos y
+     * terminaciones entraron en REV-03, y entran a la lista con las otras tres:
+     * lo que cambia entre ellas es la consecuencia del borrado, que la escribe
+     * el servidor, no el mecanismo de abrirlo.
      */
     const PANTALLAS = [
         "resources/js/Pages/Incapacidades/Index.vue",
         "resources/js/Pages/Vacaciones/Index.vue",
         "resources/js/Pages/Licencias/Index.vue",
+        "resources/js/Pages/Movimientos/Index.vue",
+        "resources/js/Pages/Terminaciones/Index.vue",
     ];
 
     it.each(PANTALLAS)("%s usa el composable y el modal compartido", (ruta) => {

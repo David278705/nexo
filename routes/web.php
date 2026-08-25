@@ -256,6 +256,19 @@ Route::middleware('auth')->group(function () {
             ->name('movimientos.exportar');
         Route::post('/movimientos', [MovimientoController::class, 'guardar'])
             ->name('movimientos.guardar');
+        /*
+         * Editar y eliminar (REV-03). El mismo par de verbos que las tres
+         * novedades del capítulo 6, aunque lo que hacen no sea lo mismo:
+         * eliminar aquí no quita una fila, devuelve al empleado el cargo y el
+         * salario que tenía antes de ella. Solo se admite sobre el movimiento
+         * más reciente del empleado, y eso lo comprueba el controlador.
+         */
+        Route::put('/movimientos/{movimiento}', [MovimientoController::class, 'editar'])
+            ->whereNumber('movimiento')
+            ->name('movimientos.editar');
+        Route::delete('/movimientos/{movimiento}', [MovimientoController::class, 'eliminar'])
+            ->whereNumber('movimiento')
+            ->name('movimientos.eliminar');
     });
 
     /*
@@ -271,6 +284,17 @@ Route::middleware('auth')->group(function () {
             ->name('terminaciones.exportar');
         Route::post('/terminaciones', [TerminacionController::class, 'guardar'])
             ->name('terminaciones.guardar');
+        /*
+         * Editar y eliminar (REV-03). Eliminar aquí revive al empleado: vuelve
+         * a activo y vuelve a recibir alertas. No hay guardia de «el más
+         * reciente» porque una vinculación tiene una sola terminación viva.
+         */
+        Route::put('/terminaciones/{terminacion}', [TerminacionController::class, 'editar'])
+            ->whereNumber('terminacion')
+            ->name('terminaciones.editar');
+        Route::delete('/terminaciones/{terminacion}', [TerminacionController::class, 'eliminar'])
+            ->whereNumber('terminacion')
+            ->name('terminaciones.eliminar');
     });
 
     /*

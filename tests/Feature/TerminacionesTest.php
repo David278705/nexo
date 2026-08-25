@@ -3,6 +3,7 @@
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
 use App\Contratacion\AdvertenciaDeReingreso;
+use App\Dominio\Alertas\Reglas\PruebaIndefinidoUnMes;
 use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Exports\TerminacionesExport;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -408,6 +409,230 @@ describe('el listado', function () {
 
         expect($props['terminaciones']['total'])->toBe(1)
             ->and($props['terminaciones']['filas'][0]['salida'])->toBe('15/08/2026');
+    });
+});
+
+/**
+ * REV-03, la decisión de David: «eliminar es volver al pasado». Borrar la salida
+ * devuelve al empleado a activo, con la fecha de fin intacta y con todas sus
+ * alertas, igual que si el despido nunca se hubiera registrado.
+ */
+describe('corregir y eliminar (REV-03)', function () {
+    /**
+     * Registra la salida por la ruta de verdad y devuelve la fila creada.
+     */
+    function registrarTerminacionDe(Vinculacion $vinculacion, array $cambios = []): Terminacion
+    {
+        test()->actingAs(test()->usuario)->post('/terminaciones', datosDeTerminacion([
+            'vinculacion_id' => $vinculacion->id,
+            ...$cambios,
+        ]))->assertRedirect('/terminaciones');
+
+        return app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn () => Terminacion::query()->orderByDesc('id')->firstOrFail(),
+        );
+    }
+
+    /**
+     * El «hecho cuando» de la tarea, primera mitad: el empleado queda como
+     * estaba antes de que la salida existiera.
+     */
+    it('eliminar la salida devuelve al empleado a activo y sin fecha de salida', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '1015887432']);
+
+        $terminacion = registrarTerminacionDe($vinculacion);
+
+        $this->actingAs($this->usuario)
+            ->delete('/terminaciones/'.$terminacion->id)
+            ->assertRedirect('/terminaciones')
+            ->assertSessionHas('estado', 'Terminación eliminada. El empleado volvió a estar activo.');
+
+        $actualizada = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $vinculacion->fresh());
+
+        expect($actualizada->estaActiva())->toBeTrue()
+            ->and($actualizada->fechaDeSalida())->toBeNull()
+            // La fila sigue ahí, marcada: nunca hay borrado físico (regla 4).
+            ->and(Terminacion::withoutGlobalScopes()->count())->toBe(1)
+            ->and(Terminacion::withoutGlobalScopes()->whereNotNull('deleted_at')->count())->toBe(1);
+    });
+
+    /**
+     * El «hecho cuando» de la tarea, segunda mitad: «con él vuelven todas sus
+     * alertas». Es la promesa que vende el producto, así que se comprueba
+     * contra el motor y no contra el estado.
+     */
+    it('con el empleado vuelven sus alertas, que la salida había apagado', function () {
+        $vinculacion = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vinculacion::factory()
+            ->conIngreso('2026-04-15')
+            ->de(Persona::factory()->create(['numero_documento' => '1015887432']))
+            ->create());
+
+        expect(alertasDe(new PruebaIndefinidoUnMes, $this->empresa, '2026-05-14'))->toHaveCount(1);
+
+        $terminacion = registrarTerminacionDe($vinculacion, ['fecha_salida' => '2026-05-02']);
+
+        expect(alertasDe(new PruebaIndefinidoUnMes, $this->empresa, '2026-05-14'))->toBe([]);
+
+        $this->actingAs($this->usuario)->delete('/terminaciones/'.$terminacion->id);
+
+        expect(alertasDe(new PruebaIndefinidoUnMes, $this->empresa, '2026-05-14'))->toHaveCount(1);
+    });
+
+    /**
+     * «Volver al pasado» es dejar al empleado como estaba, no borrarle datos que
+     * la salida nunca tocó: en un término fijo, `fecha_fin` es hasta cuándo se
+     * pactó el contrato, y eso ya estaba escrito antes de que nadie se fuera.
+     */
+    it('no borra la fecha hasta la que estaba pactado un contrato a término fijo', function () {
+        $vinculacion = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vinculacion::factory()
+            ->aTerminoFijo('2026-01-15', '2026-12-31')
+            ->de(Persona::factory()->create(['numero_documento' => '1015887432']))
+            ->create());
+
+        $terminacion = registrarTerminacionDe($vinculacion, ['fecha_salida' => '2026-07-31']);
+
+        $this->actingAs($this->usuario)->delete('/terminaciones/'.$terminacion->id);
+
+        $actualizada = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $vinculacion->fresh());
+
+        expect($actualizada->getAttribute('fecha_fin')->toDateString())->toBe('2026-12-31');
+    });
+
+    it('deja registrar otra salida después de haber deshecho la primera', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '1015887432']);
+
+        $primera = registrarTerminacionDe($vinculacion);
+
+        $this->actingAs($this->usuario)->delete('/terminaciones/'.$primera->id);
+
+        $segunda = registrarTerminacionDe($vinculacion, [
+            'tipo_salida' => 'mutuo_acuerdo',
+            'motivo' => 'Acuerdo económico de retiro',
+        ]);
+
+        expect($segunda->tipo_salida)->toBe(TipoDeSalida::MutuoAcuerdo)
+            ->and($segunda->id)->not->toBe($primera->id);
+    });
+
+    it('corregir la salida cambia el tipo, el motivo y la categoría de rotación deducida', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '1015887432']);
+
+        $terminacion = registrarTerminacionDe($vinculacion);
+
+        $this->actingAs($this->usuario)
+            ->put('/terminaciones/'.$terminacion->id, datosDeTerminacion([
+                'tipo_salida' => 'sin_justa_causa',
+                'motivo' => 'Reestructuración o reducción de personal',
+                'fecha_salida' => '2026-08-15',
+                'observaciones' => 'Se corrigió el tipo de salida.',
+            ]))
+            ->assertRedirect('/terminaciones')
+            ->assertSessionHas('estado', 'Terminación actualizada.');
+
+        [$corregida, $actualizada] = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => [
+            Terminacion::query()->findOrFail($terminacion->id),
+            $vinculacion->fresh(),
+        ]);
+
+        expect($corregida->tipo_salida)->toBe(TipoDeSalida::SinJustaCausa)
+            ->and($corregida->motivo)->toBe('Reestructuración o reducción de personal')
+            ->and($corregida->categoriaDeRotacion())->toBe(CategoriaDeRotacion::Involuntaria)
+            ->and($corregida->observaciones)->toBe('Se corrigió el tipo de salida.')
+            // Corregir la salida no revive a nadie, y la fecha que manda es la
+            // que acaba de quedar registrada.
+            ->and($actualizada->estaActiva())->toBeFalse()
+            ->and($actualizada->fechaDeSalida()->toDateString())->toBe('2026-08-15');
+    });
+
+    it('sigue autocompletando el motivo de los dos tipos que no lo preguntan', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '1015887432']);
+
+        $terminacion = registrarTerminacionDe($vinculacion);
+
+        $this->actingAs($this->usuario)->put('/terminaciones/'.$terminacion->id, datosDeTerminacion([
+            'tipo_salida' => 'expiracion_del_plazo',
+            'motivo' => 'Un motivo que nadie escribió',
+        ]));
+
+        $corregida = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => Terminacion::query()->findOrFail($terminacion->id),
+        );
+
+        expect($corregida->motivo)->toBe(TipoDeSalida::ExpiracionDelPlazo->motivoAutomatico());
+    });
+
+    it('no corrige con un motivo que no es del tipo elegido', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '1015887432']);
+
+        $terminacion = registrarTerminacionDe($vinculacion);
+
+        $this->actingAs($this->usuario)
+            ->put('/terminaciones/'.$terminacion->id, datosDeTerminacion([
+                'tipo_salida' => 'mutuo_acuerdo',
+                'motivo' => 'Estudios',
+            ]))
+            ->assertSessionHasErrors('motivo');
+
+        $sinTocar = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => Terminacion::query()->findOrFail($terminacion->id),
+        );
+
+        expect($sinTocar->tipo_salida)->toBe(TipoDeSalida::Renuncia);
+    });
+
+    it('la confirmación dice que el empleado vuelve a estar activo y a recibir alertas', function () {
+        $vinculacion = empleadoParaNovedad([
+            'numero_documento' => '1015887432',
+            'primer_nombre' => 'Carlos',
+            'segundo_nombre' => null,
+            'primer_apellido' => 'Ramírez',
+            'segundo_apellido' => null,
+        ]);
+
+        $terminacion = registrarTerminacionDe($vinculacion, ['fecha_salida' => '2026-07-31']);
+
+        $frase = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => $terminacion->confirmacionDeBorrado(),
+        );
+
+        expect($frase)->toBe(
+            'Vas a eliminar la terminación del 31 de julio de 2026 de Carlos Ramírez. '
+            .'Carlos Ramírez volverá a estar activo y a recibir alertas. '
+            .'Esta acción queda registrada en la auditoría.'
+        );
+    });
+
+    it('la pantalla trae el detalle de la salida solo cuando se le pide', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '1015887432']);
+
+        $terminacion = registrarTerminacionDe($vinculacion, [
+            'observaciones' => 'Entrega el puesto el viernes.',
+        ]);
+
+        expect($this->actingAs($this->usuario)->get('/terminaciones')->viewData('page')['props'])
+            ->not->toHaveKey('novedad');
+
+        $detalle = $this->actingAs($this->usuario)
+            ->get('/terminaciones?'.http_build_query(['novedad' => $terminacion->id]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Terminaciones/Index',
+                'X-Inertia-Partial-Data' => 'novedad',
+            ])
+            ->json()['props']['novedad'];
+
+        expect($detalle['id'])->toBe($terminacion->id)
+            ->and($detalle['valores']['tipo_salida'])->toBe('renuncia')
+            ->and($detalle['valores']['motivo'])->toBe('Mejor oferta laboral — salario')
+            ->and($detalle['valores']['fecha_salida'])->toBe('2026-07-31')
+            ->and($detalle['valores']['observaciones'])->toBe('Entrega el puesto el viernes.')
+            // Una salida no tiene ningún campo de solo lectura que contar.
+            ->and($detalle['contexto'])->toBe([])
+            ->and($detalle['datos'])->not->toBeEmpty();
     });
 });
 

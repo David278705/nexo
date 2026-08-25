@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Autorizacion\Modulo;
 use App\Exports\TerminacionesExport;
+use App\Http\Requests\EditarTerminacion;
 use App\Http\Requests\RegistrarTerminacion;
 use App\Models\Terminacion;
 use App\Models\Vinculacion;
+use App\Novedades\DetalleDeNovedad;
 use App\Terminaciones\AvisoDeTerminacion;
 use App\Terminaciones\ListadoDeTerminaciones;
 use App\Terminaciones\TipoDeSalida;
@@ -60,6 +62,12 @@ class TerminacionController extends Controller
              * movimientos.
              */
             'avisoDeTerminacion' => Inertia::optional(fn (): ?string => self::aviso($peticion)),
+            /*
+             * La salida que se está corrigiendo o que se va a eliminar
+             * (REV-03). La misma prop y el mismo camino que en los otros cuatro
+             * módulos del flujo.
+             */
+            DetalleDeNovedad::PROP => DetalleDeNovedad::prop($peticion, Terminacion::class),
         ]);
     }
 
@@ -96,6 +104,49 @@ class TerminacionController extends Controller
         return redirect()
             ->route(Modulo::Terminaciones->nombreDeRuta())
             ->with('estado', 'Terminación registrada. El empleado pasó a inactivo.');
+    }
+
+    /**
+     * Corrige una salida ya registrada (REV-03).
+     *
+     * Es la única de las cuatro acciones de REV-03 que **no** escribe en dos
+     * sitios: el empleado ya está inactivo y sigue estándolo. Lo que cambia de
+     * rebote —la categoría de rotación y la fecha de salida— no vive en ninguna
+     * columna, así que corregir la fila es todo.
+     *
+     * No lleva guardia de «solo el más reciente»: una vinculación tiene una
+     * sola terminación viva, así que la que hay siempre es la última.
+     */
+    public function editar(EditarTerminacion $peticion, Terminacion $terminacion): RedirectResponse
+    {
+        $terminacion->vinculacion->corregirTerminacion(
+            $terminacion,
+            $peticion->tipoDeSalida(),
+            $peticion->motivo(),
+            $peticion->fechaDeSalida(),
+            $peticion->observaciones(),
+        );
+
+        return redirect()
+            ->route(Modulo::Terminaciones->nombreDeRuta())
+            ->with('estado', 'Terminación actualizada.');
+    }
+
+    /**
+     * Elimina la salida (REV-03). Es borrado lógico —la regla 4— y la auditoría
+     * lo registra sola.
+     *
+     * **Eliminar es volver al pasado**: el empleado vuelve a activo y con él
+     * vuelven todas sus alertas, que es exactamente la consecuencia que acaba
+     * de leer en la confirmación.
+     */
+    public function eliminar(Terminacion $terminacion): RedirectResponse
+    {
+        $terminacion->vinculacion->deshacerTerminacion($terminacion);
+
+        return redirect()
+            ->route(Modulo::Terminaciones->nombreDeRuta())
+            ->with('estado', 'Terminación eliminada. El empleado volvió a estar activo.');
     }
 
     /**

@@ -75,9 +75,27 @@ donde iba**.
 .\scripts\vibe.ps1 -Vueltas 10          # tope de 10 tareas en esta corrida
 .\scripts\vibe.ps1 -SinLimitePermisos   # no pregunta nada, va más rápido
 .\scripts\vibe.ps1 -MaxTurnos 400       # para tareas grandes que se quedan cortas
+.\scripts\vibe.ps1 -Modelo opus         # fuerza un modelo para toda la corrida
 ```
 
 En macOS y Linux son variables de entorno: `VUELTAS=10 ./scripts/vibe.sh`
+
+### El modelo se escoge solo, tarea por tarea
+
+Sin decir nada, el script usa **Sonnet** para la mayoría del backlog y **Opus** para una lista corta
+de tareas: las que tocan el motor de cálculo y los saldos, las que cruzan empresas a propósito, y las
+dos revisiones de criterio sobre todo el código. Antes de cada vuelta imprime qué modelo eligió y por
+qué, y lo deja en la bitácora.
+
+La lista vive arriba de `scripts/vibe.ps1`, en `$tareasComplejas`, y **es una lista escrita a mano,
+no una regla automática**. Si agregas una tarea que toca reglas legales o aislamiento entre empresas,
+métela ahí. `-Modelo` fuerza uno solo para todo e ignora la lista.
+
+> **Lo que esta división no cubre.** Separa por «qué tan mecánica es la tarea», y los errores que de
+> verdad se colaron en este proyecto no fueron mecánicos: fueron de **interpretar un documento
+> ambiguo**, y aparecieron en tareas que cualquiera habría clasificado como rutinarias. La lista baja
+> el riesgo donde más caro sale, no lo elimina. Lo que sí lo atrapa es que las preguntas dudosas
+> lleguen a Angela, que es justo lo que hace el mecanismo de tarea bloqueada.
 
 ---
 

@@ -1427,16 +1427,35 @@ medio**: el proyecto no tiene Playwright ni `user-event`, así que las pruebas c
 `Modal.test.js` para Escape, no una sesión de teclado de punta a punta en un navegador. Verificar el
 flujo completo a mano en un navegador sigue pendiente y queda anotado en `ESTADO.md`.
 
-### [!] F6-07 · Operación — bloqueada: depende de A.5, sin decidir
+### [ ] F6-07 · Operación — desbloqueada: A.5 resuelta, el sistema corre en Railway
 
 Monitoreo de errores en producción. Copias de seguridad automáticas y **una restauración probada de
 principio a fin**.
 **Hecho cuando:** existe una copia que se restauró y funcionó.
+**Fuente:** `docs/06-decisiones-pendientes.md` A.5, ya resuelta.
 
-Bloqueada: `docs/06-decisiones-pendientes.md` A.5 (infraestructura y copias de seguridad) sigue sin
-resolver — no hay plataforma administrada ni infraestructura propia decidida, así que no existe dónde
-producir la copia ni cómo restaurarla. Sin esa decisión, cualquier proveedor de monitoreo o estrategia
-de copias sería inventado. Anotado como bloqueante para esta tarea desde varias sesiones atrás.
+**Decidido por David el 23 de agosto de 2026: Railway.** Con eso, esto es lo que hay que construir y
+comprobar, no elegir:
+
+- **Copias de seguridad:** Railway ya las hace solas sobre PostgreSQL con *Point-in-Time Recovery*
+  —WAL continuo, retención de 7 días—. No hay que programar el respaldo en sí; hay que **documentar y
+  ejecutar la restauración**, que es lo que de verdad exige el «hecho cuando».
+- **La restauración de prueba, paso a paso:** desde el panel de Railway, restaurar la base de datos a
+  un punto en el tiempo. Railway crea un servicio de base de datos **nuevo**, al lado del que está en
+  producción — el original no se toca ni deja de servir durante la prueba. Verificar en ese servicio
+  nuevo que los datos de un registro conocido (por ejemplo, una vacación creada minutos antes del
+  punto de restauración) están donde deben, y luego descartar el servicio de prueba.
+  **Deja evidencia escrita de esa restauración** —capturas o el registro de la operación— en
+  `bitacora/`, porque es lo único de esta tarea que ninguna prueba automática de Pest puede demostrar.
+- **Monitoreo de errores:** instala [Sentry](https://sentry.io) con su paquete oficial de Laravel
+  (`sentry/sentry-laravel`), plan gratuito. Conecta el canal de logging para que una excepción no
+  capturada en producción llegue ahí con su traza, no solo al archivo de log. En `config/logging.php`
+  agrega el canal y en `.env.example` las líneas `SENTRY_LARAVEL_DSN` comentadas, con la misma
+  convención que ya usan las líneas de correo.
+- **Plan de incidentes:** una página, en `docs/`, con qué hacer si el sistema cae o si una alerta
+  legal no sale. A.5 lo pide como control mínimo y hoy no existe ningún documento así.
+- **HTTPS y cifrado:** ya los da Railway por defecto en sus dominios. No hay nada que configurar ni
+  que comprobar aparte de que el dominio final los tenga activos.
 
 ### [x] F6-08 · REVISIÓN FINAL
 
@@ -1514,7 +1533,7 @@ que era el agravante de esta tarea. Diecinueve casos nuevos en
 `resources/js/Utilidades/useListado.test.js`, tres de ellos leyendo los `.vue` para comprobar que
 ninguna pantalla conserva su copia; ninguna prueba existente se tocó.
 
-### [ ] REV-03 · Editar y eliminar movimientos y terminaciones
+### [x] REV-03 · Editar y eliminar movimientos y terminaciones
 
 F2-10 dejó editables y eliminables las **tres** novedades del capítulo 6. Movimientos (8.1) y
 terminaciones (capítulo 7) comparten el flujo de registro pero no son novedades del capítulo 6, y
@@ -1537,6 +1556,20 @@ indistinguible de como estaba antes de crearlo —mismo salario, mismo cargo, mi
 alertas—, y hay prueba. Intentar eliminar uno que no es el más reciente lo rechaza con un mensaje
 claro.
 **Fuente:** esta decisión (no hay documento previo; queda registrada aquí como la fuente).
+
+Hecho: `EditarMovimiento` y `EditarTerminacion`, los dos `FormRequest` nuevos, y las acciones de editar
+y eliminar en `MovimientoController` y `TerminacionController` con la consecuencia calculada antes de
+ejecutarla. Eliminar un movimiento devuelve el cargo y el salario **anteriores**, que el propio
+registro ya guardaba; eliminar una terminación reactiva al empleado y borra la fecha de salida, con lo
+que sus alertas vuelven a generarse solas. **Solo el tramo más reciente se puede deshacer**: intentar
+uno de en medio se rechaza con el mensaje de por qué. Dos casos nuevos en
+`tests/Feature/AislamientoTest.php` cubren que ninguna de las dos acciones cruza de empresa. La
+sesión que construyó esto se cortó por el límite de uso de Claude Code a mitad del trabajo del
+frontend —el backend y sus pruebas de Pest ya estaban completos y en verde—; quedó una prueba de
+Vitest mal apuntada, que encontraba el campo de la barra de filtros en vez del campo del modal porque
+los dos comparten la misma etiqueta «Tipo de salida» y la búsqueda no estaba acotada al diálogo
+abierto. Corregido en `Terminaciones/Index.test.js`, sin tocar el componente: el error era de la
+prueba, no de la funcionalidad.
 
 **Hecho cuando:** las dos preguntas están respondidas, los dos módulos tienen sus acciones con la
 consecuencia escrita antes de ejecutarla, y `TipoDeNovedad::tituloDeEdicion()` deja de devolver nulo

@@ -84,6 +84,18 @@ class Vacacion extends Model implements NovedadEditable
         ];
     }
 
+    /**
+     * Vacío: los dos campos de solo lectura del formulario —los días hábiles y
+     * la franja de saldo— los calcula el servidor con lo que se está digitando,
+     * no con lo que hay guardado.
+     *
+     * @return array<string, string>
+     */
+    public function contextoDeEdicion(): array
+    {
+        return [];
+    }
+
     public function confirmacionDeBorrado(): string
     {
         return ConfirmacionDeBorrado::deVacacion($this);

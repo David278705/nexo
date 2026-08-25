@@ -21,9 +21,9 @@ use Inertia\OptionalProp;
  * ## Por qué una sola prop sirve para editar y para eliminar
  *
  * Porque las dos acciones necesitan lo mismo: saber de qué registro se habla.
- * Editar usa `valores` y `datos`; eliminar usa `confirmacion`. Partirla en dos
- * props obligaría a dos consultas y a que las dos pudieran discrepar sobre qué
- * fila está seleccionada.
+ * Editar usa `valores`, `contexto` y `datos`; eliminar usa `confirmacion`.
+ * Partirla en dos props obligaría a dos consultas y a que las dos pudieran
+ * discrepar sobre qué fila está seleccionada.
  *
  * ## Por qué el empleado se lee del registro y no del documento digitado
  *
@@ -37,7 +37,7 @@ final class DetalleDeNovedad
 {
     /**
      * El nombre de la prop y el del parámetro con que se pide. Es el mismo en
-     * el servidor y en las tres pantallas, y por eso es una constante.
+     * el servidor y en las cinco pantallas, y por eso es una constante.
      */
     public const PROP = 'novedad';
 
@@ -53,7 +53,7 @@ final class DetalleDeNovedad
 
     /**
      * @param  class-string<Model&NovedadEditable>  $modelo
-     * @return array{id: int, datos: list<array{etiqueta: string, valor: string, pendiente: bool, nota: string}>, valores: array<string, string|bool|int|null>, confirmacion: string}|null
+     * @return array{id: int, datos: list<array{etiqueta: string, valor: string, pendiente: bool, nota: string}>, valores: array<string, string|bool|int|null>, contexto: array<string, string>, confirmacion: string}|null
      */
     public static function para(Request $peticion, string $modelo): ?array
     {
@@ -80,6 +80,7 @@ final class DetalleDeNovedad
             'id' => (int) $novedad->getKey(),
             'datos' => FichaDeEmpleado::de($vinculacion)->resumenParaNovedad(),
             'valores' => $novedad->valoresParaEdicion(),
+            'contexto' => $novedad->contextoDeEdicion(),
             'confirmacion' => $novedad->confirmacionDeBorrado(),
         ];
     }

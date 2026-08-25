@@ -41,7 +41,7 @@ Aquí está todo lo que todavía no se puede dar por cerrado. Se organiza en cin
 | 1 | Tabla de precios por tamaño de empresa y número de usuarios | A | Ambos | No |
 | 2 | Contrato de prestación del servicio revisado por abogado | A | Ambos | No |
 | 3 | Acuerdo de tratamiento de datos revisado por abogado | A | Ambos | No |
-| 4 | Decisión de infraestructura y modelo de seguridad | A | David | No |
+| 4 | ~~Decisión de infraestructura~~ **RESUELTA:** Railway, plataforma administrada | A | David | No |
 | 5 | Constitución de la sociedad, DIAN y pasarela de pagos | A | Ambos | No |
 | 6 | ~~Confirmar el conteo de prórrogas cortas~~ **RESUELTA:** tres, en una sola cuenta | B | Ambos | No |
 | 7 | Confirmar el periodo de prueba en cambio de modalidad contractual | B | Ambos | No |
@@ -128,9 +128,25 @@ Ninguna se traslada al proveedor. Al contrario: el principio de temporalidad de 
 5. Constancia de que la obligación de conservación queda en cabeza del cliente.
 *Punto en sentido contrario: retener la información como presión por facturas impagadas es mal negocio y jurídicamente delicado. La vía correcta ante el impago es suspender el servicio, no retener los datos.*
 
-### A.5 Infraestructura y seguridad
+### A.5 Infraestructura y seguridad — RESUELTA: Railway
 
-Se decidió mirarlo cuando exista producto. Cuando llegue el momento, la comparación es esta:
+**Decidido por David el 23 de agosto de 2026, siguiendo la recomendación de este mismo documento.**
+El sistema corre en **Railway**, plataforma administrada. Con eso, F6-07 deja de estar bloqueada:
+
+- **Copias de seguridad y restauración:** Railway ofrece *Point-in-Time Recovery* nativo sobre
+  PostgreSQL —WAL continuo, ventana de retención de 7 días, restauración al segundo exacto—. Restaurar
+  **crea un servicio nuevo al lado del que está en producción**; el original sigue sirviendo tráfico
+  sin tocarse durante toda la prueba. Eso es lo que permite cumplir el «hecho cuando» de F6-07 sin
+  arriesgar los datos reales: se restaura al servicio nuevo, se verifica ahí, y se descarta.
+- **Monitoreo de errores:** Railway da logs y métricas de infraestructura (CPU, memoria, red), pero
+  no rastrea excepciones de la aplicación con su traza. Eso hace falta aparte. Se instala
+  [Sentry](https://sentry.io) —tiene paquete oficial de Laravel, plan gratuito suficiente para esta
+  etapa— y se conecta el canal `log` de Laravel a él. No es una decisión de infraestructura nueva: es
+  uno de los «controles mínimos» que ya pedía esta misma sección, con el proveedor concreto elegido.
+- **HTTPS y cifrado:** Railway los provee por defecto en sus dominios; no hay nada que configurar.
+
+Cuando llegue a existir producto y volumen reales, la comparación de abajo sigue siendo válida para
+decidir si conviene migrar a infraestructura propia. Se conserva como referencia.
 
 | Criterio | Plataforma administrada | Infraestructura propia |
 |---|---|---|

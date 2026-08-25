@@ -105,6 +105,17 @@ class Incapacidad extends Model implements NovedadEditable
         ];
     }
 
+    /**
+     * Vacío: el único campo de solo lectura del formulario son los días
+     * corridos, y los cuenta el servidor con lo que se está digitando.
+     *
+     * @return array<string, string>
+     */
+    public function contextoDeEdicion(): array
+    {
+        return [];
+    }
+
     public function confirmacionDeBorrado(): string
     {
         return ConfirmacionDeBorrado::deIncapacidad($this);

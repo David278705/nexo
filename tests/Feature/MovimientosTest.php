@@ -7,8 +7,12 @@ use App\Exports\MovimientosExport;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Movimiento;
 use App\Models\Tenant;
+use App\Models\Vinculacion;
 use App\Movimientos\ListadoDeMovimientos;
 use App\Multiempresa\ContextoTenant;
+use App\Novedades\ConfirmacionDeBorrado;
+use App\Terminaciones\TipoDeSalida;
+use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
 /**
@@ -336,6 +340,305 @@ describe('el listado', function () {
 
         expect($props['movimientos']['total'])->toBe(1)
             ->and($props['movimientos']['filas'][0]['efectivo'])->toBe('15/09/2026');
+    });
+});
+
+/**
+ * REV-03, la decisión de David: «eliminar es volver al pasado». Borrar un
+ * movimiento deja al empleado exactamente como estaba antes de crearlo, y solo
+ * se puede deshacer el último de la lista.
+ */
+describe('corregir y eliminar (REV-03)', function () {
+    /**
+     * Registra un aumento por la ruta de verdad y devuelve la fila creada, que
+     * es como llegan a existir los movimientos que estas pruebas deshacen.
+     */
+    function registrarMovimientoDe(Vinculacion $vinculacion, array $cambios = []): Movimiento
+    {
+        test()->actingAs(test()->usuario)->post('/movimientos', datosDeMovimiento([
+            'vinculacion_id' => $vinculacion->id,
+            ...$cambios,
+        ]))->assertRedirect('/movimientos');
+
+        return app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn () => Movimiento::query()->orderByDesc('id')->firstOrFail(),
+        );
+    }
+
+    /**
+     * El «hecho cuando» de la tarea: el empleado queda indistinguible de como
+     * estaba antes de que el movimiento existiera.
+     */
+    it('eliminar el movimiento devuelve el cargo y el salario que había justo antes', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '43887201'],
+            ['cargo' => 'Analista Senior', 'salario' => 2_700_000],
+        );
+
+        $movimiento = registrarMovimientoDe($vinculacion, [
+            'tipo' => 'promocion',
+            'cargo_nuevo' => 'Coordinadora de Operaciones',
+            'salario_nuevo' => '3200000',
+        ]);
+
+        $this->actingAs($this->usuario)
+            ->delete('/movimientos/'.$movimiento->id)
+            ->assertRedirect('/movimientos')
+            ->assertSessionHas('estado', 'Movimiento eliminado. Salario y cargo volvieron a como estaban.');
+
+        $actualizada = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $vinculacion->fresh());
+
+        expect((string) $actualizada->getAttribute('cargo'))->toBe('Analista Senior')
+            ->and((float) $actualizada->getAttribute('salario'))->toBe(2700000.0)
+            // La fila sigue ahí, marcada: nunca hay borrado físico (regla 4).
+            ->and(Movimiento::withoutGlobalScopes()->count())->toBe(1)
+            ->and(Movimiento::withoutGlobalScopes()->whereNotNull('deleted_at')->count())->toBe(1);
+    });
+
+    it('deshacer los dos de una cadena, de arriba abajo, deja el salario de partida', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '71654322'],
+            ['cargo' => 'Conductor', 'salario' => 1_800_000],
+        );
+
+        $primero = registrarMovimientoDe($vinculacion, ['salario_nuevo' => '1950000']);
+        $segundo = registrarMovimientoDe($vinculacion, ['salario_nuevo' => '2100000']);
+
+        $this->actingAs($this->usuario)->delete('/movimientos/'.$segundo->id);
+        $this->actingAs($this->usuario)->delete('/movimientos/'.$primero->id);
+
+        $actualizada = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $vinculacion->fresh());
+
+        expect((float) $actualizada->getAttribute('salario'))->toBe(1800000.0);
+    });
+
+    it('no deja eliminar un movimiento que tiene otro encima, y lo dice', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '71654322'],
+            ['cargo' => 'Conductor', 'salario' => 1_800_000],
+        );
+
+        $primero = registrarMovimientoDe($vinculacion, ['salario_nuevo' => '1950000']);
+        registrarMovimientoDe($vinculacion, ['salario_nuevo' => '2100000']);
+
+        $this->actingAs($this->usuario)
+            ->delete('/movimientos/'.$primero->id)
+            ->assertForbidden()
+            ->assertInertia(fn ($pagina) => $pagina
+                ->component('Error')
+                ->where('mensaje', ConfirmacionDeBorrado::HAY_UNO_POSTERIOR));
+
+        $actualizada = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $vinculacion->fresh());
+
+        // Ni se borró la fila ni se le tocó el salario al empleado.
+        expect((float) $actualizada->getAttribute('salario'))->toBe(2100000.0)
+            ->and(Movimiento::withoutGlobalScopes()->whereNull('deleted_at')->count())->toBe(2);
+    });
+
+    it('tampoco deja corregir uno que tiene otro encima', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '71654322'],
+            ['cargo' => 'Conductor', 'salario' => 1_800_000],
+        );
+
+        $primero = registrarMovimientoDe($vinculacion, ['salario_nuevo' => '1950000']);
+        registrarMovimientoDe($vinculacion, ['salario_nuevo' => '2100000']);
+
+        $this->actingAs($this->usuario)
+            ->put('/movimientos/'.$primero->id, datosDeMovimiento(['salario_nuevo' => '9000000']))
+            ->assertForbidden();
+
+        $sinTocar = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => Movimiento::query()->findOrFail($primero->id),
+        );
+
+        expect((float) $sinTocar->getAttribute('salario_nuevo'))->toBe(1950000.0);
+    });
+
+    it('corregir el más reciente arrastra el cargo y el salario del empleado', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '43887201'],
+            ['cargo' => 'Analista Senior', 'salario' => 2_700_000],
+        );
+
+        $movimiento = registrarMovimientoDe($vinculacion, [
+            'tipo' => 'promocion',
+            'cargo_nuevo' => 'Coordinadora de Operaciones',
+            'salario_nuevo' => '3200000',
+        ]);
+
+        $this->actingAs($this->usuario)
+            ->put('/movimientos/'.$movimiento->id, datosDeMovimiento([
+                'tipo' => 'promocion',
+                'cargo_nuevo' => 'Coordinadora de Operaciones',
+                'salario_nuevo' => '3300000',
+                'fecha_efectividad' => '2026-09-01',
+            ]))
+            ->assertRedirect('/movimientos')
+            ->assertSessionHas('estado', 'Movimiento actualizado. Salario y cargo corregidos.');
+
+        [$actualizada, $corregido] = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => [
+            $vinculacion->fresh(),
+            Movimiento::query()->findOrFail($movimiento->id),
+        ]);
+
+        expect((float) $actualizada->getAttribute('salario'))->toBe(3300000.0)
+            ->and((string) $actualizada->getAttribute('cargo'))->toBe('Coordinadora de Operaciones')
+            ->and($corregido->fecha_efectividad->toDateString())->toBe('2026-09-01')
+            // La foto de lo anterior es un hecho de aquel día y no se corrige.
+            ->and((float) $corregido->getAttribute('salario_anterior'))->toBe(2700000.0)
+            ->and($corregido->cargo_anterior)->toBe('Analista Senior');
+    });
+
+    it('corregir un aumento salarial no deja colar un cargo nuevo por la puerta de atrás', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '52998741'],
+            ['cargo' => 'Analista de Compras', 'salario' => 2_300_000],
+        );
+
+        $movimiento = registrarMovimientoDe($vinculacion, ['salario_nuevo' => '2500000']);
+
+        $this->actingAs($this->usuario)->put('/movimientos/'.$movimiento->id, datosDeMovimiento([
+            'cargo_nuevo' => 'Gerente General',
+            'salario_nuevo' => '2600000',
+        ]));
+
+        $actualizada = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $vinculacion->fresh());
+
+        expect((string) $actualizada->getAttribute('cargo'))->toBe('Analista de Compras');
+    });
+
+    it('la fila dice cuál de los movimientos del empleado se puede deshacer', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '71654322'],
+            ['cargo' => 'Conductor', 'salario' => 1_800_000],
+        );
+
+        registrarMovimientoDe($vinculacion, ['salario_nuevo' => '1950000', 'fecha_efectividad' => '2026-08-15']);
+        registrarMovimientoDe($vinculacion, ['salario_nuevo' => '2100000', 'fecha_efectividad' => '2026-09-01']);
+
+        $filas = $this->actingAs($this->usuario)
+            ->get('/movimientos')
+            ->viewData('page')['props']['movimientos']['filas'];
+
+        // El listado abre por fecha de efectividad ascendente, así que el de
+        // agosto va primero; el que se puede deshacer es el otro.
+        expect($filas[0]['efectivo'])->toBe('15/08/2026')
+            ->and($filas[0]['reversible'])->toBeFalse()
+            ->and($filas[1]['efectivo'])->toBe('01/09/2026')
+            ->and($filas[1]['reversible'])->toBeTrue();
+    });
+
+    it('la confirmación dice a qué cargo y a qué salario vuelve el empleado', function () {
+        $vinculacion = empleadoParaNovedad(
+            [
+                'numero_documento' => '43887201',
+                'primer_nombre' => 'Carolina',
+                'segundo_nombre' => null,
+                'primer_apellido' => 'Restrepo',
+                'segundo_apellido' => null,
+            ],
+            ['cargo' => 'Analista Senior', 'salario' => 2_700_000],
+        );
+
+        $movimiento = registrarMovimientoDe($vinculacion, [
+            'tipo' => 'promocion',
+            'cargo_nuevo' => 'Coordinadora de Operaciones',
+            'salario_nuevo' => '3200000',
+            'fecha_efectividad' => '2026-08-15',
+        ]);
+
+        $frase = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => $movimiento->confirmacionDeBorrado(),
+        );
+
+        expect($frase)->toBe(
+            'Vas a eliminar la promoción del 15 de agosto de 2026 de Carolina Restrepo. '
+            .'El cargo de Carolina Restrepo volverá a Analista Senior y su salario a $ 2.700.000. '
+            .'Esta acción queda registrada en la auditoría.'
+        );
+    });
+
+    it('un aumento salarial no anuncia un cambio de cargo que no va a ocurrir', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '71654322'],
+            ['cargo' => 'Conductor', 'salario' => 1_800_000],
+        );
+
+        $movimiento = registrarMovimientoDe($vinculacion, ['salario_nuevo' => '1950000']);
+
+        $frase = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => $movimiento->confirmacionDeBorrado(),
+        );
+
+        expect($frase)->toContain('el aumento salarial del 15 de agosto de 2026')
+            ->and($frase)->toContain('volverá a $ 1.800.000')
+            ->and($frase)->not->toContain('El cargo de');
+    });
+
+    it('el detalle trae el punto de partida del propio movimiento, no el del empleado', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '43887201'],
+            ['cargo' => 'Analista Senior', 'salario' => 2_700_000],
+        );
+
+        $movimiento = registrarMovimientoDe($vinculacion, [
+            'tipo' => 'promocion',
+            'cargo_nuevo' => 'Coordinadora de Operaciones',
+            'salario_nuevo' => '3200000',
+        ]);
+
+        $detalle = $this->actingAs($this->usuario)
+            ->get('/movimientos?'.http_build_query(['novedad' => $movimiento->id]), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+                'X-Inertia-Partial-Component' => 'Movimientos/Index',
+                'X-Inertia-Partial-Data' => 'novedad',
+            ])
+            ->json()['props']['novedad'];
+
+        expect($detalle['id'])->toBe($movimiento->id)
+            ->and($detalle['valores']['tipo'])->toBe('promocion')
+            ->and($detalle['valores']['cargo_nuevo'])->toBe('Coordinadora de Operaciones')
+            ->and($detalle['valores']['fecha_efectividad'])->toBe('2026-08-15')
+            // El empleado ya lleva encima los valores nuevos: el formulario
+            // enseña como punto de partida los que guardó el movimiento.
+            ->and($detalle['contexto'])->toBe([
+                'cargo' => 'Analista Senior',
+                'salario' => '$ 2.700.000',
+            ])
+            ->and($detalle['datos'])->not->toBeEmpty();
+    });
+
+    it('no resuelve el detalle en la carga de la pantalla', function () {
+        $props = $this->actingAs($this->usuario)->get('/movimientos')->viewData('page')['props'];
+
+        expect($props)->not->toHaveKey('novedad');
+    });
+
+    it('deja corregir el movimiento de alguien que ya salió de la empresa', function () {
+        $vinculacion = empleadoParaNovedad(
+            ['numero_documento' => '1017234891'],
+            ['cargo' => 'Conductor', 'salario' => 1_800_000],
+        );
+
+        $movimiento = registrarMovimientoDe($vinculacion, ['salario_nuevo' => '1950000']);
+
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () use ($vinculacion) {
+            $vinculacion->fresh()->registrarTerminacion(
+                TipoDeSalida::Renuncia,
+                'Estudios',
+                Carbon::parse('2026-09-30'),
+            );
+        });
+
+        $this->actingAs($this->usuario)
+            ->put('/movimientos/'.$movimiento->id, datosDeMovimiento(['salario_nuevo' => '1960000']))
+            ->assertRedirect('/movimientos');
     });
 });
 

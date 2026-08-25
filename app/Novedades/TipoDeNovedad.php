@@ -64,25 +64,25 @@ enum TipoDeNovedad: string
 
     /**
      * El título del modal cuando lo que se abre es un registro que ya existe
-     * (documento 1, 6.2), o nulo si ese módulo todavía no se edita por
-     * pantalla.
+     * (documento 1, 6.2).
      *
      * Editar y registrar son dos cosas distintas y el modal tiene que decirlo:
      * es la misma regla de nombres que separa «Renovar contrato» de «Editar la
      * fecha de finalización» (documento 3, 2.4).
      *
-     * **Movimientos y terminaciones no lo tienen**, y es una decisión, no un
-     * olvido: no son novedades del capítulo 6 y deshacerlas —devolver el
-     * salario anterior, revivir a un empleado inactivo— tiene consecuencias que
-     * ningún documento define todavía. La pregunta está en `ESTADO.md`.
+     * **Los cinco lo tienen desde REV-03.** Movimientos y terminaciones se
+     * quedaron sin él en F2-10 porque deshacerlos —devolver el salario
+     * anterior, revivir a un empleado inactivo— no lo definía ningún documento;
+     * lo definió David y está escrito en la tarea REV-03 del backlog.
      */
-    public function tituloDeEdicion(): ?string
+    public function tituloDeEdicion(): string
     {
         return match ($this) {
             self::Incapacidad => 'Editar incapacidad',
             self::Vacaciones => 'Editar vacaciones',
             self::Licencia => 'Editar licencia o ausencia',
-            self::Movimiento, self::Terminacion => null,
+            self::Movimiento => 'Editar movimiento salarial',
+            self::Terminacion => 'Editar terminación',
         };
     }
 
@@ -103,7 +103,7 @@ enum TipoDeNovedad: string
     /**
      * Lo que la interfaz necesita saber de un tipo de novedad.
      *
-     * @return array{clave: string, titulo: string, tituloEdicion: string|null, modulo: string}
+     * @return array{clave: string, titulo: string, tituloEdicion: string, modulo: string}
      */
     public function paraLaPantalla(): array
     {

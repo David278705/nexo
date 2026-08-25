@@ -60,6 +60,7 @@ const pagina = {
                 {
                     clave: "movimiento",
                     titulo: "Nuevo movimiento salarial",
+                    tituloEdicion: "Editar movimiento salarial",
                     modulo: "movimientos",
                 },
             ],
@@ -107,11 +108,73 @@ function montar(props = {}) {
                 tamanos: [25, 50, 100],
             },
             situacionActual: null,
+            novedad: null,
             ...props,
         },
         attachTo: document.body,
     });
 }
+
+/**
+ * Una fila del listado. `reversible` es lo que decide REV-03: solo el último
+ * movimiento de cada empleado ofrece Editar y Eliminar.
+ */
+function fila(cambios = {}) {
+    return {
+        id: 31,
+        documento: "43887201",
+        nombre: "Carolina Restrepo",
+        cargo: "Coordinadora de Operaciones",
+        tipo: "Promoción",
+        cargoAnterior: "Analista Senior",
+        cargoNuevo: "Coordinadora de Operaciones",
+        salarioAnterior: "$ 2.700.000",
+        salarioNuevo: "$ 3.200.000",
+        efectivo: "15/08/2026",
+        reversible: true,
+        ...cambios,
+    };
+}
+
+function listadoCon(filas) {
+    return {
+        filas,
+        pagina: 1,
+        paginas: 1,
+        total: filas.length,
+        desde: 1,
+        hasta: filas.length,
+    };
+}
+
+/**
+ * El detalle que contesta el servidor al pulsar Editar o Eliminar, tal como lo
+ * arma `App\Novedades\DetalleDeNovedad`.
+ */
+const DETALLE = {
+    id: 31,
+    datos: [
+        {
+            etiqueta: "Empleado",
+            valor: "Carolina Restrepo Vélez",
+            pendiente: false,
+            nota: "",
+        },
+    ],
+    valores: {
+        vinculacion_id: 7,
+        tipo: "promocion",
+        cargo_nuevo: "Coordinadora de Operaciones",
+        salario_nuevo: "3200000.00",
+        fecha_efectividad: "2026-08-15",
+    },
+    contexto: { cargo: "Analista Senior", salario: "$ 2.700.000" },
+    confirmacion:
+        "Vas a eliminar la promoción del 15 de agosto de 2026 de Carolina " +
+        "Restrepo Vélez. El cargo de Carolina Restrepo Vélez volverá a Analista " +
+        "Senior y su salario a $ 2.700.000. Esta acción queda registrada en la " +
+        "auditoría.",
+};
 
 const SITUACION = { cargo: "Analista Senior", salario: "$ 3.200.000" };
 
@@ -292,6 +355,106 @@ describe("aumentos y promociones (F2-08)", () => {
         await escribir("Nuevo cargo", "Coordinadora de Operaciones");
 
         expect(boton("Guardar").disabled).toBe(false);
+
+        componente.unmount();
+    });
+});
+
+/*
+ * REV-03. Lo que se defiende aquí es lo que la pantalla decide sola: a qué
+ * filas ofrece las dos acciones y qué enseña como punto de partida al corregir.
+ * El efecto de las acciones lo prueba el servidor, y el mecanismo de abrirlas,
+ * `useNovedad.test.js`.
+ */
+describe("corregir y eliminar un movimiento (REV-03)", () => {
+    beforeEach(() => {
+        reload.mockClear();
+        document.body.innerHTML = "";
+    });
+
+    it("ofrece las dos acciones en el último movimiento del empleado", () => {
+        const componente = montar({ movimientos: listadoCon([fila()]) });
+
+        expect(boton("Editar")).toBeDefined();
+        expect(boton("Eliminar")).toBeDefined();
+        expect(document.body.textContent).not.toContain("Hay uno posterior");
+
+        componente.unmount();
+    });
+
+    it("no las ofrece, y dice por qué, cuando hay otro movimiento encima", () => {
+        const componente = montar({
+            movimientos: listadoCon([fila({ reversible: false })]),
+        });
+
+        expect(boton("Editar")).toBeUndefined();
+        expect(boton("Eliminar")).toBeUndefined();
+        expect(document.body.textContent).toContain("Hay uno posterior");
+
+        componente.unmount();
+    });
+
+    it("pide el detalle de la fila al pulsar Editar, sin traerlo en el listado", async () => {
+        const componente = montar({ movimientos: listadoCon([fila()]) });
+
+        boton("Editar").dispatchEvent(new Event("click"));
+        await nextTick();
+
+        expect(reload).toHaveBeenCalledWith(
+            expect.objectContaining({ only: ["novedad"], data: { novedad: 31 } }),
+        );
+
+        componente.unmount();
+    });
+
+    it("al corregir enseña el punto de partida del movimiento, no el del empleado", async () => {
+        // `situacionActual` trae los valores vigentes del empleado, que ya son
+        // el resultado de este movimiento: los que se enseñan tienen que ser
+        // los que la fila guardó como anteriores.
+        const componente = montar({
+            movimientos: listadoCon([fila()]),
+            novedad: DETALLE,
+            situacionActual: SITUACION,
+        });
+
+        boton("Editar").dispatchEvent(new Event("click"));
+        await nextTick();
+
+        expect(campo("Cargo actual").value).toBe("Analista Senior");
+        expect(campo("Salario actual").value).toBe("$ 2.700.000");
+        expect(campo("Nuevo salario").value).toBe("3200000.00");
+        expect(campo("Nuevo cargo").value).toBe("Coordinadora de Operaciones");
+
+        componente.unmount();
+    });
+
+    it("abre el modal de corrección con su propio título y sin pedir el documento", async () => {
+        const componente = montar({
+            movimientos: listadoCon([fila()]),
+            novedad: DETALLE,
+        });
+
+        boton("Editar").dispatchEvent(new Event("click"));
+        await nextTick();
+
+        expect(document.body.textContent).toContain("Editar movimiento salarial");
+        expect(boton("Continuar")).toBeUndefined();
+
+        componente.unmount();
+    });
+
+    it("enseña antes de eliminar la consecuencia que escribió el servidor", async () => {
+        const componente = montar({
+            movimientos: listadoCon([fila()]),
+            novedad: DETALLE,
+        });
+
+        boton("Eliminar").dispatchEvent(new Event("click"));
+        await nextTick();
+
+        expect(document.body.textContent).toContain(
+            "volverá a Analista Senior y su salario a $ 2.700.000",
+        );
 
         componente.unmount();
     });

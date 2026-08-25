@@ -95,7 +95,14 @@ class ListadoDeMovimientos extends Listado
      * es ninguno de los dos del movimiento en cuanto hay un movimiento
      * posterior.
      *
-     * @return array<string, string|int>
+     * `reversible` dice si esta fila es el último movimiento de su empleado, que
+     * es la única que se puede corregir o eliminar (REV-03). Va en la fila y no
+     * se pregunta al pulsar porque es lo que decide si la tabla ofrece las dos
+     * acciones: ofrecerlas para retirarlas después sería prometer algo que no
+     * se puede hacer. Sale de la relación que `base()` ya trae cargada, así que
+     * no cuesta una consulta por fila.
+     *
+     * @return array<string, string|int|bool>
      */
     public static function fila(Movimiento $movimiento): array
     {
@@ -113,6 +120,7 @@ class ListadoDeMovimientos extends Listado
             'salarioAnterior' => Formato::dinero($movimiento->getAttribute('salario_anterior')),
             'salarioNuevo' => Formato::dinero($movimiento->getAttribute('salario_nuevo')),
             'efectivo' => Formato::fecha($movimiento->fecha_efectividad),
+            'reversible' => $movimiento->esElMasReciente(),
         ];
     }
 
@@ -121,7 +129,10 @@ class ListadoDeMovimientos extends Listado
      */
     protected function base(): Builder
     {
-        return Movimiento::query()->with(['vinculacion.persona']);
+        // `vinculacion.movimientos` es de REV-03: de ahí sale `reversible` sin
+        // una consulta por fila. Son los movimientos de los empleados que ya
+        // están en la página, no los de la empresa entera.
+        return Movimiento::query()->with(['vinculacion.persona', 'vinculacion.movimientos']);
     }
 
     /**

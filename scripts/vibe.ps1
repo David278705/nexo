@@ -11,9 +11,14 @@
 #     .\scripts\vibe.ps1
 #     .\scripts\vibe.ps1 -Vueltas 20
 #     .\scripts\vibe.ps1 -SinLimitePermisos      # mas rapido, menos seguro
+#     .\scripts\vibe.ps1 -Modelo opus            # fuerza un modelo para todo
 #
 #  Cada vuelta es una sesion nueva de Claude Code, con contexto limpio.
 #  El estado vive en los archivos, no en la conversacion. Por eso no se atasca.
+#
+#  EL MODELO SE ESCOGE POR TAREA. Ver la lista $tareasComplejas mas abajo:
+#  el resto de tareas va con el modelo base. Con -Modelo se fuerza uno solo
+#  para toda la corrida y la lista se ignora.
 # ============================================================================
 
 param(
@@ -21,7 +26,9 @@ param(
     [int]$MaxTurnos = 250,
     [int]$PausaSegundos = 5,
     [switch]$SinLimitePermisos,
-    [string]$Modelo = ""
+    [string]$Modelo = "",
+    [string]$ModeloBase = "sonnet",
+    [string]$ModeloComplejo = "opus"
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,15 +71,47 @@ function ProximaTarea {
     $m = Select-String -Path "$raiz\BACKLOG.md" -Pattern '^### \[ \] (.+)$' | Select-Object -First 1
     if ($m) { return $m.Matches[0].Groups[1].Value } else { return "" }
 }
+
+# ---------------------------------------------------------------- modelo por tarea
+#
+# Las tareas donde equivocarse NO lo atrapa ninguna prueba: o tocan el motor de
+# calculo y los saldos, o cruzan empresas a proposito, o son revisiones de
+# criterio sobre todo el codigo. El resto del backlog es aplicar patrones que el
+# proyecto ya tiene resueltos, y para eso el modelo base sobra.
+#
+# Es una lista, no una regla automatica: si una tarea nueva toca reglas legales
+# o aislamiento, agregala aqui a mano.
+$tareasComplejas = @(
+    'F4-05',   # punto de control: revisar todo el codigo, es juicio puro
+    'F5-01',   # lector de plantillas: valida los datos de arranque del cliente
+    'F5-02',   # ejecucion de la carga: transaccional y toca los saldos
+    'F5-04',   # suscripciones y cobros: dinero, mora y suspension
+    'F5-07',   # acceso del owner al entorno del cliente: cruza empresas
+    'F6-08',   # revision final
+    'REV-03'   # eliminar movimientos y terminaciones: revierte estado del empleado
+)
+
+function IdDeTarea($textoDeTarea) {
+    $m = [regex]::Match($textoDeTarea, '^([A-Z0-9]+-[0-9]+)')
+    if ($m.Success) { return $m.Groups[1].Value } else { return "" }
+}
+
+function ModeloParaTarea($textoDeTarea) {
+    if ($Modelo -ne "") { return $Modelo }
+    $id = IdDeTarea $textoDeTarea
+    if ($id -ne "" -and $tareasComplejas -contains $id) { return $ModeloComplejo }
+    return $ModeloBase
+}
 function Log($texto) {
     $linea = "[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $texto
     Add-Content -Path $registro -Value $linea
 }
 
 # Frases con las que Claude Code avisa que se acabo el limite de uso o el saldo.
-# Cuando aparecen, el CLI a veces sale con codigo 0, asi que el codigo de salida
-# por si solo no basta para distinguir "limite alcanzado" de "vuelta normal".
-$patronLimite = 'usage limit reached|Claude usage limit|rate limit|Credit balance is too low|limit will reset|insufficient credits|Please run /login|Invalid API key'
+# Cuando aparecen, el CLI a veces sale con codigo 0 y otras con codigo distinto
+# de 0 (visto: "You've hit your session limit" salio con codigo 1), asi que ni
+# el codigo de salida ni una sola frase bastan por si solos.
+$patronLimite = 'usage limit reached|Claude usage limit|session limit|rate limit|Credit balance is too low|limit will reset|insufficient credits|Please run /login|Invalid API key'
 
 function HoraDeReinicio($texto) {
     $m = [regex]::Match($texto, '(?:resets?|reset at|try again)\s+(?:at\s+)?([^\r\n\.]{3,40})', 'IgnoreCase')
@@ -102,13 +141,19 @@ Reglas de esta sesion:
 "@
 
 # ---------------------------------------------------------------- argumentos
-$argumentos = @("-p", $encargo, "--max-turns", "$MaxTurnos", "--output-format", "text")
-if ($SinLimitePermisos) {
-    $argumentos += @("--permission-mode", "bypassPermissions")
-} else {
-    $argumentos += @("--permission-mode", "acceptEdits")
+#
+# El modelo se decide en cada vuelta, ya con la tarea a la vista, asi que los
+# argumentos se arman dentro del bucle y no una sola vez aqui.
+function ArgumentosPara($modeloDeLaVuelta) {
+    $a = @("-p", $encargo, "--max-turns", "$MaxTurnos", "--output-format", "text")
+    if ($SinLimitePermisos) {
+        $a += @("--permission-mode", "bypassPermissions")
+    } else {
+        $a += @("--permission-mode", "acceptEdits")
+    }
+    if ($modeloDeLaVuelta -ne "") { $a += @("--model", $modeloDeLaVuelta) }
+    return $a
 }
-if ($Modelo -ne "") { $argumentos += @("--model", $Modelo) }
 
 # ---------------------------------------------------------------- arranque
 Write-Host ""
@@ -119,6 +164,12 @@ Write-Host ""
 Write-Host "   Pendientes: $(TareasPendientes)   Hechas: $(TareasHechas)   Bloqueadas: $(TareasBloqueadas)"
 Write-Host "   Maximo de vueltas en esta corrida: $Vueltas"
 Write-Host "   Registro: $registro"
+if ($Modelo -ne "") {
+    Write-Host "   Modelo: $Modelo para todas las tareas (forzado)" -ForegroundColor Magenta
+} else {
+    Write-Host "   Modelo: $ModeloBase, y $ModeloComplejo en $($tareasComplejas.Count) tareas de criterio" -ForegroundColor Magenta
+    Write-Host "           ($($tareasComplejas -join ', '))" -ForegroundColor DarkGray
+}
 if ($SinLimitePermisos) {
     Write-Host ""
     Write-Host "   MODO SIN LIMITE DE PERMISOS: no se pedira confirmacion para nada" -ForegroundColor Yellow
@@ -147,21 +198,31 @@ while ($vuelta -lt $Vueltas) {
     $vuelta++
     $tarea = ProximaTarea
     $marca = Get-Date -Format 'HH:mm:ss'
+    $modeloDeLaVuelta = ModeloParaTarea $tarea
+    $porQueEseModelo = if ($Modelo -ne "") {
+        "forzado con -Modelo"
+    } elseif ($modeloDeLaVuelta -eq $ModeloComplejo) {
+        "tarea de la lista de criterio"
+    } else {
+        "tarea de patron conocido"
+    }
 
     Write-Host ""
     Write-Host "  ------------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host "   Vuelta $vuelta de $Vueltas   ·   $marca" -ForegroundColor White
     Write-Host "   $tarea" -ForegroundColor Cyan
+    Write-Host "   Modelo: $modeloDeLaVuelta ($porQueEseModelo)" -ForegroundColor Magenta
     Write-Host "   Quedan $pendientes pendientes" -ForegroundColor DarkGray
     Write-Host "  ------------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host ""
 
-    Log "Vuelta $vuelta — $tarea"
+    Log "Vuelta $vuelta — $tarea — modelo: $modeloDeLaVuelta ($porQueEseModelo)"
 
     $inicio = Get-Date
     # La salida se ve en pantalla y ademas queda guardada, para poder revisarla
     # despues y para saber si la vuelta murio por limite de uso.
     $logVuelta = "$raiz\bitacora\vuelta-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
+    $argumentos = ArgumentosPara $modeloDeLaVuelta
     & claude @argumentos 2>&1 | Tee-Object -FilePath $logVuelta
     $codigo = $LASTEXITCODE
     $duracion = [math]::Round(((Get-Date) - $inicio).TotalMinutes, 1)
