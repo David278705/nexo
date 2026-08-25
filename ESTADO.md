@@ -4,8 +4,12 @@
 `[!]` porque el paso que falta es de David.
 **Verificación:** verde — Pint, PHPStan sin errores, **1.169** pruebas de Pest, build y **384** de
 Vitest.
-**Siguiente tarea:** ninguna hasta que David haga la restauración de Railway que pide F6-07. Después
-de eso, marcar F6-07 `[x]` y seguir con `REV-07`.
+**Siguiente tarea:** `REV-07`. **Corrección del 24 de agosto:** la nota de abajo que decía «no tomes
+ninguna tarea nueva mientras F6-07 siga `[!]`» estaba mal — contradice cómo ya se venía trabajando con
+`F3-06b`, que lleva bloqueada desde el 23 de agosto sin que eso frenara nada. La regla real, la de la
+cabecera de `BACKLOG.md`, es «se toma siempre la primera **`[ ]`**»: una tarea `[!]` se salta, no se
+espera. `F6-07` se queda bloqueada hasta que David haga la restauración en Railway, exactamente igual
+que `F3-06b` espera su propio paso manual, y el resto del backlog sigue avanzando mientras tanto.
 
 ## Qué se hizo
 
@@ -85,10 +89,8 @@ F6-07 y repetidos en `docs/07-plan-de-incidentes.md`, sección 4.
 
 ## Notas para la próxima sesión
 
-- **No tomes ninguna tarea nueva mientras F6-07 siga `[!]`.** Es la primera de la lista y está escrita
-  para que nadie la reintente sin la parte de David hecha.
+- **Toma `REV-07` — es la primera `[ ]` real.** `F6-07` sigue `[!]` y se salta, igual que `F3-06b`.
 - **Si David ya dejó la evidencia de la restauración en `bitacora/`:** marca F6-07 `[x]` citando esa
-  evidencia, y sigue con `REV-07` — la restauración nocturna del ambiente de demostración que llena la
-  auditoría, que va delante de `REV-04` a propósito.
+  evidencia. Si no, sigue de largo — no bloquea nada más del backlog.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
 - **`LEEME PRIMERO.md` y `scripts/vibe.ps1` siguen modificados y sin commitear**, ajenos a esta tarea.
