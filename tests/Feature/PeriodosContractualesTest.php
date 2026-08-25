@@ -192,6 +192,39 @@ describe('las prórrogas acumuladas', function () {
     });
 });
 
+describe('las prórrogas previas a la carga inicial (REV-09)', function () {
+    it('las suma al cupo de prórrogas cortas sin crear ningún tramo', function () {
+        $historial = enLaEmpresaDelContrato(function () {
+            $vinculacion = Vinculacion::factory()
+                ->aTerminoFijo('2026-01-01', '2026-03-31')
+                ->create(['prorrogas_previas_a_la_carga' => 2]);
+
+            PeriodoContractual::factory()->de($vinculacion)->entre('2026-04-01', '2026-06-30')->create();
+
+            return $vinculacion->historial();
+        });
+
+        // El cupo real es de tres: dos que trajo la carga y una registrada
+        // después. El historial que se ve solo trae el tramo de verdad.
+        expect($historial->periodos())->toHaveCount(2)
+            ->and($historial->prorrogasCortas())->toBe(3)
+            ->and($historial->prorrogasCortasRestantes())->toBe(0)
+            ->and($historial->notaDeCargaInicial())
+            ->toBe('Y 2 prórrogas anteriores a la carga inicial, sin detalle.');
+    });
+
+    it('un contrato registrado a mano no tiene ninguna y no dice nada', function () {
+        $historial = enLaEmpresaDelContrato(fn () => Vinculacion::factory()
+            ->aTerminoFijo('2026-01-01', '2026-03-31')
+            ->create()
+            ->historial());
+
+        expect($historial->prorrogasPreviasALaCarga())->toBe(0)
+            ->and($historial->prorrogasCortas())->toBe(0)
+            ->and($historial->notaDeCargaInicial())->toBe('');
+    });
+});
+
 describe('la duración total del vínculo', function () {
     it('corre desde el primer tramo hasta el vencimiento vigente', function () {
         $historial = enLaEmpresaDelContrato(function () {

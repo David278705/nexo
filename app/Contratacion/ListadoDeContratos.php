@@ -157,7 +157,10 @@ class ListadoDeContratos extends Listado
      */
     public static function fila(Vinculacion $vinculacion, ?Carbon $hoy = null): array
     {
-        $historial = HistorialDeContrato::con($vinculacion->periodos);
+        $historial = HistorialDeContrato::con(
+            $vinculacion->periodos,
+            (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
+        );
         $vigencia = VigenciaDelContrato::de($historial, $hoy);
         $vigente = $historial->vigente();
         $persona = $vinculacion->persona;

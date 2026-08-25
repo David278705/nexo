@@ -1795,7 +1795,7 @@ completo —un empleado cargado con expedición en Venezuela termina con `pais_e
 `departamento_expedicion_exterior` y `ciudad_expedicion_exterior` idénticos a los que dejaría el
 asistente manual—.
 
-### [ ] REV-09 · La plantilla pide «prórrogas ya realizadas» y las descarta sin usarlas
+### [x] REV-09 · La plantilla pide «prórrogas ya realizadas» y las descarta sin usarlas
 
 `PlantillaDeEmpleados` tiene la columna «Prórrogas ya realizadas» (`prorrogas_realizadas`), la valida
 —entero, `min:0`— y **nunca la vuelve a mencionar**: no se le pasa a `RegistroDeEmpleado::ejecutar()`,
@@ -1832,6 +1832,30 @@ carga, se comporta exactamente igual que antes.
 **Fuente:** `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` ·
 `app/Contratacion/HistorialDeContrato.php` · la corrección del cupo de prórrogas cortas de esta misma
 sesión.
+
+Hecho: la migración agrega `prorrogas_previas_a_la_carga` (entero, por defecto 0) a `vinculaciones`;
+`RegistroDeEmpleado` la escribe solo cuando la carga la trae, así que un registro por pantalla la deja
+en el valor por defecto de la columna. `HistorialDeContrato::prorrogasCortas()` la suma al conteo que
+ya hacía sobre `periodos_contractuales`, y de ahí sale corregido todo lo que dependía de ese número:
+`prorrogasCortasRestantes()`, la validación bloqueante o de advertencia de F1-10, y la alerta
+`UltimaRenovacionCorta`. Los cinco sitios que construían el historial con `HistorialDeContrato::con()`
+—el listado y el detalle de contratos, y las tres reglas de alerta del término fijo— ahora le pasan el
+número real de la vinculación; antes lo perdían sin darse cuenta porque `con()` no lo pedía.
+`notaDeCargaInicial()` es la línea nueva —«Y 2 prórrogas anteriores a la carga inicial, sin
+detalle.»— que se ve debajo del historial de la ficha del empleado y del detalle del contrato cuando
+el número es mayor que cero; el historial en sí sigue mostrando solo los tramos que de verdad se
+registraron.
+
+**Una precisión sobre el «Hecho cuando».** Con el cupo real en tres y dos prórrogas previas, al
+contrato le queda **un** cupo, no cero: la primera prórroga corta que se registre después de la carga
+lo agota y avisa en ámbar «gasta el último cupo, y la siguiente renovación deberá ser de mínimo un
+año» —la misma línea informativa que ya existía para un contrato con dos tramos cortos reales—, y
+todavía se puede guardar. La regla de prórroga mínima —la que bloquea o advierte según
+`config/validaciones.php`— dispara en la prórroga *siguiente* a esa, la que de verdad se pasa del
+cupo, exactamente como ya lo hacía un contrato con tres tramos cortos reales intentando un cuarto. Es
+el mismo mecanismo de F1-10/F3-04, sin tocar; lo único que cambia con esta tarea es que ahora cuenta
+bien las dos que trajo la carga. La prueba de `RenovacionTest.php` cubre las dos situaciones: el aviso
+ámbar en la primera prórroga después de la carga, y el bloqueo en la que de verdad se pasa.
 
 ### [ ] REV-10 · Usuarios y permisos, la pantalla del cliente que nunca se construyó
 

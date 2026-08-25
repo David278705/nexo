@@ -28,8 +28,12 @@ class HistorialDeContrato
 {
     /**
      * @param  Collection<int, PeriodoContractual>  $periodos  Del primero al último.
+     * @param  int  $prorrogasPreviasALaCarga  Las que traía el contrato antes de la carga inicial (REV-09), sin tramo que las respalde.
      */
-    private function __construct(private readonly Collection $periodos) {}
+    private function __construct(
+        private readonly Collection $periodos,
+        private readonly int $prorrogasPreviasALaCarga = 0,
+    ) {}
 
     /**
      * El historial de una vinculación, leído de la base de datos.
@@ -37,7 +41,8 @@ class HistorialDeContrato
     public static function de(Vinculacion $vinculacion): self
     {
         return new self(
-            $vinculacion->periodos()->enOrden()->get()->values()
+            $vinculacion->periodos()->enOrden()->get()->values(),
+            (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
         );
     }
 
@@ -49,10 +54,11 @@ class HistorialDeContrato
      *
      * @param  iterable<int, PeriodoContractual>  $periodos
      */
-    public static function con(iterable $periodos): self
+    public static function con(iterable $periodos, int $prorrogasPreviasALaCarga = 0): self
     {
         return new self(
-            (new Collection($periodos))->sortBy('orden')->values()
+            (new Collection($periodos))->sortBy('orden')->values(),
+            $prorrogasPreviasALaCarga,
         );
     }
 
@@ -126,13 +132,53 @@ class HistorialDeContrato
      *
      * Solo cuentan las cortas, porque es lo que la regla del artículo 46
      * limita: una prórroga de dos años no gasta ninguno de los tres cupos.
+     *
+     * **Suma también las que trajo la carga inicial** (REV-09,
+     * `prorrogasPreviasALaCarga()`), que no tienen tramo propio en
+     * `periodos_contractuales` pero sí gastaron cupo en la realidad. Un
+     * contrato registrado por pantalla trae ese número en cero, así que aquí
+     * no cambia nada para él.
      */
     public function prorrogasCortas(): int
     {
         return $this->periodos
             ->filter(fn (PeriodoContractual $tramo) => $tramo->esProrroga()
                 && $tramo->esInferiorAUnAnio())
-            ->count();
+            ->count()
+            + $this->prorrogasPreviasALaCarga;
+    }
+
+    /**
+     * Cuántas prórrogas traía el contrato antes de la carga inicial, sin
+     * tramo que las respalde en el historial (REV-09).
+     *
+     * Es lo que la pantalla usa para avisar «Y N prórrogas anteriores a la
+     * carga inicial, sin detalle» debajo del historial, sin inventar esas
+     * filas dentro de la tabla.
+     */
+    public function prorrogasPreviasALaCarga(): int
+    {
+        return $this->prorrogasPreviasALaCarga;
+    }
+
+    /**
+     * La línea aparte que acompaña al historial cuando el contrato viene de
+     * la carga inicial con prórrogas previas (REV-09), o vacía cuando no las
+     * tiene.
+     *
+     * Es una nota, no una fila: `filasDelHistorial()` sigue mostrando
+     * únicamente los tramos que de verdad se registraron.
+     */
+    public function notaDeCargaInicial(): string
+    {
+        if ($this->prorrogasPreviasALaCarga <= 0) {
+            return '';
+        }
+
+        return 'Y '.$this->prorrogasPreviasALaCarga.' prórroga'
+            .($this->prorrogasPreviasALaCarga === 1 ? '' : 's')
+            .' anterior'.($this->prorrogasPreviasALaCarga === 1 ? '' : 'es')
+            .' a la carga inicial, sin detalle.';
     }
 
     /**

@@ -688,6 +688,42 @@ describe('la ejecución de la carga', function () {
             ->and($saldos['tresMesesDespues'])->toBe(21.0);
     });
 
+    it('guarda las prórrogas ya realizadas aparte, sin inventar tramos en el historial (REV-09)', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de finalización del contrato' => '31/12/2026',
+                'Prórrogas ya realizadas' => 2,
+            ]),
+        ]);
+
+        ejecutar(new PlantillaDeEmpleados, $archivo);
+
+        $vinculacion = app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn (): Vinculacion => Vinculacion::query()->with('periodos')->firstOrFail(),
+        );
+
+        expect($vinculacion->prorrogas_previas_a_la_carga)->toBe(2)
+            // El historial solo trae el periodo inicial: nada se inventó.
+            ->and($vinculacion->periodos)->toHaveCount(1)
+            ->and($vinculacion->historial()->prorrogasCortas())->toBe(2)
+            ->and($vinculacion->historial()->notaDeCargaInicial())
+            ->toBe('Y 2 prórrogas anteriores a la carga inicial, sin detalle.');
+    });
+
+    it('un empleado registrado a mano no lleva ninguna prórroga previa a la carga', function () {
+        $vinculacion = app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn (): Vinculacion => Vinculacion::factory()
+                ->de(Persona::factory()->create())
+                ->aTerminoFijo('2026-01-01', '2026-12-31')
+                ->create(),
+        );
+
+        expect($vinculacion->prorrogas_previas_a_la_carga)->toBe(0);
+    });
+
     it('no escribe ni una fila cuando el archivo todavía tiene un error', function () {
         $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
             filaDeEmpleado(['Número de documento' => '1017234567']),

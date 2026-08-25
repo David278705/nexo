@@ -35,7 +35,10 @@ class DetalleDelContrato
     {
         $vinculacion->loadMissing(['persona', 'periodos']);
 
-        $historial = HistorialDeContrato::con($vinculacion->periodos);
+        $historial = HistorialDeContrato::con(
+            $vinculacion->periodos,
+            (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
+        );
 
         return new self($vinculacion, $historial, VigenciaDelContrato::de($historial, $hoy));
     }
@@ -51,6 +54,7 @@ class DetalleDelContrato
             'indicadores' => $this->indicadores(),
             'campos' => $this->campos(),
             'historial' => FichaDeEmpleado::filasDelHistorial($this->historial),
+            'notaDeHistorial' => $this->historial->notaDeCargaInicial(),
             /*
              * El modal de «Renovar contrato» (F1-09). Viaja siempre, también en
              * un contrato que no admite renovación: la pantalla necesita saber

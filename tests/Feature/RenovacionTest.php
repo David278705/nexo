@@ -5,6 +5,7 @@ use App\Autorizacion\Rol;
 use App\Contratacion\EventoContractual;
 use App\Contratacion\TipoContrato;
 use App\Models\PeriodoContractual;
+use App\Models\Persona;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use Illuminate\Database\Eloquent\Collection;
@@ -551,6 +552,71 @@ describe('la regla de prórroga mínima', function () {
         renovar($contrato, laCuartaCorta())->assertSessionHasErrors('fecha_fin');
 
         expect(tramosDe($contrato))->toHaveCount(4);
+    });
+
+    it('un contrato cargado con prórrogas previas avisa que gasta el último cupo en su primera prórroga corta después de la carga (REV-09)', function () {
+        // Nadie ha registrado ninguna prórroga todavía en este sistema: las
+        // dos que cuentan las trajo la carga inicial, en «Prórrogas ya
+        // realizadas». Antes de esta tarea el sistema las ignoraba y hubiera
+        // dejado registrar hasta tres más sin avisar nada; con el cupo real
+        // de tres, a esta contratación solo le queda un cupo.
+        $contrato = enLaEmpresa(fn () => Vinculacion::factory()
+            ->de(Persona::factory()->create([
+                'primer_nombre' => 'Cargada',
+                'segundo_nombre' => null,
+                'primer_apellido' => 'DeLaPlanta',
+                'segundo_apellido' => null,
+            ]))
+            ->aTerminoFijo('2026-01-01', '2026-03-31')
+            ->create(['cargo' => 'Auxiliar de Bodega', 'prorrogas_previas_a_la_carga' => 2])
+            ->fresh());
+
+        $renovacion = renovacionDe($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2026-06-30']);
+
+        expect($renovacion['proyeccion']['tono'])->toBe('advertencia')
+            ->and($renovacion['proyeccion']['bloqueado'])->toBeFalse()
+            ->and(implode(' ', $renovacion['proyeccion']['lineas']))
+            ->toContain('la siguiente renovación de este contrato deberá ser de mínimo un año');
+
+        renovar($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2026-06-30'])
+            ->assertSessionHasNoErrors();
+    });
+
+    it('un contrato cargado con prórrogas previas bloquea la que de verdad se pasa del cupo (REV-09)', function () {
+        config(['validaciones.renovacion_prorroga_minima' => 'bloquea']);
+
+        // Con dos prórrogas previas y una ya registrada después de la carga,
+        // el cupo real de tres ya se gastó por completo: la siguiente es la
+        // que la ley no admite.
+        $contrato = enLaEmpresa(function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create([
+                    'primer_nombre' => 'Agotada',
+                    'segundo_nombre' => null,
+                    'primer_apellido' => 'DeLaPlanta',
+                    'segundo_apellido' => null,
+                ]))
+                ->aTerminoFijo('2026-01-01', '2026-03-31')
+                ->create(['cargo' => 'Auxiliar de Bodega', 'prorrogas_previas_a_la_carga' => 2]);
+
+            $vinculacion->registrarPeriodo(
+                EventoContractual::ProrrogaPactada,
+                TipoContrato::Fijo,
+                Carbon::parse('2026-04-01'),
+                Carbon::parse('2026-06-30'),
+            );
+
+            return $vinculacion->fresh();
+        });
+
+        renovar($contrato, ['tipo' => 'prorroga_pactada', 'fecha_fin' => '2026-09-30'])
+            ->assertSessionHasErrors([
+                'fecha_fin' => 'No se puede registrar esta prórroga: es inferior a un año y el '
+                    .'contrato ya agotó las que la ley admite. A partir de esta renovación el '
+                    .'contrato no puede prorrogarse por menos de un año.',
+            ]);
+
+        expect(tramosDe($contrato))->toHaveCount(2);
     });
 
     it('la prórroga de un año o más se registra aunque los cupos estén agotados', function () {

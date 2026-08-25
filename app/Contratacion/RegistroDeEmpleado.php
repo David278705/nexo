@@ -166,6 +166,7 @@ class RegistroDeEmpleado
             'banco_id' => $datos['banco_id'],
 
             ...$this->saldoDeLaCargaInicial($datos),
+            ...$this->prorrogasPreviasALaCarga($datos),
         ];
     }
 
@@ -195,6 +196,30 @@ class RegistroDeEmpleado
         return [
             'saldo_inicial_vacaciones' => $datos['saldo_inicial_vacaciones'],
             'fecha_corte_saldo' => $datos['fecha_corte_saldo'],
+        ];
+    }
+
+    /**
+     * Cuántas prórrogas traía el contrato antes de la carga inicial (REV-09),
+     * solo cuando la carga lo trae.
+     *
+     * **No es un tramo del historial.** La plantilla solo pregunta un conteo,
+     * no la fecha ni el tipo de cada prórroga, y `HistorialDeContrato` lo suma
+     * aparte al contar el cupo de prórrogas cortas del artículo 46. Quien se
+     * registra por pantalla no manda esta clave, así que su vinculación queda
+     * en el valor por defecto de la columna: cero.
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<string, mixed>
+     */
+    private function prorrogasPreviasALaCarga(array $datos): array
+    {
+        if (! isset($datos['prorrogas_realizadas'])) {
+            return [];
+        }
+
+        return [
+            'prorrogas_previas_a_la_carga' => (int) $datos['prorrogas_realizadas'],
         ];
     }
 }

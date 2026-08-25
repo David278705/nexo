@@ -243,7 +243,7 @@ class FichaDeEmpleado
      * que es el mismo objeto que usarán el detalle del contrato (F1-08) y las
      * validaciones de prórroga (F1-10).
      *
-     * @return array{campos: list<array{etiqueta: string, valor: string}>, historial: list<array<string, string|int>>}
+     * @return array{campos: list<array{etiqueta: string, valor: string}>, historial: list<array<string, string|int>>, notaDeHistorial: string}
      */
     public function contrato(): array
     {
@@ -273,6 +273,7 @@ class FichaDeEmpleado
         return [
             'campos' => self::campos($campos),
             'historial' => self::filasDelHistorial($historial),
+            'notaDeHistorial' => $historial->notaDeCargaInicial(),
         ];
     }
 

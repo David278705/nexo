@@ -232,9 +232,14 @@ class PlantillaDeEmpleados extends Plantilla
      * `periodos_contractuales`, una fila por tramo con sus dos fechas. Con un
      * número de prórrogas y una sola fecha, reconstruir la cadena obligaría a
      * inventarse las fechas de los tramos intermedios, y el principio 13.1 del
-     * documento 1 lo prohíbe con esas palabras: «no se inventan registros». La
-     * consecuencia —que un contrato cargado con prórrogas anteriores arranque
-     * contando cero— está anotada en `ESTADO.md` para que la decida quien puede.
+     * documento 1 lo prohíbe con esas palabras: «no se inventan registros».
+     *
+     * **«Prórrogas ya realizadas» sí llega a la vinculación, pero no como
+     * tramo (REV-09).** `RegistroDeEmpleado` la guarda aparte, en
+     * `prorrogas_previas_a_la_carga`, y `HistorialDeContrato::prorrogasCortas()`
+     * la suma al conteo que hace sobre los tramos de verdad: es lo único que el
+     * cupo de prórrogas cortas del artículo 46 necesitaba de ese número. El
+     * historial que se ve en pantalla sigue sin inventar ninguna fila.
      */
     public function escribir(array $valores, Carbon $fechaDeLaCarga): void
     {

@@ -68,6 +68,7 @@ class Vinculacion extends Model
         'banco_id',
         'saldo_inicial_vacaciones',
         'fecha_corte_saldo',
+        'prorrogas_previas_a_la_carga',
     ];
 
     /**
@@ -75,10 +76,17 @@ class Vinculacion extends Model
      * digita el usuario. Nace activo por el valor por defecto de la columna y
      * solo lo cambia el módulo de terminaciones, llamando a `desactivar()`.
      *
-     * @var array<string, string>
+     * `prorrogas_previas_a_la_carga` repite aquí el valor por defecto de la
+     * columna (REV-09) para que una vinculación recién creada, sin volver a
+     * consultarse, ya responda 0 y no `null`: es lo que necesita
+     * `HistorialDeContrato` justo después de registrar un empleado por
+     * pantalla, antes de que nadie la recargue.
+     *
+     * @var array<string, string|int>
      */
     protected $attributes = [
         'estado' => EstadoVinculacion::Activo->value,
+        'prorrogas_previas_a_la_carga' => 0,
     ];
 
     /**

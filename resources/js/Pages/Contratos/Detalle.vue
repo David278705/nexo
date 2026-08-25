@@ -27,6 +27,7 @@ const props = defineProps({
     indicadores: { type: Array, default: () => [] },
     campos: { type: Array, default: () => [] },
     historial: { type: Array, default: () => [] },
+    notaDeHistorial: { type: String, default: "" },
     renovacion: { type: Object, default: () => ({}) },
     cambioAIndefinido: { type: Object, default: () => ({}) },
 });
@@ -133,6 +134,12 @@ const columnasHistorial = [
                     :clicable="false"
                     titulo-vacio="Este contrato aún no tiene historial."
                 />
+                <p
+                    v-if="notaDeHistorial"
+                    class="mt-2 text-apoyo text-texto-secundario"
+                >
+                    {{ notaDeHistorial }}
+                </p>
             </div>
         </div>
 

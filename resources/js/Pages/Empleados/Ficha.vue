@@ -132,6 +132,12 @@ const columnasMovimientos = [
                             :clicable="false"
                             titulo-vacio="Este contrato aún no tiene historial."
                         />
+                        <p
+                            v-if="contrato.notaDeHistorial"
+                            class="mt-2 text-apoyo text-texto-secundario"
+                        >
+                            {{ contrato.notaDeHistorial }}
+                        </p>
                     </div>
                 </div>
 
