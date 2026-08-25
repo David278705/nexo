@@ -2,6 +2,8 @@
 
 use App\Auditoria\AccionAuditada;
 use App\Auditoria\AuditoriaInmutable;
+use App\Auditoria\ObservadorDeAuditoria;
+use App\Auditoria\SinAuditarRestringido;
 use App\Models\Acceso;
 use App\Models\Auditoria;
 use App\Models\EjecucionDeAlertas;
@@ -221,6 +223,49 @@ it('no audita los errores de aplicación, las ejecuciones de alertas ni las mét
         EjecucionDeAlertas::class,
         MetricaMensual::class,
     ])->count())->toBe(0);
+});
+
+it('sinAuditar() no deja línea mientras la empresa en contexto es el ambiente de demostración', function () {
+    $demo = Tenant::factory()->ambienteDeDemo()->create();
+
+    app(ContextoTenant::class)->paraTenant($demo, function () {
+        ObservadorDeAuditoria::sinAuditar(function () {
+            RegistroAuditable::create(['titulo' => 'Contrato de la demo']);
+        });
+    });
+
+    expect(Auditoria::query()->where('modelo', RegistroAuditable::class)->count())->toBe(0);
+});
+
+it('sinAuditar() no se puede usar fuera del ambiente de demostración', function () {
+    // La empresa en contexto en `beforeEach` es una empresa real, no la demo.
+    expect(fn () => ObservadorDeAuditoria::sinAuditar(
+        fn () => RegistroAuditable::create(['titulo' => 'Contrato de Ana'])
+    ))->toThrow(SinAuditarRestringido::class);
+
+    // El guardia revienta antes de ejecutar la función: nada quedó sin auditar.
+    expect(RegistroAuditable::query()->count())->toBe(0);
+});
+
+it('sinAuditar() sin ninguna empresa en contexto tampoco se abre', function () {
+    app(ContextoTenant::class)->sinTenant(function () {
+        expect(fn () => ObservadorDeAuditoria::sinAuditar(fn () => null))
+            ->toThrow(SinAuditarRestringido::class);
+    });
+});
+
+it('sinAuditar() vuelve a auditar aunque la función que ejecuta lance una excepción', function () {
+    $demo = Tenant::factory()->ambienteDeDemo()->create();
+
+    app(ContextoTenant::class)->paraTenant($demo, function () {
+        expect(fn () => ObservadorDeAuditoria::sinAuditar(function () {
+            throw new RuntimeException('boom');
+        }))->toThrow(RuntimeException::class, 'boom');
+
+        RegistroAuditable::create(['titulo' => 'Después del error']);
+    });
+
+    expect(Auditoria::query()->where('modelo', RegistroAuditable::class)->count())->toBe(1);
 });
 
 it('no permite editar una línea de auditoría', function () {

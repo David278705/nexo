@@ -1,68 +1,51 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-24 · F6-07 (operación: Sentry, plan de incidentes, panel de salud), cerrada
-`[!]` porque el paso que falta es de David.
-**Verificación:** verde — Pint, PHPStan sin errores, **1.169** pruebas de Pest, build y **384** de
+**Última sesión:** 2026-08-24 · `REV-07` (la restauración nocturna del ambiente de demostración dejaba
+de llenar la auditoría)
+**Verificación:** verde — Pint, PHPStan sin errores, **1.174** pruebas de Pest, build y **384** de
 Vitest.
-**Siguiente tarea:** `REV-07`. **Corrección del 24 de agosto:** la nota de abajo que decía «no tomes
-ninguna tarea nueva mientras F6-07 siga `[!]`» estaba mal — contradice cómo ya se venía trabajando con
-`F3-06b`, que lleva bloqueada desde el 23 de agosto sin que eso frenara nada. La regla real, la de la
-cabecera de `BACKLOG.md`, es «se toma siempre la primera **`[ ]`**»: una tarea `[!]` se salta, no se
-espera. `F6-07` se queda bloqueada hasta que David haga la restauración en Railway, exactamente igual
-que `F3-06b` espera su propio paso manual, y el resto del backlog sigue avanzando mientras tanto.
+**Siguiente tarea:** `REV-04` — Pantalla de auditoría. `F6-07` sigue `[!]` y se salta; `F3-06b` también.
 
 ## Qué se hizo
 
-F6-07 pedía cuatro cosas: monitoreo de errores, copias de seguridad con una restauración probada,
-plan de incidentes y confirmar HTTPS. Las tres primeras eran código o documentación; la segunda tiene
-un paso final que solo puede hacer David con su cuenta de Railway.
+`REV-07` pedía dos cosas: un mecanismo para escribir sin dejar línea de auditoría en un tramo concreto
+de código, y decidir quién puede usarlo. Lo segundo era el grueso de la tarea, según la propia
+descripción del backlog.
 
-- **Monitoreo de errores con Sentry.** `composer require sentry/sentry-laravel`;
-  `Sentry\Laravel\Integration::handles($exceptions)` agregado a `bootstrap/app.php`, en el mismo
-  `withExceptions()` que ya tenía `RegistroDeErrores` (F5-06) y los tres textos de error del documento
-  3 — las tres reportan la excepción, cada una a su destino, sin pisarse. Canal `sentry` explícito en
-  `config/logging.php` con nivel `error`, para no llenar Sentry de ruido de depuración. `.env.example`
-  ganó el bloque de `SENTRY_LARAVEL_DSN` y `LOG_STACK=single,sentry`, comentado, con la misma
-  convención que ya usan las cinco líneas de correo. Sin DSN el SDK queda inactivo: local y pruebas
-  corren exactamente igual que antes, y `tests/Unit/MonitoreoDeErroresTest.php` lo comprueba —el canal
-  existe, el DSN se lee de la variable correcta, y la aplicación arranca sin romperse sin DSN puesto.
-- **Plan de incidentes**, `docs/07-plan-de-incidentes.md`. No partía de cero: el documento 4, capítulo
-  14, ya tenía tres escenarios escritos —sistema caído, incidente de seguridad, cálculo mal—. Lo que
-  A.5 pedía y no existía era juntarlos con lo que agrega la infraestructura real y, sobre todo, **el
-  escenario que faltaba: que una alerta legal no salga**, que es la promesa central del producto
-  (`CLAUDE.md`). Dice dónde mirar primero —Sentry, la pantalla Salud del sistema, la entregabilidad
-  del panel— y cómo reintentar el proceso diario de un día concreto sin duplicar nada, gracias al
-  índice único de `alertas_enviadas`.
-- **La pantalla «Salud del sistema» dejó de decir algo que ya no era cierto.** Desde F5-06, la tarjeta
-  de copias de seguridad decía «depende de una decisión pendiente (A.5)» — cierto hasta el 23 de
-  agosto, falso desde que David decidió Railway. `SaludDelSistema::paraLaPantalla()` y `Salud.vue`
-  ahora describen el mecanismo real —*Point-in-Time Recovery*, WAL continuo, retención de 7 días—,
-  **sin inventar una hora de «última copia»**: es un proceso continuo, no una corrida puntual, así que
-  fingir una fecha habría sido exactamente el «indicador que se mira para decidir y no se puede
-  confiar» que el propio código llevaba dieciocho meses citando. Pruebas de `SaludDelSistemaTest.php`
-  y `Salud.test.js` actualizadas al nuevo texto.
-- **HTTPS:** nada que hacer. Railway lo da por defecto en sus dominios.
+- **`ObservadorDeAuditoria::sinAuditar(Closure $funcion)`.** Un flag estático que `anotar()` revisa
+  primero: si está activo, ninguna escritura de ningún modelo deja línea, sin importar cuál sea. Se
+  activa y se desactiva con `try`/`finally`, así que una excepción dentro de la función no lo deja
+  pegado en `true` para el resto de la petición.
+- **La decisión: se restringió al ambiente de demostración, y se hizo cumplir en tiempo de ejecución,
+  no solo por convención.** `sinAuditar()` mira la empresa en contexto (`tenant_actual()`) y revienta
+  con `SinAuditarRestringido` si no está marcada `es_ambiente_demo` — incluida la ausencia total de
+  contexto. La razón: cualquier otra empresa, incluidas las del propio proveedor, tiene que auditar
+  todo lo que escribe sin excepción (regla 4 del proyecto); dejar el bloque abierto para quien sea
+  sería la forma más fácil de esconder una edición real. No se guardó como una lista de modelos —el
+  camino que ya usa `SIN_AUDITAR`— porque `Persona`, `Vinculacion` y las novedades **sí** tienen que
+  auditarse en las empresas reales; lo que cambia no es el modelo, es en qué empresa se está
+  escribiendo.
+- **`AmbienteDeDemostracion::restaurar()` usa el bloque.** `vaciar()`, `poblar()` y el `forceFill` de
+  `demo_restaurado_en` quedan dentro de un solo `sinAuditar()`, adentro de la misma transacción que ya
+  envolvía a las dos primeras. El `demo_restaurado_en` se movió adentro a propósito: se probó primero
+  sin moverlo y la escritura del `Tenant` seguía dejando dos líneas por restauración, porque pasaba
+  fuera del bloque.
+- **Pruebas.** `AmbienteDeDemostracionTest.php` gana el «hecho cuando» literal de la tarea: se restaura
+  una vez para que la empresa y su usuario existan —esas dos líneas sí quedan, porque pasan una sola
+  vez en la vida del sistema, no cada noche—, y dos restauraciones más después no suman ninguna línea
+  nueva. `AuditoriaTest.php` gana cuatro casos para el mecanismo en sí: se abre dentro de la demo, no se
+  abre fuera de ella, no se abre sin ninguna empresa en contexto, y se vuelve a cerrar aunque la función
+  que ejecuta lance una excepción. **La prueba que vigila que una empresa real sigue auditándose entera
+  no se tocó**, como pedía la tarea.
 
 ## Decisiones tomadas
 
-- **El nivel del canal `sentry` quedó en `error` y no en `debug`.** Es una decisión técnica, no legal
-  ni de negocio: Sentry es para lo que hay que atender, y con `debug` cada consulta SQL de cada
-  petición local terminaría contando contra el plan gratuito el día que alguien deje el DSN puesto sin
-  querer.
-- **El plan de incidentes no reemplaza el capítulo 14 del documento 4: lo completa.** Reescribirlo
-  entero hubiera duplicado texto que ya estaba bien escrito y correcto; lo que hacía falta era el
-  escenario que faltaba y la referencia a Sentry y Railway, que no existían cuando se escribió el
-  documento 4.
-
-## Por qué F6-07 no quedó `[x]`
-
-El «hecho cuando» de la tarea es literal: **«existe una copia que se restauró y funcionó»**. Eso exige
-entrar al panel de Railway con la cuenta de David, pedir una restauración a un punto en el tiempo,
-verificar un registro en el servicio nuevo que crea Railway, y descartarlo. Es una acción real sobre
-infraestructura de producción con una cuenta a la que este agente no tiene ni debería tener acceso —no
-es una regla de negocio ambigua que se pueda resolver leyendo un documento, es un paso que solo puede
-dar una persona. Los cuatro pasos exactos, y dónde dejar la evidencia, están en `BACKLOG.md` bajo
-F6-07 y repetidos en `docs/07-plan-de-incidentes.md`, sección 4.
+- **El guardia de `sinAuditar()` revienta en vez de devolver silenciosamente sin ejecutar nada.** Un
+  `return` callado dejaría pasar por alto, sin ningún aviso, el intento de usarlo fuera de la demo — el
+  mismo criterio que ya usa `AuditoriaInmutable` para editar o borrar una línea.
+- **No se tocó `SIN_AUDITAR`.** Es una lista de modelos que nunca se auditan en ninguna empresa; el
+  problema de la demo es justo lo contrario, modelos que sí hay que auditar en todas partes menos en
+  una.
 
 ## Preguntas para Angela
 
@@ -70,27 +53,28 @@ F6-07 y repetidos en `docs/07-plan-de-incidentes.md`, sección 4.
 
 ## Decisiones para David
 
-- **F6-07 te espera a ti.** Los cuatro pasos de la restauración de prueba están en `BACKLOG.md` y en
-  `docs/07-plan-de-incidentes.md`, sección 4. Cuando la hagas, deja la evidencia en `bitacora/` y marca
-  la tarea `[x]` — o pide que la próxima sesión lo haga por ti una vez esté la evidencia.
-- **Todas las heredadas de la sesión anterior siguen abiertas** — ver el detalle en el historial de
-  `git log` de este archivo si hace falta releerlas: los tres nombres del filtro «Estado del
-  contrato», el texto del correo de prueba de entregabilidad, los textos del correo de obra o labor,
-  el texto del contrato que vence el día del tope, «acumula 3 prórrogas inferiores a un año», D.12 (no
-  hay número sugerido de referencia para la vigencia de un acceso de prueba), D.4 (rangos de edad y de
-  antigüedad, la única BLOQUEANTE), `REV-06` (acotar la regla de «la fecha entre paréntesis»),
-  verificar a mano en un navegador el flujo de F6-06, el menú desplegable en pantallas pequeñas que no
-  atrapa el foco, el mínimo del motivo de una visita al entorno, el umbral de «clientes en riesgo» y
-  la escalera de mora, un contrato a término fijo cargado con prórrogas anteriores arrancando en cero,
-  la plantilla 1 sin país de expedición, `User`/`Acceso`/`Invitacion` sin `SoftDeletes`, los meses
-  comerciales de treinta días, la prórroga mínima (B.3), el fondo de cesantías, la prueba intermitente
-  de `CatalogosTest`, el texto del empleado inactivo, PHP 8.2 contra el 8.3 que pide `CLAUDE.md`, y la
-  frase del prototipo sobre el saldo negativo.
+- **Todas las heredadas de sesiones anteriores siguen abiertas** — ver el detalle en el historial de
+  `git log` de este archivo si hace falta releerlas: `F6-07` te espera a ti (los cuatro pasos de la
+  restauración de prueba en Railway, en `BACKLOG.md` y en `docs/07-plan-de-incidentes.md` sección 4);
+  los tres nombres del filtro «Estado del contrato»; el texto del correo de prueba de entregabilidad;
+  los textos del correo de obra o labor; el texto del contrato que vence el día del tope; «acumula 3
+  prórrogas inferiores a un año»; D.12 (no hay número sugerido de referencia para la vigencia de un
+  acceso de prueba); D.4 (rangos de edad y de antigüedad, la única BLOQUEANTE); `REV-06` (acotar la
+  regla de «la fecha entre paréntesis»); verificar a mano en un navegador el flujo de F6-06; el menú
+  desplegable en pantallas pequeñas que no atrapa el foco; el mínimo del motivo de una visita al
+  entorno; el umbral de «clientes en riesgo» y la escalera de mora; un contrato a término fijo cargado
+  con prórrogas anteriores arrancando en cero; la plantilla 1 sin país de expedición;
+  `User`/`Acceso`/`Invitacion` sin `SoftDeletes`; los meses comerciales de treinta días; la prórroga
+  mínima (B.3); el fondo de cesantías; la prueba intermitente de `CatalogosTest`; el texto del empleado
+  inactivo; PHP 8.2 contra el 8.3 que pide `CLAUDE.md`; y la frase del prototipo sobre el saldo
+  negativo.
 
 ## Notas para la próxima sesión
 
-- **Toma `REV-07` — es la primera `[ ]` real.** `F6-07` sigue `[!]` y se salta, igual que `F3-06b`.
-- **Si David ya dejó la evidencia de la restauración en `bitacora/`:** marca F6-07 `[x]` citando esa
-  evidencia. Si no, sigue de largo — no bloquea nada más del backlog.
+- **Toma `REV-04` — es la primera `[ ]` real.** Es la pantalla de auditoría: el módulo está en el menú,
+  la tabla y el observador existen desde F0-08, y ninguna tarea del backlog le había dado pantalla.
+  Ahora que `REV-07` limpió el ruido de la demostración, la pantalla no va a abrir con miles de líneas
+  contando que el sistema se borró solo de madrugada.
+- **`F6-07` y `F3-06b` siguen `[!]` y se saltan**, cada una esperando su propio paso manual.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
 - **`LEEME PRIMERO.md` y `scripts/vibe.ps1` siguen modificados y sin commitear**, ajenos a esta tarea.

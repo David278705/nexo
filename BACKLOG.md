@@ -1591,7 +1591,7 @@ prueba, no de la funcionalidad.
 consecuencia escrita antes de ejecutarla, y `TipoDeNovedad::tituloDeEdicion()` deja de devolver nulo
 para ellos.
 
-### [ ] REV-07 · La restauración nocturna llena la auditoría del ambiente de demostración
+### [x] REV-07 · La restauración nocturna llena la auditoría del ambiente de demostración
 
 Cada noche a las tres, `demostracion:restaurar` borra la planta entera del ambiente de demostración
 —ocho personas con sus vinculaciones, sus periodos contractuales y sus novedades— y la vuelve a crear.
@@ -1615,6 +1615,19 @@ prueba que lo vigila ya existe y no se toca—.
 
 **Fuente:** `docs/02-arquitectura-y-datos.md` 7.2 · `docs/04-panel-del-proveedor.md` cap. 10 ·
 `bitacora/revision-2026-08-24.md`
+
+Hecho: `ObservadorDeAuditoria::sinAuditar(Closure $funcion)`, el tramo de código que no deja línea.
+**La decisión que pedía la tarea fue restringirlo al ambiente de demostración y no dejarlo abierto**:
+revienta con `SinAuditarRestringido` si la empresa en contexto no es la marcada `es_ambiente_demo`,
+porque abrirlo para cualquier otra sería la forma más fácil de esconder una edición real — la regla 4
+del proyecto no tiene excepción fuera de esta. `AmbienteDeDemostracion::restaurar()` envuelve
+`vaciar()`, `poblar()` y el `demo_restaurado_en` en un solo bloque `sinAuditar()`, así que las tres
+escrituras de cada noche quedan cubiertas. **`Persona`, `Vinculacion` y las novedades no entraron a
+`SIN_AUDITAR`**: siguen auditándose enteras en las empresas reales, que es justo lo que la tarea pedía
+no tocar. Caso nuevo en `AmbienteDeDemostracionTest.php` —dos restauraciones seguidas no agregan
+ninguna línea— y cuatro en `AuditoriaTest.php` para el mecanismo: se abre dentro de la demo, revienta
+fuera de ella y sin ninguna empresa en contexto, y se vuelve a cerrar aunque la función que ejecuta
+falle.
 
 ### [ ] REV-04 · Pantalla de auditoría
 

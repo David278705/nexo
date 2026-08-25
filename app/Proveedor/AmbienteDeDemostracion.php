@@ -2,6 +2,7 @@
 
 namespace App\Proveedor;
 
+use App\Auditoria\ObservadorDeAuditoria;
 use App\Autorizacion\Rol;
 use App\Contratacion\Genero;
 use App\Contratacion\TipoContrato;
@@ -102,19 +103,26 @@ final class AmbienteDeDemostracion
      * Vacía y vuelve a poblar el ambiente con el mismo conjunto de datos de
      * siempre. Es lo que corre el comando `demostracion:restaurar` cada noche
      * y el botón «Restaurar ahora» del panel.
+     *
+     * **No deja línea de auditoría.** Es la misma planta ficticia de siempre
+     * borrándose y volviéndose a crear, no un cambio en los datos de un
+     * cliente (REV-07); `ObservadorDeAuditoria::sinAuditar()` cubre también
+     * el `demo_restaurado_en` de abajo, que si no quedaría como una edición
+     * más de la empresa cada noche.
      */
     public function restaurar(): Tenant
     {
         $tenant = $this->tenant();
 
-        $this->contexto->paraTenant($tenant, function (): void {
-            DB::transaction(function (): void {
-                $this->vaciar();
-                $this->poblar();
+        $this->contexto->paraTenant($tenant, function () use ($tenant): void {
+            DB::transaction(function () use ($tenant): void {
+                ObservadorDeAuditoria::sinAuditar(function () use ($tenant): void {
+                    $this->vaciar();
+                    $this->poblar();
+                    $tenant->forceFill(['demo_restaurado_en' => Carbon::now()])->save();
+                });
             });
         });
-
-        $tenant->forceFill(['demo_restaurado_en' => Carbon::now()])->save();
 
         return $tenant->refresh();
     }

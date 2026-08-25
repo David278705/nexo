@@ -12,6 +12,7 @@ use App\Models\MetricaMensual;
 use App\Models\NotaCliente;
 use App\Models\SaldoEnCache;
 use App\Models\Tenant;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
@@ -118,6 +119,50 @@ class ObservadorDeAuditoria
     private const SIN_INTERES = ['created_at', 'updated_at', 'deleted_at'];
 
     /**
+     * Si es `true`, ninguna escritura deja línea de auditoría, sin importar el
+     * modelo. Solo lo abre `sinAuditar()`.
+     */
+    private static bool $sinAuditar = false;
+
+    /**
+     * Ejecuta `$funcion` sin que ninguna escritura que haga deje línea de
+     * auditoría.
+     *
+     * Es el mecanismo que le faltaba a la restauración nocturna del ambiente
+     * de demostración (REV-07): cada noche borra y vuelve a crear la misma
+     * planta de ocho personas, y auditar ese borrado y esa creación no cuenta
+     * nada que a nadie le sirva —es la misma planta de siempre, no un cambio
+     * en los datos de un cliente—.
+     *
+     * **Se restringe a la empresa marcada `es_ambiente_demo`.** El resto de
+     * la regla 4 del proyecto no tiene excepción: cualquier otra empresa
+     * audita todo lo que escribe, así que este método revienta en vez de
+     * dejarse abrir por accidente en el lugar equivocado, que sería la forma
+     * más fácil de esconder una edición real.
+     *
+     * @template TRetorno
+     *
+     * @param  Closure(): TRetorno  $funcion
+     * @return TRetorno
+     */
+    public static function sinAuditar(Closure $funcion): mixed
+    {
+        $tenant = tenant_actual();
+
+        if (! $tenant instanceof Tenant || ! $tenant->getAttribute('es_ambiente_demo')) {
+            throw SinAuditarRestringido::fueraDelAmbienteDeDemostracion();
+        }
+
+        self::$sinAuditar = true;
+
+        try {
+            return $funcion();
+        } finally {
+            self::$sinAuditar = false;
+        }
+    }
+
+    /**
      * Engancha el observador a los cuatro eventos, para todos los modelos.
      *
      * Lo llama `AppServiceProvider::boot()`. Es el único sitio donde se
@@ -150,7 +195,7 @@ class ObservadorDeAuditoria
      */
     public function anotar(AccionAuditada $accion, mixed $modelo): void
     {
-        if (! $modelo instanceof Model || $this->seSalta($modelo)) {
+        if (self::$sinAuditar || ! $modelo instanceof Model || $this->seSalta($modelo)) {
             return;
         }
 

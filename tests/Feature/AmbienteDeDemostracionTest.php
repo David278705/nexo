@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Arl;
+use App\Models\Auditoria;
 use App\Models\Banco;
 use App\Models\CajaCompensacion;
 use App\Models\Ciudad;
@@ -99,6 +100,24 @@ it('deja un contrato a término fijo por vencer, para que la demostración siemp
     );
 
     expect($vinculacion->fecha_fin->isFuture())->toBeTrue();
+});
+
+it('dos restauraciones seguidas no dejan ninguna línea nueva en la auditoría', function () {
+    // Es el «hecho cuando» de REV-07: la planta se borra y se vuelve a crear
+    // cada noche, y eso no es un cambio en los datos de un cliente. La
+    // primera restauración de todas crea la empresa y su usuario y esas dos
+    // líneas sí quedan —pasa una sola vez en la vida del sistema, no cada
+    // noche—; lo que no puede dejar rastro es la restauración en sí.
+    $ambiente = app(AmbienteDeDemostracion::class);
+    $ambiente->restaurar();
+
+    $tenant = $ambiente->tenant();
+    $lineasAntes = Auditoria::query()->where('tenant_id', $tenant->getKey())->count();
+
+    $ambiente->restaurar();
+    $ambiente->restaurar();
+
+    expect(Auditoria::query()->where('tenant_id', $tenant->getKey())->count())->toBe($lineasAntes);
 });
 
 it('el comando de consola corre la misma restauración que el botón del panel', function () {
