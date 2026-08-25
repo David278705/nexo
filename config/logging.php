@@ -123,6 +123,16 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        // Monitoreo de errores (documento 6, A.5). El paquete de Sentry ya
+        // ofrece este canal por su cuenta si no lo encuentra aquí, pero se
+        // declara explícito para que el nivel quede documentado: solo lo que
+        // de verdad hace falta rastrear en producción, no cada línea de
+        // depuración local.
+        'sentry' => [
+            'driver' => 'sentry',
+            'level' => env('SENTRY_LOG_LEVEL', 'error'),
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],

@@ -13,10 +13,10 @@ import { usarAccionPorFila } from "@/Utilidades/usarAccionPorFila.js";
  * mañana en menos de un minuto». Todo llega calculado de
  * `App\Proveedor\SaludDelSistema`.
  *
- * Las copias de seguridad son la única pieza que no se enseña como las demás:
- * `copias.disponible` es `false` porque la infraestructura de la que dependen
- * sigue sin decidirse (documento 6, A.5), y el texto lo explica en vez de
- * fingir una fecha.
+ * Las copias de seguridad (documento 6, A.5, resuelta con Railway) no traen
+ * una fecha de «última copia»: es *Point-in-Time Recovery* continuo, no una
+ * corrida puntual, así que `copias.texto` explica el mecanismo en vez de
+ * fingir una hora.
  */
 const props = defineProps({
     proceso: { type: Object, required: true },
@@ -78,10 +78,10 @@ function reintentar(uuid) {
                 :nota-tono="errores.ultimas24h > 0 ? 'advertencia' : ''"
             />
             <TarjetaIndicador
-                :valor="copias.disponible ? 'Al día' : 'Sin automatizar'"
+                :valor="copias.disponible ? 'Automática' : 'Sin automatizar'"
                 etiqueta="Copias de seguridad"
-                nota="Depende de una decisión pendiente"
-                nota-tono="advertencia"
+                :nota="copias.disponible ? 'Railway, con Point-in-Time Recovery' : 'Depende de una decisión pendiente'"
+                :nota-tono="copias.disponible ? '' : 'advertencia'"
             />
         </div>
 
@@ -175,7 +175,7 @@ function reintentar(uuid) {
             </table>
         </div>
 
-        <Aviso tono="advertencia" class="mt-5">
+        <Aviso :tono="copias.disponible ? 'informacion' : 'advertencia'" class="mt-5">
             {{ copias.texto }}
         </Aviso>
     </ArmazonProveedor>

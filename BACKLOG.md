@@ -1427,35 +1427,51 @@ medio**: el proyecto no tiene Playwright ni `user-event`, así que las pruebas c
 `Modal.test.js` para Escape, no una sesión de teclado de punta a punta en un navegador. Verificar el
 flujo completo a mano en un navegador sigue pendiente y queda anotado en `ESTADO.md`.
 
-### [ ] F6-07 · Operación — desbloqueada: A.5 resuelta, el sistema corre en Railway
+### [!] F6-07 · Operación — bloqueada: falta que David ejecute la restauración en Railway
 
-Monitoreo de errores en producción. Copias de seguridad automáticas y **una restauración probada de
-principio a fin**.
-**Hecho cuando:** existe una copia que se restauró y funcionó.
+**No la tome ninguna sesión más hasta que David haga su parte.** Todo lo que era código quedó
+construido y verificado; lo único que falta es una acción de una sola vez sobre el panel de Railway,
+con la cuenta de David, que ningún agente puede ni debe hacer por su cuenta: es una operación de
+infraestructura de producción, fuera del repositorio, y entrar a esa cuenta no es algo que se pueda
+autorizar desde una sesión de código.
+
+**Hecho por código en esta sesión:**
+
+- **Monitoreo de errores.** `sentry/sentry-laravel` instalado; `Integration::handles($exceptions)` en
+  `bootstrap/app.php`, junto al resto del manejo de excepciones; el canal `sentry` explícito en
+  `config/logging.php` (nivel `error`, para no llenar Sentry de depuración); `config/sentry.php`
+  publicado; y en `.env.example` las líneas `SENTRY_LARAVEL_DSN` y `LOG_STACK=single,sentry`
+  comentadas, con la misma convención que ya usan las líneas de correo. Sin DSN el SDK queda inactivo,
+  así que local y las pruebas siguen exactamente igual —tres casos nuevos en
+  `tests/Unit/MonitoreoDeErroresTest.php`.
+- **Plan de incidentes.** `docs/07-plan-de-incidentes.md`, una página: reúne los tres escenarios que
+  ya tenía el documento 4, capítulo 14 —sistema caído, incidente de seguridad, cálculo mal— y agrega
+  los dos que faltaban y que sí dependían de esta tarea: **que una alerta legal no salga** (dónde
+  mirar, cómo reintentar sin duplicar) y **cómo restaurar una copia** con el mecanismo real de
+  Railway.
+- **La pantalla «Salud del sistema» dejó de mentir sobre las copias.** Con A.5 resuelta, la tarjeta y
+  el aviso decían todavía «depende de una decisión pendiente» —cierto la semana pasada, falso hoy—.
+  `SaludDelSistema::paraLaPantalla()` y `Salud.vue` ahora dicen lo que Railway hace de verdad —*Point-
+  in-Time Recovery*, sin inventar una hora de «última copia» porque es WAL continuo y no una corrida
+  puntual—, con sus pruebas de Pest y de Vitest actualizadas.
+- **HTTPS y cifrado:** ya los da Railway por defecto. Nada que configurar ni que comprobar aparte de
+  que el dominio final los tenga activos.
+
+**Lo único que falta, y es de David:**
+
+1. Desde el panel de Railway, restaurar la base de datos a un punto en el tiempo. Railway crea un
+   servicio **nuevo**, al lado del de producción — el original no se toca ni deja de servir durante la
+   prueba.
+2. Verificar en ese servicio nuevo que un registro conocido (por ejemplo, una vacación creada minutos
+   antes del punto de restauración) está donde debe estar.
+3. Descartar el servicio de prueba.
+4. Dejar evidencia escrita de esa restauración —capturas o el registro de la operación— en
+   `bitacora/`, porque es lo único de esta tarea que ninguna prueba automática de Pest puede
+   demostrar. `docs/07-plan-de-incidentes.md`, sección 4, ya tiene los mismos cuatro pasos escritos
+   para la próxima vez que haga falta de verdad y no como ensayo.
+
+**Hecho cuando:** existe, en `bitacora/`, la evidencia de que David restauró una copia y funcionó.
 **Fuente:** `docs/06-decisiones-pendientes.md` A.5, ya resuelta.
-
-**Decidido por David el 23 de agosto de 2026: Railway.** Con eso, esto es lo que hay que construir y
-comprobar, no elegir:
-
-- **Copias de seguridad:** Railway ya las hace solas sobre PostgreSQL con *Point-in-Time Recovery*
-  —WAL continuo, retención de 7 días—. No hay que programar el respaldo en sí; hay que **documentar y
-  ejecutar la restauración**, que es lo que de verdad exige el «hecho cuando».
-- **La restauración de prueba, paso a paso:** desde el panel de Railway, restaurar la base de datos a
-  un punto en el tiempo. Railway crea un servicio de base de datos **nuevo**, al lado del que está en
-  producción — el original no se toca ni deja de servir durante la prueba. Verificar en ese servicio
-  nuevo que los datos de un registro conocido (por ejemplo, una vacación creada minutos antes del
-  punto de restauración) están donde deben, y luego descartar el servicio de prueba.
-  **Deja evidencia escrita de esa restauración** —capturas o el registro de la operación— en
-  `bitacora/`, porque es lo único de esta tarea que ninguna prueba automática de Pest puede demostrar.
-- **Monitoreo de errores:** instala [Sentry](https://sentry.io) con su paquete oficial de Laravel
-  (`sentry/sentry-laravel`), plan gratuito. Conecta el canal de logging para que una excepción no
-  capturada en producción llegue ahí con su traza, no solo al archivo de log. En `config/logging.php`
-  agrega el canal y en `.env.example` las líneas `SENTRY_LARAVEL_DSN` comentadas, con la misma
-  convención que ya usan las líneas de correo.
-- **Plan de incidentes:** una página, en `docs/`, con qué hacer si el sistema cae o si una alerta
-  legal no sale. A.5 lo pide como control mínimo y hoy no existe ningún documento así.
-- **HTTPS y cifrado:** ya los da Railway por defecto en sus dominios. No hay nada que configurar ni
-  que comprobar aparte de que el dominio final los tenga activos.
 
 ### [x] F6-08 · REVISIÓN FINAL
 

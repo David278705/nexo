@@ -105,11 +105,12 @@ describe('la cola de trabajos', function () {
 });
 
 describe('las copias de seguridad', function () {
-    it('no inventa una fecha: dice que dependen de una decisión pendiente', function () {
+    it('no inventa una fecha de última copia: describe el mecanismo real de Railway', function () {
         $props = SaludDelSistema::paraLaPantalla();
 
-        expect($props['copias']['disponible'])->toBeFalse()
-            ->and($props['copias']['texto'])->toContain('A.5');
+        expect($props['copias']['disponible'])->toBeTrue()
+            ->and($props['copias']['texto'])->toContain('A.5')
+            ->and($props['copias']['texto'])->toContain('Point-in-Time Recovery');
     });
 });
 

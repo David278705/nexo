@@ -19,6 +19,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Inertia\Inertia;
+use Sentry\Laravel\Integration as IntegracionDeSentry;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -87,6 +88,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Monitoreo de errores (documento 6, A.5): cada excepción no
+        // capturada llega a Sentry con su traza, no solo al archivo de log.
+        // Sin DSN configurado el SDK queda inactivo y esta llamada no hace
+        // nada, así que es segura en local y en pruebas.
+        IntegracionDeSentry::handles($exceptions);
+
         // La salud del sistema del panel del proveedor (F5-06, documento 4,
         // capítulo 9) pide «errores de la aplicación de las últimas 24
         // horas». Laravel ya descarta antes de llegar aquí lo que nunca fue

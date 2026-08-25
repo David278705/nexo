@@ -18,13 +18,12 @@ use Illuminate\Support\Facades\DB;
  * de aplicación (`ErrorDeAplicacion`, nuevo) y el espacio de la base de datos,
  * que Postgres ya sabe responder sin ninguna tabla propia.
  *
- * **La quinta —copias de seguridad— no se inventa.** La decisión A.5 del
- * documento 6 la aplaza a propósito hasta que exista producto: «se decidió
- * mirarlo cuando exista producto […] copias de seguridad: hay que construirlas
- * y probarlas». Sin esa infraestructura no hay ninguna fecha real que enseñar,
- * y un «03:15, automática, de hoy» de mentira sería exactamente lo que el
- * capítulo 16 del documento 4 prohíbe: un indicador que se mira para decidir y
- * que no se puede confiar.
+ * **La quinta —copias de seguridad— ya no depende de nada abierto.** La
+ * decisión A.5 del documento 6 quedó resuelta el 23 de agosto de 2026:
+ * Railway hace *Point-in-Time Recovery* nativo sobre PostgreSQL. No hay una
+ * hora de «última copia» que consultar —es WAL continuo, no una corrida
+ * puntual—, así que el texto dice el mecanismo real en vez de inventar un
+ * «03:15, automática, de hoy» que el capítulo 16 del documento 4 prohíbe.
  */
 final class SaludDelSistema
 {
@@ -59,11 +58,11 @@ final class SaludDelSistema
                 'filas' => self::erroresRecientes(),
             ],
             'copias' => [
-                'disponible' => false,
-                'texto' => 'Todavía no hay copias de seguridad automatizadas. La decisión de '
-                    .'infraestructura de la que dependen sigue abierta (documento 6, A.5): '
-                    .'construirlas y probarlas es parte de esa decisión, y enseñar una fecha aquí '
-                    .'antes de que exista sería un indicador de mentira.',
+                'disponible' => true,
+                'texto' => 'Railway hace copias automáticas de la base de datos con Point-in-Time '
+                    .'Recovery —WAL continuo, retención de 7 días— (documento 6, A.5). Restaurar a '
+                    .'un punto en el tiempo crea un servicio nuevo al lado del que está en '
+                    .'producción; el original sigue sirviendo sin tocarse durante la prueba.',
             ],
             'espacioBd' => self::espacioDeLaBaseDeDatos(),
             'correosDelMes' => ConsolaDeAlertas::entregabilidadDelMes()['enviadas'],

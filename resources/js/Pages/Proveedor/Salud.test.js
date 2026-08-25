@@ -35,8 +35,8 @@ const base = {
     cola: { pendientes: 0, fallidos: [] },
     errores: { ultimas24h: 0, filas: [] },
     copias: {
-        disponible: false,
-        texto: "Todavía no hay copias de seguridad automatizadas (documento 6, A.5).",
+        disponible: true,
+        texto: "Railway hace copias automáticas con Point-in-Time Recovery (documento 6, A.5).",
     },
     espacioBd: "412 MB",
     correosDelMes: 1847,
@@ -65,8 +65,11 @@ describe("Salud del sistema", () => {
         expect(texto).toContain("Todavía no ha corrido hoy");
     });
 
-    it("dice que las copias de seguridad dependen de una decisión pendiente, sin inventar una fecha", () => {
-        expect(montar().text()).toContain("A.5");
+    it("dice que las copias de seguridad son automáticas por Point-in-Time Recovery", () => {
+        const texto = montar().text();
+
+        expect(texto).toContain("A.5");
+        expect(texto).toContain("Automática");
     });
 
     it("enseña el espacio de la base de datos y los correos del mes", () => {
