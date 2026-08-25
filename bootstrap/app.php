@@ -8,6 +8,7 @@ use App\Http\Middleware\FueraDeUnaVisita;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolverTenant;
 use App\Http\Middleware\SegundoFactorVerificado;
+use App\Http\Middleware\SoloCliente;
 use App\Http\Middleware\SoloProveedor;
 use App\Http\Middleware\VerificarModulo;
 use App\Presentacion\TextoDeError;
@@ -67,6 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'modulo' => VerificarModulo::class,
             'proveedor' => SoloProveedor::class,
+            'cliente' => SoloCliente::class,
             'segundo-factor' => SegundoFactorVerificado::class,
             // O se está en el panel, o se está dentro del entorno de un
             // cliente (documento 4, 4.4), nunca en los dos a la vez.

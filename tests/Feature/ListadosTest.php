@@ -100,7 +100,7 @@ it('ordena ascendente cuando la dirección no es asc ni desc', function () {
         ->and(listadoDePrueba('direccion=; drop table')->direccion)->toBe('asc');
 });
 
-it('aplica el orden pedido y desempata siempre por id', function () {
+it('aplica el orden pedido', function () {
     // Títulos sin tildes a propósito: lo que se prueba es el sentido del
     // orden, no la colación de la base de datos.
     expect(titulosDelListado([
@@ -110,15 +110,29 @@ it('aplica el orden pedido y desempata siempre por id', function () {
     ], 'orden=titulo&direccion=desc'))->toBe(['Camara', 'Bicicleta', 'Abaco']);
 });
 
-it('desempata por id para que una fila no salga dos veces entre páginas', function () {
-    // Tres filas con el mismo valor en la columna ordenada. Sin el desempate,
-    // el orden entre ellas no está definido y la página siguiente puede repetir
-    // una o saltarse otra.
+it('desempata por id en dirección ascendente, para que una fila no salga dos veces entre páginas', function () {
+    // Tres filas con el mismo valor en la columna ordenada, sin pedir
+    // dirección: el desempate por defecto es ascendente y coincide con el
+    // orden de creación. Sin el desempate, el orden entre ellas no está
+    // definido y la página siguiente puede repetir una o saltarse otra.
     expect(titulosDelListado([
         ['titulo' => 'Primero', 'estado' => 'abierto'],
         ['titulo' => 'Segundo', 'estado' => 'abierto'],
         ['titulo' => 'Tercero', 'estado' => 'abierto'],
     ], 'orden=estado'))->toBe(['Primero', 'Segundo', 'Tercero']);
+});
+
+it('desempata en la misma dirección pedida, no siempre ascendente', function () {
+    // Las tres filas empatan en la columna ordenada y se pide `direccion=desc`
+    // —«lo más reciente primero»—. Desempatar siempre ascendente por id
+    // devolvería exactamente el orden contrario al que se pidió: el creado
+    // primero apareciendo de primero, cuando la dirección pedida dice lo
+    // opuesto. Corregido el 2026-08-25, anotado desde REV-04.
+    expect(titulosDelListado([
+        ['titulo' => 'Primero', 'estado' => 'abierto'],
+        ['titulo' => 'Segundo', 'estado' => 'abierto'],
+        ['titulo' => 'Tercero', 'estado' => 'abierto'],
+    ], 'orden=estado&direccion=desc'))->toBe(['Tercero', 'Segundo', 'Primero']);
 });
 
 it('deja el filtro de lista en su valor por defecto si el pedido no existe', function () {

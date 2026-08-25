@@ -45,15 +45,15 @@ Aquí está todo lo que todavía no se puede dar por cerrado. Se organiza en cin
 | 5 | Constitución de la sociedad, DIAN y pasarela de pagos | A | Ambos | No |
 | 6 | ~~Confirmar el conteo de prórrogas cortas~~ **RESUELTA:** tres, en una sola cuenta | B | Ambos | No |
 | 7 | Confirmar el periodo de prueba en cambio de modalidad contractual | B | Ambos | No |
-| 8 | Decidir si las validaciones de prórroga bloquean o solo advierten | B | Ambos | Sí, parcial |
+| 8 | ~~Decidir si las validaciones de prórroga bloquean o solo advierten~~ **RESUELTA:** ver B.3 | B | Ambos | No |
 | 9 | ~~¿Se registra el tipo de prórroga?~~ **RESUELTA:** sí, pero no para contar | D | Angela | No |
 | 10 | ~~Umbral de obra o labor prolongado~~ **RESUELTA:** sin umbral, listado bimestral | D | Angela | No |
 | 11 | ~~Anticipación de la alerta de cercanía al tope~~ **RESUELTA:** tres meses antes | D | Angela | No |
-| 12 | Vigencia del usuario de demostración | D | Angela | No |
-| 13 | Rangos de edad y de antigüedad para el dashboard | D | Angela | Sí |
+| 12 | ~~Vigencia del usuario de demostración~~ **RESUELTA:** 14 días | D | David | No |
+| 13 | ~~Rangos de edad y de antigüedad~~ **RESUELTA:** ver D.4 | D | David | No |
 | 14 | ~~Listados maestros: EPS, fondos, ARL, cajas, bancos~~ **RESUELTA:** ver D.5 | D | Angela | No |
-| 15 | Confirmar el orden propuesto del dashboard | D | Angela | No |
-| 16 | Nombre definitivo del proceso de carga inicial | D | Angela | No |
+| 15 | ~~Confirmar el orden del dashboard~~ **RESUELTA:** el construido ya es el correcto | D | David | No |
+| 16 | ~~Nombre del proceso de carga inicial~~ **RESUELTA:** «Carga inicial» | D | David | No |
 | 17 | Módulo de llamados de atención | E | Ambos | No |
 | 18 | Enlace al expediente en Google Drive | E | Ambos | No |
 | 19 | Módulo de reportes centralizado | E | Ambos | No |
@@ -190,15 +190,15 @@ Estos puntos exigen la confirmación de un asesor laboral antes de programarse. 
 
 **Respondida por Angela en agosto de 2026, y corrige lo que el sistema había construido.** El conteo es **uno solo, de tres prórrogas cortas**, sin separar por tipo. La sección C.1 quedó reescrita con la explicación completa y con la razón por la que la primera lectura de este documento llevó a construirlo mal.
 
-Sigue abierta la otra mitad de la pregunta, que es la de B.3: si esa regla debe **impedir el guardado** o solo **advertir**. Hoy advierte —`config/validaciones.php`, clave `renovacion_prorroga_minima`— y convertirla en bloqueo sigue siendo cambiar una palabra en ese archivo.
+La otra mitad de la pregunta, si esa regla debe **impedir el guardado** o solo **advertir**, también quedó resuelta: ver B.3.
 
 ### B.2 Periodo de prueba en cambio de modalidad contractual
 
 La conclusión de la sección C.3 es que no procede pactar periodo de prueba cuando un contrato de obra o labor pasa a indefinido, ni por otrosí ni firmando un contrato nuevo. Es la lectura conservadora y la que protege al cliente, pero conviene confirmarla porque el escenario de "la nueva labor es completamente distinta" no está resuelto expresamente en la norma.
 
-### B.3 ¿Bloquear o advertir?
+### B.3 ¿Bloquear o advertir? — RESUELTA, implementada tal como Angela la propuso
 
-**BLOQUEANTE PARCIAL.** Angela planteó que si una prórroga supera el tope legal el sistema no debería dejarla registrar, porque sería registrar algo ilegal. El argumento es sólido. La contrapartida a considerar:
+**Confirmado el 2026-08-25: el código ya hace exactamente lo que dice la sugerencia de abajo**, y no se encontró ninguna razón para apartarse de ella. `config/validaciones.php` tiene `renovacion_tope_termino_fijo` en `bloquea` y `renovacion_prorroga_minima` en `advierte`, que es la combinación que Angela planteó desde el principio. Queda el argumento original como referencia, porque explica el porqué de cada una:
 
 | Opción | A favor | En contra |
 |---|---|---|
@@ -345,11 +345,13 @@ Consecuencias, ya reflejadas en los documentos 1 (9.6 y 9.7) y 2 (5.4):
 
 Fuente legal: artículo 46 CST reformado — https://leyes.co/codigo_sustantivo_del_trabajo/46.htm
 
-### D.4 Rangos de edad y de antigüedad
+### D.4 Rangos de edad y de antigüedad — RESUELTA
 
-**BLOQUEANTE.** El dashboard muestra distribución por rango de edad y por rango de antigüedad. Faltan los cortes. Sugerencia inicial, a confirmar:
+**Decidido por David el 2026-08-25, tomando la sugerencia inicial tal como estaba escrita.** No era una regla legal ni de negocio que pudiera quedar mal decidida: son los tramos de un gráfico, y la propuesta ya era razonable y estándar para un dashboard de RR. HH.
 - Edad: menos de 25 · 25 a 34 · 35 a 44 · 45 a 54 · 55 o más.
 - Antigüedad: menos de 6 meses · 6 meses a 1 año · 1 a 3 años · 3 a 5 años · más de 5 años.
+
+Implementado en `App\Inicio\Indicadores\IndicadoresDeComposicion` —`RANGOS_DE_EDAD` y `RANGOS_DE_ANTIGUEDAD`—, con prueba de los tramos límite (el de «55 o más» y el de «Más de 5 años», los dos sin techo).
 
 ### D.5 Listados maestros — RESUELTA
 
@@ -374,14 +376,14 @@ Las cinco de arriba están en `database/data/entidades.php` y las carga `Entidad
 
 *Estas listas deben poder actualizarse sin tocar el código, porque van a cambiar con el tiempo:* eso es la tarea **F1B-04**, administración de catálogos desde el panel del proveedor. Hasta entonces se actualizan en `database/data/entidades.php` y se recarga el seeder, que actualiza sin duplicar.
 
-### D.6 Confirmaciones menores
+### D.6 Confirmaciones menores — RESUELTAS, las cuatro, el 2026-08-25
 
-| Punto | Propuesta |
+| Punto | Decisión |
 |---|---|
-| Orden del dashboard | Está propuesto en el capítulo 12 de la Especificación: primero lo que exige acción, después el estado de la empresa. Falta el visto bueno. |
-| Vigencia del usuario de demostración | Sugerencia: entre 7 y 15 días. Suficiente para explorar sin que el prospecto lo use como sistema real. |
-| Nombre del proceso de carga inicial | Quedó pendiente ponerle nombre. Sugerencias: "Puesta en marcha", "Carga inicial" o "Registro de empleados antiguos". |
-| ¿Se cargan también empleados retirados en el histórico? | La plantilla obligatoria cubre solo los empleados activos. Si la empresa quiere ver rotación histórica desde antes de usar el sistema, habría que cargar también las vinculaciones terminadas. No se habló de esto y probablemente no valga la pena. |
+| Orden del dashboard | **Confirmado tal como está construido.** F4-03 puso el bloque de acción primero y F4-04 los seis bloques de estado después, que es exactamente lo que proponía el capítulo 12. No hubo que tocar código. |
+| Vigencia del usuario de demostración | **14 días.** Dentro del rango sugerido (7 a 15), y da margen para una conversación comercial que se alargue una semana sin que el prospecto lo use como sistema real. Ver la tarea nueva `F5-08` para dejarlo como valor sugerido en el formulario, que hoy no propone ninguno. |
+| Nombre del proceso de carga inicial | **"Carga inicial"**, que es el nombre que ya usan el documento 1 (capítulo 12), el documento 2 y el código (`app/Carga/`, `cargas_iniciales`) desde que se construyó. Cambiarlo ahora sería el único motivo real para tocar código; se confirma el que ya está. |
+| ¿Se cargan también empleados retirados en el histórico? | **No, queda fuera del alcance del MVP.** La propia propuesta ya se inclinaba por esto —"probablemente no valga la pena"—, y la plantilla obligatoria de F5-01/F5-02 sigue cubriendo solo activos. Si un cliente lo pide, es una carga manual con el módulo de terminaciones, no un cambio a la plantilla. |
 
 ## E. Fase dos
 

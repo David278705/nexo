@@ -72,7 +72,17 @@ tiene más de diez opciones) · `Etiqueta` de estado · `Aviso` · `EstadoVacio`
   «¿está seguro?». Ejemplo: «Se devolverán 8 días hábiles. El saldo pasará de 17,25 a 25,25 días».
 - **Estados vacíos**: nunca «No hay datos». Título, una línea de explicación y el botón de la
   primera acción. Los textos exactos están en el documento 3, sección 6.3.
-- **Toda referencia temporal lleva la fecha entre paréntesis**: «Mañana (14 de junio)».
+- **En los correos de alertas, toda referencia temporal lleva la fecha entre paréntesis**: «Mañana
+  (14 de junio)». Es donde el documento 1, 9.1, la exige, y el código la cumple al pie de la letra
+  desde F3-02.
+- **En pantalla, la versión débil de la misma regla**: una referencia relativa —«Vence en 30 días»,
+  «esta semana»— necesita su fecha absoluta **visible al lado**, en el mismo texto o en la columna
+  contigua; no hace falta que vaya entre paréntesis en la misma frase. Decisión de David,
+  2026-08-25, tras tres revisiones (F1-13, F2-11, REV-06) recomendando lo mismo: el panel de inicio y
+  las tarjetas de indicadores muestran plazos relativos sin fecha absoluta al lado porque describen un
+  corte de tiempo, no el vencimiento de un contrato concreto —«vencen en 30 días» es la cuenta de
+  cuántos caen en la ventana, no la fecha de uno solo—, y forzar una fecha entre paréntesis ahí
+  mentiría o no tendría a qué fecha apuntar.
 
 ## Accesibilidad
 

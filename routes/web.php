@@ -98,8 +98,12 @@ Route::middleware('auth')->group(function () {
      * No lleva middleware de módulo porque `Inicio` es de todo usuario de una
      * empresa. Quien decide qué tarjetas se pintan es `BloqueDeAccion`, con la
      * misma política que responde en la ruta de destino de cada una.
+     *
+     * Sí lleva `cliente`: es la única sección sin `modulo:`, así que es la
+     * única por la que un `owner` podría colarse sin recibir 403. Las demás ya
+     * lo bloquean solas porque `PoliticaDeModulos` le niega todos los módulos.
      */
-    Route::get('/', [InicioController::class, 'index'])->name('inicio');
+    Route::get('/', [InicioController::class, 'index'])->middleware('cliente')->name('inicio');
 
     /*
      * Las secciones del menú (documento 3, tabla 4.2). Todavía están vacías

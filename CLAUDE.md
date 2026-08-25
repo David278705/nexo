@@ -6,7 +6,7 @@ Esa última es la promesa que se vende: si las alertas fallan, el producto no si
 
 ## Stack
 
-Laravel 12 (PHP 8.3+) · Inertia 2 + Vue 3 + Tailwind · PostgreSQL 16+ · Pest + Vitest · Laravel Excel
+Laravel 12 (PHP 8.2+, el mínimo real de `composer.json`) · Inertia 2 + Vue 3 + Tailwind · PostgreSQL 16+ · Pest + Vitest · Laravel Excel
 
 **Un solo proyecto, no dos.** Toda la interfaz se escribe en Vue y todo el servidor en Laravel, pero
 con Inertia **no hay API REST intermedia**: las rutas y los controladores siguen siendo de Laravel y,

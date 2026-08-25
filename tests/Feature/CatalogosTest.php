@@ -233,14 +233,19 @@ describe('con los catálogos cargados', function () {
     });
 
     it('no duplica ni pierde entidades al volver a correr el seeder', function () {
-        $antes = Eps::pluck('id', 'nombre')->all();
+        // Ordenado por nombre a propósito: sin `orderBy`, PostgreSQL no
+        // garantiza el orden de las filas, y la comparación con `toBe` sí lo
+        // exige porque compara arrays asociativos en el orden en que llegan.
+        // Sin esto, la prueba fallaba de forma intermitente (anotado desde
+        // REV-02).
+        $antes = Eps::orderBy('nombre')->pluck('id', 'nombre')->all();
 
         $this->seed(CatalogosSeeder::class);
 
         // Los mismos nombres y **los mismos identificadores**: si el seeder
         // borrara y volviera a insertar, cada empleado ya registrado quedaría
         // apuntando a una EPS que ya no existe.
-        expect(Eps::pluck('id', 'nombre')->all())->toBe($antes);
+        expect(Eps::orderBy('nombre')->pluck('id', 'nombre')->all())->toBe($antes);
     });
 
     it('ofrece en las listas solo lo que está activo', function () {

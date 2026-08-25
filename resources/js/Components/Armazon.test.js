@@ -107,4 +107,57 @@ describe("Armazon", () => {
 
         expect(barras(componente)).toHaveLength(1);
     });
+
+    /*
+     * Los cuatro siguientes son el mismo mecanismo de foco que ya prueba
+     * `Modal.test.js` para F6-06: este menú es el único diálogo del sistema
+     * que se quedó sin él, porque no es un `Modal.vue`, es su propio armazón
+     * de barra desplegada.
+     */
+    it("al desplegarse pone el foco dentro del menú", async () => {
+        const componente = montar();
+
+        await componente.find('[aria-label="Abrir el menú"]').trigger("click");
+        await componente.vm.$nextTick();
+
+        const dialogo = document.body.querySelector('[role="dialog"]');
+        expect(dialogo.contains(document.activeElement)).toBe(true);
+
+        componente.unmount();
+    });
+
+    it("atrapa el tabulador dentro del menú desplegado: del último vuelve al primero", async () => {
+        const componente = montar();
+
+        await componente.find('[aria-label="Abrir el menú"]').trigger("click");
+        await componente.vm.$nextTick();
+
+        document.body.querySelector('[aria-label="Cerrar el menú"]').focus();
+
+        const evento = new KeyboardEvent("keydown", {
+            key: "Tab",
+            cancelable: true,
+        });
+        document.dispatchEvent(evento);
+
+        expect(evento.defaultPrevented).toBe(true);
+        expect(document.activeElement.getAttribute("href")).toBe("/");
+
+        componente.unmount();
+    });
+
+    it("al cerrar el menú devuelve el foco a quien lo abrió", async () => {
+        const componente = montar();
+
+        const disparador = componente.find('[aria-label="Abrir el menú"]').element;
+        disparador.focus();
+
+        await componente.find('[aria-label="Abrir el menú"]').trigger("click");
+        await componente.vm.$nextTick();
+        await componente.find('[aria-label="Cerrar el menú"]').trigger("click");
+
+        expect(document.activeElement).toBe(disparador);
+
+        componente.unmount();
+    });
 });

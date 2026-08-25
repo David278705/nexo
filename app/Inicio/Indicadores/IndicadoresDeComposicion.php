@@ -7,24 +7,53 @@ use App\Dominio\Calculo\MotorDeCalculo;
 use App\Models\Vinculacion;
 use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * El bloque «Composición» del panel de inicio (documento 1, 12.1, bloque 6).
  *
- * De los cuatro indicadores del documento, dos están listos —distribución por
- * cargo y por género— y dos están **bloqueados por D.4**, que el documento 6
- * marca expresamente como pendiente y bloqueante: los cortes de los rangos de
- * edad y de antigüedad. Sin ellos no hay en qué grupo contar a nadie, y
- * cualquier corte que se inventara aquí sería exactamente lo que la regla del
- * proyecto prohíbe. La antigüedad **promedio** sí se puede calcular —es un
- * solo número, no un reparto en rangos— y no depende de D.4.
+ * Los cuatro indicadores del documento, completos: distribución por cargo,
+ * por género, por rango de edad y por rango de antigüedad, más la antigüedad
+ * **promedio** como tarjeta aparte —es un solo número, no un reparto—.
  *
- * Es el mismo patrón que F1B-03 usó con las pestañas del panel del proveedor
- * que dependían de una decisión sin cerrar: la parte que se puede construir se
- * construye entera, y la que no dice de qué depende.
+ * Los cortes de edad y de antigüedad son la decisión **D.4** de
+ * `docs/06-decisiones-pendientes.md`, resuelta el 2026-08-25 tomando la
+ * propuesta que el propio documento ya traía escrita: no eran una regla legal
+ * que inventar, eran los tramos de un gráfico. Viven aquí, en dos constantes,
+ * y no en `config/` porque —a diferencia de los umbrales de `config/alertas.php`—
+ * no son un número que Angela vaya a querer ajustar sin desplegar código: son
+ * la forma del gráfico, y cambiarla es una decisión de producto, no de
+ * operación diaria.
  */
 class IndicadoresDeComposicion
 {
+    /**
+     * Los tramos de edad de D.4, en años cumplidos. `null` como límite
+     * superior es «55 o más».
+     *
+     * @var list<array{etiqueta: string, desde: int, hasta: int|null}>
+     */
+    private const RANGOS_DE_EDAD = [
+        ['etiqueta' => 'Menos de 25', 'desde' => 0, 'hasta' => 24],
+        ['etiqueta' => '25 a 34', 'desde' => 25, 'hasta' => 34],
+        ['etiqueta' => '35 a 44', 'desde' => 35, 'hasta' => 44],
+        ['etiqueta' => '45 a 54', 'desde' => 45, 'hasta' => 54],
+        ['etiqueta' => '55 o más', 'desde' => 55, 'hasta' => null],
+    ];
+
+    /**
+     * Los tramos de antigüedad de D.4, en meses cumplidos desde el ingreso.
+     *
+     * @var list<array{etiqueta: string, desde: int, hasta: int|null}>
+     */
+    private const RANGOS_DE_ANTIGUEDAD = [
+        ['etiqueta' => 'Menos de 6 meses', 'desde' => 0, 'hasta' => 5],
+        ['etiqueta' => '6 meses a 1 año', 'desde' => 6, 'hasta' => 11],
+        ['etiqueta' => '1 a 3 años', 'desde' => 12, 'hasta' => 35],
+        ['etiqueta' => '3 a 5 años', 'desde' => 36, 'hasta' => 59],
+        ['etiqueta' => 'Más de 5 años', 'desde' => 60, 'hasta' => null],
+    ];
+
     /**
      * @return array{titulo: string, tarjetas: list<array<string, mixed>>, distribuciones: list<array<string, mixed>>, avisos: list<string>}
      */
@@ -41,13 +70,10 @@ class IndicadoresDeComposicion
             'distribuciones' => [
                 ['titulo' => 'Distribución por cargo', 'items' => self::distribucionPorCargo()],
                 ['titulo' => 'Distribución por género', 'items' => self::distribucionPorGenero()],
+                ['titulo' => 'Distribución por rango de edad', 'items' => self::distribucionPorEdad($hoy)],
+                ['titulo' => 'Distribución por rango de antigüedad', 'items' => self::distribucionPorAntiguedad($hoy)],
             ],
-            // Los rangos de edad y de antigüedad no se calculan: D.4 sigue sin
-            // resolver los cortes.
-            'avisos' => [
-                'Distribución por rango de edad y por rangos de antigüedad: pendiente de la decisión D.4 '
-                    .'del documento de decisiones pendientes — faltan los cortes de cada rango.',
-            ],
+            'avisos' => [],
         ];
     }
 
@@ -100,6 +126,60 @@ class IndicadoresDeComposicion
         }
 
         return $lista;
+    }
+
+    /**
+     * @return list<array{etiqueta: string, cuantos: int}>
+     */
+    private static function distribucionPorEdad(Carbon $hoy): array
+    {
+        $edades = Vinculacion::query()
+            ->activas()
+            ->join('personas', 'personas.id', '=', 'vinculaciones.persona_id')
+            ->pluck('personas.fecha_nacimiento')
+            ->map(fn (mixed $nacimiento): int => intdiv(
+                MotorDeCalculo::mesesCumplidos(Carbon::parse($nacimiento), $hoy),
+                12,
+            ));
+
+        return self::distribucionPorRango($edades, self::RANGOS_DE_EDAD);
+    }
+
+    /**
+     * @return list<array{etiqueta: string, cuantos: int}>
+     */
+    private static function distribucionPorAntiguedad(Carbon $hoy): array
+    {
+        $meses = Vinculacion::query()
+            ->activas()
+            ->pluck('fecha_ingreso')
+            ->map(fn (mixed $ingreso): int => MotorDeCalculo::mesesCumplidos(Carbon::parse($ingreso), $hoy));
+
+        return self::distribucionPorRango($meses, self::RANGOS_DE_ANTIGUEDAD);
+    }
+
+    /**
+     * Cuenta una colección de números —edades en años, antigüedad en meses—
+     * dentro de los tramos de D.4. Es la misma pregunta para las dos
+     * distribuciones, y una sola función evita que sus reglas de borde —el
+     * `hasta` nulo del último tramo— se escriban dos veces y se separen solas.
+     *
+     * @param  Collection<int, int>  $valores
+     * @param  list<array{etiqueta: string, desde: int, hasta: int|null}>  $rangos
+     * @return list<array{etiqueta: string, cuantos: int}>
+     */
+    private static function distribucionPorRango(Collection $valores, array $rangos): array
+    {
+        return array_map(
+            fn (array $rango): array => [
+                'etiqueta' => $rango['etiqueta'],
+                'cuantos' => $valores->filter(
+                    fn (int $valor): bool => $valor >= $rango['desde']
+                        && ($rango['hasta'] === null || $valor <= $rango['hasta']),
+                )->count(),
+            ],
+            $rangos,
+        );
     }
 
     /**

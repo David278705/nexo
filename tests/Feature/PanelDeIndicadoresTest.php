@@ -334,12 +334,50 @@ describe('el bloque de composición', function () {
             ->and($porGenero->sum())->toBe(3);
     });
 
-    it('deja escrito de qué depende la distribución por rango de edad y de antigüedad', function (): void {
+    it('reparte la planta activa por rango de edad, con los cortes de D.4', function (): void {
+        $this->contexto->paraTenant($this->empresa, function (): void {
+            // 24 años el 17 de agosto de 2026: cae en «Menos de 25».
+            Vinculacion::factory()->create(['persona_id' => Persona::factory()->create(['fecha_nacimiento' => '2002-01-01'])]);
+            // 30 años: cae en «25 a 34».
+            Vinculacion::factory()->create(['persona_id' => Persona::factory()->create(['fecha_nacimiento' => '1996-01-01'])]);
+            // 55 años exactos: cae en «55 o más», el tramo sin límite superior.
+            Vinculacion::factory()->create(['persona_id' => Persona::factory()->create(['fecha_nacimiento' => '1971-01-01'])]);
+        });
+
+        $porEdad = collect(bloqueLlamado('Composición')['distribuciones'][2]['items'])
+            ->pluck('cuantos', 'etiqueta');
+
+        expect($porEdad['Menos de 25'])->toBe(1)
+            ->and($porEdad['25 a 34'])->toBe(1)
+            ->and($porEdad['55 o más'])->toBe(1)
+            ->and($porEdad->sum())->toBe(3);
+    });
+
+    it('reparte la planta activa por rango de antigüedad, con los cortes de D.4', function (): void {
+        $this->contexto->paraTenant($this->empresa, function (): void {
+            // Cero meses: ingresó ayer. Cae en «Menos de 6 meses».
+            Vinculacion::factory()->conIngreso('2026-08-16')->create();
+            // Veinticuatro meses: cae en «1 a 3 años».
+            Vinculacion::factory()->conIngreso('2024-08-17')->create();
+            // Setenta y dos meses, seis años: cae en «Más de 5 años», sin límite superior.
+            Vinculacion::factory()->conIngreso('2020-08-17')->create();
+        });
+
+        $porAntiguedad = collect(bloqueLlamado('Composición')['distribuciones'][3]['items'])
+            ->pluck('cuantos', 'etiqueta');
+
+        expect($porAntiguedad['Menos de 6 meses'])->toBe(1)
+            ->and($porAntiguedad['1 a 3 años'])->toBe(1)
+            ->and($porAntiguedad['Más de 5 años'])->toBe(1)
+            ->and($porAntiguedad->sum())->toBe(3);
+    });
+
+    it('ya no deja ningún aviso pendiente: D.4 quedó resuelta', function (): void {
         $this->contexto->paraTenant($this->empresa, function (): void {
             Vinculacion::factory()->create();
         });
 
-        expect(bloqueLlamado('Composición')['avisos'][0])->toContain('D.4');
+        expect(bloqueLlamado('Composición')['avisos'])->toBe([]);
     });
 
     it('calcula la antigüedad promedio de la planta activa', function (): void {

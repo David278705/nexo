@@ -1684,7 +1684,7 @@ filtrar por acción en vez de fiarse del orden para no toparse con eso.
 > correos que por ley no corresponden—, y desde el final de la lista no se habría hecho hasta terminar
 > el proyecto entero.
 
-### [!] REV-06 · Acotar la regla de «la fecha entre paréntesis» — bloqueada: David no ha elegido entre las dos opciones
+### [x] REV-06 · Acotar la regla de «la fecha entre paréntesis»
 
 `.claude/rules/30-interfaz.md` la enuncia para **toda** la interfaz: «Toda referencia temporal lleva
 la fecha entre paréntesis: "Mañana (14 de junio)"». Su fuente —documento 1, 9.1— la enuncia solo para
@@ -1714,3 +1714,186 @@ pantallas de listado poniendo la fecha entre paréntesis, y esta tarea deja de s
 O se acota a lo que la sostiene el documento, o se cumple.
 **Fuente:** `.claude/rules/30-interfaz.md` · `docs/01-especificacion-funcional.md` 9.1 ·
 `bitacora/revision-2026-08-20.md` y `bitacora/revision-2026-08-22.md`
+
+Hecho: decisión de David, 2026-08-25 — la Opción A, la recomendada las tres veces. La regla en
+`.claude/rules/30-interfaz.md` ya distingue los dos casos: literal en los correos, fecha visible al
+lado en pantalla. No hizo falta tocar ninguna pantalla porque el código ya cumplía la versión débil
+en las ocho de listado y en el panel de inicio; lo único que faltaba era que la regla escrita dejara
+de contradecir lo que el código ya hacía bien.
+
+---
+
+## Auditoría del 25 de agosto de 2026
+
+David pidió una revisión completa de todo lo que quedó a medias, olvidado o sin conectar, con
+autorización para decidir directamente lo que no fuera una regla legal o de negocio genuina. Se hizo
+un barrido de las tres capas —tareas `[!]`, notas «heredadas» de `ESTADO.md` desde REV-02, y una
+revisión manual de pantallas que el backlog da por completas—.
+
+**Lo que se resolvió y quedó implementado esa misma sesión** (con `composer verificar` en verde
+después de cada cambio): REV-06, D.4, las cuatro de D.6, B.3, la prueba intermitente de
+`CatalogosTest`, la versión de PHP en `CLAUDE.md`, el owner sin bloqueo en `/`, el desempate de
+`Listado::ordenar()` en la dirección pedida, y el foco atrapado en el menú desplegable de `Armazon.vue`
+—el único diálogo del sistema que se había quedado sin el mecanismo de F6-06—.
+
+**Lo que quedó sin rastro suficiente para actuar, y se documenta así en vez de inventarlo:** la nota
+«meses comerciales de treinta días» y la de «el texto del empleado inactivo» no aparecen en ningún
+`bitacora/*.md`, documento ni código actual con ese nombre exacto; puede que ya estén resueltas por
+diseño o que la nota haya sobrevivido a un cambio que las volvió obsoletas. La frase del prototipo
+sobre el saldo negativo tampoco aparece ya en `prototipos/sistema.html`. Si alguna sigue viva, hace
+falta que quien la escribió la sitúe de nuevo.
+
+**Lo que sigue siendo, genuinamente, una pregunta para Angela** (no se inventó, y no debería): B.2,
+periodo de prueba en cambio de modalidad contractual, porque el escenario de «la nueva labor es
+completamente distinta» no está resuelto expresamente en la norma; y el fondo de cesantías, porque no
+está en ningún documento funcional y es un dato que un asesor laboral tiene que confirmar que hace
+falta pedir, no algo que se pueda deducir.
+
+**Lo que resultó ser más grande que una nota al margen** son las siete tareas siguientes. Ninguna
+estaba bloqueada por falta de decisión: estaban simplemente sin tarea.
+
+### [ ] REV-08 · La plantilla de empleados no pide el país de expedición del documento
+
+El asistente de registro manual (F1-04) pide cuatro campos para el lugar de expedición del documento
+—`expedicion.pais`, `.departamento`, `.ciudad`— y `Persona` los guarda los tres
+(`pais_expedicion`, `ciudad_expedicion_id`, `departamento_expedicion_exterior` /
+`ciudad_expedicion_exterior` para el exterior). La plantilla de carga masiva
+(`App\CargaInicial\Plantillas\PlantillaDeEmpleados`) solo pide **fecha** y **ciudad** de expedición
+—`Columna::fecha('Fecha de expedición del documento', ...)` y
+`Columna::texto('Lugar de expedición del documento', 'expedicion.ciudad')`—: falta la columna del país.
+
+**La consecuencia:** una empresa que carga masivamente a un empleado cuyo documento se expidió fuera
+de Colombia no tiene dónde decirlo. El dato queda vacío o mal inferido, y es exactamente el campo que
+`docs/01-especificacion-funcional.md` cap. 4 ya señala como responsabilidad del cliente verificar
+—pero aquí ni siquiera se le ofrece dónde escribirlo.
+
+**Hecho cuando:** la plantilla tiene una columna «País de expedición del documento», con la misma
+lista de países del asistente manual; un empleado cargado con expedición en el exterior queda con
+`pais_expedicion` distinto de Colombia y sus campos de ciudad/departamento del exterior llenos, igual
+que si se hubiera registrado a mano; y una fila que declara expedición en Colombia sin el país (o con
+uno que no es Colombia) sigue las mismas reglas de validación que ya tiene el asistente para esa
+combinación.
+**Fuente:** `docs/01-especificacion-funcional.md` cap. 4 y 5.1 · `app/Models/Persona.php` ·
+`resources/js/Pages/Empleados/Nuevo.vue`
+
+### [ ] REV-09 · La plantilla pide «prórrogas ya realizadas» y las descarta sin usarlas
+
+`PlantillaDeEmpleados` tiene la columna «Prórrogas ya realizadas» (`prorrogas_realizadas`), la valida
+—entero, `min:0`— y **nunca la vuelve a mencionar**: no se le pasa a `RegistroDeEmpleado::ejecutar()`,
+no queda en ninguna columna de `vinculaciones` ni de `periodos_contractuales`. Un contrato a término
+fijo cargado con prórrogas anteriores en el mundo real arranca en el sistema como si `orden = 1` fuera
+su único tramo, con cero prórrogas.
+
+**Por qué esto no es cosmético.** `HistorialDeContrato::prorrogasCortas()` —el cupo único de tres,
+resuelto en esta misma sesión— cuenta sobre `periodos_contractuales`. Un contrato cargado que en la
+realidad ya tenía dos prórrogas cortas encima aparece en el sistema con cero: puede seguir recibiendo
+advertencias de prórroga corta que ya no le corresponden, y el número de prórroga que muestra el modal
+de renovación («Sería la 2ª prórroga...») miente. El tope de los cuatro años **no se ve afectado**
+—se calcula desde `fecha_ingreso`, no contando tramos—, así que el riesgo real está acotado al cupo de
+prórrogas cortas.
+
+**No es un problema de guardar el número: es que la plantilla solo pide un conteo, no cada prórroga
+con su fecha y su tipo.** Reconstruir tramos de `periodos_contractuales` con fechas inventadas sería
+mentir en el historial visible del contrato —exactamente lo que el documento 1 prohíbe con «no se
+inventan registros», citado en la propia `PlantillaDeEmpleados`—. La salida no es fabricar historia:
+
+**Decisión de implementación, no de negocio, tomada el 2026-08-25:** el conteo se guarda como un
+desplace aparte, no como tramos falsos. Nueva columna `prorrogas_previas_a_la_carga` en
+`vinculaciones` (entero, por defecto 0), rellenada desde la columna que la plantilla ya recoge.
+`HistorialDeContrato::prorrogasCortas()` la suma al conteo que ya hace sobre `periodos_contractuales`.
+El historial visible en pantalla **no muestra tramos que no existieron**: sigue mostrando solo lo que
+de verdad se registró, más una línea aparte —«Y 2 prórrogas anteriores a la carga inicial, sin
+detalle»— cuando el número es mayor que cero.
+
+**Hecho cuando:** un empleado cargado con «Prórrogas ya realizadas» en 2 y un contrato inicial
+inferior a un año recibe la advertencia de prórroga mínima al intentar registrar solo su primera
+prórroga corta después de la carga —porque el cupo real es 3 y ya venía con 2—, con prueba; el
+historial en pantalla no inventa ningún tramo; y un empleado registrado a mano, sin pasar por la
+carga, se comporta exactamente igual que antes.
+**Fuente:** `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` ·
+`app/Contratacion/HistorialDeContrato.php` · la corrección del cupo de prórrogas cortas de esta misma
+sesión.
+
+### [ ] REV-10 · Usuarios y permisos, la pantalla del cliente que nunca se construyó
+
+`docs/03-diseno-e-interfaz.md`, sección 5.7, especifica cuatro pestañas para «Configuración»: Datos
+de la empresa, Parámetros, **Usuarios y permisos**, y Facturación. **F1-12 solo construyó
+«Parámetros»** —su propio texto lo dice: «tres parámetros se guardan y el cuarto se deduce... y se
+cambia en Usuarios y permisos»—, y las otras tres pestañas se quedaron con el `EstadoVacio` genérico
+de «esta pestaña todavía no tiene contenido». No es una tarea que quedara bloqueada: **nunca se
+escribió** en ninguna de las seis fases ni en las REV.
+
+Lo que existe hoy no es lo mismo: el owner puede gestionar los usuarios de una empresa **desde el
+panel del proveedor** (F1B-03) —reenviar invitación, restablecer contraseña—, pero **el
+superadministrador de la empresa no tiene forma de gestionar su propio equipo desde adentro**, que es
+justo lo que 5.7 describe: «Listado de usuarios con su rol y módulos. Al crear uno, se pide nombre y
+correo, se marcan los módulos y se envía la invitación. Un usuario se desactiva, no se borra.»
+
+**Trae consigo una deuda que hay que pagar en la misma tarea, no después:** `User`, `Acceso` e
+`Invitacion` **no tienen `SoftDeletes`**, abierto desde F1-13. «Un usuario se desactiva, no se borra»
+exige borrado lógico; sin `SoftDeletes`, desactivar a alguien pierde la fila y con ella de quién eran
+las líneas de auditoría que escribió. Añadir la pantalla sin esto construiría la mitad equivocada.
+
+**Hecho cuando:** un superadministrador ve el listado de los usuarios de su empresa con su rol y sus
+módulos; puede invitar uno nuevo con nombre, correo y módulos marcados, y la invitación sale por el
+mismo camino que ya usa F1B-02; puede editar los módulos de un administrador existente; «desactivar»
+dejar al usuario sin `SoftDeletes::deleted_at` nulo y sin poder iniciar sesión, sin borrar la fila ni
+las líneas de auditoría que escribió; y un administrador (no superadministrador) recibe 403 al intentar
+esta pantalla, porque 5.7 la reserva al superadministrador. `User`, `Acceso` e `Invitacion` ganan
+`SoftDeletes` con prueba de que desactivar conserva la auditoría.
+**Fuente:** `docs/03-diseno-e-interfaz.md` 5.7 · `docs/01-especificacion-funcional.md` cap. 3 y 4 ·
+`app/Autenticacion/Invitaciones.php` y `app/Models/Invitacion.php` (el mecanismo de invitación que
+F1B-02 ya usa del lado del proveedor, para reutilizar aquí del lado del cliente).
+
+### [ ] REV-11 · Facturación, la cuarta pestaña que tampoco se construyó
+
+La misma sección 5.7 especifica: «Plan contratado, número de empleados y usuarios incluidos,
+historial de pagos y medio de pago. Solo el superadministrador.» F5-04 construyó exactamente esto
+—pero **del lado del proveedor**, en la pestaña «Suscripción» de la ficha de empresa
+(`Proveedor\Suscripciones`, `PanelDeSuscripciones`). El cliente no tiene ninguna vista propia de su
+plan ni de su historial de pagos: su pestaña «Facturación» sigue en el `EstadoVacio` genérico.
+
+Es la misma información, ya calculada y ya probada del otro lado: no hay que inventar el modelo de
+datos ni las reglas de mora, solo una lectura de solo lectura, del lado del cliente, con la misma
+consulta que ya usa `PanelDeSuscripciones` acotada a la empresa en contexto.
+
+**Hecho cuando:** un superadministrador ve en «Facturación» el plan contratado, los cupos de
+empleados y usuarios incluidos, el historial de pagos con su estado, y el medio de pago; un
+administrador (no superadministrador) recibe 403; y una empresa sin suscripción —hoy posible porque
+`planes` nace vacía por A.1— ve un estado vacío que lo dice, no una pantalla rota.
+**Fuente:** `docs/03-diseno-e-interfaz.md` 5.7 · `app/Proveedor/PanelDeSuscripciones.php` ·
+`app/Proveedor/EscaleraDeMora.php`
+
+### [ ] REV-12 · La ficha de empresa del proveedor tiene dos pestañas con texto de hace seis fases
+
+`App\Proveedor\FichaDeEmpresa::PENDIENTES['alertas']` dice: *"El motor de avisos por correo es la
+fase 3. Cuando exista, aquí se verá todo lo enviado a esta empresa con su resultado."* Se escribió en
+F1B-03, antes de que existiera el motor de alertas. Ya existe —F3-01 a F3-06, y la consola F5-05—, y
+nadie volvió a conectar esta pestaña. El propio docblock de la clase ya lo sabe: *"Alertas |
+Declarada. La consola de envíos es F3-06 y F5-05"*, pero la pantalla nunca se actualizó.
+
+**Lo mismo le pasa a «Uso».** `FichaDeEmpresa::USO_INCOMPLETO` dice: *"Las novedades registradas por
+mes y los módulos que la empresa usa de verdad se podrán contar cuando existan las novedades, en la
+fase 2."* La fase 2 —incapacidades, vacaciones, licencias, movimientos, terminaciones— está completa
+desde hace tiempo.
+
+**Hecho cuando:** la pestaña «Alertas» de la ficha de empresa muestra el registro real de
+`alertas_enviadas` de esa empresa —mismo dato que ya lee `ConsolaDeAlertas`, acotado a un tenant en
+vez de a todas—, no el aviso de «todavía no se ha enviado ninguna»; y «Uso» cuenta de verdad las
+novedades registradas por mes y los módulos que la empresa usa, quitando `USO_INCOMPLETO` de la
+pantalla. `FichaDeEmpresa::PENDIENTES` queda vacío o se elimina si ya no le queda ninguna pestaña
+declarada y no construida.
+**Fuente:** `app/Proveedor/FichaDeEmpresa.php` · `app/Proveedor/ConsolaDeAlertas.php`
+
+### [ ] F5-08 · El formulario de acceso de prueba no sugiere ningún valor de vigencia
+
+D.12 (vigencia del usuario de demostración) quedó resuelta esta misma sesión en 14 días —ver D.6 del
+documento 6—. F5-03 dejó el campo de vigencia del formulario de «generar acceso de prueba» sin ningún
+valor sugerido a propósito, porque en ese momento la decisión no existía: *"el formulario exige el
+número y no propone ninguno"*. Ya existe.
+
+**Hecho cuando:** el campo de días de vigencia del formulario de accesos de prueba trae 14 escrito
+por defecto, editable; y el valor vive en `config/panel.php` —mismo archivo que ya tiene
+`riesgo_de_cancelacion`— y no en un literal dentro del componente Vue.
+**Fuente:** `docs/06-decisiones-pendientes.md` D.6 · `app/Proveedor/AccesosDePrueba.php` ·
+`resources/js/Pages/Proveedor/Demostracion.vue`

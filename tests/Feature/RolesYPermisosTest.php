@@ -121,6 +121,18 @@ it('no deja al owner entrar a los módulos del entorno del cliente', function ()
         ->assertForbidden();
 });
 
+it('no deja al owner entrar al panel de inicio del cliente', function () {
+    // Inicio no lleva middleware de módulo —es de todo usuario de una
+    // empresa—, así que es la única ruta que `PoliticaDeModulos` no protege
+    // sola. Sin `SoloCliente`, el owner vería una pantalla vacía en vez de
+    // un 403.
+    $owner = User::factory()->owner()->create();
+
+    $this->actingAs($owner)
+        ->get(route('inicio'))
+        ->assertForbidden();
+});
+
 it('devuelve 403 a quien no ha iniciado sesión', function () {
     $this->get(rutaDelModulo(Modulo::Empleados))->assertForbidden();
 });

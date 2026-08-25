@@ -229,10 +229,14 @@ abstract class Listado
 
         $ordenar($consulta, $this->direccion);
 
-        // El desempate. Sin él, dos filas con el mismo cargo pueden
-        // intercambiarse de sitio entre una página y la siguiente y aparecer
-        // dos veces o ninguna.
-        return $consulta->orderBy('id', 'asc');
+        // El desempate, **en la misma dirección que se pidió**. Sin él, dos
+        // filas con el mismo cargo pueden intercambiarse de sitio entre una
+        // página y la siguiente y aparecer dos veces o ninguna. Desempatar
+        // siempre ascendente rompía «lo más reciente primero» en
+        // `direccion=desc`: con varias filas creadas en el mismo segundo, el
+        // desempate las devolvía en el orden contrario al que pedía la
+        // columna. Anotado desde REV-04, corregido el 2026-08-25.
+        return $consulta->orderBy('id', $this->direccion);
     }
 
     /**
