@@ -385,6 +385,74 @@ describe('la validación de la plantilla de empleados', function () {
             ->and($valores['nacimiento']['ciudad'])->toBe('Maracaibo');
     });
 
+    it('asume Colombia para la expedición cuando la columna de país viene vacía', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]);
+
+        $valores = simular(new PlantillaDeEmpleados, $archivo)->valores()[0];
+
+        expect($valores['expedicion']['pais'])->toBe('CO')
+            ->and($valores['expedicion']['ciudad'])->toBe(test()->medellin->id);
+    });
+
+    it('rechaza un país de expedición que no está en el catálogo', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['País de expedición del documento' => 'Wakanda']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('no está en la lista de países del sistema');
+    });
+
+    it('exige el formato «Ciudad (Departamento)» para el lugar de expedición del exterior', function () {
+        Pais::query()->create(['codigo' => 'VE', 'nombre' => 'Venezuela', 'activo' => true]);
+
+        $sinFormato = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'País de expedición del documento' => 'Venezuela',
+                'Lugar de expedición del documento' => 'Caracas',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $sinFormato)->motivosDe(2)[0])
+            ->toContain('Ciudad (Departamento o región)');
+
+        $conFormato = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'País de expedición del documento' => 'Venezuela',
+                'Lugar de expedición del documento' => 'Caracas (Distrito Capital)',
+            ]),
+        ]);
+
+        $valores = simular(new PlantillaDeEmpleados, $conFormato)->valores()[0];
+
+        expect($valores['expedicion']['pais'])->toBe('VE')
+            ->and($valores['expedicion']['ciudad'])->toBe('Caracas')
+            ->and($valores['expedicion']['departamento'])->toBe('Distrito Capital');
+    });
+
+    it('un empleado cargado con expedición en el exterior queda igual que si se hubiera registrado a mano', function () {
+        Pais::query()->create(['codigo' => 'VE', 'nombre' => 'Venezuela', 'activo' => true]);
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'País de expedición del documento' => 'Venezuela',
+                'Lugar de expedición del documento' => 'Caracas (Distrito Capital)',
+            ]),
+        ]);
+
+        ejecutar(new PlantillaDeEmpleados, $archivo);
+
+        $persona = app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn (): Persona => Persona::query()->firstOrFail(),
+        );
+
+        expect($persona->pais_expedicion)->toBe('VE')
+            ->and($persona->ciudad_expedicion_id)->toBeNull()
+            ->and($persona->departamento_expedicion_exterior)->toBe('Distrito Capital')
+            ->and($persona->ciudad_expedicion_exterior)->toBe('Caracas');
+    });
+
     it('rechaza un salario escrito con punto de miles, que en Colombia es ambiguo', function () {
         $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
             filaDeEmpleado(['Salario mensual' => '3.200.000']),

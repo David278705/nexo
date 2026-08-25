@@ -1752,7 +1752,7 @@ falta pedir, no algo que se pueda deducir.
 **Lo que resultó ser más grande que una nota al margen** son las siete tareas siguientes. Ninguna
 estaba bloqueada por falta de decisión: estaban simplemente sin tarea.
 
-### [ ] REV-08 · La plantilla de empleados no pide el país de expedición del documento
+### [x] REV-08 · La plantilla de empleados no pide el país de expedición del documento
 
 El asistente de registro manual (F1-04) pide cuatro campos para el lugar de expedición del documento
 —`expedicion.pais`, `.departamento`, `.ciudad`— y `Persona` los guarda los tres
@@ -1775,6 +1775,25 @@ uno que no es Colombia) sigue las mismas reglas de validación que ya tiene el a
 combinación.
 **Fuente:** `docs/01-especificacion-funcional.md` cap. 4 y 5.1 · `app/Models/Persona.php` ·
 `resources/js/Pages/Empleados/Nuevo.vue`
+
+Hecho: la columna «País de expedición del documento» —`Columna::texto('expedicion.pais')`—, con la
+misma lista completa de países que usa el nacimiento. Sin la celda escrita se asume Colombia, que es
+el comportamiento que ya tenía todo archivo real; con un país servido se resuelve contra
+`CatalogosDeCarga::pais()`, igual que el nacimiento. **La plantilla no ganó una segunda columna de
+texto para el departamento**, porque «Lugar de expedición del documento» ya era una sola celda antes
+de esta tarea y el «Hecho cuando» solo pedía la columna del país: fuera de Colombia esa celda ahora
+tiene que traer «Ciudad (Departamento o región)», reutilizando la misma sintaxis que ya existía para
+desambiguar un municipio colombiano repetido —hay dos Albania y dos Guadalupe—, en vez de inventar un
+segundo formato. Dentro de Colombia el comportamiento anterior no cambió ni una línea. La plantilla
+real de `plantillas/1 - Empleados actuales (obligatoria).xlsx` se editó a mano con `ZipArchive`
+—cambiar la hoja «Empleados» con PhpSpreadsheet corrompía sus 1.800 validaciones de lista por celda,
+un límite de la librería con hojas de este tamaño y no un error del cambio—, añadiendo la columna al
+final del archivo y su fila en «Instrucciones»; el lector empareja columnas por título, no por
+posición, así que el orden no le importa. Cuatro pruebas nuevas en `CargaInicialTest.php`: el defecto
+a Colombia, el país que no está en el catálogo, el formato exigido fuera de Colombia y el caso
+completo —un empleado cargado con expedición en Venezuela termina con `pais_expedicion`,
+`departamento_expedicion_exterior` y `ciudad_expedicion_exterior` idénticos a los que dejaría el
+asistente manual—.
 
 ### [ ] REV-09 · La plantilla pide «prórrogas ya realizadas» y las descarta sin usarlas
 

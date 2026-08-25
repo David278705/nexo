@@ -1,83 +1,53 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-25 · Auditoría completa pedida por David: decidir lo que fuera legítimo
-decidir sin inventar reglas legales, y dejar en el backlog todo lo que quedó a medias, olvidado o sin
-conectar. No fue una tarea del backlog automático — fue trabajo directo con David.
-**Verificación:** verde — Pint, PHPStan sin errores, **1.185** pruebas de Pest, build y **388** de
+**Última sesión:** 2026-08-25 · Tarea REV-08
+**Verificación:** verde — Pint, PHPStan sin errores, **1.189** pruebas de Pest, build y **388** de
 Vitest.
-**Siguiente tarea:** `REV-08` · la plantilla de empleados no pide el país de expedición del documento.
-`F6-07` y `F3-06b` siguen `[!]` y se saltan.
+**Siguiente tarea:** `REV-09` · la plantilla pide «prórrogas ya realizadas» y las descarta sin
+usarlas. Toca la misma plantilla que REV-08 y ya asume que REV-08 no le cambió las columnas que no le
+tocaban —cierto: REV-08 solo agregó una columna nueva al final—.
 
 ## Qué se hizo
 
-Se auditaron las tres capas: las tareas `[!]`, las notas «heredadas» que se venían repitiendo en este
-archivo desde `REV-02`, y una revisión manual de pantallas que el backlog daba por completas. De ahí
-salieron catorce puntos. Once se resolvieron y quedaron implementados y probados esa misma sesión;
-tres resultaron ser trabajo real y quedaron como tareas nuevas al final del backlog, más otras dos que
-ya estaban ahí sin conectar.
+`REV-08`: la plantilla de carga masiva de empleados (`PlantillaDeEmpleados`) no tenía dónde decir que
+un documento se expidió fuera de Colombia, aunque el asistente manual (F1-04) sí lo pide. Se agregó la
+columna «País de expedición del documento», con la misma lista completa de países del asistente. Sin
+la celda escrita se sigue asumiendo Colombia —compatible con todo archivo real de hoy—; con un país
+distinto, «Lugar de expedición del documento» pasa a leerse como «Ciudad (Departamento o región)»,
+reutilizando la sintaxis que ya existía para desambiguar un municipio colombiano repetido, en vez de
+sumar una segunda columna de texto que el «Hecho cuando» de la tarea no pedía. Dentro de Colombia el
+comportamiento no cambió.
 
-**Resueltos e implementados, con `composer verificar` en verde después de cada uno:**
+**La plantilla real (`plantillas/1 - Empleados actuales (obligatoria).xlsx`) también se editó**, y no
+fue trivial: la hoja «Empleados» tiene 1.800 validaciones de lista puestas celda por celda (no por
+rango), y tanto `insertNewColumnBefore()` como el simple hecho de escribir una cadena nueva con
+PhpSpreadsheet corrompían el archivo al guardarlo —una limitación conocida de la librería con hojas de
+este tamaño, no un error del cambio en sí—. Se editó el `.xlsx` directamente con `ZipArchive`,
+añadiendo la columna al final de «Empleados» y su fila en «Instrucciones», sin tocar la hoja
+completa. El lector (`LectorDeArchivo`) empareja columnas por título y no por posición, así que el
+orden no afecta la carga.
 
-- **`REV-06`** — la regla de «la fecha entre paréntesis» quedó acotada en
-  `.claude/rules/30-interfaz.md`: literal en los correos, fecha visible al lado en pantalla. Era la
-  recomendación repetida desde F1-13 y F2-11; no hizo falta tocar ninguna pantalla, el código ya la
-  cumplía.
-- **D.4** (rangos de edad y de antigüedad) — resuelta con la propuesta que el documento 6 ya traía
-  escrita, porque no era una regla legal, eran los tramos de un gráfico. Implementada en
-  `IndicadoresDeComposicion`: los dos indicadores que le faltaban a «Composición» en el panel de
-  inicio (F4-04) ya están completos, con prueba de los dos tramos sin techo.
-- **Las cuatro de D.6** — orden del dashboard (confirmado tal como está construido), vigencia del
-  acceso de demostración (14 días), nombre del proceso de carga inicial («Carga inicial», el que ya
-  usa el código) y empleados retirados en el histórico (no, fuera de alcance del MVP).
-- **B.3** — confirmado que `config/validaciones.php` ya implementa exactamente lo que Angela propuso
-  en el documento 6: bloquea el tope de cuatro años, advierte la prórroga mínima. No hubo que tocar
-  código, solo dejar de decir que seguía pendiente.
-- **La prueba intermitente de `CatalogosTest`** — comparaba `Eps::pluck('id','nombre')` sin
-  `orderBy`, y PostgreSQL no garantiza el orden sin él. Corregido con `orderBy('nombre')` en las dos
-  puntas de la comparación; cinco corridas seguidas en verde.
-- **PHP 8.2 contra el 8.3 que pedía `CLAUDE.md`** — la máquina real corre 8.2.12 desde el primer día
-  sin ningún problema en más de setenta tareas, y `composer.json` ya pedía `^8.2`. Se corrigió el
-  encabezado de `CLAUDE.md` para que diga la verdad en vez de una aspiración nunca cumplida.
-- **El owner sin bloqueo en `/`** — encontrado mientras se probaba el sistema en local: el owner
-  entraba al panel de inicio del cliente y veía una pantalla vacía en vez de un 403, porque `/` es la
-  única sección sin middleware de módulo. Nuevo middleware `SoloCliente`, simétrico a `SoloProveedor`,
-  aplicado solo a esa ruta — con la excepción de la visita al entorno (F5-07), que también redirige
-  ahí a propósito y por poco se rompe con el primer intento del arreglo.
-- **`Listado::ordenar()` desempataba siempre ascendente**, sin importar la dirección pedida —anotado
-  desde `REV-04`—. Con `direccion=desc` y filas creadas en el mismo segundo, el desempate devolvía el
-  orden contrario al pedido. Corregido para desempatar en la misma dirección; afecta a las nueve
-  pantallas que comparten el armazón.
-- **El menú desplegable de pantallas pequeñas no atrapaba el foco** — el único diálogo del sistema que
-  se quedó sin el mecanismo que F6-06 le dio a `Modal.vue`, porque no es un `Modal.vue`, es su propio
-  armazón en `Armazon.vue`. Mismo patrón: atrapa el tabulador, enfoca el menú al abrir, devuelve el
-  foco a quien lo abrió al cerrar.
-
-**Investigados y descartados, sin inventar nada:** «meses comerciales de treinta días» y «el texto
-del empleado inactivo» no aparecen en ningún `bitacora/*.md`, documento ni código actual con ese
-nombre — puede que ya estuvieran resueltos por diseño o que la nota sobreviviera a un cambio que la
-volvió obsoleta. La frase del prototipo sobre el saldo negativo tampoco existe ya en
-`prototipos/sistema.html`.
-
-**Confirmados como preguntas reales para Angela, sin tocar:** B.2 (periodo de prueba en cambio de
-modalidad contractual — el escenario de «la nueva labor es completamente distinta» no está resuelto
-expresamente en la norma) y el fondo de cesantías (no está en ningún documento funcional; hace falta
-que un asesor laboral confirme si el dato hace falta pedirlo).
+Cuatro pruebas nuevas en `CargaInicialTest.php`: el defecto a Colombia cuando la celda viene vacía, el
+país que no está en el catálogo, el formato exigido fuera de Colombia, y el caso completo de extremo a
+extremo —un empleado cargado con expedición en Venezuela termina en `Persona` con `pais_expedicion`,
+`departamento_expedicion_exterior` y `ciudad_expedicion_exterior` idénticos a los que dejaría el
+asistente manual—.
 
 ## Decisiones tomadas
 
-- **Ninguna de las resoluciones de esta sesión era una regla legal.** D.4, D.6 y B.3 eran cortes de
-  gráfico, confirmaciones de nombre y una verificación de que el código ya coincidía con lo que Angela
-  había propuesto. Donde la pregunta sí era legal —B.2, fondo de cesantías— se dejó intacta.
-- **REV-09 se diseñó para no fabricar historial.** La plantilla de carga pide «prórrogas ya
-  realizadas» como un número, no como tramos con fecha y tipo. Reconstruir tramos falsos habría sido
-  mentir en el historial visible del contrato. La decisión de implementación —guardar el número aparte
-  y sumarlo al conteo, con una línea informativa en vez de tramos inventados— queda escrita en la
-  tarea para que quien la construya no tenga que volver a decidirlo.
+- **No se agregó una columna «Departamento de expedición del documento» aparte.** El «Hecho cuando» de
+  la tarea pedía una sola columna nueva —el país—, y agregar una segunda de texto libre habría sido
+  ampliar el alcance sin que nadie lo pidiera. En vez de eso, fuera de Colombia la celda existente
+  «Lugar de expedición del documento» se lee con el mismo formato «Ciudad (Departamento o región)» que
+  ya usaba la plantilla para desambiguar un municipio colombiano repetido (dos Albania, dos
+  Guadalupe). Es una decisión de formato de archivo, no una regla legal ni de negocio.
+- **Sin la celda de país, se asume Colombia.** Es el comportamiento que tenía la plantilla antes de
+  esta tarea y el que sigue teniendo cualquier archivo ya descargado por un cliente; no había ninguna
+  razón para romperlo.
 
 ## Preguntas para Angela
 
-- (vacío — las dos genuinas de esta sesión, B.2 y fondo de cesantías, ya estaban registradas de antes
-  y no tienen novedad; ver `docs/06-decisiones-pendientes.md`.)
+- (vacío)
 
 ## Decisiones para David
 
@@ -94,17 +64,20 @@ que un asesor laboral confirme si el dato hace falta pedirlo).
 
 ## Notas para la próxima sesión
 
-- **La siguiente tarea es `REV-08`**, seguida de `REV-09` — las dos tocan la misma plantilla de
-  empleados y conviene hacerlas en ese orden porque `REV-09` ya asume que `REV-08` no le cambió las
-  columnas que no le tocan.
-- **`REV-10` (Usuarios y permisos) y `REV-11` (Facturación) son las dos más grandes.** Son pantallas
-  completas del cliente que la especificación pedía desde el principio (`docs/03` 5.7) y que ninguna
-  fase llegó a construir — no estaban bloqueadas, nunca tuvieron tarea. `REV-10` trae consigo dar
-  `SoftDeletes` a `User`, `Acceso` e `Invitacion`, que hace falta para que «desactivar a un usuario»
-  sea de verdad borrado lógico.
-- **`REV-12` es más chica**: conectar dos pestañas de la ficha de empresa del proveedor —«Alertas» y
-  «Uso»— a datos que ya existen desde hace fases. Quedaron con el texto de cuando esos datos no
-  existían y nadie volvió a mirarlas.
+- **La siguiente tarea es `REV-09`**, y toca la misma `PlantillaDeEmpleados` que esta. Su decisión de
+  implementación ya quedó escrita en el propio backlog: la cuenta de prórrogas previas se guarda en una
+  columna nueva de `vinculaciones` y se suma al cupo, sin inventar tramos con fechas falsas en el
+  historial.
+- **Si una tarea futura vuelve a tocar `plantillas/*.xlsx` con PhpSpreadsheet, cuidado con
+  `insertNewColumnBefore()` / `insertNewRowBefore()` y con escribir cadenas nuevas en hojas con muchas
+  validaciones de lista por celda**: en esta sesión corrompieron la hoja «Empleados» (1.800
+  validaciones) de forma silenciosa —el archivo se guardaba sin error y solo se notaba al releerlo, con
+  celdas mostrando el contenido de otras—. La salida que funcionó fue editar el `.xlsx` con `ZipArchive`
+  directamente sobre el XML de la hoja, sin pasar por el re-serializador completo de PhpSpreadsheet.
+- **`REV-10` (Usuarios y permisos) y `REV-11` (Facturación) siguen siendo las dos más grandes** del
+  backlog, con la deuda de `SoftDeletes` en `User`, `Acceso` e `Invitacion` dentro de `REV-10`.
+- **`REV-12` es más chica**: conectar las pestañas «Alertas» y «Uso» de la ficha de empresa del
+  proveedor a datos que ya existen.
 - **`F5-08` es de una sola línea**: poner 14 como valor sugerido en el formulario de accesos de
-  prueba, ahora que D.12 ya tiene número.
+  prueba.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
