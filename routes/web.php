@@ -338,6 +338,13 @@ Route::middleware('auth')->group(function () {
             ->name(Modulo::Configuracion->nombreDeRuta());
         Route::put('/configuracion/parametros', [ConfiguracionController::class, 'guardarParametros'])
             ->name('configuracion.parametros');
+
+        Route::post('/configuracion/usuarios', [ConfiguracionController::class, 'crearUsuario'])
+            ->name('configuracion.usuarios.crear');
+        Route::put('/configuracion/usuarios/{usuario}', [ConfiguracionController::class, 'actualizarModulosDeUsuario'])
+            ->name('configuracion.usuarios.modulos');
+        Route::delete('/configuracion/usuarios/{usuario}', [ConfiguracionController::class, 'desactivarUsuario'])
+            ->name('configuracion.usuarios.desactivar');
     });
 
 });

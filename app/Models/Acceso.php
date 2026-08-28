@@ -7,6 +7,7 @@ use Database\Factories\AccesoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Una línea del registro de accesos. Se escribe y no se toca nunca más.
@@ -14,12 +15,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * No usa `PerteneceATenant`: un intento fallido puede no tener empresa que
  * atribuir. El porqué completo está en la migración.
  *
+ * Lleva `SoftDeletes` desde REV-10, junto con `User` e `Invitacion`, para no
+ * ser una excepción no declarada a la regla 4 del proyecto. Nada la borra
+ * hoy: sigue siendo, en la práctica, el mismo registro de seguridad que no se
+ * edita ni se borra desde ninguna pantalla.
+ *
  * @property ResultadoDeAcceso $resultado
  */
 class Acceso extends Model
 {
     /** @use HasFactory<AccesoFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * Solo hay fecha de creación. Un acceso no se actualiza jamás, así que

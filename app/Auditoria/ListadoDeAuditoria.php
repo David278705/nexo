@@ -71,7 +71,10 @@ class ListadoDeAuditoria extends Listado
      */
     public static function usuarios(): array
     {
+        // Con `withTrashed()`: un usuario desactivado sigue teniendo líneas
+        // en la auditoría, y el filtro tiene que poder seguir encontrándolas.
         return User::query()
+            ->withTrashed()
             ->where('tenant_id', tenant_actual_id())
             ->orderBy('name')
             ->get(['id', 'name'])

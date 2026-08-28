@@ -244,13 +244,22 @@ class ParametrosDeLaEmpresa
             ->get()
             ->map(fn (User $usuario) => [
                 'etiqueta' => $usuario->email,
-                'valor' => $this->modulosDe($usuario),
+                'valor' => self::modulosDe($usuario),
             ])
             ->values()
             ->all();
     }
 
-    private function modulosDe(User $usuario): string
+    /**
+     * Los módulos de un usuario, tal como se leen: «Contratos · Vacaciones»,
+     * «Todos los módulos» o «Sin módulos asignados».
+     *
+     * Pública porque `UsuariosDeLaEmpresa` (REV-10) enseña la misma frase en
+     * el listado de la pestaña «Usuarios y permisos»: es la respuesta a la
+     * misma pregunta —qué puede ver este usuario— en dos pantallas distintas,
+     * y dos formas de escribirla se separarían solas.
+     */
+    public static function modulosDe(User $usuario): string
     {
         if ($usuario->esSuperadministrador()) {
             return 'Todos los módulos';

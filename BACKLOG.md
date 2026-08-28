@@ -1857,7 +1857,7 @@ el mismo mecanismo de F1-10/F3-04, sin tocar; lo único que cambia con esta tare
 bien las dos que trajo la carga. La prueba de `RenovacionTest.php` cubre las dos situaciones: el aviso
 ámbar en la primera prórroga después de la carga, y el bloqueo en la que de verdad se pasa.
 
-### [ ] REV-10 · Usuarios y permisos, la pantalla del cliente que nunca se construyó
+### [x] REV-10 · Usuarios y permisos, la pantalla del cliente que nunca se construyó
 
 `docs/03-diseno-e-interfaz.md`, sección 5.7, especifica cuatro pestañas para «Configuración»: Datos
 de la empresa, Parámetros, **Usuarios y permisos**, y Facturación. **F1-12 solo construyó
@@ -1887,6 +1887,37 @@ esta pantalla, porque 5.7 la reserva al superadministrador. `User`, `Acceso` e `
 **Fuente:** `docs/03-diseno-e-interfaz.md` 5.7 · `docs/01-especificacion-funcional.md` cap. 3 y 4 ·
 `app/Autenticacion/Invitaciones.php` y `app/Models/Invitacion.php` (el mecanismo de invitación que
 F1B-02 ya usa del lado del proveedor, para reutilizar aquí del lado del cliente).
+
+Hecho: la deuda primero —`User`, `Acceso` e `Invitacion` ganaron `SoftDeletes`, con tres migraciones
+nuevas— y la pantalla encima. `App\Configuracion\UsuariosDeLaEmpresa` es la clase nueva, con la misma
+forma que `ParametrosDeLaEmpresa`: el listado de usuarios de la empresa (el superadministrador sin
+acciones, cada administrador con sus módulos), `crear()` —usuario, módulos e invitación en una sola
+transacción, reutilizando `Invitaciones` tal como lo hace `CreacionDeEmpresa` del lado del
+proveedor—, `actualizarModulos()` y `desactivar()`, que es `SoftDeletes::delete()` sin más.
+`ConfiguracionController::parametros()` ahora combina las props de las dos clases en un solo
+`Inertia::render`, y tres rutas nuevas —crear, editar módulos, desactivar— cuelgan del mismo
+middleware `modulo:configuracion`, que ya solo lo pasa el superadministrador
+(`PoliticaDeModulos::esSoloDelSuperadministrador`). **El superadministrador no se toca desde esta
+pantalla**: es único por empresa y el documento no describe una forma de crear un segundo ni de
+desactivar al único que existe, así que `ActualizarModulosDeUsuario` y `DesactivarUsuario` responden
+403 si el usuario de la dirección no es un administrador de la propia empresa —`User` no lleva
+`PerteneceATenant`, así que ese candado lo pone la petición a mano, como ya hacía
+`EmpresaController::comprobarQueEsDeLaEmpresa` del lado del proveedor—.
+
+**«Desactivar conserva la auditoría» necesitó dos ajustes que el «Hecho cuando» no nombraba pero que
+se le siguen sin inventar nada:** `Auditoria::usuario()` pasó a `belongsTo(...)->withTrashed()`,
+porque sin eso `ListadoDeAuditoria::fila()` —que hace `$linea->usuario->name`— se habría quedado
+mirando `null` en cuanto la primera empresa desactivara a alguien; y `ListadoDeAuditoria::usuarios()`
+—el filtro de la pantalla de auditoría— también gana `withTrashed()`, porque las líneas de un
+administrador desactivado tienen que seguir siendo filtrables por su nombre. `ParametrosDeLaEmpresa::
+modulosDe()` pasó de privada a pública porque las dos pantallas —Parámetros y Usuarios y permisos—
+responden la misma pregunta con la misma frase, y dos copias se habrían separado a la primera
+corrección. `ModalDeBorrado.vue` ganó la prop opcional `etiquetaBoton` (por defecto «Eliminar», sin
+tocar los cinco usos que ya tenía) para poder decir «Desactivar» sin duplicar el componente. Dos
+pruebas nuevas de Vitest en `Parametros.test.js` (más el ajuste de la que probaba la pestaña
+«Usuarios» genérica, que ahora prueba «Facturación») y veintidós de Pest en
+`UsuariosDeLaEmpresaTest.php`, incluida la que demuestra el motivo de todo: un administrador que
+escribió una línea de auditoría, se le desactiva, y la línea sigue ahí con su nombre.
 
 ### [ ] REV-11 · Facturación, la cuarta pestaña que tampoco se construyó
 

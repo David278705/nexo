@@ -211,13 +211,78 @@ describe("la pantalla de parámetros", () => {
         expect(pantalla.findAll("select")).toHaveLength(0);
     });
 
-    it("dice que las otras dos pestañas llegan en su propia tarea", async () => {
+    it("dice que la pestaña de facturación llega en su propia tarea", async () => {
         const pantalla = montar();
 
-        await pantalla.findAll("button[role='tab']")[2].trigger("click");
+        await pantalla.findAll("button[role='tab']")[3].trigger("click");
 
         expect(pantalla.text()).toContain(
             "Esta pestaña todavía no tiene contenido",
         );
+    });
+
+    it("pinta el listado de usuarios con su rol y sus módulos", async () => {
+        const pantalla = montar({
+            usuarios: [
+                {
+                    id: 1,
+                    nombre: "Angela Lozano",
+                    correo: "angela@progreso.co",
+                    rol: "Superadministrador",
+                    esSuperadministrador: true,
+                    modulos: "Todos los módulos",
+                    modulosAsignados: [],
+                    invitacionPendiente: false,
+                    consecuenciaDeDesactivar: "",
+                },
+                {
+                    id: 2,
+                    nombre: "Marcela Ríos",
+                    correo: "marcela@progreso.co",
+                    rol: "Administrador",
+                    esSuperadministrador: false,
+                    modulos: "Vacaciones",
+                    modulosAsignados: ["vacaciones"],
+                    invitacionPendiente: true,
+                    consecuenciaDeDesactivar: "Vas a desactivar a Marcela Ríos.",
+                },
+            ],
+            modulosAsignables: [{ valor: "vacaciones", texto: "Vacaciones" }],
+        });
+
+        await pantalla.findAll("button[role='tab']")[2].trigger("click");
+
+        expect(pantalla.text()).toContain("Angela Lozano");
+        expect(pantalla.text()).toContain("Superadministrador");
+        expect(pantalla.text()).toContain("Todos los módulos");
+        expect(pantalla.text()).toContain("Marcela Ríos");
+        expect(pantalla.text()).toContain("Editar módulos");
+        expect(pantalla.text()).toContain("Desactivar");
+        expect(pantalla.text()).not.toContain(
+            "Esta pestaña todavía no tiene contenido",
+        );
+    });
+
+    it("no ofrece editar ni desactivar al superadministrador", async () => {
+        const pantalla = montar({
+            usuarios: [
+                {
+                    id: 1,
+                    nombre: "Angela Lozano",
+                    correo: "angela@progreso.co",
+                    rol: "Superadministrador",
+                    esSuperadministrador: true,
+                    modulos: "Todos los módulos",
+                    modulosAsignados: [],
+                    invitacionPendiente: false,
+                    consecuenciaDeDesactivar: "",
+                },
+            ],
+        });
+
+        await pantalla.findAll("button[role='tab']")[2].trigger("click");
+
+        expect(pantalla.text()).toContain("Acceso total, no editable");
+        expect(pantalla.text()).not.toContain("Editar módulos");
     });
 });

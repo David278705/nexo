@@ -4,11 +4,15 @@ import { computed, ref } from "vue";
 import Armazon from "@/Components/Armazon.vue";
 import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
+import CampoTexto from "@/Components/CampoTexto.vue";
 import EstadoVacio from "@/Components/EstadoVacio.vue";
 import ListaDeDatos from "@/Components/ListaDeDatos.vue";
+import Modal from "@/Components/Modal.vue";
+import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
 import Notificacion from "@/Components/Notificacion.vue";
 import Pestanas from "@/Components/Pestanas.vue";
 import Selector from "@/Components/Selector.vue";
+import TablaDatos from "@/Components/TablaDatos.vue";
 
 /*
  * Configuración → Parámetros (documento 1, capítulo 4, y documento 3, sección
@@ -33,6 +37,8 @@ const props = defineProps({
     parametros: { type: Array, required: true },
     destinatarios: { type: Object, required: true },
     perfil: { type: Object, required: true },
+    usuarios: { type: Array, default: () => [] },
+    modulosAsignables: { type: Array, default: () => [] },
 });
 
 const pestanas = [
@@ -69,6 +75,68 @@ const confirmacion = computed(() => usePage().props.estado ?? "");
 
 function guardar() {
     formulario.put("/configuracion/parametros", { preserveScroll: true });
+}
+
+/*
+ * La pestaña «Usuarios y permisos» (documento 3, 5.7, REV-10): invitar a un
+ * administrador, editar sus módulos y desactivarlo. El superadministrador no
+ * tiene ninguna de las tres acciones —lo dice `fila.esSuperadministrador`— y
+ * la pantalla no le ofrece ninguna.
+ */
+const columnasDeUsuarios = [
+    { clave: "nombre", titulo: "Nombre" },
+    { clave: "correo", titulo: "Correo" },
+    { clave: "rol", titulo: "Rol" },
+    { clave: "modulos", titulo: "Módulos" },
+    { clave: "acciones", titulo: "Acciones" },
+];
+
+const modalNuevoUsuarioAbierto = ref(false);
+const formularioUsuario = useForm({ nombre: "", correo: "", modulos: [] });
+
+function abrirNuevoUsuario() {
+    formularioUsuario.reset();
+    formularioUsuario.clearErrors();
+    modalNuevoUsuarioAbierto.value = true;
+}
+
+function crearUsuario() {
+    formularioUsuario.post("/configuracion/usuarios", {
+        preserveScroll: true,
+        onSuccess: () => {
+            modalNuevoUsuarioAbierto.value = false;
+        },
+    });
+}
+
+const usuarioEnEdicion = ref(null);
+const formularioModulos = useForm({ modulos: [] });
+
+function abrirEdicionDeModulos(usuario) {
+    usuarioEnEdicion.value = usuario;
+    formularioModulos.clearErrors();
+    formularioModulos.modulos = [...usuario.modulosAsignados];
+}
+
+function guardarModulos() {
+    formularioModulos.put(`/configuracion/usuarios/${usuarioEnEdicion.value.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            usuarioEnEdicion.value = null;
+        },
+    });
+}
+
+const usuarioADesactivar = ref(null);
+const formularioDesactivar = useForm({});
+
+function confirmarDesactivar() {
+    formularioDesactivar.delete(`/configuracion/usuarios/${usuarioADesactivar.value.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            usuarioADesactivar.value = null;
+        },
+    });
 }
 </script>
 
@@ -170,13 +238,181 @@ function guardar() {
                     </p>
                 </div>
 
+                <div v-else-if="activa === 'usuarios'">
+                    <div class="mb-3 flex justify-end">
+                        <Boton tipo="button" @click="abrirNuevoUsuario">
+                            Nuevo usuario
+                        </Boton>
+                    </div>
+
+                    <TablaDatos
+                        :columnas="columnasDeUsuarios"
+                        :filas="usuarios"
+                        :clicable="false"
+                        titulo-vacio="Todavía no hay usuarios"
+                        descripcion-vacio="Invita al primer administrador para que pueda entrar con sus propios módulos."
+                    >
+                        <template #celda-acciones="{ fila }">
+                            <div
+                                v-if="!fila.esSuperadministrador"
+                                class="flex flex-wrap gap-2 py-1"
+                            >
+                                <Boton
+                                    tipo="button"
+                                    variante="secundario"
+                                    @click="abrirEdicionDeModulos(fila)"
+                                >
+                                    Editar módulos
+                                </Boton>
+                                <Boton
+                                    tipo="button"
+                                    variante="texto"
+                                    @click="usuarioADesactivar = fila"
+                                >
+                                    Desactivar
+                                </Boton>
+                            </div>
+                            <span
+                                v-else
+                                class="text-apoyo text-texto-terciario"
+                            >
+                                Acceso total, no editable
+                            </span>
+                        </template>
+                    </TablaDatos>
+
+                    <p
+                        v-if="usuarios.some((usuario) => usuario.invitacionPendiente)"
+                        class="mt-3 text-apoyo text-texto-terciario"
+                    >
+                        Quien todavía no aceptó su invitación no puede iniciar
+                        sesión hasta que defina su contraseña con el enlace
+                        que le llegó al correo.
+                    </p>
+
+                    <Modal
+                        :abierto="modalNuevoUsuarioAbierto"
+                        titulo="Nuevo usuario"
+                        @cerrar="modalNuevoUsuarioAbierto = false"
+                    >
+                        <div class="grid gap-4">
+                            <CampoTexto
+                                v-model="formularioUsuario.nombre"
+                                etiqueta="Nombre"
+                                :error="formularioUsuario.errors.nombre"
+                            />
+                            <CampoTexto
+                                v-model="formularioUsuario.correo"
+                                etiqueta="Correo"
+                                tipo="email"
+                                ayuda="Recibe la invitación para definir su contraseña. Nadie más la conoce."
+                                :error="formularioUsuario.errors.correo"
+                            />
+
+                            <fieldset>
+                                <legend
+                                    class="text-apoyo font-medium text-texto-secundario"
+                                >
+                                    Módulos
+                                </legend>
+                                <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                    <label
+                                        v-for="modulo in modulosAsignables"
+                                        :key="modulo.valor"
+                                        class="flex items-center gap-2 text-tabla text-texto"
+                                    >
+                                        <input
+                                            v-model="formularioUsuario.modulos"
+                                            type="checkbox"
+                                            :value="modulo.valor"
+                                            class="h-4 w-4 rounded border-borde"
+                                        />
+                                        {{ modulo.texto }}
+                                    </label>
+                                </div>
+                            </fieldset>
+                        </div>
+
+                        <template #pie>
+                            <Boton
+                                variante="texto"
+                                tipo="button"
+                                @click="modalNuevoUsuarioAbierto = false"
+                            >
+                                Cancelar
+                            </Boton>
+                            <Boton
+                                tipo="button"
+                                :enviando="formularioUsuario.processing"
+                                @click="crearUsuario"
+                            >
+                                Invitar
+                            </Boton>
+                        </template>
+                    </Modal>
+
+                    <Modal
+                        :abierto="usuarioEnEdicion !== null"
+                        titulo="Editar módulos"
+                        @cerrar="usuarioEnEdicion = null"
+                    >
+                        <div v-if="usuarioEnEdicion">
+                            <p class="mb-3 text-cuerpo text-texto">
+                                {{ usuarioEnEdicion.nombre }}
+                            </p>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                <label
+                                    v-for="modulo in modulosAsignables"
+                                    :key="modulo.valor"
+                                    class="flex items-center gap-2 text-tabla text-texto"
+                                >
+                                    <input
+                                        v-model="formularioModulos.modulos"
+                                        type="checkbox"
+                                        :value="modulo.valor"
+                                        class="h-4 w-4 rounded border-borde"
+                                    />
+                                    {{ modulo.texto }}
+                                </label>
+                            </div>
+                        </div>
+
+                        <template #pie>
+                            <Boton
+                                variante="texto"
+                                tipo="button"
+                                @click="usuarioEnEdicion = null"
+                            >
+                                Cancelar
+                            </Boton>
+                            <Boton
+                                tipo="button"
+                                :enviando="formularioModulos.processing"
+                                @click="guardarModulos"
+                            >
+                                Guardar módulos
+                            </Boton>
+                        </template>
+                    </Modal>
+
+                    <ModalDeBorrado
+                        :abierto="usuarioADesactivar !== null"
+                        titulo="Desactivar usuario"
+                        etiqueta-boton="Desactivar"
+                        :mensaje="usuarioADesactivar?.consecuenciaDeDesactivar ?? ''"
+                        :enviando="formularioDesactivar.processing"
+                        @cerrar="usuarioADesactivar = null"
+                        @confirmar="confirmarDesactivar"
+                    />
+                </div>
+
                 <div
                     v-else
                     class="rounded-[var(--radius-modal)] border border-borde bg-superficie"
                 >
                     <EstadoVacio
                         titulo="Esta pestaña todavía no tiene contenido"
-                        descripcion="Los usuarios y sus permisos, y la facturación, llegan en su propia tarea. Los parámetros de la empresa ya funcionan."
+                        descripcion="La facturación llega en su propia tarea. Los parámetros, los datos de la empresa y los usuarios ya funcionan."
                     />
                 </div>
             </div>

@@ -3,8 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Configuracion\ParametrosDeLaEmpresa;
+use App\Configuracion\UsuariosDeLaEmpresa;
+use App\Http\Requests\ActualizarModulosDeUsuario;
+use App\Http\Requests\DesactivarUsuario;
 use App\Http\Requests\GuardarParametros;
+use App\Http\Requests\InvitarUsuario;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response as RespuestaInertia;
@@ -12,23 +17,26 @@ use Inertia\Response as RespuestaInertia;
 /**
  * La configuración de la empresa (documento 3, sección 5.7).
  *
- * De las cuatro pestañas de la pantalla, esta tarea construye «Parámetros». Las
- * otras tres —datos de la empresa, usuarios y permisos, y facturación— llegan en
- * su propia tarea y hasta entonces la pantalla lo dice en vez de fingir que
+ * De las cuatro pestañas de la pantalla, «Parámetros» es de F1-12 y «Usuarios y
+ * permisos» de REV-10. Las otras dos —datos de la empresa y facturación— llegan
+ * en su propia tarea y hasta entonces la pantalla lo dice en vez de fingir que
  * están.
  *
- * Aquí no se explica ningún parámetro y no se guarda ningún booleano: los textos
- * y la escritura son de `ParametrosDeLaEmpresa`. Este controlador traduce la
- * petición en props.
+ * Aquí no se explica ningún parámetro, no se guarda ningún booleano y no se
+ * decide ninguna regla sobre usuarios: los textos y la escritura son de
+ * `ParametrosDeLaEmpresa` y `UsuariosDeLaEmpresa`. Este controlador traduce la
+ * petición en props y en llamadas a esas dos clases.
  */
 class ConfiguracionController extends Controller
 {
     public function parametros(): RespuestaInertia
     {
-        return Inertia::render(
-            'Configuracion/Parametros',
-            ParametrosDeLaEmpresa::de($this->empresa())->paraLaPantalla(),
-        );
+        $empresa = $this->empresa();
+
+        return Inertia::render('Configuracion/Parametros', [
+            ...ParametrosDeLaEmpresa::de($empresa)->paraLaPantalla(),
+            ...UsuariosDeLaEmpresa::de($empresa)->paraLaPantalla(),
+        ]);
     }
 
     /**
@@ -47,6 +55,47 @@ class ConfiguracionController extends Controller
             ->route('configuracion')
             ->with('estado', 'Se guardaron los parámetros. Los cálculos y los correos usan los '
                 .'valores nuevos desde ahora.');
+    }
+
+    /**
+     * Invita a un administrador nuevo, con los módulos ya marcados.
+     */
+    public function crearUsuario(InvitarUsuario $peticion): RedirectResponse
+    {
+        $usuario = UsuariosDeLaEmpresa::de($this->empresa())->crear($peticion->validated());
+
+        return redirect()
+            ->route('configuracion')
+            ->with('estado', UsuariosDeLaEmpresa::confirmacionDeInvitacion($usuario));
+    }
+
+    /**
+     * Reemplaza los módulos asignados a un administrador existente.
+     */
+    public function actualizarModulosDeUsuario(ActualizarModulosDeUsuario $peticion, User $usuario): RedirectResponse
+    {
+        /** @var list<string> $modulos */
+        $modulos = $peticion->validated('modulos', []);
+
+        UsuariosDeLaEmpresa::de($this->empresa())->actualizarModulos($usuario, $modulos);
+
+        return redirect()
+            ->route('configuracion')
+            ->with('estado', UsuariosDeLaEmpresa::confirmacionDeModulos($usuario));
+    }
+
+    /**
+     * Desactiva a un administrador: borrado lógico, no borra la fila.
+     */
+    public function desactivarUsuario(DesactivarUsuario $peticion, User $usuario): RedirectResponse
+    {
+        $confirmacion = UsuariosDeLaEmpresa::confirmacionDeDesactivar($usuario);
+
+        UsuariosDeLaEmpresa::de($this->empresa())->desactivar($usuario);
+
+        return redirect()
+            ->route('configuracion')
+            ->with('estado', $confirmacion);
     }
 
     /**

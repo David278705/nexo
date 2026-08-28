@@ -27,6 +27,9 @@ const props = defineProps({
     // parcial que la trae no ha contestado todavía.
     mensaje: { type: String, default: "" },
     enviando: { type: Boolean, default: false },
+    // El texto del botón rojo. «Eliminar» en los tres módulos de novedades;
+    // «Desactivar» en Usuarios y permisos (REV-10), que no borra la fila.
+    etiquetaBoton: { type: String, default: "Eliminar" },
 });
 
 const emit = defineEmits(["cerrar", "confirmar"]);
@@ -63,7 +66,7 @@ function confirmar() {
                 :deshabilitado="mensaje === ''"
                 @click="confirmar"
             >
-                Eliminar
+                {{ etiquetaBoton }}
             </Boton>
         </template>
     </Modal>

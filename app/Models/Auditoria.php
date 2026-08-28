@@ -93,11 +93,16 @@ class Auditoria extends Model
     }
 
     /**
+     * Con `withTrashed()` a propósito, desde REV-10: un usuario desactivado
+     * sigue siendo el autor de las líneas que escribió, y la auditoría tiene
+     * que poder seguir diciendo su nombre después de que se le quitó el
+     * acceso.
+     *
      * @return BelongsTo<User, $this>
      */
     public function usuario(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 
     /**

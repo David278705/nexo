@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -12,11 +13,17 @@ use Illuminate\Support\Carbon;
  * No usa `PerteneceATenant`: el enlace se abre sin sesión y sin empresa en
  * contexto. El porqué completo está en la migración.
  *
+ * Lleva `SoftDeletes` desde REV-10, la misma deuda que pagan `User` y
+ * `Acceso`: nada la borra hoy, pero la tabla no debe ser una excepción no
+ * declarada a la regla 4 del proyecto.
+ *
  * @property Carbon $expira_en
  * @property Carbon|null $aceptada_en
  */
 class Invitacion extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'invitaciones';
 
     /** @var list<string> */
