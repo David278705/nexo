@@ -111,6 +111,32 @@ return [
 
     ],
 
+    /*
+    |----------------------------------------------------------------------
+    | Vigencia sugerida del acceso de demostración
+    |----------------------------------------------------------------------
+    |
+    | El formulario de «generar acceso de prueba» (documento 4, capítulo 10
+    | y 12.1) propone este número de días en el campo de vigencia, ya
+    | escrito y editable. F5-03 lo dejó sin sugerencia a propósito porque la
+    | decisión todavía no existía; el documento 6, D.6, la cerró el
+    | 2026-08-25 en 14 días —dentro del rango sugerido de 7 a 15, con margen
+    | para que una conversación comercial se alargue una semana sin que el
+    | prospecto lo use como sistema real—.
+    |
+    | Es criterio comercial, no una regla legal: cambiarlo es editar este
+    | número y nada más, igual que la salud de uso de arriba. El tope duro
+    | de 90 días vive en `GenerarAccesoDePrueba`, que es una validación y no
+    | una sugerencia.
+    |
+    */
+    'demostracion' => [
+
+        // Días de vigencia que el formulario propone por defecto, editables.
+        'dias_de_vigencia_sugeridos' => 14,
+
+    ],
+
     'cobro' => [
 
         // A cuántos días del próximo cobro la columna «Pago» pasa de «al

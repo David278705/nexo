@@ -41,6 +41,7 @@ const base = {
         },
     ],
     enlaceGenerado: null,
+    diasSugeridos: 14,
 };
 
 function montar(cambios = {}) {
@@ -98,6 +99,13 @@ describe("la pantalla de demostración", () => {
             {},
             expect.any(Object),
         );
+    });
+
+    it("propone el número de días configurado, editable", () => {
+        const pantalla = montar();
+
+        expect(pantalla.find('input[type="number"]').element.value).toBe("14");
+        expect(pantalla.text()).toContain("Propuesto en 14 días");
     });
 
     it("genera un acceso con el nombre y los días digitados", async () => {

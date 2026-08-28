@@ -9,10 +9,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Lo que hace falta para generar un acceso de prueba (documento 4, capítulo
  * 10 y 12.1): a quién se le entrega y cuántos días dura.
  *
- * **`dias_de_vigencia` no tiene un valor por omisión.** El documento 6, D.12,
- * deja sin decidir la vigencia del usuario de demostración; lo que sí dice el
- * documento 4 es quién la decide cada vez —David, al generar el acceso—, así
- * que el campo es obligatorio y no llega con ningún número ya puesto.
+ * **`dias_de_vigencia` sigue siendo obligatorio en el servidor.** El
+ * formulario lo propone con el valor sugerido de `config/panel.php` (documento
+ * 6, D.6), pero la sugerencia es del componente: aquí se exige que llegue un
+ * entero entre 1 y 90 venga de donde venga, porque David lo edita cada vez.
  */
 class GenerarAccesoDePrueba extends FormRequest
 {

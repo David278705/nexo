@@ -14,17 +14,18 @@ import TarjetaIndicador from "@/Components/TarjetaIndicador.vue";
  * su botón de restaurar y los accesos de prueba con vigencia limitada del
  * proceso comercial (12.1).
  *
- * `diasDeVigencia` no trae ningún valor por omisión a propósito: el documento
- * 6, D.12, deja sin decidir cuánto debe durar un acceso de demostración, y el
- * documento 4 dice que es David quien lo decide cada vez que lo genera. Un
- * número ya puesto en el campo sería esa misma decisión, escondida en el
- * marcador del formulario en vez de en un archivo de configuración.
+ * El campo de vigencia llega con `diasSugeridos` ya escrito y editable
+ * (documento 6, D.6, cerrada en 14 días). El número no es un literal de este
+ * componente: viaja como prop desde `config/panel.php`, que es donde se cambia
+ * una decisión comercial sin tocar código. David sigue decidiendo cada vez —la
+ * sugerencia solo le ahorra teclear el caso normal—.
  */
 const props = defineProps({
     restauradoEn: { type: String, default: null },
     personas: { type: Number, required: true },
     accesosActivos: { type: Array, required: true },
     enlaceGenerado: { type: String, default: null },
+    diasSugeridos: { type: Number, required: true },
 });
 
 const RUTA = "/proveedor/demostracion";
@@ -42,7 +43,7 @@ function restaurar() {
 
 const formulario = useForm({
     nombre_prospecto: "",
-    dias_de_vigencia: "",
+    dias_de_vigencia: props.diasSugeridos,
 });
 
 function generar() {
@@ -180,7 +181,7 @@ const columnas = [
                         v-model="formulario.dias_de_vigencia"
                         tipo="number"
                         etiqueta="Días de vigencia"
-                        ayuda="Sin sugerencia: decide cuánto debe durar cada vez."
+                        :ayuda="`Propuesto en ${diasSugeridos} días; cámbialo si esta prueba necesita otra cosa.`"
                         :error="formulario.errors.dias_de_vigencia"
                     />
 

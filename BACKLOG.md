@@ -1987,7 +1987,7 @@ empresa— y `modulos` —registros y último por módulo, con la marca «en uso
 calculadas dentro del contexto de la empresa. `Formato::mesYAnio()` es nuevo: «Agosto de 2026» como
 encabezado de fila. Ninguna pestaña de la ficha depende ya de una tarea futura.
 
-### [ ] F5-08 · El formulario de acceso de prueba no sugiere ningún valor de vigencia
+### [x] F5-08 · El formulario de acceso de prueba no sugiere ningún valor de vigencia
 
 D.12 (vigencia del usuario de demostración) quedó resuelta esta misma sesión en 14 días —ver D.6 del
 documento 6—. F5-03 dejó el campo de vigencia del formulario de «generar acceso de prueba» sin ningún
@@ -1999,3 +1999,13 @@ por defecto, editable; y el valor vive en `config/panel.php` —mismo archivo qu
 `riesgo_de_cancelacion`— y no en un literal dentro del componente Vue.
 **Fuente:** `docs/06-decisiones-pendientes.md` D.6 · `app/Proveedor/AccesosDePrueba.php` ·
 `resources/js/Pages/Proveedor/Demostracion.vue`
+
+Hecho: `config/panel.php` gana `demostracion.dias_de_vigencia_sugeridos` en 14, con la norma de D.6
+citada en el comentario. `DemostracionController::index()` lo comparte como prop nueva `diasSugeridos`,
+que `Demostracion.vue` usa como valor inicial de `useForm` y en el texto de ayuda del campo —«Propuesto
+en 14 días; cámbialo si esta prueba necesita otra cosa»—. `GenerarAccesoDePrueba` no cambió su regla:
+sigue exigiendo un entero entre 1 y 90 venga de donde venga, porque la sugerencia es del componente y
+David sigue editando cada vez. `AccesosDePrueba::generar()` tampoco cambió: sigue sin ningún valor por
+omisión propio, que es justo lo que su comentario ya decía. Dos pruebas nuevas: una en
+`DemostracionDelPanelTest.php` que comprueba la prop con la configuración en 14, y dos en
+`Demostracion.test.js` —el valor inicial del campo y el texto de ayuda—.

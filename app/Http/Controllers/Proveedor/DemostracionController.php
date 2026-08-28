@@ -36,6 +36,13 @@ class DemostracionController extends Controller
                 ->map(fn (AccesoDePrueba $acceso): array => $this->paraLaTabla($acceso))
                 ->all(),
             /*
+             * Los días que el formulario propone en el campo de vigencia, ya
+             * escritos y editables (documento 6, D.6). El número vive en la
+             * configuración del panel, no en el componente, porque es una
+             * decisión comercial que se cambia sin tocar código.
+             */
+            'diasSugeridos' => (int) config('panel.demostracion.dias_de_vigencia_sugeridos'),
+            /*
              * El enlace recién generado, para copiarlo. Viaja por la sesión y
              * no por una prop compartida porque solo tiene sentido justo
              * después de generarlo, igual que el informe de la carga inicial.

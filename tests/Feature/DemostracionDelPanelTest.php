@@ -48,6 +48,15 @@ it('enseña el estado del ambiente y los accesos activos', function () {
             ->where('accesosActivos.0.nombreProspecto', 'Prospecto Activo'));
 });
 
+it('propone los días de vigencia configurados en el panel', function () {
+    config(['panel.demostracion.dias_de_vigencia_sugeridos' => 14]);
+
+    $this->actingAs(ownerEnElPanel())
+        ->get('/proveedor/demostracion')
+        ->assertInertia(fn ($pagina) => $pagina
+            ->where('diasSugeridos', 14));
+});
+
 it('restaura el ambiente desde el botón del panel', function () {
     $this->actingAs(ownerEnElPanel())
         ->post('/proveedor/demostracion/restaurar')
