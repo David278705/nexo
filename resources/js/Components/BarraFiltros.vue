@@ -16,7 +16,17 @@ const emit = defineEmits(["quitar", "limpiar"]);
 
 <template>
     <div class="mb-4">
-        <div class="flex flex-wrap items-end gap-3">
+        <!--
+            `items-start`, no `items-end`: cada campo empieza con su
+            etiqueta, y lo que varía de uno a otro es lo que viene después
+            —un texto de ayuda, o ahora la lista del combobox—. Alinear por
+            el final del bloque más alto empujaba hacia abajo las etiquetas
+            de los campos más cortos, y el ejemplo más visible era «Empleado»
+            (con «Por nombre o documento» debajo) contra «Desde/Hasta/Origen»
+            (sin nada debajo): las etiquetas quedaban en dos alturas
+            distintas en vez de en la misma fila.
+        -->
+        <div class="flex flex-wrap items-start gap-3">
             <slot />
         </div>
 

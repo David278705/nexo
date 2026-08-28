@@ -1,11 +1,44 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-28 · Tarea F5-08
-**Verificación:** verde — Pint, PHPStan sin errores, **1.228** pruebas de Pest, build y **394** de
+**Última sesión:** 2026-08-28 · Mejoras de UX/UI pedidas directamente por David, probando el sistema
+en el navegador — no fue una tarea del backlog, que sigue sin ninguna `[ ]` pendiente.
+**Verificación:** verde — Pint, PHPStan sin errores, **1.228** pruebas de Pest, build y **401** de
 Vitest.
 **Siguiente tarea:** ninguna. El backlog no tiene ninguna tarea `[ ]` pendiente.
 
-## Qué se hizo
+## Qué se hizo (UX/UI, 2026-08-28)
+
+David señaló dos problemas probando el sistema con datos reales: el campo «Empleado» de la barra de
+filtros se veía desalineado con sus vecinos, y el buscador de EPS era «pauperrimo» —escribir y
+después tener que abrir un desplegable aparte—. Pidió aplicar el mismo criterio a todo lo que se
+viera poco práctico. Los dos componentes son compartidos —`BarraFiltros.vue` y `Selector.vue`—, así
+que arreglarlos ahí corrige las veintiuna pantallas que los usan de una vez, no una por una.
+
+- **El desalineado era `items-end` en `BarraFiltros.vue`.** Cada campo empieza con su etiqueta, y lo
+  que cambia de uno a otro es lo que viene después —un texto de ayuda, como «Por nombre o documento»
+  bajo Empleado—. Alinear por el final del bloque más alto empujaba hacia abajo las etiquetas de los
+  campos sin ese texto. Cambiado a `items-start`: confirmado con Playwright que los cinco campos de
+  Incapacidades quedan en la misma altura exacta (antes: 136px vs. 158px).
+- **El selector con búsqueda (`Selector.vue`, más de diez opciones —EPS, ciudades, bancos...—) no era
+  un combobox, eran dos controles separados**: una caja de texto que filtraba un `<select>` nativo
+  aparte, debajo, que había que volver a abrir. Reescrito como un solo campo: se escribe, la lista de
+  resultados aparece debajo de una vez, se navega con las flechas, se elige con Enter o con el clic, y
+  Escape o el clic afuera cierra sin cambiar nada. Con roles y atributos ARIA de combobox
+  (`role="combobox"`, `aria-expanded`, `aria-controls`, `aria-activedescendant`), igual de accesible
+  que el `<select>` de diez opciones o menos que sigue usando el otro caso.
+- **Probado en el navegador real, no solo en Vitest**: instalado Playwright en el entorno local para
+  esto —no es una dependencia del proyecto, vive en el scratchpad de la sesión—. Se confirmó el
+  combobox de EPS en Incapacidades (clic, escribir, flechas, Enter) y el caso más exigente del
+  sistema, el encadenado país → departamento → ciudad del asistente de registro de empleado: escribir
+  «cundi», elegir «Cundinamarca» con el teclado, y comprobar que «Ciudad de nacimiento» pasa de
+  deshabilitada a un combobox real con los municipios de ese departamento. Un recorrido por las otras
+  seis pantallas de listado y por las dos pestañas nuevas de Configuración (REV-10, REV-11) no mostró
+  ninguna otra cosa fuera de sitio.
+- Las 21 pantallas que usan `Selector.vue` se probaron con el Vitest completo —401 pruebas, ninguna
+  tocada a mano salvo las del propio componente— y ninguna se rompió: la API pública (props y
+  eventos) no cambió, solo lo de adentro.
+
+## Qué se hizo (F5-08, sesión anterior)
 
 `F5-08`: el campo de días de vigencia del formulario de «generar acceso de prueba» (panel del
 proveedor) ya sugiere 14 días, editable, en vez de llegar vacío.
