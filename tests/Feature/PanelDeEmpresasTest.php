@@ -3,14 +3,18 @@
 use App\Auditoria\AccionAuditada;
 use App\Autorizacion\Rol;
 use App\Configuracion\ParametrosDeLaEmpresa;
+use App\Dominio\Alertas\EstadoDeAlerta;
 use App\Models\Auditoria;
+use App\Models\Incapacidad;
 use App\Models\Tenant;
+use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Notificaciones\InvitacionAlSistema;
 use App\Notificaciones\RestablecerContrasena;
 use App\Proveedor\EstadoDeCobro;
 use App\Proveedor\SaludDeUso;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -192,10 +196,12 @@ describe('la ficha de la empresa', function () {
                 ->has('pestanas', 7)
                 ->where('empresa.nombre', 'Distribuidora El Progreso S.A.S.')
                 ->where('resumen.alta.1', ['etiqueta' => 'Creada por', 'valor' => $owner->name])
-                // La única pestaña que sigue dependiendo de una tarea futura lo
-                // dice. «Suscripción» salió de la lista en F5-04 y «Bitácora»
+                // Las siete pestañas ya tienen contenido: «Alertas» y «Uso»
+                // se conectaron en REV-12, «Suscripción» en F5-04 y «Bitácora»
                 // en F5-07.
-                ->has('pendientes.alertas')
+                ->has('alertas.filas')
+                ->has('uso.novedadesPorMes')
+                ->has('uso.modulos')
                 ->has('bitacora.notas')
                 ->where('suscripcion.existe', false));
     });
@@ -236,6 +242,86 @@ describe('la ficha de la empresa', function () {
                 ->has('usuarios', 1)
                 ->where('usuarios.0.correo', $usuario->email)
                 ->where('usuarios.0.ultimoAcceso', 'Nunca'));
+    });
+});
+
+describe('la pestaña «Alertas» de la ficha (REV-12)', function () {
+    it('enseña el registro real de alertas_enviadas de esa empresa, no el aviso de que no hay ninguna', function () {
+        ownerEnElPanel();
+
+        $empresa = Tenant::factory()->create(['nombre' => 'Distribuidora El Progreso']);
+        $otra = Tenant::factory()->create(['nombre' => 'Textiles Aurora']);
+
+        alertaDeLaEmpresa($empresa, [
+            'asunto' => 'Mañana vence el periodo de prueba',
+            'destinatarios' => ['gestion@elprogreso.co'],
+            'estado' => EstadoDeAlerta::Enviada,
+        ]);
+        alertaDeLaEmpresa($otra, ['asunto' => 'De otra empresa', 'clave' => 'otra']);
+
+        $this->get('/proveedor/empresas/'.$empresa->getKey())
+            ->assertInertia(fn ($pagina) => $pagina
+                ->has('alertas.filas', 1)
+                ->where('alertas.filas.0.asunto', 'Mañana vence el periodo de prueba')
+                ->where('alertas.filas.0.destinatarios', ['gestion@elprogreso.co'])
+                ->where('alertas.total', 1)
+                ->where('alertas.hayMas', false));
+    });
+
+    it('remite a la consola filtrada por la empresa cuando hay más de las que caben', function () {
+        ownerEnElPanel();
+
+        $empresa = Tenant::factory()->create();
+
+        $this->get('/proveedor/empresas/'.$empresa->getKey())
+            ->assertInertia(fn ($pagina) => $pagina
+                ->has('alertas.filas', 0)
+                ->where('alertas.consolaUrl', '/proveedor/alertas?empresa='.$empresa->getKey())
+                ->where('alertas.vacio.titulo', 'Todavía no se le ha enviado ninguna alerta'));
+    });
+});
+
+describe('la pestaña «Uso» de la ficha (REV-12)', function () {
+    it('cuenta las novedades registradas por mes de esa empresa', function () {
+        ownerEnElPanel();
+
+        $empresa = Tenant::factory()->create();
+
+        $this->travelTo(Carbon::parse('2026-08-20 09:00'));
+        enEmpresa($empresa, fn () => Incapacidad::factory()->count(2)->create());
+
+        $this->travelTo(Carbon::parse('2026-07-05 09:00'));
+        enEmpresa($empresa, fn () => Vacacion::factory()->create());
+
+        $this->travelTo(Carbon::parse('2026-08-27 09:00'));
+
+        $this->get('/proveedor/empresas/'.$empresa->getKey())
+            ->assertInertia(fn ($pagina) => $pagina
+                ->has('uso.novedadesPorMes', 6)
+                ->where('uso.novedadesPorMes.0', ['mes' => 'Agosto de 2026', 'total' => 2])
+                ->where('uso.novedadesPorMes.1', ['mes' => 'Julio de 2026', 'total' => 1]));
+
+        $this->travelBack();
+    });
+
+    it('marca «en uso» solo los módulos con registros', function () {
+        ownerEnElPanel();
+
+        $empresa = Tenant::factory()->create();
+
+        enEmpresa($empresa, fn () => Incapacidad::factory()->create());
+
+        // El orden de la lista es fijo: incapacidades, vacaciones, licencias,
+        // movimientos y terminaciones.
+        $this->get('/proveedor/empresas/'.$empresa->getKey())
+            ->assertInertia(fn ($pagina) => $pagina
+                ->has('uso.modulos', 5)
+                ->where('uso.modulos.0.modulo', 'Incapacidades')
+                ->where('uso.modulos.0.usa', true)
+                ->where('uso.modulos.0.registros', 1)
+                ->where('uso.modulos.1.modulo', 'Vacaciones')
+                ->where('uso.modulos.1.usa', false)
+                ->where('uso.modulos.1.ultimo', 'Sin registros'));
     });
 });
 

@@ -1,49 +1,46 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-08-27 · Tarea REV-11
-**Verificación:** verde — Pint, PHPStan sin errores, **1.223** pruebas de Pest, build y **391** de
+**Última sesión:** 2026-08-27 · Tarea REV-12
+**Verificación:** verde — Pint, PHPStan sin errores, **1.227** pruebas de Pest, build y **393** de
 Vitest.
-**Siguiente tarea:** `REV-12` · Conectar «Alertas» y «Uso» de la ficha de empresa del proveedor.
+**Siguiente tarea:** `F5-08` · El formulario de acceso de prueba no sugiere ningún valor de vigencia.
 
 ## Qué se hizo
 
-`REV-11`: la pestaña «Facturación» de Configuración, la cuarta y última que le faltaba a la sección
-5.7 —«Plan contratado, número de empleados y usuarios incluidos, historial de pagos y medio de pago.
-Solo el superadministrador.»—. F5-04 ya había calculado y probado exactamente esta información del
-lado del proveedor (`PanelDeSuscripciones`, `FichaDeEmpresa::suscripcion()`); esta tarea no inventó
-ningún modelo de datos ni ninguna regla de mora, solo leyó lo mismo acotado a la empresa en contexto.
+`REV-12`: las dos pestañas de la ficha de empresa del proveedor que seguían con texto de fases que ya
+existen. **Alertas** enseñaba «El motor de avisos es la fase 3»; **Uso** decía «las novedades por mes
+llegan en la fase 2». Las dos fases están completas desde hace tiempo y nadie volvió a conectar las
+pestañas.
 
-`App\Configuracion\FacturacionDeLaEmpresa` sigue la misma forma que `ParametrosDeLaEmpresa` y
-`UsuariosDeLaEmpresa`: una clase con `de($empresa)->paraLaPantalla()`, sin ninguna escritura. Si la
-empresa no tiene `suscripcion()` —hoy posible porque `planes` nace vacía por la decisión A.1—, devuelve
-un estado vacío que lo dice; si la tiene, devuelve el nombre y estado del plan, sus cupos de empleados
-y usuarios, el medio de pago, el valor mensual, el próximo cobro y el historial de pagos ordenado del
-más reciente al más antiguo, con el mismo enumerado `EstadoDeFactura` que ya usa el proveedor.
-**Ninguna acción vive aquí**: registrar un pago, cambiar de plan, suspender y reactivar siguen siendo
-decisiones del proveedor sobre su cliente (documento 4, 4.3), no de esta pantalla de solo lectura.
+Se borraron las dos constantes muertas de `App\Proveedor\FichaDeEmpresa` —`PENDIENTES` y
+`USO_INCOMPLETO`—, y con ellas la prop `pendientes` y el `EstadoVacio` de reserva de
+`resources/js/Pages/Proveedor/FichaDeEmpresa.vue`. La ficha ya no tiene ninguna pestaña que dependa de
+una tarea futura.
 
-`ConfiguracionController::parametros()` combina ahora las tres clases —`ParametrosDeLaEmpresa`,
-`UsuariosDeLaEmpresa` y `FacturacionDeLaEmpresa`— en un solo `Inertia::render`. **«Solo el
-superadministrador» no necesitó ningún candado nuevo**: el módulo `Configuracion` ya es exclusivo del
-superadministrador desde F1-12 (`Modulo::esSoloDelSuperadministrador()`, aplicado por
-`PoliticaDeModulos` a toda la ruta `/configuracion`), así que un administrador ya recibía 403 antes de
-esta tarea; la prueba nueva solo lo deja explícito para esta pestaña en particular.
+**Pestaña «Alertas».** El nuevo `FichaDeEmpresa::alertas()` entra al `ContextoTenant::paraTenant()` de
+la empresa —`alertas_enviadas` lleva `PerteneceATenant` y su política RLS, que no tiene excepción para
+el `owner`— y trae las 50 más recientes, mapeadas con `ConsolaDeAlertas::fila()`, el mismo método que
+usa la consola del capítulo 7. Si hay más de 50, la pantalla remite a `/proveedor/alertas?empresa={id}`,
+que es la que tiene los filtros y la paginación. Sin envíos, muestra el estado vacío («Todavía no se le
+ha enviado ninguna alerta»), no un aviso de fase pendiente.
 
-`Parametros.vue` reemplazó el `EstadoVacio` genérico de «Facturación» por contenido real: el nombre del
-plan con su `Etiqueta` de estado, la lista de cupos y medio de pago con `ListaDeDatos`, y la tabla del
-historial de pagos con `TablaDatos` —mismas columnas y el mismo patrón de `Etiqueta` por tono que ya
-usa `Proveedor/FichaDeEmpresa.vue`—. Una empresa sin suscripción ve el estado vacío sin ningún botón de
-acción, porque abrir una suscripción no es una acción del cliente.
+**Pestaña «Uso».** Gana dos bloques nuevos, los dos calculados dentro del contexto de la empresa:
+`novedadesPorMes` cuenta por `created_at` —cuándo se cargó la novedad, no la fecha del hecho— las cinco
+novedades (incapacidades, vacaciones, licencias, movimientos, terminaciones) de los últimos seis meses;
+`modulos` da, por cada uno de esos cinco módulos, cuántos registros tiene y cuándo fue el último, con la
+marca «en uso» / «sin uso». `Formato::mesYAnio()` es nuevo: «Agosto de 2026» como encabezado de fila.
 
 ## Decisiones tomadas
 
-- **No se mostró el conteo de empleados/usuarios *en uso* contra el cupo**, solo los cupos incluidos
-  en el plan. La sección 5.7 pide «número de empleados y usuarios incluidos», que es el cupo del plan
-  (`Plan::empleados_incluidos`/`usuarios_incluidos`), no un contador de uso real; inventar esa
-  comparación habría sido una funcionalidad no pedida por el documento.
-- **No se mostró el detalle de suspensión ni de reactivación** (motivo, fecha) que sí enseña la ficha
-  del proveedor: la sección 5.7 no lo pide para el cliente, y el estado general («Activa»/«Suspendida»)
-  con su tono ya comunica la situación sin exponer el motivo interno que escribe el proveedor.
+- **«Módulos que efectivamente usa» se leyó como los cinco módulos de novedades**, no como todos los
+  del menú. Empleados y Contratos se cargan en la puesta en marcha y siempre tienen datos; la
+  conversación de renovación es sobre qué módulos opcionales reciben uso real, que es lo que dice la
+  tabla de la sección 4.3 del documento 4 al ponerlo junto a «novedades registradas por mes».
+- **«Novedades por mes» se cuenta por `created_at`**, no por la fecha del hecho: la pregunta de la
+  pestaña es con qué frecuencia la empresa entra a trabajar, no cuándo ocurrieron las incapacidades.
+- **La pestaña «Alertas» de la ficha no reenvía ni filtra**: es un registro de solo lectura acotado a
+  las 50 últimas. Reenviar y filtrar ya viven en la consola del capítulo 7, y la ficha enlaza a ella
+  filtrada por la empresa en vez de duplicar esa pantalla.
 
 ## Preguntas para Angela
 
@@ -56,27 +53,27 @@ acción, porque abrir una suscripción no es una acción del cliente.
 - **`F3-06b` sigue esperándote**: proveedor transaccional, `.env`, DNS (SPF/DKIM/DMARC) y correr
   `alertas:prueba`. Mientras tanto, `MAIL_MAILER=log` y ninguna alerta sale de la máquina de verdad —
   aunque en este momento sí hay Mailtrap configurado en el `.env` local para pruebas.
-- **Verificar a mano en un navegador la pestaña «Facturación» de REV-11** sigue pendiente: abrir
-  `/configuracion` como superadministrador de una empresa con suscripción y de una sin ella, y
-  comprobar que se ve como el prototipo describe.
-- **Verificar a mano en un navegador el flujo completo de REV-10** sigue pendiente — ninguna sesión de
-  código puede hacer esa comprobación por ti: invitar a un administrador, marcar y desmarcar módulos, y
-  desactivarlo, todo desde `/configuracion`.
+- **Verificar a mano en un navegador la ficha de empresa del proveedor tras REV-12**: abrir
+  `/proveedor/empresas/{id}` de una empresa con alertas enviadas y novedades cargadas, y comprobar que
+  las pestañas «Alertas» y «Uso» se ven como el prototipo describe.
+- **Verificar a mano la pestaña «Facturación» de REV-11** sigue pendiente: `/configuracion` como
+  superadministrador de una empresa con suscripción y de una sin ella.
+- **Verificar a mano el flujo completo de REV-10** sigue pendiente: invitar a un administrador, marcar
+  y desmarcar módulos, y desactivarlo, todo desde `/configuracion`.
 - **Las dos preguntas para Angela siguen abiertas**: B.2 y el fondo de cesantías. Están en
   `docs/06-decisiones-pendientes.md`, secciones B.2 y en la nota de F1-04.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
 
 ## Notas para la próxima sesión
 
-- **La siguiente tarea es `REV-12`**: conectar las pestañas «Alertas» y «Uso» de la ficha de empresa
-  del proveedor a datos que ya existen —`alertas_enviadas` y las novedades de la fase 2—, quitando los
-  textos de `App\Proveedor\FichaDeEmpresa::PENDIENTES` y `USO_INCOMPLETO` que quedaron de cuando esas
-  fases todavía no existían.
-- **`F5-08` sigue siendo de una sola línea**: poner 14 como valor sugerido en el formulario de accesos
-  de prueba.
-- **Con REV-11, las cuatro pestañas de Configuración del cliente ya tienen contenido real.** No queda
-  ningún `EstadoVacio` genérico en `Parametros.vue`.
-- **Si una tarea futura agrega otro sitio que lea `User->usuario` de una línea histórica** (auditoría,
-  bitácora, lo que sea), revisa si necesita `withTrashed()` como `Auditoria::usuario()`: un usuario
-  desactivado sigue siendo el autor de lo que hizo mientras tuvo acceso.
+- **La siguiente tarea es `F5-08`, de una sola línea**: poner 14 como valor sugerido en el formulario
+  de accesos de prueba (F5-03), con el número en `config/panel.php` —el mismo archivo que ya tiene
+  `riesgo_de_cancelacion`— y no en un literal del componente Vue. D.12 quedó resuelta en 14 días.
+- **Con REV-12, las siete pestañas de la ficha de empresa del proveedor ya tienen contenido real.** No
+  queda ninguna constante de «pendiente» en `App\Proveedor\FichaDeEmpresa` ni ningún `EstadoVacio` de
+  reserva en su pantalla.
+- **`ConsolaDeAlertas::fila()` es ahora un método compartido por dos pantallas** —la consola y la
+  ficha—. Si cambia su forma, las dos la leen.
+- **Si una tarea futura agrega otro sitio que lea `User->usuario` de una línea histórica**, revisa si
+  necesita `withTrashed()` como `Auditoria::usuario()`.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.

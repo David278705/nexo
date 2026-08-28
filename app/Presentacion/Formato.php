@@ -227,6 +227,19 @@ final class Formato
     }
 
     /**
+     * El mes con su año, como encabeza una fila de una tabla: «Agosto de 2026».
+     *
+     * Con mayúscula inicial —al revés que `mes()`— porque aquí es una etiqueta
+     * suelta en una celda, no una palabra dentro de una frase.
+     */
+    public static function mesYAnio(mixed $fecha): string
+    {
+        return $fecha instanceof Carbon
+            ? ucfirst($fecha->translatedFormat('F \d\e Y'))
+            : self::VACIO;
+    }
+
+    /**
      * Un porcentaje como se lee en un indicador: «4,2%», «0,0%».
      *
      * Siempre a un decimal fijo, para que dos índices del mismo panel —rotación

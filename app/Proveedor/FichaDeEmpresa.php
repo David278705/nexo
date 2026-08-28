@@ -4,33 +4,39 @@ namespace App\Proveedor;
 
 use App\Auditoria\AccionAuditada;
 use App\Autenticacion\ResultadoDeAcceso;
+use App\Autorizacion\Modulo;
 use App\Autorizacion\SeccionDelPanel;
 use App\Configuracion\ParametrosDeLaEmpresa;
+use App\Models\AlertaEnviada;
 use App\Models\Auditoria;
+use App\Models\Incapacidad;
+use App\Models\Licencia;
+use App\Models\Movimiento;
 use App\Models\Pago;
 use App\Models\Plan;
 use App\Models\Suscripcion;
 use App\Models\Tenant;
+use App\Models\Terminacion;
 use App\Models\User;
+use App\Models\Vacacion;
 use App\Multiempresa\ContextoTenant;
 use App\Presentacion\Formato;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
  * La ficha de una empresa cliente en el panel del proveedor (documento 4, 4.3).
  *
- * Siete pestañas pide el documento. **Cuatro se construyen y tres se declaran**,
- * porque tres dependen de tablas que todavía no existen y una ficha que finge
- * tener información es peor que una que dice qué falta:
+ * Siete pestañas, **todas con contenido**:
  *
  * | Pestaña | Estado |
  * |---|---|
- * | Resumen | Construida. Datos, plan, fecha de alta y quién la creó. |
- * | Parámetros | Construida y **editable por el owner**, con constancia. |
- * | Usuarios | Construida. Último acceso, reenviar invitación y restablecer contraseña. |
- * | Uso | Construida con lo que ya se puede medir; las novedades por mes y los módulos que usa son de la fase 2. |
+ * | Resumen | Datos, plan, fecha de alta y quién la creó. |
+ * | Parámetros | **Editable por el owner**, con constancia. |
+ * | Usuarios | Último acceso, reenviar invitación y restablecer contraseña. |
+ * | Uso | Empleados, entradas, novedades registradas por mes y módulos que la empresa usa de verdad. |
  * | Suscripción | Construida (F5-04). Plan, cobro, historial de facturas y sus cuatro acciones. |
- * | Alertas | Declarada. La consola de envíos es F3-06 y F5-05. |
+ * | Alertas | El registro real de `alertas_enviadas` de esta empresa, lo mismo que `ConsolaDeAlertas` acotado a un tenant (REV-12). |
  * | Bitácora | Construida (F5-07). Las notas internas y el historial de visitas al entorno. |
  *
  * **Aquí no hay `tenant_actual()`.** El `owner` no tiene empresa y el middleware
@@ -46,25 +52,15 @@ use Illuminate\Support\Carbon;
 class FichaDeEmpresa
 {
     /**
-     * Lo que dice cada pestaña que todavía no tiene contenido, y en qué tarea
-     * lo va a tener. Está escrito aquí porque es información del proyecto, no
-     * decoración de la pantalla.
-     *
-     * @var array<string, array{titulo: string, descripcion: string}>
+     * Cuántas alertas enviadas se traen a la pestaña. Las que no caben se
+     * consultan en la consola, filtrada por esta empresa.
      */
-    public const PENDIENTES = [
-        'alertas' => [
-            'titulo' => 'Todavía no se ha enviado ninguna alerta',
-            'descripcion' => 'El motor de avisos por correo es la fase 3. Cuando exista, aquí se '
-                .'verá todo lo enviado a esta empresa con su resultado.',
-        ],
-    ];
+    private const MAXIMO_DE_ALERTAS = 50;
 
     /**
-     * Lo que el «Uso» todavía no puede contar, dicho en la propia pestaña.
+     * Cuántos meses hacia atrás cuenta el «Uso» las novedades registradas.
      */
-    public const USO_INCOMPLETO = 'Las novedades registradas por mes y los módulos que la empresa '
-        .'usa de verdad se podrán contar cuando existan las novedades, en la fase 2.';
+    private const MESES_DE_USO = 6;
 
     private function __construct(private readonly Tenant $empresa) {}
 
@@ -89,10 +85,10 @@ class FichaDeEmpresa
             'perfil' => $this->perfil(),
             'usuarios' => $this->usuarios(),
             'uso' => $this->uso(),
+            'alertas' => $this->alertas(),
             'suscripcion' => $this->suscripcion(),
             'bitacora' => $this->bitacora(),
             'acceso' => self::acceso(),
-            'pendientes' => self::PENDIENTES,
         ];
     }
 
@@ -420,7 +416,9 @@ class FichaDeEmpresa
     }
 
     /**
-     * La pestaña «Uso»: lo que ya se puede medir de verdad.
+     * La pestaña «Uso» (documento 4, 4.3): «empleados cargados, novedades
+     * registradas por mes, frecuencia de entrada por usuario y módulos que
+     * efectivamente usa. Es la conversación de renovación en una pantalla».
      *
      * @return array<string, mixed>
      */
@@ -446,8 +444,139 @@ class FichaDeEmpresa
                         ->count('user_id'),
                 ],
             ],
-            'incompleto' => self::USO_INCOMPLETO,
+            'novedadesPorMes' => $this->novedadesPorMes(),
+            'modulos' => $this->modulosQueUsa(),
         ];
+    }
+
+    /**
+     * Las cinco novedades que la empresa registra, cada una con su módulo y su
+     * modelo. Es la lista sobre la que se mide el uso real: si una empresa no
+     * registra incapacidades ni vacaciones, ese módulo no le está sirviendo.
+     *
+     * @return list<array{modulo: Modulo, modelo: class-string<Model>}>
+     */
+    private function modelosDeNovedad(): array
+    {
+        return [
+            ['modulo' => Modulo::Incapacidades, 'modelo' => Incapacidad::class],
+            ['modulo' => Modulo::Vacaciones, 'modelo' => Vacacion::class],
+            ['modulo' => Modulo::Licencias, 'modelo' => Licencia::class],
+            ['modulo' => Modulo::Movimientos, 'modelo' => Movimiento::class],
+            ['modulo' => Modulo::Terminaciones, 'modelo' => Terminacion::class],
+        ];
+    }
+
+    /**
+     * Cuántas novedades se registraron cada mes, en los últimos seis, del mes
+     * en curso hacia atrás.
+     *
+     * Cuenta por `created_at` —cuándo se cargó la novedad en el sistema— y no
+     * por la fecha del hecho: la pregunta de la renovación es con qué
+     * frecuencia la empresa entra a trabajar, no cuándo ocurrieron las cosas.
+     * Se lee dentro del contexto de la empresa porque las cinco tablas llevan
+     * el trait `PerteneceATenant` y su política de RLS (regla 1).
+     *
+     * @return list<array{mes: string, total: int}>
+     */
+    private function novedadesPorMes(): array
+    {
+        return app(ContextoTenant::class)->paraTenant($this->empresa, function (): array {
+            $meses = [];
+
+            for ($atras = 0; $atras < self::MESES_DE_USO; $atras++) {
+                $inicio = Carbon::now()->startOfMonth()->subMonths($atras);
+                $fin = (clone $inicio)->endOfMonth();
+
+                $total = 0;
+
+                foreach ($this->modelosDeNovedad() as $novedad) {
+                    /** @var class-string<Model> $modelo */
+                    $modelo = $novedad['modelo'];
+                    $total += $modelo::query()
+                        ->whereBetween('created_at', [$inicio, $fin])
+                        ->count();
+                }
+
+                $meses[] = ['mes' => Formato::mesYAnio($inicio), 'total' => $total];
+            }
+
+            return $meses;
+        });
+    }
+
+    /**
+     * Qué módulos usa de verdad la empresa: cuántas novedades tiene registradas
+     * en cada uno y cuándo se registró la última.
+     *
+     * @return list<array{modulo: string, registros: int, usa: bool, ultimo: string}>
+     */
+    private function modulosQueUsa(): array
+    {
+        return app(ContextoTenant::class)->paraTenant($this->empresa, function (): array {
+            $filas = [];
+
+            foreach ($this->modelosDeNovedad() as $novedad) {
+                /** @var class-string<Model> $modelo */
+                $modelo = $novedad['modelo'];
+                $registros = $modelo::query()->count();
+                $ultimo = $modelo::query()->max('created_at');
+
+                $filas[] = [
+                    'modulo' => $novedad['modulo']->etiqueta(),
+                    'registros' => $registros,
+                    'usa' => $registros > 0,
+                    'ultimo' => $ultimo === null
+                        ? 'Sin registros'
+                        : Formato::fecha(Carbon::parse((string) $ultimo)),
+                ];
+            }
+
+            return $filas;
+        });
+    }
+
+    /**
+     * La pestaña «Alertas» (documento 4, 4.3): «las enviadas a esa empresa, con
+     * su resultado».
+     *
+     * Es el mismo dato que `ConsolaDeAlertas` enseña de todas las empresas a la
+     * vez, acotado a esta —se reutiliza su `fila()` para que las dos pantallas
+     * lean una alerta igual—. Se consulta dentro del contexto de la empresa
+     * porque `alertas_enviadas` lleva el trait `PerteneceATenant` y su política
+     * de RLS, que no tiene excepción para el `owner` (regla 1). Se traen las
+     * últimas y, si hay más, se remite a la consola filtrada por esta empresa,
+     * que es la que tiene los filtros y la paginación.
+     *
+     * @return array<string, mixed>
+     */
+    public function alertas(): array
+    {
+        return app(ContextoTenant::class)->paraTenant($this->empresa, function (): array {
+            $total = AlertaEnviada::query()->count();
+
+            $filas = AlertaEnviada::query()
+                ->with('vinculacion.persona')
+                ->orderByDesc('fecha_programada')
+                ->orderByDesc('id')
+                ->limit(self::MAXIMO_DE_ALERTAS)
+                ->get()
+                ->map(fn (AlertaEnviada $alerta): array => ConsolaDeAlertas::fila($alerta, $this->empresa))
+                ->all();
+
+            return [
+                'filas' => $filas,
+                'total' => $total,
+                'maximo' => self::MAXIMO_DE_ALERTAS,
+                'hayMas' => $total > self::MAXIMO_DE_ALERTAS,
+                'consolaUrl' => SeccionDelPanel::Alertas->url().'?empresa='.$this->empresa->getKey(),
+                'vacio' => [
+                    'titulo' => 'Todavía no se le ha enviado ninguna alerta',
+                    'descripcion' => 'Cuando el proceso diario tenga algo que avisarle a esta empresa, '
+                        .'aparecerá aquí con su resultado.',
+                ],
+            ];
+        });
     }
 
     /**

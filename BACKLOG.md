@@ -1955,7 +1955,7 @@ dice, sin botón de acción porque abrir una no es cosa del cliente. Pruebas nue
 al administrador y el tono de una suscripción suspendida— y en `Parametros.test.js`, que reemplazó su
 prueba de «pestaña sin contenido» por dos: el contenido real y el estado vacío sin suscripción.
 
-### [ ] REV-12 · La ficha de empresa del proveedor tiene dos pestañas con texto de hace seis fases
+### [x] REV-12 · La ficha de empresa del proveedor tiene dos pestañas con texto de hace seis fases
 
 `App\Proveedor\FichaDeEmpresa::PENDIENTES['alertas']` dice: *"El motor de avisos por correo es la
 fase 3. Cuando exista, aquí se verá todo lo enviado a esta empresa con su resultado."* Se escribió en
@@ -1975,6 +1975,17 @@ novedades registradas por mes y los módulos que la empresa usa, quitando `USO_I
 pantalla. `FichaDeEmpresa::PENDIENTES` queda vacío o se elimina si ya no le queda ninguna pestaña
 declarada y no construida.
 **Fuente:** `app/Proveedor/FichaDeEmpresa.php` · `app/Proveedor/ConsolaDeAlertas.php`
+
+Hecho: las dos constantes muertas —`PENDIENTES` y `USO_INCOMPLETO`— se borraron, y con ellas la prop
+`pendientes` y el `EstadoVacio` de reserva de `Proveedor/FichaDeEmpresa.vue`. **La pestaña «Alertas»**
+la arma el nuevo `FichaDeEmpresa::alertas()`, que entra al `ContextoTenant::paraTenant()` de la
+empresa —`alertas_enviadas` lleva `PerteneceATenant` y su RLS, sin excepción para el `owner`— y mapea
+las 50 más recientes con `ConsolaDeAlertas::fila()`, el mismo método que usa la consola; si hay más,
+remite a `/proveedor/alertas?empresa={id}`, que es la que tiene filtros y paginación. **La pestaña
+«Uso»** gana `novedadesPorMes` —seis meses, contando por `created_at` las cinco novedades de la
+empresa— y `modulos` —registros y último por módulo, con la marca «en uso»/«sin uso»—, las dos
+calculadas dentro del contexto de la empresa. `Formato::mesYAnio()` es nuevo: «Agosto de 2026» como
+encabezado de fila. Ninguna pestaña de la ficha depende ya de una tarea futura.
 
 ### [ ] F5-08 · El formulario de acceso de prueba no sugiere ningún valor de vigencia
 

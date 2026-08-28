@@ -95,7 +95,14 @@ const props = {
     ],
     uso: {
         cifras: [{ etiqueta: "Empleados cargados", valor: "34" }],
-        incompleto: "Las novedades por mes llegan en la fase 2.",
+        novedadesPorMes: [
+            { mes: "Agosto de 2026", total: 7 },
+            { mes: "Julio de 2026", total: 3 },
+        ],
+        modulos: [
+            { modulo: "Incapacidades", registros: 5, usa: true, ultimo: "20/08/2026" },
+            { modulo: "Vacaciones", registros: 0, usa: false, ultimo: "Sin registros" },
+        ],
     },
     suscripcion: {
         existe: true,
@@ -172,8 +179,28 @@ const props = {
         ayudaDelMotivo: "Queda en el registro. Escriba algo que tenga sentido dentro de seis meses.",
         etiquetaDeEscritura: "Necesito modificar datos, no solo consultar",
     },
-    pendientes: {
-        alertas: { titulo: "Todavía no se ha enviado ninguna alerta", descripcion: "Es la fase 3." },
+    alertas: {
+        filas: [
+            {
+                id: 9,
+                programada: "17/08/2026",
+                enviada: "17/08/2026, 6:02 a. m.",
+                tipo: "Víspera del periodo de prueba",
+                empleado: "Ana Torres",
+                destinatarios: ["gestion@elprogreso.co"],
+                estado: "Enviada",
+                tono: "exito",
+                intentos: 1,
+            },
+        ],
+        total: 1,
+        maximo: 50,
+        hayMas: false,
+        consolaUrl: "/proveedor/alertas?empresa=7",
+        vacio: {
+            titulo: "Todavía no se le ha enviado ninguna alerta",
+            descripcion: "Cuando el proceso diario tenga algo que avisarle a esta empresa, aparecerá aquí con su resultado.",
+        },
     },
     volver: "/proveedor/empresas",
 };
@@ -260,11 +287,34 @@ describe("la ficha de la empresa", () => {
         );
     });
 
-    it("dice de qué tarea depende cada pestaña que todavía no tiene contenido", async () => {
-        const pantalla = montar();
+    it("enseña en «Alertas» el registro real de lo que se le ha enviado a la empresa", async () => {
+        const pantalla = await irA(montar(), "Alertas");
 
-        await irA(pantalla, "Alertas");
-        expect(pantalla.text()).toContain("Todavía no se ha enviado ninguna alerta");
+        expect(pantalla.text()).toContain("Víspera del periodo de prueba");
+        expect(pantalla.text()).toContain("gestion@elprogreso.co");
+        expect(pantalla.text()).toContain("Enviada");
+    });
+
+    it("en «Alertas» sin envíos muestra el estado vacío, no un aviso de fase pendiente", async () => {
+        const pantalla = await irA(
+            montar({
+                alertas: { ...props.alertas, filas: [], total: 0 },
+            }),
+            "Alertas",
+        );
+
+        expect(pantalla.text()).toContain(
+            "Todavía no se le ha enviado ninguna alerta",
+        );
+    });
+
+    it("en «Uso» cuenta las novedades por mes y marca los módulos que usa de verdad", async () => {
+        const pantalla = await irA(montar(), "Uso");
+
+        expect(pantalla.text()).toContain("Agosto de 2026");
+        expect(pantalla.text()).toContain("Novedades registradas por mes");
+        expect(pantalla.text()).toContain("Incapacidades");
+        expect(pantalla.text()).toContain("Sin registros");
     });
 
     it("enseña la bitácora con sus notas y dice que es interna", async () => {

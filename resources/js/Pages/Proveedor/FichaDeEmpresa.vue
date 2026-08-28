@@ -18,9 +18,10 @@ import { usarAccionPorFila } from "@/Utilidades/usarAccionPorFila.js";
 /*
  * La ficha de una empresa cliente (documento 4, 4.3).
  *
- * Siete pestañas: cinco con contenido y dos que dicen de qué tarea depende lo
- * suyo. El texto de esas dos lo escribe el servidor, en `FichaDeEmpresa`, para
- * que no haya que buscar en dos sitios qué falta.
+ * Siete pestañas, todas con contenido. «Uso» cuenta las novedades registradas
+ * por mes y los módulos que la empresa usa de verdad; «Alertas» enseña el
+ * registro real de lo que el motor de avisos le ha enviado, lo mismo que la
+ * consola pero acotado a esta empresa (REV-12).
  *
  * La pestaña «Suscripción» es la única con acciones sobre el cobro de este
  * cliente —registrar un pago, cambiarle el plan, suspender y reactivar—, y está
@@ -45,10 +46,10 @@ const props = defineProps({
     perfil: { type: Object, required: true },
     usuarios: { type: Array, default: () => [] },
     uso: { type: Object, required: true },
+    alertas: { type: Object, required: true },
     suscripcion: { type: Object, required: true },
     bitacora: { type: Object, required: true },
     acceso: { type: Object, required: true },
-    pendientes: { type: Object, required: true },
     volver: { type: String, required: true },
 });
 
@@ -103,7 +104,26 @@ function restablecerContrasena(usuario) {
     );
 }
 
-const pendiente = computed(() => props.pendientes[activa.value] ?? null);
+const columnasDeNovedadesPorMes = [
+    { clave: "mes", titulo: "Mes" },
+    { clave: "total", titulo: "Novedades registradas", numerica: true },
+];
+
+const columnasDeModulos = [
+    { clave: "modulo", titulo: "Módulo" },
+    { clave: "registros", titulo: "Registros", numerica: true },
+    { clave: "ultimo", titulo: "Último registro" },
+];
+
+const columnasDeAlertas = [
+    { clave: "programada", titulo: "Programada" },
+    { clave: "enviada", titulo: "Enviada" },
+    { clave: "tipo", titulo: "Alerta" },
+    { clave: "empleado", titulo: "Sobre" },
+    { clave: "destinatarios", titulo: "Destinatarios" },
+    { clave: "estado", titulo: "Estado" },
+    { clave: "intentos", titulo: "Intentos", numerica: true },
+];
 
 /*
  * Las cuatro acciones de la pestaña «Suscripción». Cada modal lleva su propio
@@ -443,16 +463,51 @@ const columnasDeVisitas = [
                     </p>
                 </div>
 
-                <div v-else-if="activa === 'uso'">
+                <div v-else-if="activa === 'uso'" class="grid gap-4 lg:grid-cols-2">
                     <ListaDeDatos
                         titulo="Cómo usa el sistema"
                         :campos="uso.cifras"
-                        class="lg:max-w-xl"
+                        class="lg:col-span-2 lg:max-w-xl"
                     />
 
-                    <p class="mt-3 text-apoyo text-texto-terciario">
-                        {{ uso.incompleto }}
-                    </p>
+                    <section>
+                        <h3 class="text-seccion font-semibold text-texto">
+                            Novedades registradas por mes
+                        </h3>
+                        <p class="mt-1 mb-3 text-apoyo text-texto-secundario">
+                            Incapacidades, vacaciones, licencias, movimientos y
+                            terminaciones, por el mes en que se cargaron.
+                        </p>
+                        <TablaDatos
+                            :columnas="columnasDeNovedadesPorMes"
+                            :filas="uso.novedadesPorMes"
+                            :clicable="false"
+                        />
+                    </section>
+
+                    <section>
+                        <h3 class="text-seccion font-semibold text-texto">
+                            Módulos que usa de verdad
+                        </h3>
+                        <p class="mt-1 mb-3 text-apoyo text-texto-secundario">
+                            Un módulo sin registros no le está sirviendo: es la
+                            conversación de la renovación.
+                        </p>
+                        <TablaDatos
+                            :columnas="columnasDeModulos"
+                            :filas="uso.modulos"
+                            :clicable="false"
+                        >
+                            <template #celda-modulo="{ fila }">
+                                <span class="flex items-center gap-2">
+                                    <Etiqueta :tono="fila.usa ? 'exito' : 'neutro'">
+                                        {{ fila.usa ? "En uso" : "Sin uso" }}
+                                    </Etiqueta>
+                                    {{ fila.modulo }}
+                                </span>
+                            </template>
+                        </TablaDatos>
+                    </section>
                 </div>
 
                 <div v-else-if="activa === 'suscripcion'">
@@ -662,14 +717,40 @@ const columnasDeVisitas = [
                     </section>
                 </div>
 
-                <div
-                    v-else
-                    class="rounded-[var(--radius-modal)] border border-borde bg-superficie"
-                >
-                    <EstadoVacio
-                        :titulo="pendiente?.titulo ?? ''"
-                        :descripcion="pendiente?.descripcion ?? ''"
-                    />
+                <div v-else-if="activa === 'alertas'">
+                    <p class="mb-3 text-apoyo text-texto-secundario">
+                        Todo lo que el motor de avisos le ha enviado a esta
+                        empresa, con su resultado. Las últimas primero.
+                    </p>
+
+                    <TablaDatos
+                        :columnas="columnasDeAlertas"
+                        :filas="alertas.filas"
+                        :clicable="false"
+                        :titulo-vacio="alertas.vacio.titulo"
+                        :descripcion-vacio="alertas.vacio.descripcion"
+                    >
+                        <template #celda-destinatarios="{ fila }">
+                            {{ fila.destinatarios.join(", ") }}
+                        </template>
+                        <template #celda-estado="{ fila }">
+                            <Etiqueta :tono="fila.tono">{{ fila.estado }}</Etiqueta>
+                        </template>
+                    </TablaDatos>
+
+                    <p
+                        v-if="alertas.hayMas"
+                        class="mt-3 text-apoyo text-texto-terciario"
+                    >
+                        Se muestran las {{ alertas.maximo }} más recientes de
+                        {{ alertas.total }}.
+                        <Link
+                            :href="alertas.consolaUrl"
+                            class="font-medium text-accion"
+                        >
+                            Ver todas en la consola de alertas
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>
