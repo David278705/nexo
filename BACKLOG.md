@@ -1919,7 +1919,7 @@ pruebas nuevas de Vitest en `Parametros.test.js` (más el ajuste de la que proba
 `UsuariosDeLaEmpresaTest.php`, incluida la que demuestra el motivo de todo: un administrador que
 escribió una línea de auditoría, se le desactiva, y la línea sigue ahí con su nombre.
 
-### [ ] REV-11 · Facturación, la cuarta pestaña que tampoco se construyó
+### [x] REV-11 · Facturación, la cuarta pestaña que tampoco se construyó
 
 La misma sección 5.7 especifica: «Plan contratado, número de empleados y usuarios incluidos,
 historial de pagos y medio de pago. Solo el superadministrador.» F5-04 construyó exactamente esto
@@ -1937,6 +1937,23 @@ administrador (no superadministrador) recibe 403; y una empresa sin suscripción
 `planes` nace vacía por A.1— ve un estado vacío que lo dice, no una pantalla rota.
 **Fuente:** `docs/03-diseno-e-interfaz.md` 5.7 · `app/Proveedor/PanelDeSuscripciones.php` ·
 `app/Proveedor/EscaleraDeMora.php`
+
+Hecho: `App\Configuracion\FacturacionDeLaEmpresa`, con la misma forma que `ParametrosDeLaEmpresa` y
+`UsuariosDeLaEmpresa` —una clase, `de($empresa)->paraLaPantalla()`—, leyendo la suscripción de la
+empresa en contexto con el mismo criterio que ya prueba F5-04:
+`FichaDeEmpresa::suscripcion()`/`historialDePagos()`. **No hay ninguna acción**: registrar un pago,
+cambiar de plan, suspender y reactivar siguen siendo del proveedor sobre su cliente (documento 4,
+4.3), no de esta pantalla. **«Solo el superadministrador» no necesitó código nuevo**: el módulo
+`Configuracion` ya es exclusivo del superadministrador desde F1-12
+(`Modulo::esSoloDelSuperadministrador()`), así que un administrador recibía 403 en toda la pantalla
+desde antes de esta tarea; la prueba nueva solo lo deja explícito para esta pestaña. `Parametros.vue`
+reemplazó el `EstadoVacio` genérico de «Facturación» por el plan con su etiqueta de estado, la lista
+de cupos y medio de pago, y la tabla del historial de pagos —mismas columnas y el mismo `Etiqueta`
+por tono que ya usa la ficha del proveedor—; una empresa sin suscripción ve el estado vacío que lo
+dice, sin botón de acción porque abrir una no es cosa del cliente. Pruebas nuevas en
+`FacturacionDeLaEmpresaTest.php` —plan y cupos, historial ordenado, aislamiento entre empresas, 403
+al administrador y el tono de una suscripción suspendida— y en `Parametros.test.js`, que reemplazó su
+prueba de «pestaña sin contenido» por dos: el contenido real y el estado vacío sin suscripción.
 
 ### [ ] REV-12 · La ficha de empresa del proveedor tiene dos pestañas con texto de hace seis fases
 

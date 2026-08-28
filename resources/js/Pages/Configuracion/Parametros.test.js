@@ -110,6 +110,29 @@ const props = {
         habilitado: false,
         aviso: "Los 34 empleados ya registrados quedarán con estos campos vacíos.",
     },
+    facturacion: {
+        existe: true,
+        plan: "Pequeña",
+        estado: "Activa",
+        estadoTono: "exito",
+        datos: [
+            { etiqueta: "Empleados incluidos", valor: "50" },
+            { etiqueta: "Usuarios incluidos", valor: "2" },
+            { etiqueta: "Valor mensual", valor: "$ 380.000" },
+            { etiqueta: "Próximo cobro", valor: "15 de septiembre de 2026" },
+            { etiqueta: "Medio de pago", valor: "Transferencia" },
+        ],
+        historial: [
+            {
+                id: 1,
+                fecha: "15/08/2026",
+                numeroFactura: "FE-0001",
+                monto: "$ 380.000",
+                estado: "Pagada",
+                tono: "exito",
+            },
+        ],
+    },
 };
 
 function montar(cambios = {}) {
@@ -211,14 +234,33 @@ describe("la pantalla de parámetros", () => {
         expect(pantalla.findAll("select")).toHaveLength(0);
     });
 
-    it("dice que la pestaña de facturación llega en su propia tarea", async () => {
+    it("pinta el plan contratado, sus cupos, el medio de pago y el historial", async () => {
         const pantalla = montar();
 
         await pantalla.findAll("button[role='tab']")[3].trigger("click");
 
-        expect(pantalla.text()).toContain(
-            "Esta pestaña todavía no tiene contenido",
-        );
+        expect(pantalla.text()).toContain("Pequeña");
+        expect(pantalla.text()).toContain("Activa");
+        expect(pantalla.text()).toContain("50");
+        expect(pantalla.text()).toContain("Empleados incluidos");
+        expect(pantalla.text()).toContain("Transferencia");
+        expect(pantalla.text()).toContain("FE-0001");
+        expect(pantalla.text()).toContain("Pagada");
+    });
+
+    it("enseña un estado vacío cuando la empresa no tiene suscripción", async () => {
+        const pantalla = montar({
+            facturacion: {
+                existe: false,
+                titulo: "Todavía no hay un plan contratado",
+                descripcion: "Tu empresa no tiene una suscripción activa en este momento.",
+            },
+        });
+
+        await pantalla.findAll("button[role='tab']")[3].trigger("click");
+
+        expect(pantalla.text()).toContain("Todavía no hay un plan contratado");
+        expect(pantalla.text()).not.toContain("Historial de pagos");
     });
 
     it("pinta el listado de usuarios con su rol y sus módulos", async () => {

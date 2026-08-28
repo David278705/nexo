@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Configuracion\FacturacionDeLaEmpresa;
 use App\Configuracion\ParametrosDeLaEmpresa;
 use App\Configuracion\UsuariosDeLaEmpresa;
 use App\Http\Requests\ActualizarModulosDeUsuario;
@@ -17,15 +18,15 @@ use Inertia\Response as RespuestaInertia;
 /**
  * La configuración de la empresa (documento 3, sección 5.7).
  *
- * De las cuatro pestañas de la pantalla, «Parámetros» es de F1-12 y «Usuarios y
- * permisos» de REV-10. Las otras dos —datos de la empresa y facturación— llegan
- * en su propia tarea y hasta entonces la pantalla lo dice en vez de fingir que
- * están.
+ * Las cuatro pestañas de la pantalla ya tienen contenido: «Parámetros» y
+ * «Datos de la empresa» son de F1-12, «Usuarios y permisos» de REV-10 y
+ * «Facturación» de REV-11.
  *
- * Aquí no se explica ningún parámetro, no se guarda ningún booleano y no se
- * decide ninguna regla sobre usuarios: los textos y la escritura son de
- * `ParametrosDeLaEmpresa` y `UsuariosDeLaEmpresa`. Este controlador traduce la
- * petición en props y en llamadas a esas dos clases.
+ * Aquí no se explica ningún parámetro, no se guarda ningún booleano, no se
+ * decide ninguna regla sobre usuarios y no se calcula ningún cobro: los
+ * textos y la escritura son de `ParametrosDeLaEmpresa`, `UsuariosDeLaEmpresa`
+ * y `FacturacionDeLaEmpresa`. Este controlador traduce la petición en props y
+ * en llamadas a esas tres clases.
  */
 class ConfiguracionController extends Controller
 {
@@ -36,6 +37,7 @@ class ConfiguracionController extends Controller
         return Inertia::render('Configuracion/Parametros', [
             ...ParametrosDeLaEmpresa::de($empresa)->paraLaPantalla(),
             ...UsuariosDeLaEmpresa::de($empresa)->paraLaPantalla(),
+            ...FacturacionDeLaEmpresa::de($empresa)->paraLaPantalla(),
         ]);
     }
 

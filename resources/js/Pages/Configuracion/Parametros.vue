@@ -6,6 +6,7 @@ import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
 import EstadoVacio from "@/Components/EstadoVacio.vue";
+import Etiqueta from "@/Components/Etiqueta.vue";
 import ListaDeDatos from "@/Components/ListaDeDatos.vue";
 import Modal from "@/Components/Modal.vue";
 import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
@@ -39,6 +40,7 @@ const props = defineProps({
     perfil: { type: Object, required: true },
     usuarios: { type: Array, default: () => [] },
     modulosAsignables: { type: Array, default: () => [] },
+    facturacion: { type: Object, required: true },
 });
 
 const pestanas = [
@@ -129,6 +131,20 @@ function guardarModulos() {
 
 const usuarioADesactivar = ref(null);
 const formularioDesactivar = useForm({});
+
+/*
+ * La pestaña «Facturación» (documento 3, 5.7, REV-11): la misma información
+ * que ya calcula y ya prueba `App\Proveedor\PanelDeSuscripciones` del lado
+ * del proveedor, de solo lectura. Sin acciones: registrar un pago, cambiar
+ * de plan, suspender y reactivar son decisiones del proveedor sobre su
+ * cliente, no de esta pantalla.
+ */
+const columnasDePagos = [
+    { clave: "fecha", titulo: "Fecha" },
+    { clave: "numeroFactura", titulo: "Factura" },
+    { clave: "monto", titulo: "Monto", numerica: true },
+    { clave: "estado", titulo: "Estado" },
+];
 
 function confirmarDesactivar() {
     formularioDesactivar.delete(`/configuracion/usuarios/${usuarioADesactivar.value.id}`, {
@@ -406,14 +422,52 @@ function confirmarDesactivar() {
                     />
                 </div>
 
-                <div
-                    v-else
-                    class="rounded-[var(--radius-modal)] border border-borde bg-superficie"
-                >
-                    <EstadoVacio
-                        titulo="Esta pestaña todavía no tiene contenido"
-                        descripcion="La facturación llega en su propia tarea. Los parámetros, los datos de la empresa y los usuarios ya funcionan."
-                    />
+                <div v-else-if="activa === 'facturacion'">
+                    <div
+                        v-if="!facturacion.existe"
+                        class="rounded-[var(--radius-modal)] border border-borde bg-superficie"
+                    >
+                        <EstadoVacio
+                            :titulo="facturacion.titulo"
+                            :descripcion="facturacion.descripcion"
+                        />
+                    </div>
+
+                    <div v-else class="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+                        <div>
+                            <div class="mb-3 flex flex-wrap items-center gap-2">
+                                <h2 class="text-seccion font-semibold text-texto">
+                                    {{ facturacion.plan }}
+                                </h2>
+                                <Etiqueta :tono="facturacion.estadoTono">
+                                    {{ facturacion.estado }}
+                                </Etiqueta>
+                            </div>
+
+                            <ListaDeDatos :campos="facturacion.datos" />
+                        </div>
+
+                        <div>
+                            <h3 class="text-seccion font-semibold text-texto">
+                                Historial de pagos
+                            </h3>
+
+                            <div class="mt-3">
+                                <TablaDatos
+                                    :columnas="columnasDePagos"
+                                    :filas="facturacion.historial"
+                                    :clicable="false"
+                                    titulo-vacio="Todavía no se ha registrado ningún pago"
+                                >
+                                    <template #celda-estado="{ fila }">
+                                        <Etiqueta :tono="fila.tono">
+                                            {{ fila.estado }}
+                                        </Etiqueta>
+                                    </template>
+                                </TablaDatos>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
