@@ -29,9 +29,11 @@ use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Multiempresa\PoliticaRls;
+use App\Terminaciones\TipoDeSalida;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
@@ -1115,6 +1117,53 @@ describe('las novedades de la ficha del empleado', function () {
         $respuesta->assertOk();
 
         expect($respuesta->viewData('page')['props']['novedades'])->toHaveCount(1);
+    });
+});
+
+/**
+ * Los datos de salida en la ficha del empleado (HD-02).
+ *
+ * `terminacion` es la misma clase de relación que las tres novedades de
+ * arriba: cuelga de `vinculacion_id`, que es único en toda la base y no por
+ * empresa. La fila imposible es una segunda terminación, de la empresa B,
+ * colgada del mismo empleado de la A que ya tiene la suya propia —creada
+ * saltándose el flujo real de `Vinculacion::registrarTerminacion()`, que
+ * nunca dejaría existir dos—. Lo que se defiende es que la relación siga
+ * trayendo la de la A y no se confunda con la ajena.
+ */
+describe('los datos de salida en la ficha del empleado', function () {
+    it('enseña la terminación de la empresa dueña y no la de otra colgada del mismo empleado', function () {
+        $contexto = app(ContextoTenant::class);
+        $empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        $empleadoDeLaA = $contexto->paraTenant($empresaA, function () {
+            $vinculacion = Vinculacion::factory()->de(Persona::factory()->create())->create();
+
+            $vinculacion->registrarTerminacion(
+                TipoDeSalida::Renuncia,
+                'Motivos personales o familiares',
+                Carbon::parse('2026-08-31'),
+            );
+
+            return $vinculacion;
+        });
+
+        $contexto->paraTenant($empresaB, fn () => Terminacion::factory()
+            ->de($empleadoDeLaA)
+            ->create(['motivo' => SECRETO_DE_LA_A]));
+
+        $usuarioA = usuarioDe($empresaA, Rol::Administrador, Modulo::Empleados);
+
+        $respuesta = $this->actingAs($usuarioA)->get('/empleados/'.$empleadoDeLaA->getKey());
+
+        $respuesta->assertOk();
+
+        $motivo = collect($respuesta->viewData('page')['props']['resumen'])
+            ->firstWhere('etiqueta', 'Motivo');
+
+        expect($motivo['valor'])->toBe('Motivos personales o familiares')
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
     });
 });
 

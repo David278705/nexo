@@ -2065,7 +2065,7 @@ El caso de aislamiento es nuevo en `AislamientoTest.php` y no repite a los tres 
 propio listado. Se crean a propósito las tres novedades de la empresa B colgadas del empleado de la
 A —`vinculacion_id` es único en toda la base, no por empresa— y ninguna aparece en su ficha.
 
-### [ ] HD-02 · La ficha de un empleado inactivo no dice nada de su salida
+### [x] HD-02 · La ficha de un empleado inactivo no dice nada de su salida
 
 `FichaDeEmpleado::resumen()` devuelve siempre los mismos seis datos —documento, fecha de ingreso,
 antigüedad, tipo de contrato, salario y saldo de vacaciones—, esté la persona activa o no. Y la
@@ -2081,6 +2081,21 @@ salida, el tipo de salida, el motivo y cuánto duró la vinculación; una person
 de esos campos ni un hueco donde irían; y la terminación deja de ser invisible en la ficha.
 **Fuente:** `app/Contratacion/FichaDeEmpleado.php` · `app/Terminaciones/` ·
 `docs/01-especificacion-funcional.md` cap. 9
+
+Hecho: `FichaDeEmpleado::resumen()` agrega tres datos —Fecha de salida, Tipo de salida y Motivo—
+al final de los seis de siempre, y solo cuando `$vinculacion->estaActiva()` es falso: quien está
+activa recibe el mismo arreglo de seis que antes, sin ningún hueco. **«Cuánto duró la vinculación»
+no se repite**: «Antigüedad» ya está entre los seis de siempre y ya mide hasta `fechaDeSalida()`
+desde F2-09, así que es exactamente esa cuenta y agregarla dos veces sería decir lo mismo con otro
+nombre. El tipo y el motivo salen de `terminacion()`, la relación `HasOne` que ya existía en
+`Vinculacion` desde F2-09 y que esta tarea suma a los `loadMissing()` de la ficha. **`terminacion`
+puede no existir** —la fábrica de pruebas `terminada()` ya desactiva sin registrar una, previendo la
+carga histórica que F5-02 todavía no trae—, y entonces el tipo y el motivo se escriben con la raya
+`Formato::VACIO` en vez de romper la ficha; la fecha de salida sigue viniendo de `fechaDeSalida()`,
+que ya sabía caer al respaldo de `fecha_fin`. El caso de aislamiento nuevo en `AislamientoTest.php`
+sigue el patrón de HD-01: `terminacion` cuelga de `vinculacion_id`, que es único en toda la base y no
+por empresa, así que se cuelga una segunda terminación de la empresa B del mismo empleado de la A que
+ya tiene la suya propia, y la ficha de la A sigue enseñando su motivo y no el ajeno.
 
 ### [ ] HD-03 · Ninguna novedad comprueba si se traslapa con otra
 

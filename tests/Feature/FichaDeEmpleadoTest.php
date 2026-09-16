@@ -18,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
+use App\Terminaciones\TipoDeSalida;
 use Illuminate\Support\Carbon;
 
 /**
@@ -197,6 +198,85 @@ describe('el encabezado', function () {
         $empleado = empleadoDe([], ['salario' => 3_200_000]);
 
         expect(datoDelResumen(fichaDe($empleado), 'Salario')['valor'])->toBe('$ 3.200.000');
+    });
+});
+
+/**
+ * Los tres datos de la salida (HD-02): hasta esta tarea, `resumen()` daba
+ * siempre los mismos seis campos y la terminación era invisible en la ficha
+ * —solo se veía la etiqueta «Inactiva» arriba, sin fecha, sin motivo—.
+ *
+ * «Cuánto duró la vinculación» no tiene su propia prueba aquí: ya la cubre
+ * «cuenta la antigüedad en años y meses...» y «deja de contar la antigüedad
+ * de quien ya salió», arriba, porque es el mismo campo del resumen de
+ * siempre y no uno nuevo.
+ */
+describe('los datos de la salida', function () {
+    it('no aparecen en el resumen de una persona activa, ni siquiera como un hueco', function () {
+        $etiquetas = array_map(fn (array $dato) => $dato['etiqueta'], fichaDe(empleadoDe())['resumen']);
+
+        expect($etiquetas)->not->toContain('Fecha de salida')
+            ->and($etiquetas)->not->toContain('Tipo de salida')
+            ->and($etiquetas)->not->toContain('Motivo');
+    });
+
+    it('enseña la fecha, el tipo y el motivo de quien ya salió', function () {
+        $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
+
+        app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $empleado->registrarTerminacion(
+            TipoDeSalida::Renuncia,
+            'Mejor oferta laboral — salario',
+            Carbon::parse('2026-08-31'),
+        ));
+
+        $props = fichaDe($empleado);
+
+        expect($props['empleado']['activo'])->toBeFalse()
+            ->and(datoDelResumen($props, 'Fecha de salida')['valor'])->toBe('31/08/2026')
+            ->and(datoDelResumen($props, 'Tipo de salida')['valor'])->toBe('Renuncia')
+            ->and(datoDelResumen($props, 'Motivo')['valor'])->toBe('Mejor oferta laboral — salario');
+    });
+
+    /*
+     * Los dos tipos que se autocompletan (documento 1, 7.3): el motivo que
+     * queda es el que decide `TipoDeSalida::motivoResultante()`, no el que se
+     * hubiera mandado.
+     */
+    it('enseña el motivo autocompletado de la expiración del plazo', function () {
+        $empleado = app(ContextoTenant::class)->paraTenant($this->empresa, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create())
+                ->aTerminoFijo('2025-01-01', '2026-01-01')
+                ->create();
+
+            $vinculacion->registrarTerminacion(TipoDeSalida::ExpiracionDelPlazo, null, Carbon::parse('2026-01-01'));
+
+            return $vinculacion;
+        });
+
+        expect(datoDelResumen(fichaDe($empleado), 'Motivo')['valor'])
+            ->toBe('Expiración del plazo fijo pactado');
+    });
+
+    /*
+     * La carga histórica que F5-02 todavía no trae puede dejar una vinculación
+     * inactiva sin pasar por `registrarTerminacion()` —la fábrica `terminada()`
+     * ya hace exactamente eso—, y entonces no hay terminación de dónde sacar
+     * el tipo ni el motivo. La fecha de salida cae al respaldo de `fecha_fin`
+     * (F2-09), y la ficha no se rompe por la falta de las otras dos.
+     */
+    it('no se rompe con una persona inactiva sin terminación registrada', function () {
+        $empleado = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vinculacion::factory()
+            ->de(Persona::factory()->create())
+            ->aTerminoFijo('2024-01-01', '2025-01-01')
+            ->terminada()
+            ->create());
+
+        $props = fichaDe($empleado);
+
+        expect(datoDelResumen($props, 'Fecha de salida')['valor'])->toBe('01/01/2025')
+            ->and(datoDelResumen($props, 'Tipo de salida')['valor'])->toBe('—')
+            ->and(datoDelResumen($props, 'Motivo')['valor'])->toBe('—');
     });
 });
 

@@ -150,6 +150,47 @@ describe("la ficha del empleado", () => {
         expect(texto).toContain("Activo");
     });
 
+    it("enseña los datos de salida de una persona inactiva, junto a los de siempre", () => {
+        const texto = montar({
+            empleado: {
+                id: 7,
+                nombre: "Valentina Cárdenas",
+                cargo: "Auxiliar Contable",
+                estado: "Inactivo",
+                activo: false,
+            },
+            resumen: [
+                ...props.resumen,
+                {
+                    etiqueta: "Fecha de salida",
+                    valor: "31/08/2026",
+                    pendiente: false,
+                    nota: "",
+                },
+                {
+                    etiqueta: "Tipo de salida",
+                    valor: "Renuncia",
+                    pendiente: false,
+                    nota: "",
+                },
+                {
+                    etiqueta: "Motivo",
+                    valor: "Motivos personales o familiares",
+                    pendiente: false,
+                    nota: "",
+                },
+            ],
+        }).text();
+
+        expect(texto).toContain("Inactivo");
+        expect(texto).toContain("Fecha de salida");
+        expect(texto).toContain("31/08/2026");
+        expect(texto).toContain("Tipo de salida");
+        expect(texto).toContain("Renuncia");
+        expect(texto).toContain("Motivo");
+        expect(texto).toContain("Motivos personales o familiares");
+    });
+
     it("deja el saldo de vacaciones siempre visible, en cualquier pestaña", async () => {
         const pantalla = montar();
 

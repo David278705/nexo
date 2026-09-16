@@ -64,6 +64,7 @@ class FichaDeEmpleado
             'incapacidades',
             'vacaciones',
             'licencias',
+            'terminacion',
             'tenant',
             'eps',
             'fondoPension',
@@ -118,21 +119,55 @@ class FichaDeEmpleado
     }
 
     /**
-     * Los seis datos que se ven siempre, por encima de las pestañas.
+     * Los seis datos que se ven siempre, por encima de las pestañas, y los tres
+     * de la salida cuando la persona ya no está activa (documento 1, cap. 7).
      *
-     * El saldo de vacaciones va de último, que es donde lo pone el prototipo.
+     * El saldo de vacaciones va de último entre los seis de siempre, que es
+     * donde lo pone el prototipo. Quien está activa no ve un hueco donde irían
+     * los datos de salida: el arreglo simplemente no los trae.
      *
      * @return list<array{etiqueta: string, valor: string, pendiente: bool, nota: string}>
      */
     public function resumen(): array
     {
-        return [
+        $datos = [
             self::dato('Documento', $this->persona->numero_documento),
             self::dato('Fecha de ingreso', Formato::fecha($this->vinculacion->fecha_ingreso)),
             self::dato('Antigüedad', $this->antiguedad()),
             self::dato('Tipo de contrato', self::texto($this->vinculacion->tipo_contrato)),
             self::dato('Salario', Formato::dinero($this->vinculacion->getAttribute('salario'))),
             $this->saldoDeVacaciones(),
+        ];
+
+        if (! $this->vinculacion->estaActiva()) {
+            array_push($datos, ...$this->datosDeSalida());
+        }
+
+        return $datos;
+    }
+
+    /**
+     * Fecha, tipo y motivo de la salida, solo para quien ya no está activo.
+     *
+     * Cuánto duró la vinculación no se repite aquí: «Antigüedad», que ya va
+     * entre los seis datos de siempre, mide hasta `fechaDeSalida()` desde
+     * F2-09 y es exactamente esa cuenta.
+     *
+     * `terminacion` puede no existir: una vinculación inactiva sin ese
+     * registro es la carga histórica que F5-02 todavía no trae (ver el
+     * comentario de `Vinculacion::fechaDeSalida()`), y entonces solo hay fecha
+     * de salida —de `fecha_fin`— y ni tipo ni motivo que enseñar.
+     *
+     * @return list<array{etiqueta: string, valor: string, pendiente: bool, nota: string}>
+     */
+    private function datosDeSalida(): array
+    {
+        $terminacion = $this->vinculacion->terminacion;
+
+        return [
+            self::dato('Fecha de salida', Formato::fecha($this->vinculacion->fechaDeSalida())),
+            self::dato('Tipo de salida', $terminacion === null ? Formato::VACIO : $terminacion->tipo_salida->etiqueta()),
+            self::dato('Motivo', $terminacion === null ? Formato::VACIO : $terminacion->motivo),
         ];
     }
 

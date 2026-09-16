@@ -1,48 +1,43 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-16 · Tarea `HD-01`
-**Verificación:** verde. **1.236 de 1.236** pruebas de Pest, Pint y PHPStan sin errores, build y 404
-de Vitest. El «rojo conocido» de la tilde de «Ramírez» ya no existe: se arregló en el commit
-`4ccc2f8` de la sesión anterior y la bitácora de aquella sesión no lo recogió. La sección que lo
-describía se fue de aquí porque ya no describe nada.
-**Siguiente tarea:** `HD-02` · La ficha de un empleado inactivo no dice nada de su salida.
+**Última sesión:** 2026-09-16 · Tarea `HD-02`
+**Verificación:** verde. **1.241 de 1.241** pruebas de Pest, Pint y PHPStan sin errores, build y 405
+de Vitest.
+**Siguiente tarea:** `HD-03` · Ninguna novedad comprueba si se traslapa con otra.
 
 ## Qué se hizo
 
-`FichaDeEmpleado::novedades()` era `return []` con un comentario que decía «vacío hasta que existan
-sus módulos», y los tres existen desde la fase 2. Ahora junta las tres relaciones que ya estaban en
-`Vinculacion` —`incapacidades()`, `vacaciones()` y `licencias()`— en una sola tabla, de la más
-reciente a la más antigua.
+`FichaDeEmpleado::resumen()` daba siempre los mismos seis datos, estuviera la persona activa o no, y
+la terminación era invisible en la ficha: solo se veía la etiqueta «Inactiva» arriba, sin fecha, sin
+motivo, sin rastro de la salida en ninguna de las cuatro pestañas.
 
-- **Ninguna cuenta se hace en la ficha.** Los días los da cada modelo, que llama al motor: hábiles en
-  vacaciones, corridos en incapacidades y licencias.
-- **Dos reglas de conteo en una sola columna se explican, no se disimulan.** Debajo de la tabla hay
-  una nota que dice cuál es cuál. Sin ella, la única lectura posible de la columna sería sumarla, y
-  sumar días hábiles con días corridos es exactamente lo que la regla 3 quiere evitar.
-- **Columna nueva «Detalle»**, con el origen y el diagnóstico de la incapacidad. Las licencias no la
-  usan: lo que las distingue es su tipo, y ese va en la primera columna —«Suspensión», «Ausencia»—,
-  porque llamar «Licencia» a una suspensión sería decir otra cosa.
-- **El diagnóstico dejó de viajar a quien no puede verlo.** Es el dato sensible del documento 1, 6.3.
-  En el listado del módulo el permiso se cumplía solo, porque a esa pantalla no se llega sin
-  `modulo:incapacidades`; a la ficha se entra con el módulo de **empleados**, que es otro permiso
-  distinto. `detalleDeIncapacidad()` pregunta, y sin el módulo escribe solo el origen.
-- **El caso de aislamiento es del camino nuevo, no de los tres módulos.** Lo que esta tarea abre es
-  leer novedades **por la vinculación** en vez de por su propio listado, y `vinculacion_id` es único
-  en toda la base y no por empresa. La prueba crea a propósito las tres novedades de la empresa B
-  colgadas del empleado de la A y comprueba que ninguna aparece en su ficha.
+- **Tres datos nuevos, solo para quien ya no está activo**: Fecha de salida, Tipo de salida y Motivo,
+  agregados al final de los seis de siempre cuando `$vinculacion->estaActiva()` es falso. Quien está
+  activa recibe exactamente el mismo arreglo de seis que antes —ni un hueco donde irían los tres
+  nuevos—.
+- **«Cuánto duró la vinculación» no se repite.** «Antigüedad» ya está entre los seis de siempre y ya
+  mide hasta `fechaDeSalida()` desde F2-09: es exactamente esa cuenta, así que agregarla otra vez con
+  otro nombre habría sido decir lo mismo dos veces.
+- **El tipo y el motivo salen de `terminacion()`**, la relación `HasOne` que ya existía en
+  `Vinculacion` desde F2-09. Se agregó a los `loadMissing()` de `FichaDeEmpleado::de()`.
+- **`terminacion` puede no existir.** La fábrica de pruebas `Vinculacion::terminada()` ya desactivaba
+  sin registrar una terminación —previendo la carga histórica que F5-02 todavía no trae, donde solo
+  hay `fecha_fin`—. Con eso probado, el tipo y el motivo se escriben con la raya (`Formato::VACIO`) en
+  vez de romper la ficha; la fecha de salida sigue viniendo de `fechaDeSalida()`, que ya sabía caer al
+  respaldo de `fecha_fin`.
+- **Caso de aislamiento nuevo**, siguiendo el patrón que dejó HD-01: `terminacion` cuelga de
+  `vinculacion_id`, que es único en toda la base y no por empresa. La prueba cuelga una segunda
+  terminación de la empresa B del mismo empleado de la A, que ya tiene la suya propia, y comprueba que
+  la ficha de la A sigue enseñando su propio motivo y no el ajeno.
 
 ## Decisiones tomadas
 
-- **Orden descendente, de la más reciente a la más antigua.** El documento 3, 5.3 dice «en orden
-  cronológico», que es una instrucción sobre juntar las tres clases por fecha y no sobre el sentido.
-  Se eligió el mismo sentido del histórico de movimientos, que es la pestaña de al lado: en una ficha
-  se entra a ver qué pasó últimamente. Es una decisión de presentación y se puede invertir en una
-  línea si David la prefiere al revés.
-- **El diagnóstico se recorta por módulo, no la novedad entera.** Quien no tiene el módulo de
-  incapacidades sigue viendo que hubo una incapacidad, con sus fechas, sus días y su origen: eso es
-  información de personal que el módulo de empleados sí le da. Lo único que no ve es el código.
-- **La clave de fila es compuesta —`incapacidad-9`, `vacacion-4`, `licencia-2`—** porque los `id` de
-  las tres tablas chocan entre sí y `TablaDatos` usa esa clave para pintar la lista.
+- **Los tres datos van en el mismo arreglo `resumen()`**, no en un bloque aparte de la pantalla. Es
+  donde el «hecho cuando» los pide —«junto a los datos de siempre»— y es el único sitio donde ya
+  existe el patrón de `dato()` con etiqueta, valor, pendiente y nota; `ResumenDeEmpleado.vue` no
+  necesitó ningún cambio porque ya pinta lo que le llegue en `datos` sin asumir que son seis.
+- **El motivo se etiqueta «Motivo», no «Motivo de salida»**, para que combine con la columna del mismo
+  nombre en el listado de terminaciones (`Terminaciones/Index.vue`).
 
 ## Preguntas para Angela
 
@@ -59,8 +54,9 @@ reciente a la más antigua.
   en `docs/07-plan-de-incidentes.md` sección 4.
 - **`F3-06b` sigue esperándote**: proveedor transaccional, `.env`, DNS (SPF/DKIM/DMARC) y correr
   `alertas:prueba`. Con `MAIL_MAILER=log` en local, ninguna alerta sale de la máquina de verdad.
-- **Verificación manual de esta tarea**: entrar a la ficha de Juliana María Gómez Ríos, que es la
-  persona con la que se encontró el fallo, y comprobar que aparecen sus tres novedades.
+- **Verificación manual de esta tarea**: entrar a la ficha de Valentina Cárdenas, que es la persona con
+  la que se encontró el fallo, registrarle una terminación si todavía no la tiene, y comprobar que
+  aparecen su fecha de salida, su tipo de salida y su motivo.
 - **Verificaciones manuales heredadas y todavía sin hacer**: la ficha de empresa del proveedor tras
   REV-12, el formulario de acceso de prueba tras F5-08, la pestaña «Facturación» de REV-11 y el flujo
   completo de REV-10.
@@ -68,12 +64,12 @@ reciente a la más antigua.
 
 ## Notas para la próxima sesión
 
-- **`HD-02` toca el mismo archivo que esta tarea** —`FichaDeEmpleado`— y es su continuación natural:
-  la salida tampoco se ve en ninguna de las cuatro pestañas. `Vinculacion::terminacion()` y
-  `fechaDeSalida()` ya existen desde F2-09, así que es un `resumen()` que cambia según el estado, no
-  una consulta nueva.
 - **`HD-03` antes que `HD-04`, y en ese orden están.** La detección de traslapes que construye
   `HD-03` es la que `HD-04` necesita para saber qué días se pisan.
+- **`HD-03` toca `RegistrarVacacion` y sus tres gemelas** —incapacidades, licencias— más la edición de
+  cada una. La comprobación tiene que vivir en un solo sitio reutilizable, no copiada en cada
+  `FormRequest`: es el mismo tipo de deuda que `PeriodoDigitado` y `Listado::paraLaPantalla()` ya
+  resolvieron en F2-11.
 - **`HD-06`, `HD-08` y `HD-09` tocan las tres la plantilla de empleados.** Están seguidas a
   propósito: hacerlas juntas evita tres migraciones de plantilla y tres rondas de pruebas.
 - **`./vendor/bin/pest` a secas se queda sin memoria** en la exportación a Excel, con el
