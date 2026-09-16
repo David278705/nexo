@@ -54,10 +54,15 @@ Aquí está todo lo que todavía no se puede dar por cerrado. Se organiza en cin
 | 14 | ~~Listados maestros: EPS, fondos, ARL, cajas, bancos~~ **RESUELTA:** ver D.5 | D | Angela | No |
 | 15 | ~~Confirmar el orden del dashboard~~ **RESUELTA:** el construido ya es el correcto | D | David | No |
 | 16 | ~~Nombre del proceso de carga inicial~~ **RESUELTA:** «Carga inicial» | D | David | No |
-| 17 | Módulo de llamados de atención | E | Ambos | No |
-| 18 | Enlace al expediente en Google Drive | E | Ambos | No |
-| 19 | Módulo de reportes centralizado | E | Ambos | No |
-| 20 | Asistente de inteligencia artificial | E | Ambos | No |
+| 17 | ~~Bogotá bajo Cundinamarca o bajo Bogotá D.C.~~ **RESUELTA:** el catálogo no se toca, se arregla la guía | D | David | No |
+| 18 | ~~Cómo registrar las prórrogas en la carga masiva~~ **RESUELTA:** una sola plantilla con columnas | D | David | No |
+| 19 | ~~Incapacidad que cae sobre vacaciones ya registradas~~ **RESUELTA:** recalcular y dejar nota | D | David | No |
+| 20 | ~~Terminación de un contrato sin estado claro~~ **RESUELTA:** se bloquea hasta aclararlo | D | David | No |
+| 21 | Norma que sustenta que la incapacidad interrumpe las vacaciones | D | Angela | No |
+| 22 | Módulo de llamados de atención | E | Ambos | No |
+| 23 | Enlace al expediente en Google Drive | E | Ambos | No |
+| 24 | Módulo de reportes centralizado | E | Ambos | No |
+| 25 | Asistente de inteligencia artificial | E | Ambos | No |
 
 ## A. Aplazado a propósito
 
@@ -384,6 +389,27 @@ Las cinco de arriba están en `database/data/entidades.php` y las carga `Entidad
 | Vigencia del usuario de demostración | **14 días.** Dentro del rango sugerido (7 a 15), y da margen para una conversación comercial que se alargue una semana sin que el prospecto lo use como sistema real. Ver la tarea nueva `F5-08` para dejarlo como valor sugerido en el formulario, que hoy no propone ninguno. |
 | Nombre del proceso de carga inicial | **"Carga inicial"**, que es el nombre que ya usan el documento 1 (capítulo 12), el documento 2 y el código (`app/Carga/`, `cargas_iniciales`) desde que se construyó. Cambiarlo ahora sería el único motivo real para tocar código; se confirma el que ya está. |
 | ¿Se cargan también empleados retirados en el histórico? | **No, queda fuera del alcance del MVP.** La propia propuesta ya se inclinaba por esto —"probablemente no valga la pena"—, y la plantilla obligatoria de F5-01/F5-02 sigue cubriendo solo activos. Si un cliente lo pide, es una carga manual con el módulo de terminaciones, no un cambio a la plantilla. |
+
+### D.7 Las cuatro dudas de las grabaciones del 8 y 10 de septiembre — RESUELTAS por David el 2026-09-16
+
+David recorrió el sistema con datos reales y dejó tres grabaciones. En cuatro puntos pidió
+expresamente una recomendación antes de que se construyera nada. Las cuatro quedaron decididas
+antes de escribir las tareas `HD-01` a `HD-16`, para que ninguna naciera bloqueada.
+
+| Punto | Decisión |
+|---|---|
+| Bogotá bajo «Bogotá D.C.» y no bajo Cundinamarca | **El catálogo no se toca; se arregla la guía.** El DANE define Bogotá como Distrito Capital, entidad propia de nivel departamental (código 11), no como municipio de Cundinamarca, y el catálogo ya lo refleja correctamente: Cundinamarca tiene sus 116 municipios y Bogotá no está entre ellos. Duplicar Bogotá dentro de Cundinamarca partiría los reportes en dos. Lo que cambia es la ayuda al usuario: el selector advierte, el buscador la encuentra y el error de la carga masiva explica en vez de solo rechazar. Ver `HD-07`. |
+| Cómo registrar las prórrogas en la carga masiva | **Una sola plantilla con columnas de prórrogas**, no dos archivos separados por tipo de contrato. Pares inicio/fin para hasta seis prórrogas, en un bloque marcado «solo para contratos a término fijo» que los demás dejan vacío. Un archivo, una carga y un solo juego de validaciones que mantener. Ver `HD-09`. |
+| Qué hacer cuando una incapacidad cae sobre vacaciones ya registradas | **Recalcular y dejar nota.** Los días de vacaciones que la incapacidad se comió vuelven al saldo; la novedad conserva las fechas pedidas originalmente pero registra los días realmente disfrutados, con una nota visible que explica el traslape. La alternativa —solo advertir— deja el saldo mal hasta que alguien se acuerde de corregirlo a mano. Ver `HD-04`. |
+| Terminación de un contrato a término fijo cuyo estado nadie aclaró | **Se bloquea hasta aclararlo.** No se registra la terminación mientras haya un vacío entre el último periodo contractual conocido y la fecha de salida, porque de qué contrato regía depende qué indemnización aplicaría. El mensaje dice las fechas exactas que faltan y lleva a registrar la prórroga o el paso a indefinido. Ver `HD-12`. |
+
+##### Lo que sigue siendo pregunta para Angela
+
+La norma exacta que sustenta que **la incapacidad interrumpe el disfrute de vacaciones**. El
+comportamiento ya lo decidió David y `HD-04` se puede construir sin la respuesta, pero la constante
+tiene que quedar citada en `config/reglas_laborales.php` con su norma y su fecha de verificación,
+como todas las demás. Mientras no llegue, se escribe con la nota de que falta la cita —no con una
+norma inventada—.
 
 ## E. Fase dos
 

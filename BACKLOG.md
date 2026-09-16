@@ -2009,3 +2009,311 @@ David sigue editando cada vez. `AccesosDePrueba::generar()` tampoco cambió: sig
 omisión propio, que es justo lo que su comentario ya decía. Dos pruebas nuevas: una en
 `DemostracionDelPanelTest.php` que comprueba la prop con la configuración en 14, y dos en
 `Demostracion.test.js` —el valor inicial del campo y el texto de ayuda—.
+
+## Hallazgos de David probando el sistema (8 y 10 de septiembre de 2026)
+
+David recorrió el sistema con datos reales y dejó tres grabaciones con lo que encontró. Cada
+hallazgo de abajo se verificó contra el código antes de escribirlo: los que resultaron ciertos son
+tarea, y lo que ya estaba resuelto se dice en la tarea que lo toca en vez de abrir una en falso.
+
+**Las cuatro decisiones que las grabaciones dejaban abiertas ya están tomadas** —David las resolvió
+el 2026-09-16, ver D.7 del documento 6—, así que ninguna de estas tareas nace bloqueada:
+el catálogo de Bogotá no se toca y lo que se arregla es la guía; las prórrogas van en columnas
+dentro de la misma plantilla; la incapacidad que pisa unas vacaciones las recalcula y deja nota; y
+la terminación se bloquea mientras el contrato esté en el aire.
+
+**Lo único que sigue siendo pregunta para Angela** es la norma exacta que sustenta HD-04 —que la
+incapacidad interrumpe el disfrute de vacaciones—, que hay que citar en
+`config/reglas_laborales.php` como todas las demás. La tarea no depende de esa respuesta para
+construirse: el comportamiento ya lo decidió David.
+
+### [ ] HD-01 · La pestaña «Novedades» de la ficha del empleado devuelve siempre una lista vacía
+
+`FichaDeEmpleado::novedades()` es literalmente `return [];`, con un comentario que dice *«Vacío
+hasta que existan sus módulos»*. Los módulos —incapacidades, vacaciones y licencias— existen desde
+la fase 2. Es el mismo descuido que REV-12 encontró en la ficha del proveedor: código de reserva que
+nadie volvió a tocar cuando llegó aquello que esperaba.
+
+David lo comprobó registrándole a Juliana María Gómez Ríos una incapacidad, unas vacaciones y una
+suspensión: ninguna de las tres aparece en su ficha. Los movimientos sí, porque F2-08 sí conectó
+ese método.
+
+**Hecho cuando:** la pestaña «Novedades» de la ficha enseña las incapacidades, vacaciones y
+licencias de esa vinculación juntas y en orden cronológico, cada una con su tipo, fechas, días y lo
+que la distinga —origen y diagnóstico la incapacidad, tipo la licencia—; el estado vacío solo
+aparece cuando la persona de verdad no tiene ninguna; el comentario de reserva desaparece del
+código; y una prueba de aislamiento confirma que no se cuelan novedades de otra empresa.
+**Fuente:** `app/Contratacion/FichaDeEmpleado.php` · `docs/03-diseno-e-interfaz.md` 5.3
+
+### [ ] HD-02 · La ficha de un empleado inactivo no dice nada de su salida
+
+`FichaDeEmpleado::resumen()` devuelve siempre los mismos seis datos —documento, fecha de ingreso,
+antigüedad, tipo de contrato, salario y saldo de vacaciones—, esté la persona activa o no. Y la
+terminación no aparece en ninguna de las cuatro pestañas: David entró a Valentina Cárdenas, que
+está inactiva, y solo encontró la etiqueta «Inactiva» arriba, sin fecha, sin motivo y sin rastro de
+la salida en ninguna parte.
+
+La antigüedad sí está bien calculada: `antiguedad()` ya mide hasta `fechaDeSalida()` cuando el
+vínculo terminó. Lo que falta es enseñar la salida.
+
+**Hecho cuando:** la ficha de una persona inactiva enseña, junto a los datos de siempre, la fecha de
+salida, el tipo de salida, el motivo y cuánto duró la vinculación; una persona activa no ve ninguno
+de esos campos ni un hueco donde irían; y la terminación deja de ser invisible en la ficha.
+**Fuente:** `app/Contratacion/FichaDeEmpleado.php` · `app/Terminaciones/` ·
+`docs/01-especificacion-funcional.md` cap. 9
+
+### [ ] HD-03 · Ninguna novedad comprueba si se traslapa con otra
+
+No existe una sola comprobación de traslape en todo el código —`traslap`, `solap`, `superpon` y
+`overlap` no aparecen en `app/`—. David le registró a la misma persona unas vacaciones del 2 al 11
+de septiembre y otras del 10 al 24: el sistema aceptó las dos y contó el 10 y el 11 dos veces
+contra el saldo.
+
+Esta tarea cubre **los casos que no admiten discusión**, que son los que bloquean:
+
+- Dos novedades del mismo tipo que se pisan —dos periodos de vacaciones, dos incapacidades, dos
+  licencias—.
+- Una novedad nueva sobre una incapacidad ya registrada: vacaciones, licencia no remunerada,
+  ausencia o suspensión encima de días ya incapacitados. Sobre una incapacidad no se monta nada.
+- Vacaciones y suspensión a la vez: o está suspendida o está en vacaciones.
+
+El caso contrario —la incapacidad que llega después y cae sobre vacaciones ya registradas— **no se
+bloquea**, porque ahí la incapacidad manda y las vacaciones se ajustan. Eso es HD-04.
+
+**Hecho cuando:** intentar registrar cualquiera de los traslapes de arriba devuelve un error de
+validación que nombra la novedad con la que choca y sus fechas, no un mensaje genérico; la
+comprobación vive en un solo sitio reutilizable por los cuatro módulos y no copiada en cada
+`FormRequest`; editar una novedad para que pise a otra falla igual que crearla; y la regla no
+mira novedades de otra empresa ni las borradas lógicamente.
+**Fuente:** `app/Http/Requests/RegistrarVacacion.php` y sus gemelas ·
+`docs/01-especificacion-funcional.md` cap. 6
+
+### [ ] HD-04 · La incapacidad que cae sobre vacaciones ya registradas no las ajusta
+
+Es el caso que David describió con detalle: unas vacaciones programadas con anticipación del 10 al
+24 de septiembre y un accidente el día 10 que incapacita del 10 al 19. Esos días no se disfrutaron;
+no pueden contar como vacaciones.
+
+**La decisión ya está tomada** (documento 6, D.7): el sistema **recalcula y deja nota**. Los días de
+vacaciones que la incapacidad se comió vuelven al saldo, la novedad conserva las fechas que se
+pidieron originalmente pero registra los días realmente disfrutados, y queda una nota visible que
+explica el traslape.
+
+**Pregunta para Angela, que no bloquea esta tarea:** la norma exacta que sustenta que la incapacidad
+interrumpe el disfrute de vacaciones, para citarla en `config/reglas_laborales.php` junto a las
+demás, como pide `.claude/rules/20-calculo-y-reglas-legales.md`. Mientras no esté, la constante se
+escribe con la nota de que falta la cita, no con una norma inventada.
+
+**Hecho cuando:** registrar una incapacidad que pisa unas vacaciones ya guardadas devuelve al saldo
+los días traslapados; la novedad de vacaciones enseña las fechas pedidas y los días realmente
+disfrutados como dos cosas distintas; la nota del traslape se ve en la ficha y en el listado; el
+saldo se sigue calculando y no guardando, como manda la regla 2 del proyecto; y eliminar la
+incapacidad devuelve las vacaciones a como estaban.
+**Fuente:** `app/Dominio/Calculo/SaldoDeVacaciones.php` · `docs/06-decisiones-pendientes.md` D.7 ·
+`.claude/rules/20-calculo-y-reglas-legales.md`
+
+### [ ] HD-05 · Solo hay festivos de 2025 a 2027, y el histórico se carga de años anteriores
+
+La tabla `festivos` tiene 53 filas: 2025, 2026 y 2027. La carga inicial de vacaciones históricas
+pide fechas de años anteriores —David puso el ejemplo de unas vacaciones de 2023—, y los días
+hábiles de esas vacaciones se cuentan contra un calendario que no existe. Los festivos colombianos
+se mueven de fecha cada año por la ley Emiliani, así que no se pueden deducir de otro año.
+
+**Hecho cuando:** el catálogo de festivos cubre los últimos diez años además de los tres que ya
+tiene; una vacación histórica de cualquiera de esos años cuenta sus días hábiles contra los
+festivos que de verdad rigieron ese año; el sábado se sigue contando según el parámetro
+`sabado_laboral` de cada empresa y no como algo fijo; y una fecha de un año sin calendario cargado
+falla con un mensaje que lo dice, en vez de contar de más en silencio.
+**Fuente:** `database/seeders/FestivosSeeder.php` · `app/Dominio/Calculo/` ·
+`.claude/rules/20-calculo-y-reglas-legales.md`
+
+### [ ] HD-06 · No se guarda el celular ni el correo del empleado
+
+La tabla `personas` tiene dirección y ciudad de residencia, pero ningún dato de contacto: no hay
+celular ni correo electrónico. David lo confirmó buscándolo en el listado y en la ficha. Es
+información básica de un empleado y debería entrar desde el primer registro, como el nombre o la
+fecha de nacimiento.
+
+**Hecho cuando:** `personas` guarda celular y correo; el asistente de registro manual los pide con
+su validación —formato de correo, celular de diez dígitos—; la plantilla de carga masiva trae sus
+dos columnas; la ficha del empleado los enseña entre los datos personales; y el listado de empleados
+y su exportación los incluyen.
+**Fuente:** `app/Models/Persona.php` · `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` ·
+`docs/01-especificacion-funcional.md` cap. 4
+
+### [ ] HD-07 · Bogotá está bajo «Bogotá D.C.» y quien busca Cundinamarca no la encuentra
+
+El catálogo es correcto y **no se toca**: el DANE define Bogotá como Distrito Capital, entidad
+propia de nivel departamental con código 11, no como municipio de Cundinamarca. Cundinamarca tiene
+sus 116 municipios y Bogotá no está entre ellos, que es exactamente como debe ser.
+
+El problema es que nadie lo sabe. A David le pasó: puso Cundinamarca como departamento porque la
+ciudad de nacimiento era Bogotá, y la carga masiva se lo rechazó diciendo que Bogotá no pertenece a
+Cundinamarca. A quien registre a alguien a mano le va a pasar igual: abrirá el desplegable de
+departamentos buscando Cundinamarca y no encontrará Bogotá debajo.
+
+**Decisión tomada** (documento 6, D.7): se deja el catálogo como está y se arregla la guía.
+
+**Hecho cuando:** al elegir Cundinamarca en cualquier selector de departamento, la pantalla advierte
+que Bogotá se busca como «Bogotá D.C.» y no en esa lista; escribir «Bogotá» en el buscador de
+departamentos encuentra «Bogotá D.C.»; el error de la carga masiva explica el motivo y dice qué
+escribir en vez de solo rechazar la fila; y las instrucciones de las plantillas que piden
+departamento lo advierten.
+**Fuente:** `resources/js/Components/Selector.vue` · `app/CargaInicial/` ·
+`docs/06-decisiones-pendientes.md` D.7
+
+### [ ] HD-08 · La plantilla de empleados pide el lugar de expedición en una sola columna
+
+El asistente de registro manual pide el lugar de expedición del documento en tres campos —país,
+departamento y ciudad—. La plantilla de carga masiva pide `País de expedición del documento` y
+después una sola columna, `Lugar de expedición del documento`, donde hay que meter ciudad y
+departamento juntos. Para el nacimiento sí están separados (`nacimiento.departamento` y
+`nacimiento.ciudad`), así que la plantilla es incoherente consigo misma.
+
+David también pidió que quien nació o expidió el documento fuera de Colombia —su ejemplo era
+Venezuela— no tenga que escribir la ciudad y el departamento juntos entre paréntesis, sino cada uno
+en su columna.
+
+**El orden de las columnas ya está bien**: REV-08 movió `País de expedición del documento` a su
+sitio, justo antes del lugar, después de la fecha de expedición. La grabación del 8 de septiembre
+a las 12:48 es anterior a ese arreglo. No hay nada que reordenar, solo que comprobar.
+
+**Hecho cuando:** la plantilla pide `Departamento de expedición del documento` y `Ciudad de
+expedición del documento` por separado, en el mismo orden que el formulario manual; una fila del
+exterior se llena poniendo el departamento o estado en su columna y la ciudad en la suya, sin
+paréntesis; las filas que ya se cargaron con el formato anterior siguen leyéndose; y una prueba
+comprueba que el orden de columnas de la plantilla es el mismo que el del asistente manual.
+**Fuente:** `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` · `app/Models/Persona.php`
+
+### [ ] HD-09 · La plantilla no deja registrar las prórrogas una por una
+
+Hoy la plantilla guarda `Prórrogas ya realizadas` —un número— y `Fecha de inicio del contrato
+vigente`. Con eso no se sabe cuándo empezó y terminó cada prórroga. David lo encontró cargando a
+alguien que entró el 10 de febrero de 2018 con contrato a término fijo y varias prórrogas: no había
+dónde ponerlas.
+
+**Decisión tomada** (documento 6, D.7): **una sola plantilla** con columnas de prórrogas, no dos
+archivos separados. Las columnas van en un bloque marcado «solo para contratos a término fijo», que
+quien tiene indefinido u obra o labor deja vacío.
+
+**Hecho cuando:** la plantilla trae pares de fecha inicio/fin para hasta seis prórrogas, agrupados
+bajo un encabezado que dice que son solo para término fijo; las instrucciones explican que un
+contrato indefinido o de obra o labor solo necesita la fecha de ingreso; cargar las prórrogas una
+por una produce el mismo historial contractual que registrarlas por pantalla; el conteo de prórrogas
+sale de las filas cargadas y no de un número escrito a mano; y las reglas de C.1 y C.2 del documento
+6 —la cuarta prórroga y el tope de cuatro años— se evalúan sobre ese historial.
+**Fuente:** `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` ·
+`docs/06-decisiones-pendientes.md` C.1, C.2, D.7 · `app/Models/PeriodoContractual.php`
+
+### [ ] HD-10 · Los ejemplos de las plantillas no coinciden con los catálogos del sistema
+
+La plantilla del histórico de incapacidades trae `SURA` como ejemplo en su primera fila. En el
+catálogo la EPS se llama **`Sura EPS`**, así que quien copie el ejemplo recibe un error. David pidió
+además que las instrucciones traigan las listas válidas, para que quien llena el archivo no tenga
+que adivinar el texto exacto.
+
+Lo mismo en la plantilla de licencias y ausencias: el tipo de novedad admite «licencia no
+remunerada», «ausencia» o «suspensión», y escribir «suspension» sin tilde produce un error que la
+plantilla no anticipa.
+
+**Hecho cuando:** ningún ejemplo de ninguna plantilla usa un valor que el catálogo rechazaría —una
+prueba lo comprueba recorriendo las siete plantillas, para que no vuelva a desfasarse—; la hoja de
+instrucciones de cada plantilla enseña los valores admitidos de cada columna de lista o de catálogo;
+y las columnas de lista se validan sin distinguir mayúsculas ni tildes, de modo que «suspension»
+entre igual que «suspensión».
+**Fuente:** `app/CargaInicial/Plantillas/` · `app/CargaInicial/Columna.php`
+
+### [ ] HD-11 · El cambio a término indefinido siempre se registra con la fecha de hoy
+
+`CambioAIndefinido::fechaDelCambio()` devuelve `Carbon::today()` sin más, y el modal se lo anuncia
+al usuario: *«el cambio queda registrado en el historial con la fecha de hoy»*. David señaló el caso
+real: uno revisa los contratos vencidos sin gestionar y encuentra uno que se volvió indefinido hace
+una semana. Hoy no hay forma de registrar esa fecha.
+
+El propio comentario del método apoya el cambio: dice que un contrato que se vuelve indefinido lo es
+**desde que las partes lo acordaron**. Lo que falta es poder decir cuándo fue.
+
+**Hecho cuando:** el formulario de cambio a término indefinido acepta una fecha, propuesta en hoy y
+editable hacia atrás; no admite una fecha anterior al inicio del periodo vigente ni posterior a hoy;
+el modal de confirmación dice la fecha elegida y no «hoy»; el historial contractual y las alertas
+que dependen de él usan esa fecha; y el ajuste de coherencia que ya existe para un contrato que
+todavía no ha empezado se conserva.
+**Fuente:** `app/Contratacion/CambioAIndefinido.php` ·
+`app/Http/Requests/CambiarATerminoIndefinido.php` · `docs/01-especificacion-funcional.md` 5.5
+
+### [ ] HD-12 · Se puede terminar un contrato cuyo estado nadie ha aclarado
+
+David reprodujo el caso: alguien con contrato a término fijo del 1 de enero al 31 de marzo de 2026 y
+una prórroga hasta el 30 de junio, sin nada registrado después. Registró la terminación con fecha
+del 10 de septiembre y el sistema la aceptó sin objetar. Queda un vacío del 1 de julio al 10 de
+septiembre en el que nadie sabe qué contrato regía: si se prorrogó automáticamente, si firmaron algo
+más largo, o si pasó a indefinido. Y de eso depende qué indemnización aplicaría si la salida la
+motivó la empresa.
+
+**Decisión tomada** (documento 6, D.7): **se bloquea** la terminación mientras el contrato esté en
+el aire, con un mensaje que diga qué falta y lleve a resolverlo.
+
+**Hecho cuando:** intentar registrar una terminación con fecha posterior al último periodo
+contractual conocido de un contrato a término fijo devuelve un error que explica el vacío, dice las
+fechas exactas que quedan sin cubrir, y ofrece el camino —registrar la prórroga o el paso a
+indefinido— en vez de un mensaje genérico; un contrato indefinido o de obra o labor no se ve
+afectado; una terminación dentro del periodo vigente sigue funcionando igual; y la carga masiva de
+terminaciones aplica la misma regla y la reporta fila por fila.
+**Fuente:** `app/Terminaciones/` · `app/Http/Requests/RegistrarTerminacion.php` ·
+`docs/06-decisiones-pendientes.md` D.7
+
+### [ ] HD-13 · El grupo «Movimientos» del menú contiene «Movimientos» y «Terminaciones»
+
+`Modulo::grupo()` agrupa `Movimientos` y `Terminaciones` bajo un encabezado llamado, también,
+«Movimientos». La barra lateral queda con un grupo y un hijo del mismo nombre. David se confundió
+por esto mismo: al ver «Movimientos» en la ficha del empleado dio por hecho que ahí estarían también
+las terminaciones, y resultó que esa pestaña solo trae aumentos de salario y cambios de cargo.
+
+**Hecho cuando:** el grupo se llama de una forma que no se repita con ninguno de sus hijos y que
+abarque lo que contiene —«Cambios y salidas» es la propuesta, por decir en dos palabras lo que son
+un aumento de salario y una terminación—; el nombre nuevo está en `Modulo::grupo()` y no escrito en
+el componente; la pestaña «Movimientos» de la ficha del empleado conserva su nombre, que ahí sí es
+exacto; y las pruebas de navegación y el prototipo quedan de acuerdo.
+**Fuente:** `app/Autorizacion/Modulo.php` · `prototipos/sistema.html` ·
+`docs/03-diseno-e-interfaz.md` cap. 4
+
+### [ ] HD-14 · El listado de incapacidades no enseña la EPS ni deja ordenar por días
+
+Las dos cosas están así a propósito y las dos hay que cambiarlas. El comentario de
+`ListadoDeIncapacidades::fila()` dice que la EPS *«es el único dato que la tabla no enseña —no cabe
+entre las nueve columnas»*, y `columnasDeOrden()` solo admite `nombre`, `inicio` y `fin`. David
+pidió las dos: la EPS después de «Prórroga», y poder ordenar por días para ver de una las
+incapacidades más largas.
+
+**Hecho cuando:** la tabla de incapacidades enseña la EPS como última columna, después de
+«Prórroga»; el encabezado «Días» ordena en los dos sentidos como ya lo hacen «Inicio» y «Fin»; el
+orden por días se resuelve en la consulta y no en PHP sobre la página ya paginada; y la exportación
+sigue trayendo las mismas columnas que la tabla.
+**Fuente:** `app/Incapacidades/ListadoDeIncapacidades.php` · `app/Listados/Listado.php` ·
+`docs/01-especificacion-funcional.md` 11.3
+
+### [ ] HD-15 · El botón «Nueva licencia» no nombra las tres cosas que registra
+
+El módulo registra licencias no remuneradas, ausencias y suspensiones —tres figuras distintas, con
+efectos distintos sobre el saldo de vacaciones—, pero el botón dice solo «Nueva licencia». El título
+del modal ya dice «Nueva licencia o ausencia», que tampoco las nombra las tres.
+
+**Hecho cuando:** el botón y el título nombran las tres figuras; el nombre del módulo en el menú y
+en los encabezados de pantalla es coherente con ellas; y ninguna de las tres queda escondida detrás
+del nombre de otra.
+**Fuente:** `resources/js/Pages/Licencias/Index.vue` · `app/Licencias/TipoDeLicencia.php` ·
+`docs/01-especificacion-funcional.md` 6.5
+
+### [ ] HD-16 · La nota del saldo de vacaciones no menciona el disfrute
+
+La ficha explica el saldo así: *«Calculado a hoy: 1,25 días por cada mes cumplido desde el ingreso,
+o desde la fecha de corte si el saldo vino de la carga inicial»*. Cuenta de dónde sale lo acumulado
+pero no dice que lo disfrutado se resta, que es justo la mitad de la fórmula de la regla 2 del
+proyecto: `saldo_inicial + acumulación − disfrute − suspensiones`.
+
+**Hecho cuando:** la nota nombra los cuatro términos de la fórmula, incluidos los días ya
+disfrutados y las suspensiones que descuentan; el texto vive en un solo sitio y no repetido en cada
+pantalla que enseña el saldo; y una prueba lo comprueba, para que la nota y la fórmula no se separen
+el día que la fórmula cambie.
+**Fuente:** `app/Contratacion/FichaDeEmpleado.php` · `app/Dominio/Calculo/SaldoDeVacaciones.php` ·
+`CLAUDE.md` regla 2

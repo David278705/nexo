@@ -207,7 +207,7 @@ describe('el filtro de empleado de los tres módulos de novedades (11.3)', funct
             Incapacidad::factory()->de($this->mauricio)->del14al16DeJulio()->create();
         });
 
-        $respuesta = $this->actingAs($usuario)->get('/incapacidades?buscar=Ramírez');
+        $respuesta = $this->actingAs($usuario)->get('/incapacidades?buscar='.urlencode('Ramírez'));
 
         $props = $respuesta->viewData('page')['props'];
 
@@ -254,7 +254,7 @@ describe('el filtro de empleado de los tres módulos de novedades (11.3)', funct
             Licencia::factory()->de($this->mauricio)->delJuevesAlMartes()->create();
         });
 
-        $respuesta = $this->actingAs($usuario)->get('/licencias?buscar=Peña');
+        $respuesta = $this->actingAs($usuario)->get('/licencias?buscar='.urlencode('Peña'));
 
         expect($respuesta->viewData('page')['props']['licencias']['filas'])->toHaveCount(1)
             ->and($respuesta->viewData('page')['props']['licencias']['filas'][0]['nombre'])
