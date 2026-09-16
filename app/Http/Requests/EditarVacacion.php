@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Vacacion;
+
 /**
  * Las reglas de la edición de un periodo de vacaciones (documento 1, 6.2).
  *
@@ -31,5 +33,33 @@ class EditarVacacion extends RegistrarVacacion
         unset($reglas['vinculacion_id']);
 
         return $reglas;
+    }
+
+    /**
+     * El empleado no viaja en el formulario de edición: sale de la fila que
+     * la ruta ya resolvió por `{vacacion}`.
+     */
+    protected function vinculacionIdParaTraslape(): int
+    {
+        return $this->vacacionEnLaRuta()->vinculacion_id;
+    }
+
+    /**
+     * La propia fila no se compara contra sí misma: si no cambiaron las
+     * fechas, o si las nuevas siguen sin pisar nada más, guardar tiene que
+     * poder repetir las mismas fechas de hoy.
+     */
+    protected function idAExcluirDelTraslape(): ?int
+    {
+        return $this->vacacionEnLaRuta()->id;
+    }
+
+    private function vacacionEnLaRuta(): Vacacion
+    {
+        $vacacion = $this->route('vacacion');
+
+        assert($vacacion instanceof Vacacion);
+
+        return $vacacion;
     }
 }

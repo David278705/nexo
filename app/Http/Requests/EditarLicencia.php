@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Licencia;
+
 /**
  * Las reglas de la edición de una licencia, ausencia o suspensión
  * (documento 1, 6.2).
@@ -23,5 +25,24 @@ class EditarLicencia extends RegistrarLicencia
         unset($reglas['vinculacion_id']);
 
         return $reglas;
+    }
+
+    protected function vinculacionIdParaTraslape(): int
+    {
+        return $this->licenciaEnLaRuta()->vinculacion_id;
+    }
+
+    protected function idAExcluirDelTraslape(): ?int
+    {
+        return $this->licenciaEnLaRuta()->id;
+    }
+
+    private function licenciaEnLaRuta(): Licencia
+    {
+        $licencia = $this->route('licencia');
+
+        assert($licencia instanceof Licencia);
+
+        return $licencia;
     }
 }

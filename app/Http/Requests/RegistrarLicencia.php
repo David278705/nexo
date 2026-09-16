@@ -4,9 +4,12 @@ namespace App\Http\Requests;
 
 use App\Licencias\TipoDeLicencia;
 use App\Models\Vinculacion;
+use App\Novedades\ComprobacionDeTraslape;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Las reglas del registro de una licencia, ausencia o suspensión
@@ -19,6 +22,10 @@ use Illuminate\Validation\Rule;
  *   misma regla absoluta de la sección 6.1, y la misma comprobación que usan
  *   `RegistrarIncapacidad` y `RegistrarVacacion`.
  * - **La fecha final no es anterior a la inicial.**
+ * - **No se pisa con otra novedad del empleado.** `HD-03`: dos licencias que
+ *   se solapan —cualquiera de los tres tipos, incluida la vacaciones y
+ *   suspensión a la vez del documento 1, 6.2— o una licencia sobre una
+ *   incapacidad ya registrada. Lo decide `ComprobacionDeTraslape::paraLicencia()`.
  */
 class RegistrarLicencia extends FormRequest
 {
@@ -66,6 +73,40 @@ class RegistrarLicencia extends FormRequest
     public function vinculacion(): Vinculacion
     {
         return Vinculacion::query()->activas()->findOrFail($this->validated('vinculacion_id'));
+    }
+
+    /**
+     * `HD-03`: la misma comprobación de traslape de `RegistrarVacacion`, con
+     * la regla propia de las licencias.
+     */
+    protected function withValidator(Validator $validador): void
+    {
+        $validador->after(function (Validator $validador): void {
+            if ($validador->errors()->hasAny(['vinculacion_id', 'fecha_inicio', 'fecha_fin'])) {
+                return;
+            }
+
+            $mensaje = ComprobacionDeTraslape::paraLicencia(
+                $this->vinculacionIdParaTraslape(),
+                Carbon::parse((string) $this->input('fecha_inicio')),
+                Carbon::parse((string) $this->input('fecha_fin')),
+                $this->idAExcluirDelTraslape(),
+            );
+
+            if ($mensaje !== null) {
+                $validador->errors()->add('fecha_inicio', $mensaje);
+            }
+        });
+    }
+
+    protected function vinculacionIdParaTraslape(): int
+    {
+        return (int) $this->input('vinculacion_id');
+    }
+
+    protected function idAExcluirDelTraslape(): ?int
+    {
+        return null;
     }
 
     /**

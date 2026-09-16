@@ -1,50 +1,53 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-16 · Tarea `HD-02`
-**Verificación:** verde. **1.241 de 1.241** pruebas de Pest, Pint y PHPStan sin errores, build y 405
+**Última sesión:** 2026-09-16 · Tarea `HD-03`
+**Verificación:** verde. **1.251 de 1.251** pruebas de Pest, Pint y PHPStan sin errores, build y 405
 de Vitest.
-**Siguiente tarea:** `HD-03` · Ninguna novedad comprueba si se traslapa con otra.
+**Siguiente tarea:** `HD-04` · La incapacidad que cae sobre vacaciones ya registradas no las ajusta.
 
 ## Qué se hizo
 
-`FichaDeEmpleado::resumen()` daba siempre los mismos seis datos, estuviera la persona activa o no, y
-la terminación era invisible en la ficha: solo se veía la etiqueta «Inactiva» arriba, sin fecha, sin
-motivo, sin rastro de la salida en ninguna de las cuatro pestañas.
+La sesión anterior había dejado `HD-03` a medias, sin commit: existía `App\Novedades\ComprobacionDeTraslape`
+completa —las tres comparaciones, los mensajes, la exclusión del tenant y del borrado lógico por el
+propio `PerteneceATenant`/`SoftDeletes`— y `RegistrarVacacion.php` tenía el `use` y el comentario, pero
+ninguna llamada real: `grep -rn ComprobacionDeTraslape app/` solo encontraba la clase y el import, no
+un solo sitio que la invocara. Esta sesión terminó de enchufarla.
 
-- **Tres datos nuevos, solo para quien ya no está activo**: Fecha de salida, Tipo de salida y Motivo,
-  agregados al final de los seis de siempre cuando `$vinculacion->estaActiva()` es falso. Quien está
-  activa recibe exactamente el mismo arreglo de seis que antes —ni un hueco donde irían los tres
-  nuevos—.
-- **«Cuánto duró la vinculación» no se repite.** «Antigüedad» ya está entre los seis de siempre y ya
-  mide hasta `fechaDeSalida()` desde F2-09: es exactamente esa cuenta, así que agregarla otra vez con
-  otro nombre habría sido decir lo mismo dos veces.
-- **El tipo y el motivo salen de `terminacion()`**, la relación `HasOne` que ya existía en
-  `Vinculacion` desde F2-09. Se agregó a los `loadMissing()` de `FichaDeEmpleado::de()`.
-- **`terminacion` puede no existir.** La fábrica de pruebas `Vinculacion::terminada()` ya desactivaba
-  sin registrar una terminación —previendo la carga histórica que F5-02 todavía no trae, donde solo
-  hay `fecha_fin`—. Con eso probado, el tipo y el motivo se escriben con la raya (`Formato::VACIO`) en
-  vez de romper la ficha; la fecha de salida sigue viniendo de `fechaDeSalida()`, que ya sabía caer al
-  respaldo de `fecha_fin`.
-- **Caso de aislamiento nuevo**, siguiendo el patrón que dejó HD-01: `terminacion` cuelga de
-  `vinculacion_id`, que es único en toda la base y no por empresa. La prueba cuelga una segunda
-  terminación de la empresa B del mismo empleado de la A, que ya tiene la suya propia, y comprueba que
-  la ficha de la A sigue enseñando su propio motivo y no el ajeno.
+- **`withValidator()` en los seis `FormRequest`** —los tres `Registrar*` (Vacacion, Incapacidad,
+  Licencia) y sus gemelas `Editar*`—, con el mismo patrón que ya traía `RegistrarTerminacion`: una
+  regla `after` que corre solo si `vinculacion_id`, `fecha_inicio` y `fecha_fin` ya pasaron sus propias
+  reglas, y que agrega el mensaje de `ComprobacionDeTraslape` al campo `fecha_inicio` si hay choque.
+- **El empleado para la comprobación sale distinto al registrar y al editar.** Dos métodos protegidos,
+  `vinculacionIdParaTraslape()` e `idAExcluirDelTraslape()`, que `Registrar*` resuelve del campo
+  digitado y `Editar*` sobrescribe leyendo la fila que la ruta ya resolvió por
+  `{vacacion}`/`{incapacidad}`/`{licencia}` —route model binding corre en `SubstituteBindings`, que en
+  este proyecto va después de `ResolverTenant` pero sigue siendo antes del controlador, así que
+  `$this->route('vacacion')` ya es el modelo, no un id—. La fila propia se excluye de la comparación
+  para que guardar sin cambiar las fechas no se pise consigo misma.
+- **Prueba nueva**, `tests/Feature/TraslapeDeNovedadesTest.php`: el caso real que abrió la tarea
+  —vacaciones del 2 al 11 de septiembre y otras del 10 al 24—, los tres traslapes del mismo tipo, las
+  dos novedades nuevas que caen sobre una incapacidad, vacaciones y suspensión a la vez, que editar
+  falla igual que crear, que editar sin cambiar fechas no se pisa consigo misma, que una novedad
+  borrada deja de bloquear, y que el caso contrario —incapacidad sobre vacaciones ya registradas— no
+  se bloquea, porque es `HD-04`.
 
 ## Decisiones tomadas
 
-- **Los tres datos van en el mismo arreglo `resumen()`**, no en un bloque aparte de la pantalla. Es
-  donde el «hecho cuando» los pide —«junto a los datos de siempre»— y es el único sitio donde ya
-  existe el patrón de `dato()` con etiqueta, valor, pendiente y nota; `ResumenDeEmpleado.vue` no
-  necesitó ningún cambio porque ya pinta lo que le llegue en `datos` sin asumir que son seis.
-- **El motivo se etiqueta «Motivo», no «Motivo de salida»**, para que combine con la columna del mismo
-  nombre en el listado de terminaciones (`Terminaciones/Index.vue`).
+- **No se tocó el diseño de `ComprobacionDeTraslape`, ya estaba completo y bien razonado.** Una
+  decisión suya que vale la pena dejar explícita porque no es literal del documento: `paraVacaciones()`
+  y `paraLicencia()` comparan contra **cualquier** licencia, no solo contra la suspensión que el
+  documento nombra con todas sus letras («vacaciones y suspensión a la vez»). Se mantuvo así por
+  consistencia interna —licencia no remunerada, ausencia y suspensión son una sola tabla desde F2-07,
+  «una situación que se cuenta igual»— y porque el propio texto de la tarea, en el segundo caso que sí
+  exige (novedad nueva sobre incapacidad), ya pide bloquear las tres por igual.
+- **El mensaje de error va sobre `fecha_inicio` y no sobre un campo aparte.** No hay ningún campo
+  «traslape» en el formulario; `fecha_inicio` es donde ya vive el error de fecha final anterior a la
+  inicial, así que es el sitio natural donde el usuario espera leerlo.
 
 ## Preguntas para Angela
 
-- **La norma que sustenta que la incapacidad interrumpe el disfrute de vacaciones.** Hace falta para
-  citarla en `config/reglas_laborales.php` con su fecha de verificación. **No bloquea `HD-04`**: el
-  comportamiento ya está decidido y la tarea se puede construir; lo que no se puede es inventar la
-  norma.
+- **La norma que sustenta que la incapacidad interrumpe el disfrute de vacaciones**, para
+  `config/reglas_laborales.php`. Sigue sin bloquear nada: `HD-04` ya tiene decidido el comportamiento.
 - **B.2 sigue abierta**: periodo de prueba en cambio de modalidad contractual.
 - **El fondo de cesantías sigue abierto**: si hace falta pedirlo, y dónde.
 
@@ -54,9 +57,9 @@ motivo, sin rastro de la salida en ninguna de las cuatro pestañas.
   en `docs/07-plan-de-incidentes.md` sección 4.
 - **`F3-06b` sigue esperándote**: proveedor transaccional, `.env`, DNS (SPF/DKIM/DMARC) y correr
   `alertas:prueba`. Con `MAIL_MAILER=log` en local, ninguna alerta sale de la máquina de verdad.
-- **Verificación manual de esta tarea**: entrar a la ficha de Valentina Cárdenas, que es la persona con
-  la que se encontró el fallo, registrarle una terminación si todavía no la tiene, y comprobar que
-  aparecen su fecha de salida, su tipo de salida y su motivo.
+- **Verificación manual de esta tarea**: en el formulario de vacaciones, registrarle a un empleado un
+  periodo y luego intentar registrarle otro que se pise —o una licencia, o después de una
+  incapacidad—, y comprobar que el error nombra la novedad y las fechas con las que choca.
 - **Verificaciones manuales heredadas y todavía sin hacer**: la ficha de empresa del proveedor tras
   REV-12, el formulario de acceso de prueba tras F5-08, la pestaña «Facturación» de REV-11 y el flujo
   completo de REV-10.
@@ -64,12 +67,9 @@ motivo, sin rastro de la salida en ninguna de las cuatro pestañas.
 
 ## Notas para la próxima sesión
 
-- **`HD-03` antes que `HD-04`, y en ese orden están.** La detección de traslapes que construye
-  `HD-03` es la que `HD-04` necesita para saber qué días se pisan.
-- **`HD-03` toca `RegistrarVacacion` y sus tres gemelas** —incapacidades, licencias— más la edición de
-  cada una. La comprobación tiene que vivir en un solo sitio reutilizable, no copiada en cada
-  `FormRequest`: es el mismo tipo de deuda que `PeriodoDigitado` y `Listado::paraLaPantalla()` ya
-  resolvieron en F2-11.
+- **`HD-04` depende de `HD-03`, ya está lista para tomarse.** Necesita `ComprobacionDeTraslape` para
+  saber qué vacaciones se pisan con la incapacidad nueva y ajustarlas, así que este es el punto de
+  partida correcto.
 - **`HD-06`, `HD-08` y `HD-09` tocan las tres la plantilla de empleados.** Están seguidas a
   propósito: hacerlas juntas evita tres migraciones de plantilla y tres rondas de pruebas.
 - **`./vendor/bin/pest` a secas se queda sin memoria** en la exportación a Excel, con el

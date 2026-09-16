@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Incapacidad;
+
 /**
  * Las reglas de la edición de una incapacidad (documento 1, 6.2).
  *
@@ -22,5 +24,24 @@ class EditarIncapacidad extends RegistrarIncapacidad
         unset($reglas['vinculacion_id']);
 
         return $reglas;
+    }
+
+    protected function vinculacionIdParaTraslape(): int
+    {
+        return $this->incapacidadEnLaRuta()->vinculacion_id;
+    }
+
+    protected function idAExcluirDelTraslape(): ?int
+    {
+        return $this->incapacidadEnLaRuta()->id;
+    }
+
+    private function incapacidadEnLaRuta(): Incapacidad
+    {
+        $incapacidad = $this->route('incapacidad');
+
+        assert($incapacidad instanceof Incapacidad);
+
+        return $incapacidad;
     }
 }

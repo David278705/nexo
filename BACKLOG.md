@@ -2097,7 +2097,7 @@ sigue el patrón de HD-01: `terminacion` cuelga de `vinculacion_id`, que es úni
 por empresa, así que se cuelga una segunda terminación de la empresa B del mismo empleado de la A que
 ya tiene la suya propia, y la ficha de la A sigue enseñando su motivo y no el ajeno.
 
-### [ ] HD-03 · Ninguna novedad comprueba si se traslapa con otra
+### [x] HD-03 · Ninguna novedad comprueba si se traslapa con otra
 
 No existe una sola comprobación de traslape en todo el código —`traslap`, `solap`, `superpon` y
 `overlap` no aparecen en `app/`—. David le registró a la misma persona unas vacaciones del 2 al 11
@@ -2122,6 +2122,28 @@ comprobación vive en un solo sitio reutilizable por los cuatro módulos y no co
 mira novedades de otra empresa ni las borradas lógicamente.
 **Fuente:** `app/Http/Requests/RegistrarVacacion.php` y sus gemelas ·
 `docs/01-especificacion-funcional.md` cap. 6
+
+Hecho: `App\Novedades\ComprobacionDeTraslape`, el único sitio que compara fechas para los tres
+módulos con periodo —vacaciones, incapacidades y licencias—, con tres métodos y no uno genérico con
+un parámetro «tipo», porque cada novedad comprueba una pregunta distinta:
+`paraVacaciones()` mira otras vacaciones, incapacidades y licencias (así que una vacación sobre una
+suspensión ya registrada queda cubierta sin caso aparte); `paraLicencia()` es la misma pregunta al
+revés; `paraIncapacidad()` solo mira otras incapacidades, porque el caso contrario —una incapacidad
+que cae sobre vacaciones ya registradas— es `HD-04` y no se bloquea aquí. **Va enganchada en
+`withValidator()`**, no como regla de campo, en los seis `FormRequest` —los tres `Registrar*` y sus
+gemelas `Editar*`—, siguiendo el mismo patrón que ya traía `RegistrarTerminacion`; corre después de
+que `vinculacion_id`, `fecha_inicio` y `fecha_fin` pasan sus propias reglas, porque comparar fechas
+que ni siquiera son fechas no dice nada. **El empleado sale distinto según se registre o se edite**:
+al registrar, del campo digitado; al editar, de la fila que la ruta ya resolvió por
+`{vacacion}`/`{incapacidad}`/`{licencia}` —el campo no viaja en el formulario de edición, la misma
+razón que ya explicaba `EditarVacacion`—, y esa fila se excluye de la comparación para que guardar sin
+cambiar las fechas no se pise consigo misma. **El tenant y el borrado lógico no se filtran a mano**:
+`Vacacion`, `Incapacidad` y `Licencia` llevan `PerteneceATenant` y `SoftDeletes`, así que una consulta
+sin más ya excluye la empresa ajena y la fila eliminada. Prueba nueva en
+`tests/Feature/TraslapeDeNovedadesTest.php`, con el caso real que abrió la tarea —vacaciones del 2 al
+11 de septiembre y otras del 10 al 24— y los seis del documento, más la edición que pisa, la edición
+que no se pisa consigo misma, el borrado lógico que deja de bloquear y el caso contrario de `HD-04`
+que no bloquea.
 
 ### [ ] HD-04 · La incapacidad que cae sobre vacaciones ya registradas no las ajusta
 

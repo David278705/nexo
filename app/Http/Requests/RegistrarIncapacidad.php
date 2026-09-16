@@ -4,9 +4,12 @@ namespace App\Http\Requests;
 
 use App\Incapacidades\OrigenIncapacidad;
 use App\Models\Vinculacion;
+use App\Novedades\ComprobacionDeTraslape;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Las reglas del registro de una incapacidad (documento 1, 6.3).
@@ -22,6 +25,10 @@ use Illuminate\Validation\Rule;
  *   regla igual.
  * - **La fecha de terminación no es anterior a la de inicio.** Una incapacidad
  *   de un solo día tiene las dos fechas iguales, así que se admite `>=`.
+ * - **No se pisa con otra incapacidad ya registrada.** `HD-03`: la
+ *   comprobación es `ComprobacionDeTraslape::paraIncapacidad()`, que solo mira
+ *   otras incapacidades —el caso contrario, una incapacidad que cae sobre
+ *   vacaciones ya registradas, no se bloquea aquí, es `HD-04`—.
  */
 class RegistrarIncapacidad extends FormRequest
 {
@@ -80,6 +87,40 @@ class RegistrarIncapacidad extends FormRequest
     public function esProrroga(): bool
     {
         return $this->validated('es_prorroga') === 'si';
+    }
+
+    /**
+     * `HD-03`: la misma comprobación de traslape de `RegistrarVacacion`, con
+     * la regla propia de las incapacidades —solo mira otras incapacidades—.
+     */
+    protected function withValidator(Validator $validador): void
+    {
+        $validador->after(function (Validator $validador): void {
+            if ($validador->errors()->hasAny(['vinculacion_id', 'fecha_inicio', 'fecha_fin'])) {
+                return;
+            }
+
+            $mensaje = ComprobacionDeTraslape::paraIncapacidad(
+                $this->vinculacionIdParaTraslape(),
+                Carbon::parse((string) $this->input('fecha_inicio')),
+                Carbon::parse((string) $this->input('fecha_fin')),
+                $this->idAExcluirDelTraslape(),
+            );
+
+            if ($mensaje !== null) {
+                $validador->errors()->add('fecha_inicio', $mensaje);
+            }
+        });
+    }
+
+    protected function vinculacionIdParaTraslape(): int
+    {
+        return (int) $this->input('vinculacion_id');
+    }
+
+    protected function idAExcluirDelTraslape(): ?int
+    {
+        return null;
     }
 
     /**
