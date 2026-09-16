@@ -91,6 +91,7 @@ class ListadoDeVacaciones extends Listado
     {
         $vinculacion = $vacacion->vinculacion;
         $persona = $vinculacion->persona;
+        $nota = $vacacion->notaDeTraslape();
 
         return [
             'id' => (int) $vacacion->getKey(),
@@ -100,6 +101,8 @@ class ListadoDeVacaciones extends Listado
             'inicio' => Formato::fecha($vacacion->fecha_inicio),
             'fin' => Formato::fecha($vacacion->fecha_fin),
             'dias' => $vacacion->dias(),
+            // La nota del traslape con una incapacidad (`HD-04`).
+            'nota' => $nota === '' ? Formato::VACIO : $nota,
         ];
     }
 
@@ -108,7 +111,11 @@ class ListadoDeVacaciones extends Listado
      */
     protected function base(): Builder
     {
-        return Vacacion::query()->with(['vinculacion.persona', 'vinculacion.tenant']);
+        // `vinculacion.incapacidades` se trae de una vez porque
+        // `Vacacion::notaDeTraslape()` la necesita para cada fila: sin el
+        // eager load, cada una de las veinticinco filas de la página haría su
+        // propia consulta.
+        return Vacacion::query()->with(['vinculacion.persona', 'vinculacion.tenant', 'vinculacion.incapacidades']);
     }
 
     /**

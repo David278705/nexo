@@ -389,7 +389,9 @@ class FichaDeEmpleado
                 'inicio' => $vacacion->fecha_inicio,
                 'fin' => $vacacion->fecha_fin,
                 'dias' => $vacacion->dias(),
-                'detalle' => Formato::VACIO,
+                // La nota del traslape con una incapacidad (`HD-04`), o vacío
+                // si este periodo no tiene ninguno.
+                'detalle' => $vacacion->notaDeTraslape() === '' ? Formato::VACIO : $vacacion->notaDeTraslape(),
             ])->all(),
             ...$this->vinculacion->licencias->map(fn (Licencia $licencia): array => [
                 // La clase es el tipo: llamar «Licencia» a una suspensión sería

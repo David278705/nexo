@@ -150,4 +150,21 @@ return [
     */
     'vigencia_reforma_termino_fijo' => '2025-06-25',
 
+    /*
+    | 10. La incapacidad interrumpe el disfrute de vacaciones
+    |
+    | Si una incapacidad cae sobre unas vacaciones ya registradas, los días
+    | que coinciden no se disfrutaron: vuelven al saldo y la novedad de
+    | vacaciones conserva las fechas pedidas pero recalcula los días
+    | realmente disfrutados, con una nota que explica el traslape (decisión
+    | D.7 de `docs/06-decisiones-pendientes.md`, confirmada por David el
+    | 2026-09-16).
+    |
+    | Norma: pendiente de cita. Angela todavía no ha confirmado el artículo
+    | exacto que sustenta la interrupción, así que no se inventa uno
+    | mientras tanto — ver «Preguntas para Angela» en ESTADO.md.
+    | Verificado: sin verificar, falta la norma.
+    */
+    'incapacidad_interrumpe_vacaciones' => true,
+
 ];

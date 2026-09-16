@@ -50,6 +50,7 @@ const columnas = [
     { clave: "inicio", titulo: "Inicio", ordenable: true },
     { clave: "fin", titulo: "Fin", ordenable: true },
     { clave: "dias", titulo: "Días hábiles", numerica: true },
+    { clave: "nota", titulo: "Nota" },
     { clave: "acciones", titulo: "Acciones" },
 ];
 

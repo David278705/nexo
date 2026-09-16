@@ -2145,7 +2145,7 @@ sin más ya excluye la empresa ajena y la fila eliminada. Prueba nueva en
 que no se pisa consigo misma, el borrado lógico que deja de bloquear y el caso contrario de `HD-04`
 que no bloquea.
 
-### [ ] HD-04 · La incapacidad que cae sobre vacaciones ya registradas no las ajusta
+### [x] HD-04 · La incapacidad que cae sobre vacaciones ya registradas no las ajusta
 
 Es el caso que David describió con detalle: unas vacaciones programadas con anticipación del 10 al
 24 de septiembre y un accidente el día 10 que incapacita del 10 al 19. Esos días no se disfrutaron;
@@ -2168,6 +2168,21 @@ saldo se sigue calculando y no guardando, como manda la regla 2 del proyecto; y 
 incapacidad devuelve las vacaciones a como estaban.
 **Fuente:** `app/Dominio/Calculo/SaldoDeVacaciones.php` · `docs/06-decisiones-pendientes.md` D.7 ·
 `.claude/rules/20-calculo-y-reglas-legales.md`
+
+Hecho: `Vacacion::dias()` ya no es solo `diasHabilesVacaciones(fecha_inicio, fecha_fin)`: le resta
+`diasInterrumpidosPorIncapacidad()`, que suma —incapacidad por incapacidad, sin doble conteo porque
+`HD-03` ya garantiza que nunca se pisan entre sí— los días hábiles de la intersección con cada
+incapacidad de la misma vinculación. **Las fechas pedidas no se tocan**: `fecha_inicio` y
+`fecha_fin` siguen siendo las que se registraron, y es `Vacacion::notaDeTraslape()` quien dice, en
+una frase, cuál incapacidad interrumpió el disfrute y cuántos días volvieron al saldo. Como nada se
+escribe aparte —ni un «días disfrutados» en una columna, ni la nota misma—, el saldo se sigue
+calculando solo (regla 2) y borrar la incapacidad (borrado lógico) hace que `dias()` vuelva a su
+cuenta completa sin ninguna operación inversa, igual que ya pasaba al borrar una vacación. La nota
+se ve en la pestaña «Novedades» de la ficha (reutiliza la columna «Detalle» que ya existía desde
+`HD-01`) y en una columna nueva del listado y la exportación de vacaciones. La constante
+`incapacidad_interrumpe_vacaciones` entró a `config/reglas_laborales.php` como la décima, con la
+nota de que la norma exacta sigue siendo pregunta para Angela — no bloquea, D.7 ya decidió el
+comportamiento.
 
 ### [ ] HD-05 · Solo hay festivos de 2025 a 2027, y el histórico se carga de años anteriores
 

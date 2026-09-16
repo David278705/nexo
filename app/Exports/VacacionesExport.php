@@ -45,6 +45,7 @@ class VacacionesExport implements FromCollection, ShouldAutoSize, WithHeadings, 
             'Día inicial de vacaciones',
             'Día final de vacaciones',
             'Días',
+            'Nota',
         ];
     }
 
@@ -63,6 +64,7 @@ class VacacionesExport implements FromCollection, ShouldAutoSize, WithHeadings, 
             (string) $fila['inicio'],
             (string) $fila['fin'],
             (int) $fila['dias'],
+            (string) $fila['nota'],
         ];
     }
 }

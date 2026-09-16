@@ -35,8 +35,14 @@ it('sabe desde cuándo rige el régimen del término fijo', function () {
     expect(config('reglas_laborales.vigencia_reforma_termino_fijo'))->toBe('2025-06-25');
 });
 
+it('sabe que la incapacidad interrumpe el disfrute de vacaciones, aunque le falte la norma', function () {
+    // HD-04, decisión D.7: el comportamiento ya está decidido y no espera la
+    // cita legal, que sigue siendo pregunta para Angela.
+    expect(config('reglas_laborales.incapacidad_interrumpe_vacaciones'))->toBeTrue();
+});
+
 it('no tiene constantes legales de más ni de menos', function () {
-    expect(array_keys(config('reglas_laborales')))->toHaveCount(9);
+    expect(array_keys(config('reglas_laborales')))->toHaveCount(10);
 });
 
 it('opera en la zona horaria de Colombia', function () {

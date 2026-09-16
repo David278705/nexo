@@ -6,6 +6,7 @@ use App\Dominio\Calculo\MotorDeCalculo;
 use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Exports\VacacionesExport;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Models\Incapacidad;
 use App\Models\Persona;
 use App\Models\Tenant;
 use App\Models\Vacacion;
@@ -180,6 +181,36 @@ describe('la exportación', function () {
             }
         );
     });
+
+    it('incluye la nota del traslape cuando una incapacidad cae sobre las vacaciones (HD-04)', function () {
+        Excel::fake();
+
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () use ($vinculacion) {
+            Vacacion::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-24',
+            ]);
+
+            Incapacidad::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-19',
+            ]);
+        });
+
+        $this->actingAs($this->usuario)->get('/vacaciones/exportar')->assertOk();
+
+        Excel::assertDownloaded(
+            'vacaciones-'.now()->format('Y-m-d').'.xlsx',
+            function (VacacionesExport $exportacion) {
+                $fila = ListadoDeVacaciones::fila($exportacion->collection()->first());
+
+                return $fila['dias'] === 4
+                    && $fila['nota'] === 'La incapacidad del 10 al 19 de septiembre interrumpió el disfrute: 7 días volvieron al saldo.';
+            }
+        );
+    });
 });
 
 describe('el descuento del saldo (documento 1, 6.4)', function () {
@@ -200,6 +231,126 @@ describe('el descuento del saldo (documento 1, 6.4)', function () {
 
             $despues = SaldoDeVacaciones::de($vinculacion)->al(Carbon::create(2026, 7, 31));
             expect($despues)->toBe($antes);
+        });
+    });
+});
+
+describe('el traslape con una incapacidad (HD-04)', function () {
+    /**
+     * El caso real que abrió la tarea: David le registró a la misma persona
+     * vacaciones del 10 al 24 de septiembre y luego un accidente el mismo
+     * día 10 que la incapacita hasta el 19. Once días hábiles pedidos, siete
+     * que se come la incapacidad, cuatro realmente disfrutados.
+     */
+    it('devuelve al saldo los días que la incapacidad se comió', function () {
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create())
+                ->create(['fecha_ingreso' => Carbon::create(2025, 1, 15)]);
+
+            Vacacion::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-24',
+            ]);
+
+            $hoy = Carbon::create(2026, 9, 30);
+            $conVacacionesSolas = SaldoDeVacaciones::de($vinculacion)->al($hoy);
+
+            Incapacidad::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-19',
+            ]);
+
+            $conIncapacidad = SaldoDeVacaciones::de($vinculacion)->al($hoy);
+
+            expect($conIncapacidad)->toBe(round($conVacacionesSolas + 7, 4));
+        });
+    });
+
+    it('conserva las fechas pedidas y recalcula los días realmente disfrutados, con su nota', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        // Las tres lecturas tienen que hacerse con el contexto de la empresa
+        // todavía fijado: `dias()` y `notaDeTraslape()` cargan la vinculación
+        // y sus incapacidades, y las dos llevan el global scope del tenant.
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () use ($vinculacion) {
+            $vacacion = Vacacion::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-24',
+            ]);
+
+            Incapacidad::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-19',
+            ]);
+
+            $recuperada = Vacacion::query()->findOrFail($vacacion->id);
+
+            expect($recuperada->fecha_inicio->toDateString())->toBe('2026-09-10')
+                ->and($recuperada->fecha_fin->toDateString())->toBe('2026-09-24')
+                ->and($recuperada->dias())->toBe(4)
+                ->and($recuperada->notaDeTraslape())->toBe(
+                    'La incapacidad del 10 al 19 de septiembre interrumpió el disfrute: 7 días volvieron al saldo.'
+                );
+        });
+    });
+
+    it('el listado enseña la nota, y una vacación sin traslape enseña una raya', function () {
+        $vinculacion = empleadoParaNovedad(['numero_documento' => '43887201']);
+
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () use ($vinculacion) {
+            Vacacion::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-24',
+            ]);
+
+            Incapacidad::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-19',
+            ]);
+        });
+
+        $conTraslape = empleadoParaNovedad(['numero_documento' => '1017234891']);
+
+        app(ContextoTenant::class)->paraTenant($this->empresa, fn () => Vacacion::factory()
+            ->de($conTraslape)
+            ->del27al31DeJulio()
+            ->create());
+
+        $filas = $this->actingAs($this->usuario)->get('/vacaciones')
+            ->viewData('page')['props']['vacaciones']['filas'];
+
+        $notas = collect($filas)->pluck('nota', 'documento');
+
+        expect($notas['43887201'])->toBe(
+            'La incapacidad del 10 al 19 de septiembre interrumpió el disfrute: 7 días volvieron al saldo.'
+        )->and($notas['1017234891'])->toBe('—');
+    });
+
+    it('eliminar la incapacidad devuelve las vacaciones a como estaban', function () {
+        app(ContextoTenant::class)->paraTenant($this->empresa, function () {
+            $vinculacion = Vinculacion::factory()
+                ->de(Persona::factory()->create())
+                ->create(['fecha_ingreso' => Carbon::create(2025, 1, 15)]);
+
+            $vacacion = Vacacion::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-24',
+            ]);
+
+            $incapacidad = Incapacidad::factory()->de($vinculacion)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-19',
+            ]);
+
+            expect(Vacacion::query()->findOrFail($vacacion->id)->dias())->toBe(4);
+
+            $incapacidad->delete();
+
+            $recuperada = Vacacion::query()->findOrFail($vacacion->id);
+
+            expect($recuperada->dias())->toBe(11)
+                ->and($recuperada->notaDeTraslape())->toBe('');
         });
     });
 });

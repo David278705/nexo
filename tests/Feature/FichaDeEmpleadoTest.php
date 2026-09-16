@@ -470,6 +470,35 @@ describe('la pestaña de novedades', function () {
             ->and($novedades['Suspensión']['dias'])->toBe(3);
     });
 
+    it('enseña la nota del traslape cuando una incapacidad cae sobre las vacaciones (HD-04)', function () {
+        $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
+
+        app(ContextoTenant::class)->paraTenant($empleado->tenant, function () use ($empleado) {
+            // El caso real de David: vacaciones del 10 al 24 de septiembre y
+            // un accidente el mismo día 10 que incapacita hasta el 19.
+            Vacacion::factory()->de($empleado)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-24',
+            ]);
+
+            Incapacidad::factory()->de($empleado)->create([
+                'fecha_inicio' => '2026-09-10',
+                'fecha_fin' => '2026-09-19',
+                'codigo_diagnostico' => 'S82.9',
+                'origen' => OrigenIncapacidad::Laboral,
+            ]);
+        });
+
+        $vacacion = collect(fichaDe($empleado)['novedades'])->firstWhere('clase', 'Vacaciones');
+
+        // Once días hábiles pedidos menos los siete que se comió la
+        // incapacidad: quedan cuatro realmente disfrutados.
+        expect($vacacion['dias'])->toBe(4)
+            ->and($vacacion['detalle'])->toBe(
+                'La incapacidad del 10 al 19 de septiembre interrumpió el disfrute: 7 días volvieron al saldo.'
+            );
+    });
+
     it('distingue la incapacidad por su origen y su diagnóstico', function () {
         $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
         conLasTresNovedades($empleado);
