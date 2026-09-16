@@ -50,6 +50,7 @@ const columnasNovedades = [
     { clave: "desde", titulo: "Desde" },
     { clave: "hasta", titulo: "Hasta" },
     { clave: "dias", titulo: "Días", numerica: true },
+    { clave: "detalle", titulo: "Detalle" },
 ];
 
 const columnasMovimientos = [
@@ -141,14 +142,23 @@ const columnasMovimientos = [
                     </div>
                 </div>
 
-                <TablaDatos
-                    v-else-if="activa === 'novedades'"
-                    :columnas="columnasNovedades"
-                    :filas="novedades"
-                    :clicable="false"
-                    titulo-vacio="Esta persona no tiene novedades registradas."
-                    descripcion-vacio="Aquí verás juntas y en orden cronológico sus incapacidades, vacaciones y licencias, ausencias o suspensiones."
-                />
+                <div v-else-if="activa === 'novedades'">
+                    <TablaDatos
+                        :columnas="columnasNovedades"
+                        :filas="novedades"
+                        :clicable="false"
+                        titulo-vacio="Esta persona no tiene novedades registradas."
+                        descripcion-vacio="Aquí verás juntas y en orden cronológico sus incapacidades, vacaciones y licencias, ausencias o suspensiones."
+                    />
+                    <p
+                        v-if="novedades.length > 0"
+                        class="mt-2 text-apoyo text-texto-secundario"
+                    >
+                        De la más reciente a la más antigua. Los días de
+                        vacaciones son hábiles; los de incapacidades, licencias,
+                        ausencias y suspensiones son corridos.
+                    </p>
+                </div>
 
                 <TablaDatos
                     v-else

@@ -2,15 +2,20 @@
 
 namespace App\Contratacion;
 
+use App\Autorizacion\Modulo;
 use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Models\Ciudad;
+use App\Models\Incapacidad;
+use App\Models\Licencia;
 use App\Models\Movimiento;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
+use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 /**
@@ -31,12 +36,12 @@ use UnitEnum;
  * disfrutadas (F2-05) y las suspensiones (F2-07), el número las descuenta solo
  * y aquí no cambia una línea.
  *
- * ## Lo que aquí no está
+ * ## Las cuatro pestañas están llenas
  *
- * Las novedades llegan vacías: juntar en una sola tabla incapacidades,
- * vacaciones y licencias es de la pestaña de novedades y sigue pendiente. La
- * pestaña carga y explica qué se verá ahí; el día que se llene, aquí solo hay
- * que llenar el arreglo. **Los movimientos ya no están vacíos** desde F2-08.
+ * Los movimientos desde F2-08 y las novedades desde HD-01: las tres clases
+ * —incapacidades, vacaciones y licencias— se juntan en una sola tabla, que es
+ * lo que pide la sección 5.3. Ninguna de las dos hace cuentas aquí: los días de
+ * cada novedad los da su modelo, que llama al motor.
  */
 class FichaDeEmpleado
 {
@@ -56,12 +61,23 @@ class FichaDeEmpleado
             'persona.perfil',
             'periodos',
             'movimientos',
+            'incapacidades',
+            'vacaciones',
+            'licencias',
+            'tenant',
             'eps',
             'fondoPension',
             'arl',
             'cajaCompensacion',
             'banco',
         ]);
+
+        // `Vacacion::dias()` cuenta días hábiles y para eso necesita la empresa
+        // dueña de la vinculación, que es esta misma. Sin esto, cada fila
+        // volvería a la base a buscar la vinculación que ya tenemos delante.
+        $vinculacion->vacaciones->each(
+            fn (Vacacion $vacacion) => $vacacion->setRelation('vinculacion', $vinculacion)
+        );
 
         return new self($vinculacion, $vinculacion->persona);
     }
@@ -303,13 +319,92 @@ class FichaDeEmpleado
 
     /**
      * Las tres clases de novedad juntas y en orden cronológico (documento 3,
-     * 5.3). Vacío hasta que existan sus módulos.
+     * 5.3): incapacidades, vacaciones y licencias de **esta** vinculación.
      *
-     * @return list<array<string, string>>
+     * Van ordenadas de la más reciente a la más antigua, igual que el histórico
+     * de movimientos de la pestaña de al lado: en una ficha se entra a ver qué
+     * pasó últimamente, no a leer la historia desde el principio.
+     *
+     * El aislamiento no se comprueba aquí y es deliberado: las tres relaciones
+     * salen de modelos con `PerteneceATenant`, así que el filtro lo pone el
+     * trait. Un `where` de empresa escrito a mano en este método sería la señal
+     * de que algo falta más abajo (regla 1).
+     *
+     * **Los días no son comparables entre filas y por eso la pantalla lo dice.**
+     * Los de vacaciones son hábiles y los de incapacidades y licencias
+     * corridos: son tres reglas distintas del motor (regla 3) y juntarlas en una
+     * columna sin explicarlo invitaría a sumarlas.
+     *
+     * @return list<array{id: string, clase: string, desde: string, hasta: string, dias: int, detalle: string}>
      */
     public function novedades(): array
     {
-        return [];
+        $novedades = [
+            ...$this->vinculacion->incapacidades->map(fn (Incapacidad $incapacidad): array => [
+                'id' => 'incapacidad-'.$incapacidad->getKey(),
+                'clase' => 'Incapacidad',
+                'inicio' => $incapacidad->fecha_inicio,
+                'fin' => $incapacidad->fecha_fin,
+                'dias' => $incapacidad->dias(),
+                'detalle' => self::detalleDeIncapacidad($incapacidad),
+            ])->all(),
+            ...$this->vinculacion->vacaciones->map(fn (Vacacion $vacacion): array => [
+                'id' => 'vacacion-'.$vacacion->getKey(),
+                'clase' => 'Vacaciones',
+                'inicio' => $vacacion->fecha_inicio,
+                'fin' => $vacacion->fecha_fin,
+                'dias' => $vacacion->dias(),
+                'detalle' => Formato::VACIO,
+            ])->all(),
+            ...$this->vinculacion->licencias->map(fn (Licencia $licencia): array => [
+                // La clase es el tipo: llamar «Licencia» a una suspensión sería
+                // decir otra cosa. Es lo que distingue a esta novedad y por eso
+                // va en la columna que se lee primero, no en el detalle.
+                'id' => 'licencia-'.$licencia->getKey(),
+                'clase' => $licencia->tipo->etiqueta(),
+                'inicio' => $licencia->fecha_inicio,
+                'fin' => $licencia->fecha_fin,
+                'dias' => $licencia->dias(),
+                'detalle' => Formato::VACIO,
+            ])->all(),
+        ];
+
+        usort(
+            $novedades,
+            fn (array $una, array $otra): int => $otra['inicio']->getTimestamp() <=> $una['inicio']->getTimestamp(),
+        );
+
+        return array_map(fn (array $novedad): array => [
+            'id' => $novedad['id'],
+            'clase' => $novedad['clase'],
+            'desde' => Formato::fecha($novedad['inicio']),
+            'hasta' => Formato::fecha($novedad['fin']),
+            'dias' => $novedad['dias'],
+            'detalle' => $novedad['detalle'],
+        ], $novedades);
+    }
+
+    /**
+     * «Común · Diagnóstico J06.9», o solo el origen para quien no puede ver el
+     * diagnóstico.
+     *
+     * `codigo_diagnostico` es el dato sensible del documento 1, 6.3, y la regla
+     * de pruebas y seguridad lo reserva a quien tiene permiso sobre novedades.
+     * En el listado del módulo eso se cumplía solo —a esa pantalla no se llega
+     * sin el middleware `modulo:incapacidades`—, pero a la ficha se entra con el
+     * módulo de **empleados**, que es otro permiso distinto: aquí hay que
+     * preguntar. Sin usuario autenticado, `Gate::allows()` dice que no, que es
+     * el valor seguro.
+     */
+    private static function detalleDeIncapacidad(Incapacidad $incapacidad): string
+    {
+        $origen = $incapacidad->origen->etiqueta();
+
+        if (! Gate::allows('modulo', Modulo::Incapacidades)) {
+            return $origen;
+        }
+
+        return $origen.' · Diagnóstico '.$incapacidad->codigo_diagnostico;
     }
 
     /**

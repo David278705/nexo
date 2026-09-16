@@ -7,10 +7,15 @@ use App\Contratacion\EventoContractual;
 use App\Contratacion\NivelEducativo;
 use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoRiesgo;
+use App\Incapacidades\OrigenIncapacidad;
+use App\Licencias\TipoDeLicencia;
 use App\Models\Eps;
+use App\Models\Incapacidad;
+use App\Models\Licencia;
 use App\Models\PerfilSociodemografico;
 use App\Models\Persona;
 use App\Models\Tenant;
+use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use Illuminate\Support\Carbon;
@@ -74,6 +79,28 @@ function campoDeLaFicha(array $props, string $bloque, string $etiqueta): ?string
     }
 
     return null;
+}
+
+/**
+ * Las tres clases de novedad sobre un mismo empleado, con fechas que se
+ * distinguen entre sí para poder leer el orden en que salen (HD-01).
+ */
+function conLasTresNovedades(Vinculacion $empleado): void
+{
+    app(ContextoTenant::class)->paraTenant($empleado->tenant, function () use ($empleado) {
+        Incapacidad::factory()->de($empleado)->del14al16DeJulio(2026)->create([
+            'codigo_diagnostico' => 'J06.9',
+            'origen' => OrigenIncapacidad::Comun,
+        ]);
+
+        Vacacion::factory()->de($empleado)->del27al31DeJulio(2026)->create();
+
+        Licencia::factory()->de($empleado)->create([
+            'tipo' => TipoDeLicencia::Suspension,
+            'fecha_inicio' => '2026-06-01',
+            'fecha_fin' => '2026-06-03',
+        ]);
+    });
 }
 
 /**
@@ -314,12 +341,98 @@ describe('la pestaña de contrato', function () {
     });
 });
 
-describe('las pestañas que esperan su módulo', function () {
-    it('carga las novedades y los movimientos vacíos, sin romperse', function () {
+/**
+ * La pestaña de novedades (HD-01). Hasta esta tarea `novedades()` era
+ * `return []` con un comentario que decía «vacío hasta que existan sus
+ * módulos»; los tres existen desde la fase 2.
+ */
+describe('la pestaña de novedades', function () {
+    it('enseña las tres clases juntas, de la más reciente a la más antigua', function () {
+        $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
+        conLasTresNovedades($empleado);
+
+        $novedades = fichaDe($empleado)['novedades'];
+
+        expect($novedades)->toHaveCount(3)
+            ->and(array_column($novedades, 'clase'))->toBe([
+                'Vacaciones',   // 27 de julio
+                'Incapacidad',  // 14 de julio
+                'Suspensión',   // 1 de junio
+            ]);
+    });
+
+    it('trae de cada novedad sus fechas y sus días', function () {
+        $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
+        conLasTresNovedades($empleado);
+
+        $incapacidad = collect(fichaDe($empleado)['novedades'])->firstWhere('clase', 'Incapacidad');
+
+        expect($incapacidad['desde'])->toBe('14/07/2026')
+            ->and($incapacidad['hasta'])->toBe('16/07/2026')
+            // Días corridos, del motor: es el caso obligatorio de F2-04.
+            ->and($incapacidad['dias'])->toBe(3);
+    });
+
+    /*
+     * Los días de vacaciones son hábiles y los de las otras dos corridos: son
+     * tres reglas distintas del motor (regla 3) y la ficha no puede aplicar la
+     * que no es.
+     */
+    it('cuenta los días de vacaciones en hábiles y los de la licencia en corridos', function () {
+        $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
+        conLasTresNovedades($empleado);
+
+        $novedades = collect(fichaDe($empleado)['novedades'])->keyBy('clase');
+
+        // Del lunes 27 al viernes 31 de julio: cinco hábiles.
+        expect($novedades['Vacaciones']['dias'])->toBe(5)
+            // Del 1 al 3 de junio: tres corridos, con el domingo dentro.
+            ->and($novedades['Suspensión']['dias'])->toBe(3);
+    });
+
+    it('distingue la incapacidad por su origen y su diagnóstico', function () {
+        $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
+        conLasTresNovedades($empleado);
+
+        $usuario = usuarioDe($this->empresa, Rol::Administrador, Modulo::Empleados, Modulo::Incapacidades);
+
+        $respuesta = $this->actingAs($usuario)->get('/empleados/'.$empleado->getKey());
+        $respuesta->assertOk();
+
+        $novedades = $respuesta->viewData('page')['props']['novedades'];
+
+        expect(collect($novedades)->firstWhere('clase', 'Incapacidad')['detalle'])
+            ->toBe('Común · Diagnóstico J06.9');
+    });
+
+    /*
+     * El diagnóstico es el dato sensible del documento 1, 6.3. Al listado de
+     * incapacidades no se llega sin su módulo, pero a la ficha se entra con el
+     * de empleados, que es otro permiso: sin el de incapacidades, el código no
+     * viaja.
+     */
+    it('no enseña el diagnóstico a quien no tiene el módulo de incapacidades', function () {
+        $empleado = empleadoDe([], ['fecha_ingreso' => '2024-01-15']);
+        conLasTresNovedades($empleado);
+
+        $respuesta = $this->actingAs($this->usuario)->get('/empleados/'.$empleado->getKey());
+        $respuesta->assertOk();
+
+        $props = $respuesta->viewData('page')['props'];
+
+        expect(collect($props['novedades'])->firstWhere('clase', 'Incapacidad')['detalle'])
+            ->toBe('Común')
+            ->and($respuesta->getContent())->not->toContain('J06.9');
+    });
+
+    it('deja el estado vacío solo para quien de verdad no tiene ninguna', function () {
         $props = fichaDe(empleadoDe());
 
-        expect($props['novedades'])->toBe([])
-            ->and($props['movimientos'])->toBe([]);
+        expect($props['novedades'])->toBe([]);
+    });
+
+    it('carga los movimientos vacíos sin romperse', function () {
+        expect(fichaDe(empleadoDe())['movimientos'])->toBe([]);
     });
 });
 

@@ -1,84 +1,55 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-16 · Se convirtieron en backlog las tres grabaciones de David probando el
-sistema (8 y 10 de septiembre). No se escribió código de producto: la sesión fue de montaje del
-entorno local y de organización del trabajo que viene.
-**Verificación:** sin cambios de código que verificar. La última corrida conocida quedó en
-**1.227 de 1.228** pruebas de Pest —ver «El rojo conocido» más abajo, que no es un fallo del
-producto—, Pint y PHPStan sin errores, build y 401 de Vitest.
-**Siguiente tarea:** `HD-01` · La pestaña «Novedades» de la ficha del empleado devuelve siempre una
-lista vacía.
+**Última sesión:** 2026-09-16 · Tarea `HD-01`
+**Verificación:** verde. **1.236 de 1.236** pruebas de Pest, Pint y PHPStan sin errores, build y 404
+de Vitest. El «rojo conocido» de la tilde de «Ramírez» ya no existe: se arregló en el commit
+`4ccc2f8` de la sesión anterior y la bitácora de aquella sesión no lo recogió. La sección que lo
+describía se fue de aquí porque ya no describe nada.
+**Siguiente tarea:** `HD-02` · La ficha de un empleado inactivo no dice nada de su salida.
 
-## Qué se hizo (2026-09-16)
+## Qué se hizo
 
-### El entorno local quedó montado
+`FichaDeEmpleado::novedades()` era `return []` con un comentario que decía «vacío hasta que existan
+sus módulos», y los tres existen desde la fase 2. Ahora junta las tres relaciones que ya estaban en
+`Vinculacion` —`incapacidades()`, `vacaciones()` y `licencias()`— en una sola tabla, de la más
+reciente a la más antigua.
 
-El `.env` venía de otra máquina y faltaba todo lo demás. Quedó funcionando:
-
-- **PostgreSQL 16 por Homebrew**, no por XAMPP. Los binarios son keg-only y viven en
-  `/opt/homebrew/opt/postgresql@16/bin`, así que `psql` no está en el PATH. Se creó el rol
-  `postgres`/`postgres` para que coincidiera con el `.env`, y las bases `nexo` y `nexo_pruebas`.
-- Las 45 migraciones corridas, con sus políticas RLS, y los catálogos globales sembrados
-  (`CatalogosSeeder`): 1.101 municipios, 18 EPS, festivos.
-- `composer install`, `npm install` y `npm run build`.
-- **Cuenta de proveedor nueva: `owner@nexo.local` / `password`**, rol `owner`, creada a mano porque
-  el `Test User` del `DatabaseSeeder` tiene `tenant_id` nulo y rol `admin` —un usuario de empresa sin
-  empresa, inservible para entrar—. Al entrar desvía a activar el segundo factor TOTP, que es el
-  comportamiento diseñado.
-- El ambiente de demostración poblado con `php artisan demostracion:restaurar`. Es de **solo
-  lectura**; para trabajar hay que crear una empresa normal desde el panel del proveedor.
-- La app se levanta con `php artisan serve --port=8014`, que es el puerto que ya esperaba `APP_URL`.
-
-### El correo local pasó a `log`
-
-`MAIL_MAILER=log` en el `.env`. El puerto 2525 de Mailtrap está bloqueado en esta red —la salida
-general a internet sí funciona, se comprobó— y los envíos se colgaban hasta agotar el tiempo de
-espera. Ahora invitaciones y alertas quedan en `storage/logs/laravel.log`, que además es de donde
-hay que sacar los enlaces de invitación. Las credenciales de Mailtrap siguen en el archivo y el
-comentario dice cómo volver.
-
-### Las tres grabaciones se volvieron dieciséis tareas
-
-David recorrió el sistema con datos reales y grabó lo que encontró. **Cada hallazgo se verificó
-contra el código antes de escribir su tarea**, y lo que ya estaba resuelto no abrió tarea en falso.
-Las dieciséis, `HD-01` a `HD-16`, están al final de `BACKLOG.md` en su propia sección y en orden de
-ejecución.
-
-Lo que la verificación confirmó, por si sirve para entrar en materia:
-
-- `FichaDeEmpleado::novedades()` es `return [];` con un comentario que dice «vacío hasta que existan
-  sus módulos». Existen desde la fase 2. Mismo patrón que REV-12.
-- **No hay una sola comprobación de traslape en todo `app/`**: ni `traslap`, ni `solap`, ni
-  `superpon`, ni `overlap`. Por eso se pueden registrar dos periodos de vacaciones que se pisan.
-- `personas` no tiene ninguna columna de contacto: ni celular ni correo.
-- `festivos` solo tiene 2025, 2026 y 2027. El histórico se carga de años anteriores.
-- El catálogo dice `Sura EPS`; el ejemplo de la plantilla de incapacidades dice `SURA`.
-- `Modulo::grupo()` agrupa `Movimientos` y `Terminaciones` bajo un encabezado llamado, también,
-  «Movimientos».
-- `CambioAIndefinido::fechaDelCambio()` devuelve `Carbon::today()` sin alternativa.
-- La EPS está fuera de la tabla de incapacidades a propósito, y `columnasDeOrden()` no admite `dias`.
-- **Ya estaba resuelto:** el orden del país de expedición en la plantilla de empleados. REV-08 lo
-  movió a su sitio; la grabación del 8 de septiembre a las 12:48 es anterior a ese arreglo. Solo
-  queda partir «Lugar de expedición» en departamento y ciudad, que es parte de `HD-08`.
+- **Ninguna cuenta se hace en la ficha.** Los días los da cada modelo, que llama al motor: hábiles en
+  vacaciones, corridos en incapacidades y licencias.
+- **Dos reglas de conteo en una sola columna se explican, no se disimulan.** Debajo de la tabla hay
+  una nota que dice cuál es cuál. Sin ella, la única lectura posible de la columna sería sumarla, y
+  sumar días hábiles con días corridos es exactamente lo que la regla 3 quiere evitar.
+- **Columna nueva «Detalle»**, con el origen y el diagnóstico de la incapacidad. Las licencias no la
+  usan: lo que las distingue es su tipo, y ese va en la primera columna —«Suspensión», «Ausencia»—,
+  porque llamar «Licencia» a una suspensión sería decir otra cosa.
+- **El diagnóstico dejó de viajar a quien no puede verlo.** Es el dato sensible del documento 1, 6.3.
+  En el listado del módulo el permiso se cumplía solo, porque a esa pantalla no se llega sin
+  `modulo:incapacidades`; a la ficha se entra con el módulo de **empleados**, que es otro permiso
+  distinto. `detalleDeIncapacidad()` pregunta, y sin el módulo escribe solo el origen.
+- **El caso de aislamiento es del camino nuevo, no de los tres módulos.** Lo que esta tarea abre es
+  leer novedades **por la vinculación** en vez de por su propio listado, y `vinculacion_id` es único
+  en toda la base y no por empresa. La prueba crea a propósito las tres novedades de la empresa B
+  colgadas del empleado de la A y comprueba que ninguna aparece en su ficha.
 
 ## Decisiones tomadas
 
-- **Las cuatro dudas de las grabaciones quedaron resueltas por David el 2026-09-16**, antes de
-  escribir las tareas, justamente para que ninguna naciera `[!]` y frenara el bucle. Están en
-  `docs/06-decisiones-pendientes.md` D.7, con su razonamiento: el catálogo de Bogotá no se toca y se
-  arregla la guía; las prórrogas van en columnas dentro de una sola plantilla; la incapacidad que
-  pisa unas vacaciones las recalcula y deja nota; y la terminación se bloquea mientras el contrato
-  esté en el aire.
-- **`MAIL_MAILER=log` en el entorno local**, por el puerto bloqueado. No afecta a producción ni al
-  `.env.example`.
+- **Orden descendente, de la más reciente a la más antigua.** El documento 3, 5.3 dice «en orden
+  cronológico», que es una instrucción sobre juntar las tres clases por fecha y no sobre el sentido.
+  Se eligió el mismo sentido del histórico de movimientos, que es la pestaña de al lado: en una ficha
+  se entra a ver qué pasó últimamente. Es una decisión de presentación y se puede invertir en una
+  línea si David la prefiere al revés.
+- **El diagnóstico se recorta por módulo, no la novedad entera.** Quien no tiene el módulo de
+  incapacidades sigue viendo que hubo una incapacidad, con sus fechas, sus días y su origen: eso es
+  información de personal que el módulo de empleados sí le da. Lo único que no ve es el código.
+- **La clave de fila es compuesta —`incapacidad-9`, `vacacion-4`, `licencia-2`—** porque los `id` de
+  las tres tablas chocan entre sí y `TablaDatos` usa esa clave para pintar la lista.
 
 ## Preguntas para Angela
 
 - **La norma que sustenta que la incapacidad interrumpe el disfrute de vacaciones.** Hace falta para
-  citarla en `config/reglas_laborales.php` con su fecha de verificación, como manda
-  `.claude/rules/20-calculo-y-reglas-legales.md`. **No bloquea `HD-04`**: el comportamiento ya está
-  decidido y la tarea se puede construir. Lo que no se puede es inventar la norma: mientras no
-  llegue, la constante se escribe con la nota de que falta la cita.
+  citarla en `config/reglas_laborales.php` con su fecha de verificación. **No bloquea `HD-04`**: el
+  comportamiento ya está decidido y la tarea se puede construir; lo que no se puede es inventar la
+  norma.
 - **B.2 sigue abierta**: periodo de prueba en cambio de modalidad contractual.
 - **El fondo de cesantías sigue abierto**: si hace falta pedirlo, y dónde.
 
@@ -88,40 +59,26 @@ Lo que la verificación confirmó, por si sirve para entrar en materia:
   en `docs/07-plan-de-incidentes.md` sección 4.
 - **`F3-06b` sigue esperándote**: proveedor transaccional, `.env`, DNS (SPF/DKIM/DMARC) y correr
   `alertas:prueba`. Con `MAIL_MAILER=log` en local, ninguna alerta sale de la máquina de verdad.
+- **Verificación manual de esta tarea**: entrar a la ficha de Juliana María Gómez Ríos, que es la
+  persona con la que se encontró el fallo, y comprobar que aparecen sus tres novedades.
 - **Verificaciones manuales heredadas y todavía sin hacer**: la ficha de empresa del proveedor tras
   REV-12, el formulario de acceso de prueba tras F5-08, la pestaña «Facturación» de REV-11 y el flujo
   completo de REV-10.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
 
-## El rojo conocido de `composer verificar`
-
-**Una prueba falla y no es un fallo del producto.** Es la de buscar «Ramírez» en
-`tests/Feature/ExportacionesYFiltrosTest.php`. El síntoma es `Undefined array key "incapacidades"`,
-que tapa un error de Postgres: `invalid byte sequence for encoding "UTF8": 0xc3 0x5f`.
-
-La prueba llama `$this->get('/incapacidades?buscar=Ramírez')` con la tilde **cruda, sin codificar**.
-`Symfony\Request::create()` pasa esa URI por `parse_url()`, que reemplaza por `_` los bytes
-0x80–0x9F y 0xAD sin saber de UTF-8; como «í» es `0xC3 0xAD`, el segundo byte se convierte en `_` y
-a Postgres le llega una secuencia rota. Pasa igual en PHP 8.3 y 8.4.
-
-**La app real no se ve afectada**: el navegador codifica la tilde como `%C3%AD` antes de mandarla, y
-en producción Laravel lee `$_GET` del SAPI, no de `parse_url()`. Se comprobó contra el servidor
-corriendo.
-
-**Si alguna sesión quiere arreglarlo**, es un cambio de una línea en la prueba —`urlencode('Ramírez')`
-en la URI—, no en el código de producción. No se hizo porque no era la tarea de esta sesión, y
-conviene decidirlo a propósito y no de paso.
-
 ## Notas para la próxima sesión
 
-- **El bucle arranca por `HD-01`.** Es la primera `[ ]` del backlog y es autocontenida: conectar
-  `FichaDeEmpleado::novedades()` a las tres tablas que ya existen.
+- **`HD-02` toca el mismo archivo que esta tarea** —`FichaDeEmpleado`— y es su continuación natural:
+  la salida tampoco se ve en ninguna de las cuatro pestañas. `Vinculacion::terminacion()` y
+  `fechaDeSalida()` ya existen desde F2-09, así que es un `resumen()` que cambia según el estado, no
+  una consulta nueva.
 - **`HD-03` antes que `HD-04`, y en ese orden están.** La detección de traslapes que construye
-  `HD-03` es la que `HD-04` necesita para saber qué días se pisan. Tomarlas al revés obliga a
-  escribir dos veces lo mismo.
+  `HD-03` es la que `HD-04` necesita para saber qué días se pisan.
 - **`HD-06`, `HD-08` y `HD-09` tocan las tres la plantilla de empleados.** Están seguidas a
-  propósito: hacerlas juntas evita tres migraciones de plantilla y tres rondas de pruebas sobre el
-  mismo archivo.
+  propósito: hacerlas juntas evita tres migraciones de plantilla y tres rondas de pruebas.
+- **`./vendor/bin/pest` a secas se queda sin memoria** en la exportación a Excel, con el
+  `memory_limit` de 128M del php.ini de esta máquina. `composer verificar` no: corre con el límite
+  que le pone Composer. Para correr la batería entera, `composer verificar` o
+  `php -d memory_limit=1G vendor/bin/pest`.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
-  `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`,
-  que levanta servidor, cola y Vite a la vez.
+  `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.

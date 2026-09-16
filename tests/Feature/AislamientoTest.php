@@ -1049,6 +1049,76 @@ casoDeAislamiento('perfil sociodemográfico', [
 ]);
 
 /**
+ * La pestaña de novedades de la ficha del empleado (HD-01).
+ *
+ * Es el único sitio del sistema donde las tres tablas de novedades se leen
+ * **por la vinculación** y no por su propio listado. El camino por el que
+ * podrían cruzarse es que `vinculacion_id` es único en toda la base, no por
+ * empresa: una fila de la empresa B que apunte a un empleado de la A la
+ * alcanzaría la relación si el filtro de empresa no estuviera puesto.
+ *
+ * La fila imposible se crea a propósito, saltándose la pantalla, porque lo que
+ * se defiende es la lectura: que ni por accidente ni por una carga mal hecha
+ * aparezca en la ficha de un empleado una novedad que no es de su empresa.
+ */
+describe('las novedades de la ficha del empleado', function () {
+    beforeEach(function () {
+        $this->contexto = app(ContextoTenant::class);
+        $this->empresaA = Tenant::factory()->create(['nombre' => 'Empresa A']);
+        $this->empresaB = Tenant::factory()->create(['nombre' => 'Empresa B']);
+
+        // El cargo es uno cualquiera y no el marcador: el empleado es de la A,
+        // así que su cargo sí tiene que verse en su propia ficha. Lo que no
+        // puede aparecer ahí es el marcador, que va en la novedad de la B.
+        $this->empleadoDeLaA = $this->contexto->paraTenant($this->empresaA, fn () => Vinculacion::factory()
+            ->de(Persona::factory()->create())
+            ->create(['cargo' => 'Auxiliar contable']));
+
+        // Las tres novedades de la empresa B, colgadas del empleado de la A.
+        $this->contexto->paraTenant($this->empresaB, function () {
+            Incapacidad::factory()->de($this->empleadoDeLaA)->del14al16DeJulio()->create([
+                'codigo_diagnostico' => SECRETO_DE_LA_A,
+            ]);
+
+            Vacacion::factory()->de($this->empleadoDeLaA)->del27al31DeJulio()->create();
+
+            Licencia::factory()->de($this->empleadoDeLaA)->delJuevesAlMartes()->create();
+        });
+    });
+
+    it('no enseña en la ficha novedades registradas por otra empresa', function () {
+        $usuarioA = usuarioDe(
+            $this->empresaA,
+            Rol::Administrador,
+            Modulo::Empleados,
+            Modulo::Incapacidades,
+        );
+
+        $respuesta = $this->actingAs($usuarioA)->get('/empleados/'.$this->empleadoDeLaA->getKey());
+
+        $respuesta->assertOk();
+
+        expect($respuesta->viewData('page')['props']['novedades'])->toBe([])
+            ->and($respuesta->getContent())->not->toContain(SECRETO_DE_LA_A);
+    });
+
+    it('sí enseña las de la empresa dueña', function () {
+        $this->contexto->paraTenant(
+            $this->empresaA,
+            fn () => Vacacion::factory()->de($this->empleadoDeLaA)->del27al31DeJulio()->create(),
+        );
+
+        $usuarioA = usuarioDe($this->empresaA, Rol::Administrador, Modulo::Empleados);
+
+        $respuesta = $this->actingAs($usuarioA)->get('/empleados/'.$this->empleadoDeLaA->getKey());
+
+        $respuesta->assertOk();
+
+        expect($respuesta->viewData('page')['props']['novedades'])->toHaveCount(1);
+    });
+});
+
+/**
  * La caché de saldos de vacaciones (F4-02).
  *
  * No pasa por `casoDeAislamiento()` y el motivo es el mismo que la hace

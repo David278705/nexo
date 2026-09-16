@@ -108,6 +108,35 @@ const props = {
     movimientos: [],
 };
 
+// Las tres clases juntas y ya ordenadas por el servidor, tal como llegan de
+// `FichaDeEmpleado::novedades()`.
+const novedades = [
+    {
+        id: "vacacion-4",
+        clase: "Vacaciones",
+        desde: "27/07/2026",
+        hasta: "31/07/2026",
+        dias: 5,
+        detalle: "—",
+    },
+    {
+        id: "incapacidad-9",
+        clase: "Incapacidad",
+        desde: "14/07/2026",
+        hasta: "16/07/2026",
+        dias: 3,
+        detalle: "Común · Diagnóstico J06.9",
+    },
+    {
+        id: "licencia-2",
+        clase: "Suspensión",
+        desde: "01/06/2026",
+        hasta: "03/06/2026",
+        dias: 3,
+        detalle: "—",
+    },
+];
+
 function montar(cambios = {}) {
     return mount(Ficha, { props: { ...props, ...cambios } });
 }
@@ -175,6 +204,47 @@ describe("la ficha del empleado", () => {
 
         expect(pantalla.text()).not.toContain("No hay datos");
         expect(pantalla.text()).toContain("incapacidades, vacaciones y licencias");
+    });
+
+    it("enseña las tres clases de novedad juntas en una sola tabla", async () => {
+        const pantalla = montar({ novedades });
+
+        await pantalla
+            .find("[aria-controls='panel-novedades']")
+            .trigger("click");
+
+        const texto = pantalla.text();
+
+        expect(texto).toContain("Vacaciones");
+        expect(texto).toContain("Incapacidad");
+        expect(texto).toContain("Suspensión");
+        expect(texto).toContain("Común · Diagnóstico J06.9");
+    });
+
+    /*
+     * Los días de vacaciones son hábiles y los de las otras dos corridos. La
+     * columna es una sola, así que la pantalla dice cuál es cuál: sin la nota,
+     * la única lectura posible sería sumarlos.
+     */
+    it("advierte que los días de la tabla se cuentan con dos reglas distintas", async () => {
+        const pantalla = montar({ novedades });
+
+        await pantalla
+            .find("[aria-controls='panel-novedades']")
+            .trigger("click");
+
+        expect(pantalla.text()).toContain("vacaciones son hábiles");
+        expect(pantalla.text()).toContain("corridos");
+    });
+
+    it("no escribe la nota de los días cuando no hay ninguna novedad", async () => {
+        const pantalla = montar();
+
+        await pantalla
+            .find("[aria-controls='panel-novedades']")
+            .trigger("click");
+
+        expect(pantalla.text()).not.toContain("vacaciones son hábiles");
     });
 
     it("explica qué se verá en movimientos", async () => {

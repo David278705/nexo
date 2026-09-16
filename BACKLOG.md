@@ -2027,7 +2027,7 @@ incapacidad interrumpe el disfrute de vacaciones—, que hay que citar en
 `config/reglas_laborales.php` como todas las demás. La tarea no depende de esa respuesta para
 construirse: el comportamiento ya lo decidió David.
 
-### [ ] HD-01 · La pestaña «Novedades» de la ficha del empleado devuelve siempre una lista vacía
+### [x] HD-01 · La pestaña «Novedades» de la ficha del empleado devuelve siempre una lista vacía
 
 `FichaDeEmpleado::novedades()` es literalmente `return [];`, con un comentario que dice *«Vacío
 hasta que existan sus módulos»*. Los módulos —incapacidades, vacaciones y licencias— existen desde
@@ -2044,6 +2044,26 @@ que la distinga —origen y diagnóstico la incapacidad, tipo la licencia—; el
 aparece cuando la persona de verdad no tiene ninguna; el comentario de reserva desaparece del
 código; y una prueba de aislamiento confirma que no se cuelan novedades de otra empresa.
 **Fuente:** `app/Contratacion/FichaDeEmpleado.php` · `docs/03-diseno-e-interfaz.md` 5.3
+
+Hecho: `FichaDeEmpleado::novedades()` junta las tres relaciones que ya existían en `Vinculacion`
+—`incapacidades()`, `vacaciones()` y `licencias()`— en una sola tabla, y el comentario de reserva
+desapareció junto con el `return []`. **Los días los sigue dando cada modelo**, que llama al motor:
+hábiles en vacaciones, corridos en las otras dos, y como son dos reglas distintas en una sola columna
+(regla 3) la pantalla lo dice en una nota debajo de la tabla. La columna nueva «Detalle» lleva el
+origen y el diagnóstico de la incapacidad; las licencias no la necesitan porque su tipo —«Suspensión»,
+«Ausencia»— es lo que se lee en la primera columna, y llamarlas «Licencia» sería decir otra cosa. Van
+de la más reciente a la más antigua, igual que el histórico de movimientos de la pestaña de al lado.
+
+**El diagnóstico dejó de viajar a quien no puede verlo.** En el listado del módulo el permiso se
+cumplía solo —a esa pantalla no se llega sin `modulo:incapacidades`—, pero a la ficha se entra con el
+módulo de **empleados**, que es otro permiso: `detalleDeIncapacidad()` pregunta por el de
+incapacidades y, sin él, escribe solo el origen. Es la regla de `40-pruebas-y-seguridad.md` aplicada
+donde F2-04 no tenía que aplicarla.
+
+El caso de aislamiento es nuevo en `AislamientoTest.php` y no repite a los tres módulos: prueba el
+único camino que esta tarea abre, que es leer las novedades **por la vinculación** en vez de por su
+propio listado. Se crean a propósito las tres novedades de la empresa B colgadas del empleado de la
+A —`vinculacion_id` es único en toda la base, no por empresa— y ninguna aparece en su ficha.
 
 ### [ ] HD-02 · La ficha de un empleado inactivo no dice nada de su salida
 
