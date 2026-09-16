@@ -52,6 +52,7 @@ class RegistrarEmpleado extends FormRequest
             ...$this->ubicacion('nacimiento'),
             ...$this->ubicacion('expedicion'),
             ...$this->residencia(),
+            ...$this->contacto(),
             ...$this->seguridadSocial(),
             ...$this->contrato(),
 
@@ -92,6 +93,8 @@ class RegistrarEmpleado extends FormRequest
             'direccion' => 'dirección',
             'residencia.departamento' => 'departamento de residencia',
             'residencia.ciudad' => 'ciudad de residencia',
+            'celular' => 'celular',
+            'correo' => 'correo electrónico',
 
             'eps_id' => 'EPS',
             'fondo_pension_id' => 'fondo de pensión',
@@ -120,6 +123,7 @@ class RegistrarEmpleado extends FormRequest
             'fecha_fin.required' => 'El contrato a término fijo necesita fecha de finalización.',
             'fecha_fin.prohibited' => 'Solo el contrato a término fijo lleva fecha de finalización.',
             'fecha_fin.after' => 'La fecha de finalización tiene que ser posterior a la de ingreso.',
+            'celular.regex' => 'El celular debe tener diez dígitos, sin espacios ni guiones.',
         ];
     }
 
@@ -181,6 +185,23 @@ class RegistrarEmpleado extends FormRequest
             // solo gestiona contratos laborales colombianos (documento 1, 5.1).
             'residencia.departamento' => ['required', $this->existeDepartamento()],
             'residencia.ciudad' => ['required', $this->existeCiudad($this->input('residencia.departamento'))],
+        ];
+    }
+
+    /**
+     * Los datos de contacto (documento 1, cap. 4): celular de diez dígitos y
+     * correo con formato de correo. Son tan básicos como el nombre o la fecha
+     * de nacimiento, así que van obligatorios igual que ellos.
+     *
+     * @return array<string, mixed>
+     */
+    private function contacto(): array
+    {
+        return [
+            // Solo dígitos, exactamente diez: es la única forma que pide la
+            // tarea, sin inventar un indicativo o un prefijo que nadie pidió.
+            'celular' => ['required', 'string', 'regex:/^[0-9]{10}$/'],
+            'correo' => ['required', 'string', 'email', 'max:160'],
         ];
     }
 

@@ -117,6 +117,8 @@ function formularioDeEmpleado(): array
             'departamento' => (string) $catalogos['antioquia']->getKey(),
             'ciudad' => (string) $catalogos['envigado']->getKey(),
         ],
+        'celular' => '3007654321',
+        'correo' => 'carolina.restrepo@example.com',
 
         'eps_id' => $catalogos['eps']->getKey(),
         'fondo_pension_id' => $catalogos['fondo']->getKey(),
@@ -169,7 +171,9 @@ describe('el registro completo', function () {
             ->and($vinculacion->fecha_ingreso->toDateString())->toBe('2026-02-02')
             ->and((float) $vinculacion->salario)->toBe(4200000.0)
             ->and($vinculacion->persona->nombreCompleto())->toBe('Carolina Isabel Restrepo Vélez')
-            ->and($vinculacion->persona->genero)->toBe(Genero::Femenino);
+            ->and($vinculacion->persona->genero)->toBe(Genero::Femenino)
+            ->and($vinculacion->persona->celular)->toBe('3007654321')
+            ->and($vinculacion->persona->correo)->toBe('carolina.restrepo@example.com');
     });
 
     it('deja el empleado activo sin que nadie digite el estado', function () {
@@ -338,10 +342,18 @@ describe('lo que el formulario no deja pasar', function () {
             ->assertSessionHasErrors([
                 'tipo_documento', 'numero_documento', 'fecha_expedicion_documento',
                 'primer_nombre', 'primer_apellido', 'fecha_nacimiento', 'genero',
-                'direccion', 'eps_id', 'fondo_pension_id', 'arl_id', 'tipo_riesgo',
+                'direccion', 'celular', 'correo', 'eps_id', 'fondo_pension_id', 'arl_id', 'tipo_riesgo',
                 'caja_compensacion_id', 'banco_id', 'cargo', 'tipo_contrato',
                 'fecha_ingreso', 'salario', 'bonificacion',
             ]);
+    });
+
+    it('no acepta un celular que no tenga exactamente diez dígitos', function () {
+        registrarEmpleado(['celular' => '30012345'])->assertSessionHasErrors('celular');
+    });
+
+    it('no acepta un correo sin formato de correo', function () {
+        registrarEmpleado(['correo' => 'no-es-un-correo'])->assertSessionHasErrors('correo');
     });
 
     it('no ofrece ni acepta una entidad desactivada', function () {

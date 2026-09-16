@@ -2199,7 +2199,7 @@ falla con un mensaje que lo dice, en vez de contar de más en silencio.
 **Fuente:** `database/seeders/FestivosSeeder.php` · `app/Dominio/Calculo/` ·
 `.claude/rules/20-calculo-y-reglas-legales.md`
 
-### [ ] HD-06 · No se guarda el celular ni el correo del empleado
+### [x] HD-06 · No se guarda el celular ni el correo del empleado
 
 La tabla `personas` tiene dirección y ciudad de residencia, pero ningún dato de contacto: no hay
 celular ni correo electrónico. David lo confirmó buscándolo en el listado y en la ficha. Es
@@ -2212,6 +2212,17 @@ dos columnas; la ficha del empleado los enseña entre los datos personales; y el
 y su exportación los incluyen.
 **Fuente:** `app/Models/Persona.php` · `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` ·
 `docs/01-especificacion-funcional.md` cap. 4
+
+Hecho: las dos columnas en `personas`, nulas —hay ocho personas ya registradas en este entorno y
+nadie les inventa un celular o un correo hacia atrás, el mismo criterio que `F1-06` aplicó al
+perfil sociodemográfico—, obligatorias de aquí en adelante en `RegistrarEmpleado::contacto()` con
+el formato exacto que pide el «hecho cuando»: correo con `email` de Laravel, celular con
+`regex:/^[0-9]{10}$/`. El asistente las pide en el paso de residencia, la plantilla de carga hereda
+las mismas reglas del formulario sin copiarlas y sus dos columnas se sumaron también al `.xlsx` real
+de `plantillas/`, con su fila de instrucciones. La ficha las enseña en el bloque «Residencia», y el
+listado y la exportación las agregan **al final**, después de cargo, contrato y fecha de ingreso: es
+donde no rompen las tres columnas obligatorias de toda exportación (documento, nombre, cargo) ni las
+tres columnas que arma la tarjeta del listado en móvil.
 
 ### [ ] HD-07 · Bogotá está bajo «Bogotá D.C.» y quien busca Cundinamarca no la encuentra
 

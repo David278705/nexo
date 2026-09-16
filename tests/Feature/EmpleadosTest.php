@@ -70,15 +70,17 @@ function nombresDe(array $filas): array
 }
 
 describe('las columnas del listado', function () {
-    it('trae documento, nombre, cargo, tipo de contrato, fecha de ingreso y estado', function () {
+    it('trae documento, nombre, celular, correo, cargo, tipo de contrato, fecha de ingreso y estado', function () {
         empleadoDe(
-            ['numero_documento' => '43887201', 'primer_nombre' => 'Carolina', 'segundo_nombre' => null, 'primer_apellido' => 'Restrepo', 'segundo_apellido' => 'Vélez'],
+            ['numero_documento' => '43887201', 'primer_nombre' => 'Carolina', 'segundo_nombre' => null, 'primer_apellido' => 'Restrepo', 'segundo_apellido' => 'Vélez', 'celular' => '3007654321', 'correo' => 'carolina.restrepo@example.com'],
             ['cargo' => 'Coordinadora de Operaciones', 'fecha_ingreso' => '2022-02-03'],
         );
 
         expect(filasDelListado()[0])->toMatchArray([
             'documento' => '43887201',
             'nombre' => 'Carolina Restrepo Vélez',
+            'celular' => '3007654321',
+            'correo' => 'carolina.restrepo@example.com',
             'cargo' => 'Coordinadora de Operaciones',
             'contrato' => 'Término indefinido',
             'ingreso' => '03/02/2022',
@@ -273,9 +275,9 @@ describe('la exportación', function () {
             ->toBe(['Documento', 'Nombre completo', 'Cargo']);
     });
 
-    it('escribe las mismas seis columnas que la pantalla', function () {
+    it('escribe las mismas ocho columnas que la pantalla', function () {
         $empleado = empleadoDe(
-            ['numero_documento' => '52998741', 'primer_nombre' => 'Marcela', 'segundo_nombre' => null, 'primer_apellido' => 'Ruiz', 'segundo_apellido' => null],
+            ['numero_documento' => '52998741', 'primer_nombre' => 'Marcela', 'segundo_nombre' => null, 'primer_apellido' => 'Ruiz', 'segundo_apellido' => null, 'celular' => '3007654321', 'correo' => 'marcela.ruiz@example.com'],
             ['cargo' => 'Analista de Compras', 'fecha_ingreso' => '2024-01-20'],
         );
 
@@ -296,6 +298,8 @@ describe('la exportación', function () {
             'Analista de Compras',
             'Término indefinido',
             '20/01/2024',
+            '3007654321',
+            'marcela.ruiz@example.com',
             'Activo',
         ]);
     });

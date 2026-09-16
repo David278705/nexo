@@ -62,6 +62,8 @@ const form = useForm({
 
     direccion: "",
     residencia: { pais: colombia, departamento: "", ciudad: "" },
+    celular: "",
+    correo: "",
     eps_id: "",
     fondo_pension_id: "",
     arl_id: "",
@@ -158,6 +160,8 @@ const pasos = computed(() => [
             "direccion",
             "residencia.departamento",
             "residencia.ciudad",
+            "celular",
+            "correo",
             "eps_id",
             "fondo_pension_id",
             "arl_id",
@@ -273,6 +277,8 @@ const resumen = computed(() => [
         valor: `${textoDe(props.opciones.documentos, form.tipo_documento)} ${form.numero_documento}`,
     },
     { etiqueta: "Dirección", valor: form.direccion },
+    { etiqueta: "Celular", valor: form.celular },
+    { etiqueta: "Correo electrónico", valor: form.correo },
     {
         etiqueta: "EPS",
         valor: textoDe(props.opciones.eps, form.eps_id),
@@ -526,6 +532,22 @@ const resumenDelPerfil = computed(() =>
                                 form.errors['residencia.departamento'] ?? '',
                             ciudad: form.errors['residencia.ciudad'] ?? '',
                         }"
+                    />
+                </div>
+
+                <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                    <CampoTexto
+                        v-model="form.celular"
+                        etiqueta="Celular"
+                        ayuda="Diez dígitos, sin espacios ni guiones."
+                        :error="form.errors.celular ?? ''"
+                    />
+
+                    <CampoTexto
+                        v-model="form.correo"
+                        etiqueta="Correo electrónico"
+                        tipo="email"
+                        :error="form.errors.correo ?? ''"
                     />
                 </div>
 

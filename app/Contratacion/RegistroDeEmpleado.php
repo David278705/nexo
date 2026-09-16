@@ -116,6 +116,9 @@ class RegistroDeEmpleado
             // La residencia es siempre en Colombia, así que siempre del
             // catálogo: no tiene par de columnas de texto libre.
             'ciudad_residencia_id' => (int) $residencia['ciudad'],
+
+            'celular' => $datos['celular'],
+            'correo' => $datos['correo'],
         ];
     }
 

@@ -42,11 +42,16 @@ class EmpleadosExport implements FromCollection, ShouldAutoSize, WithHeadings, W
     public function headings(): array
     {
         return [
+            // Las tres primeras son obligatorias en toda exportación del
+            // sistema (documento 3, 6.1) y no se mueven: celular y correo van
+            // al final.
             'Documento',
             'Nombre completo',
             'Cargo',
             'Tipo de contrato',
             'Fecha de ingreso',
+            'Celular',
+            'Correo electrónico',
             'Estado',
         ];
     }
@@ -65,6 +70,8 @@ class EmpleadosExport implements FromCollection, ShouldAutoSize, WithHeadings, W
             (string) $fila['cargo'],
             (string) $fila['contrato'],
             (string) $fila['ingreso'],
+            (string) $fila['celular'],
+            (string) $fila['correo'],
             (string) $fila['estado'],
         ];
     }

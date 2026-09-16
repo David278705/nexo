@@ -159,6 +159,8 @@ class ListadoDeEmpleados extends Listado
             'id' => $vinculacion->getKey(),
             'documento' => $persona->numero_documento,
             'nombre' => $persona->nombreCompleto(),
+            'celular' => (string) ($persona->getAttribute('celular') ?? ''),
+            'correo' => (string) ($persona->getAttribute('correo') ?? ''),
             'cargo' => (string) $vinculacion->getAttribute('cargo'),
             'contrato' => $vinculacion->tipo_contrato->etiqueta(),
             // En formato colombiano, que es como lo lee quien usa el sistema.
@@ -259,6 +261,10 @@ class ListadoDeEmpleados extends Listado
             'documento' => fn (Builder $consulta, string $sentido) => $consulta
                 ->orderBy(self::dePersona('numero_documento'), $sentido),
             'nombre' => self::porNombreDeLaPersona(...),
+            'celular' => fn (Builder $consulta, string $sentido) => $consulta
+                ->orderBy(self::dePersona('celular'), $sentido),
+            'correo' => fn (Builder $consulta, string $sentido) => $consulta
+                ->orderBy(self::dePersona('correo'), $sentido),
             'cargo' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('cargo', $sentido),
             'contrato' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('tipo_contrato', $sentido),
             'ingreso' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_ingreso', $sentido),

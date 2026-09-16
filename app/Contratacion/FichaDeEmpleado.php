@@ -268,6 +268,8 @@ class FichaDeEmpleado
             self::bloque('Residencia', [
                 'Dirección' => self::texto($this->persona->getAttribute('direccion')),
                 'Ciudad de residencia' => self::ciudad($this->persona->ciudadResidencia),
+                'Celular' => self::texto($this->persona->getAttribute('celular')),
+                'Correo electrónico' => self::texto($this->persona->getAttribute('correo')),
             ]),
             self::bloque('Seguridad social', [
                 'EPS' => self::nombreDe($this->vinculacion->eps),

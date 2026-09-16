@@ -95,6 +95,8 @@ class PlantillaDeEmpleados extends Plantilla
             Columna::texto('Dirección de residencia', 'direccion'),
             Columna::texto('Departamento de residencia', 'residencia.departamento'),
             Columna::texto('Ciudad de residencia', 'residencia.ciudad'),
+            Columna::texto('Celular', 'celular'),
+            Columna::texto('Correo electrónico', 'correo'),
 
             Columna::catalogo('EPS', 'eps_id', Eps::class),
             Columna::catalogo('Fondo de pensión', 'fondo_pension_id', FondoPension::class),

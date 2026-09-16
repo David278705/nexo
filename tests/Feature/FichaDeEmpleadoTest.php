@@ -298,6 +298,15 @@ describe('la pestaña de datos personales', function () {
             ->toBe('Cédula de ciudadanía');
     });
 
+    it('enseña el celular y el correo en el bloque de residencia', function () {
+        $empleado = empleadoDe(['celular' => '3007654321', 'correo' => 'marcela.ruiz@example.com']);
+
+        expect(campoDeLaFicha(fichaDe($empleado), 'Residencia', 'Celular'))
+            ->toBe('3007654321')
+            ->and(campoDeLaFicha(fichaDe($empleado), 'Residencia', 'Correo electrónico'))
+            ->toBe('marcela.ruiz@example.com');
+    });
+
     it('enseña el nombre de la entidad afiliada y una raya donde no hay ninguna', function () {
         $eps = Eps::query()->create(['nombre' => 'Sura EPS', 'activo' => true]);
         $empleado = empleadoDe([], ['eps_id' => $eps->getKey()]);

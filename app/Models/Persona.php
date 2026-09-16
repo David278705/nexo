@@ -59,6 +59,8 @@ class Persona extends Model
         'ciudad_expedicion_exterior',
         'direccion',
         'ciudad_residencia_id',
+        'celular',
+        'correo',
     ];
 
     /**

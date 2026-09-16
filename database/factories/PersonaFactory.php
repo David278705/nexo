@@ -66,6 +66,9 @@ class PersonaFactory extends Factory
 
             'direccion' => $this->faker->streetAddress(),
             'ciudad_residencia_id' => $ciudad->getKey(),
+
+            'celular' => $this->faker->numerify('3#########'),
+            'correo' => $this->faker->unique()->safeEmail(),
         ];
     }
 

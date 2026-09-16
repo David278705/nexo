@@ -32,12 +32,20 @@ const props = defineProps({
     conteos: { type: Object, required: true },
 });
 
+/*
+ * Celular y correo van al final, no detrás del nombre: en móvil la tabla se
+ * reemplaza por una tarjeta con las tres primeras columnas (documento 3,
+ * sección 6.4), y esas tres siguen siendo documento, nombre y cargo, que es lo
+ * que identifica a un empleado en la lista antes que su contacto.
+ */
 const columnas = [
     { clave: "documento", titulo: "Documento", ordenable: true },
     { clave: "nombre", titulo: "Nombre", ordenable: true },
     { clave: "cargo", titulo: "Cargo", ordenable: true },
     { clave: "contrato", titulo: "Tipo de contrato", ordenable: true },
     { clave: "ingreso", titulo: "Fecha de ingreso", ordenable: true },
+    { clave: "celular", titulo: "Celular", ordenable: true },
+    { clave: "correo", titulo: "Correo electrónico", ordenable: true },
     { clave: "estado", titulo: "Estado", ordenable: true },
 ];
 
