@@ -2184,7 +2184,7 @@ se ve en la pestaña «Novedades» de la ficha (reutiliza la columna «Detalle»
 nota de que la norma exacta sigue siendo pregunta para Angela — no bloquea, D.7 ya decidió el
 comportamiento.
 
-### [ ] HD-05 · Solo hay festivos de 2025 a 2027, y el histórico se carga de años anteriores
+### [!] HD-05 · Solo hay festivos de 2025 a 2027, y el histórico se carga de años anteriores — bloqueada: el catálogo pide datos legales de diez años que nadie ha verificado a mano
 
 La tabla `festivos` tiene 53 filas: 2025, 2026 y 2027. La carga inicial de vacaciones históricas
 pide fechas de años anteriores —David puso el ejemplo de unas vacaciones de 2023—, y los días

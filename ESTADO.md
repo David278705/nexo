@@ -1,95 +1,76 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-16 · Tarea `HD-04`
+**Última sesión:** 2026-09-16 · Tarea `HD-05`
 **Verificación:** verde. **1.258 de 1.258** pruebas de Pest, Pint y PHPStan sin errores, build y 405
-de Vitest.
-**Siguiente tarea:** `HD-05` · Solo hay festivos de 2025 a 2027, y el histórico se carga de años
-anteriores.
+de Vitest — el mismo número que dejó `HD-04`, porque esta sesión no logró aportar nada que se
+pudiera dejar puesto.
+**Siguiente tarea:** `HD-06` · No se guarda el celular ni el correo del empleado.
 
 ## Qué se hizo
 
-El caso contrario de `HD-03`: una incapacidad que llega después y cae sobre unas vacaciones ya
-registradas. La decisión ya estaba tomada en D.7 —recalcular y dejar nota—, así que esta sesión fue
-de implementación, no de decisión.
+`HD-05` pedía que el catálogo de festivos cubriera diez años más, además de los tres que ya tiene
+(2025-2027), para que una vacación histórica de, por ejemplo, 2023 cuente sus días hábiles contra
+el calendario real de ese año en vez de fallar o contar de más.
 
-- **`Vacacion::dias()` cambió de significado: ahora son los días realmente disfrutados, no los del
-  rango pedido.** Sigue llamando a `MotorDeCalculo::diasHabilesVacaciones()` para el total del rango
-  —`diasSolicitados()`, privado— y le resta `diasInterrumpidosPorIncapacidad()`: la suma, incapacidad
-  por incapacidad, de los días hábiles de la intersección entre el periodo de vacaciones y cada
-  incapacidad de la misma vinculación que lo pisa. Se pueden sumar sin doble conteo porque `HD-03` ya
-  garantiza que las incapacidades nunca se pisan entre sí. **Las fechas pedidas no se tocan**:
-  `fecha_inicio` y `fecha_fin` siguen siendo las que se registraron; lo que cambia es únicamente el
-  número de días, que es exactamente lo que pedía el «hecho cuando» de la tarea.
-- **`Vacacion::notaDeTraslape()`**, la frase que explica el traslape: «La incapacidad del 10 al 19 de
-  septiembre interrumpió el disfrute: 7 días volvieron al saldo.» (el caso real de David: vacaciones
-  del 10 al 24, incapacidad del 10 al 19, once días hábiles pedidos, siete interrumpidos, cuatro
-  realmente disfrutados). Cadena vacía cuando no hay traslape. Contempla el plural —«Las incapacidades
-  ... interrumpieron»— aunque hoy no hay ningún caso de prueba con dos, porque nada en el modelo de
-  datos lo impide.
-- **Nada se escribe aparte.** Ni un «días disfrutados» en una columna nueva, ni la nota misma: las dos
-  se calculan cada vez, que es la regla 2 del proyecto aplicada también aquí. Por la misma razón,
-  eliminar la incapacidad (borrado lógico) hace que `dias()` vuelva a su cuenta completa la próxima vez
-  que alguien la pida, sin ninguna operación inversa —igual que ya pasaba al borrar una vacación desde
-  F2-05—.
-- **La nota se ve en dos sitios**, como pedía el «hecho cuando»: la pestaña «Novedades» de la ficha del
-  empleado, reutilizando la columna «Detalle» que `HD-01` ya había abierto para el diagnóstico de
-  incapacidades; y una columna nueva «Nota» en el listado y la exportación de vacaciones. El listado
-  gana un eager load de `vinculacion.incapacidades` en `ListadoDeVacaciones::base()` para que la nota
-  de las 25 filas de una página no dispare 25 consultas aparte.
-- **`incapacidad_interrumpe_vacaciones` entró a `config/reglas_laborales.php`**, la décima constante,
-  con la nota de que la norma exacta sigue siendo pregunta para Angela —D.7 ya decidió el
-  comportamiento, así que esto no bloquea nada—. El código la lee en vez de asumir `true` a pelo, que
-  es el mismo patrón que ya usan las demás constantes legales del motor.
-- Pruebas nuevas: un bloque «el traslape con una incapacidad (HD-04)» en `VacacionesTest.php` —el
-  saldo que se devuelve, las fechas que no se tocan frente a los días que sí cambian, la nota en el
-  listado frente a una vacación sin traslape, y que eliminar la incapacidad devuelve todo a como
-  estaba—; un caso en la exportación; un caso en `FichaDeEmpleadoTest.php` para la nota en la pestaña
-  de novedades; y el ajuste de `ReglasLaboralesTest.php` a las diez constantes.
+- **El primer bloqueo es de datos, no de código.** `database/data/festivos.php` dice, en su propio
+  comentario, que el calendario **«no se calcula: se escribe y se verifica a mano»**, y
+  `.claude/rules/20-calculo-y-reglas-legales.md` lo repite: «Nunca calculados con fórmulas». La razón
+  que dan las dos fuentes es la misma que prohíbe inventar reglas de negocio: un festivo mal recordado
+  no se nota hasta que un cálculo de vacaciones sale mal para todos los clientes a la vez, y Colombia
+  traslada varios festivos con la ley Emiliani con excepciones que rompen cualquier fórmula o
+  recuerdo. No tengo forma de verificar a mano diez años de fechas festivas colombianas, así que
+  escribirlas de memoria sería exactamente lo que la tarea de origen (`CLAUDE.md`, «no adivines
+  valores legales») prohíbe.
+- **Se intentó igual la parte de código que no depende del dato**, la cuarta condición del «hecho
+  cuando»: que una fecha de un año sin calendario cargado falle con mensaje en vez de contar de más en
+  silencio. Se cambió `MotorDeCalculo::festivosEntre()` para lanzar una excepción cuando
+  `Festivo::fechasDelAnio($anio)` viene vacío. **Rompió 37 pruebas existentes**: muchas registran solo
+  los festivos puntuales que su caso necesita (`Festivo::registrar(...)` suelto), no el calendario
+  completo del año, así que para ellas «vacío» significa «no lo necesito, no que falte cargar» — la
+  misma lista vacía significa dos cosas distintas según quién pregunte, y no hay forma de
+  distinguirlas sin un dato nuevo (un catálogo de «años cargados» separado del catálogo de festivos, o
+  cambiar la convención de decenas de pruebas). Es un cambio bastante más grande de lo que parecía y
+  no cabía en los dos intentos de esta sesión, así que se revirtió entero. El repositorio quedó
+  exactamente como lo dejó `HD-04`.
 
 ## Decisiones tomadas
 
-- **No se agregó ninguna columna nueva a `vacaciones`.** Ni «días disfrutados» ni «nota»: las dos
-  son calculadas, siguiendo al pie de la letra la regla 2 y el patrón que ya usa todo el módulo de
-  vacaciones desde F2-05.
-- **La constante de configuración se lee, no se asume.** Aunque D.7 fija el comportamiento sin
-  excepción por empresa, `incapacidad_interrumpe_vacaciones` vive en `config/reglas_laborales.php` y
-  el código la consulta, en vez de escribir `true` suelto en la lógica: es el mismo criterio que exige
-  `.claude/rules/20-calculo-y-reglas-legales.md` para toda constante legal, tenga o no interruptor por
-  empresa.
-- **La nota de la ficha reutiliza la columna «Detalle»** que `HD-01` ya había abierto, en vez de sumar
-  una columna nueva a la tabla de novedades: es el mismo campo que ya usan las incapacidades para el
-  origen y el diagnóstico, y las vacaciones antes lo dejaban vacío.
+- **Ninguna.** No se guardó ningún cambio de esta sesión: ni la excepción del motor, ni la prueba que
+  la acompañaba. `git status` está limpio.
 
 ## Preguntas para Angela
 
-- **La norma que sustenta que la incapacidad interrumpe el disfrute de vacaciones**, para
-  `config/reglas_laborales.php`. No bloquea nada: `HD-04` ya tiene decidido y construido el
-  comportamiento; solo falta la cita en el comentario de la constante.
-- **B.2 sigue abierta**: periodo de prueba en cambio de modalidad contractual.
-- **El fondo de cesantías sigue abierto**: si hace falta pedirlo, y dónde.
+- (vacío, no cambia respecto a la sesión anterior)
 
 ## Decisiones para David
 
+- **`HD-05` necesita el calendario de festivos de los diez años que le faltan al catálogo, escrito y
+  verificado a mano, como ya se hace con 2025-2027 en `database/data/festivos.php`.** No es una
+  pregunta de negocio: es exactamente la tarea anual del proveedor que el propio archivo describe,
+  aplicada hacia atrás en vez de hacia adelante. Falta decidir también el rango exacto — «los últimos
+  diez años» ¿contados desde 2026 hacia atrás (2016-2025) o desde 2025, el primer año ya cargado, hacia
+  atrás (2015-2024)? — porque el backlog no lo fija y los dos leen distinto «además de los tres que ya
+  tiene». Con esas fechas en mano, la parte de código —que ya se diseñó y se probó, y solo se revirtió
+  por los datos que faltan— es una sesión corta.
 - **`F6-07` sigue esperándote**: los cuatro pasos de la restauración de prueba en Railway,
   en `docs/07-plan-de-incidentes.md` sección 4.
 - **`F3-06b` sigue esperándote**: proveedor transaccional, `.env`, DNS (SPF/DKIM/DMARC) y correr
   `alertas:prueba`. Con `MAIL_MAILER=log` en local, ninguna alerta sale de la máquina de verdad.
-- **Verificación manual de esta tarea**: a un empleado con vacaciones ya registradas, regístrale una
-  incapacidad que caiga sobre esas fechas —el caso real es vacaciones del 10 al 24 de septiembre y una
-  incapacidad del 10 al 19—, y comprueba que el saldo sube, que la ficha y el listado de vacaciones
-  muestran la nota del traslape, y que las fechas de las vacaciones siguen siendo las originales.
-  Elimina la incapacidad después y comprueba que la nota desaparece y el saldo vuelve a bajar.
 - **Verificaciones manuales heredadas y todavía sin hacer**: la ficha de empresa del proveedor tras
-  REV-12, el formulario de acceso de prueba tras F5-08, la pestaña «Facturación» de REV-11 y el flujo
-  completo de REV-10.
+  REV-12, el formulario de acceso de prueba tras F5-08, la pestaña «Facturación» de REV-11, el flujo
+  completo de REV-10 y la de `HD-04` (incapacidad que interrumpe vacaciones ya registradas).
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
 
 ## Notas para la próxima sesión
 
-- **`HD-05` es la siguiente**: festivos solo de 2025 a 2027, y la carga inicial de vacaciones
-  históricas necesita años anteriores. Toca `FestivosSeeder.php` y probablemente el punto donde el
-  motor falla en silencio si le falta el calendario de un año —el «hecho cuando» pide que falle con
-  mensaje, no que cuente de más—.
+- **`HD-05` quedó `[!]` en el backlog** con el motivo anotado ahí mismo. No se retoma hasta que David
+  traiga el calendario de festivos verificado; cuando llegue, el cambio de código ya está pensado
+  (lanzar en `MotorDeCalculo::festivosEntre()` cuando el año no tiene ninguna fila), pero hay que
+  resolver antes cómo distinguir «año sin cargar» de «prueba que solo registró un festivo suelto» sin
+  tocar 37 pruebas una por una — probablemente separando «festivos del año» de «si el año está
+  cargado» en dos preguntas distintas al modelo `Festivo`.
+- **`HD-06` es la siguiente**: falta celular y correo en `personas`, en el asistente, la plantilla de
+  carga, la ficha y el listado de empleados.
 - **`HD-06`, `HD-08` y `HD-09` tocan las tres la plantilla de empleados.** Están seguidas a
   propósito: hacerlas juntas evita tres migraciones de plantilla y tres rondas de pruebas.
 - **`./vendor/bin/pest` a secas se queda sin memoria** en la exportación a Excel, con el
