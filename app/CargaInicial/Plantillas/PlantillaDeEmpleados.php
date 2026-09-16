@@ -8,6 +8,7 @@ use App\CargaInicial\ErrorDeCarga;
 use App\CargaInicial\FilaTraducida;
 use App\CargaInicial\PlantaDeLaEmpresa;
 use App\CargaInicial\Plantilla;
+use App\CargaInicial\TextoDeCelda;
 use App\Contratacion\Genero;
 use App\Contratacion\RegistroDeEmpleado;
 use App\Contratacion\TipoContrato;
@@ -406,12 +407,11 @@ class PlantillaDeEmpleados extends Plantilla
             $identificador = $catalogos->departamento($departamento);
 
             if ($identificador === null) {
-                $this->sinResolver(
-                    $fila,
-                    'expedicion',
-                    'Lugar de expedición del documento',
-                    "«{$departamento}» no es un departamento de Colombia.",
-                );
+                $motivo = $this->esBogota($departamento)
+                    ? $this->motivoDeBogota('Lugar de expedición del documento', 'Lugar de expedición del documento')
+                    : "«{$departamento}» no es un departamento de Colombia.";
+
+                $this->sinResolver($fila, 'expedicion', 'Lugar de expedición del documento', $motivo);
 
                 return;
             }
@@ -424,12 +424,11 @@ class PlantillaDeEmpleados extends Plantilla
         $candidatos = $catalogos->ciudadesLlamadas($nombre);
 
         if ($candidatos === []) {
-            $this->sinResolver(
-                $fila,
-                'expedicion',
-                'Lugar de expedición del documento',
-                "«{$lugar}» no es un municipio de Colombia. Escríbalo tal como aparece en la lista de ciudades del sistema.",
-            );
+            $motivo = $this->esBogota($nombre)
+                ? $this->motivoDeBogota('Lugar de expedición del documento', 'Lugar de expedición del documento')
+                : "«{$lugar}» no es un municipio de Colombia. Escríbalo tal como aparece en la lista de ciudades del sistema.";
+
+            $this->sinResolver($fila, 'expedicion', 'Lugar de expedición del documento', $motivo);
 
             return;
         }
@@ -499,14 +498,18 @@ class PlantillaDeEmpleados extends Plantilla
         $departamento = $catalogos->departamento($escrito);
 
         if ($departamento === null) {
-            $this->sinResolver($fila, $prefijo, $tituloDepartamento, "«{$escrito}» no es un departamento de Colombia.");
+            $motivo = $this->esBogota($escrito)
+                ? $this->motivoDeBogota($tituloDepartamento, $tituloCiudad)
+                : "«{$escrito}» no es un departamento de Colombia.";
+
+            $this->sinResolver($fila, $prefijo, $tituloDepartamento, $motivo);
 
             return;
         }
 
         $fila->poner($prefijo.'.departamento', $departamento);
 
-        $this->municipioDe($fila, $prefijo, $departamento, $fila->valor($prefijo.'.ciudad'), $tituloCiudad, $catalogos);
+        $this->municipioDe($fila, $prefijo, $departamento, $fila->valor($prefijo.'.ciudad'), $tituloCiudad, $catalogos, $tituloDepartamento);
     }
 
     private function municipioDe(
@@ -516,6 +519,7 @@ class PlantillaDeEmpleados extends Plantilla
         mixed $escrito,
         string $titulo,
         CatalogosDeCarga $catalogos,
+        ?string $tituloDepartamento = null,
     ): void {
         if (! is_string($escrito)) {
             return;
@@ -524,18 +528,47 @@ class PlantillaDeEmpleados extends Plantilla
         $ciudad = $catalogos->ciudadEn($departamento, $escrito);
 
         if ($ciudad === null) {
-            $this->sinResolver(
-                $fila,
-                $prefijo,
-                $titulo,
-                "«{$escrito}» no es un municipio de ".(string) $catalogos->nombreDeDepartamento($departamento).'.',
-            );
+            $motivo = $this->esBogota($escrito)
+                ? $this->motivoDeBogota($tituloDepartamento ?? $titulo, $titulo)
+                : "«{$escrito}» no es un municipio de ".(string) $catalogos->nombreDeDepartamento($departamento).'.';
+
+            $this->sinResolver($fila, $prefijo, $titulo, $motivo);
 
             return;
         }
 
         $fila->poner($prefijo.'.departamento', $departamento);
         $fila->poner($prefijo.'.ciudad', $ciudad);
+    }
+
+    /**
+     * Si lo que se escribió es alguna forma de «Bogotá»: es el único caso en
+     * que el rechazo genérico —«no es un departamento/municipio»— no basta,
+     * porque Bogotá no es ninguna de las dos cosas que busca quien la escribe
+     * ahí. Es Distrito Capital, y el catálogo la tiene con su propio nombre,
+     * «Bogotá D.C.» (documento 6, D.7).
+     */
+    private function esBogota(string $escrito): bool
+    {
+        $comparable = (string) preg_replace('/[^a-z ]/', '', TextoDeCelda::comparable($escrito));
+        $comparable = trim((string) preg_replace('/\s+/', ' ', $comparable));
+
+        return in_array($comparable, ['bogota', 'bogota dc'], true);
+    }
+
+    /**
+     * El motivo específico de Bogotá, con el nombre exacto que hay que
+     * escribir y en qué columna. Si las dos columnas son la misma —el lugar
+     * de expedición, que junta departamento y ciudad en una sola celda—, la
+     * instrucción no se repite.
+     */
+    private function motivoDeBogota(string $tituloDepartamento, string $tituloCiudad): string
+    {
+        $instruccion = $tituloDepartamento === $tituloCiudad
+            ? "Escriba «Bogotá D.C.» en «{$tituloDepartamento}»."
+            : "Escriba «Bogotá D.C.» en «{$tituloDepartamento}» y «Bogotá D.C.» en «{$tituloCiudad}».";
+
+        return 'Bogotá es Distrito Capital, no un municipio de ningún departamento: se busca como «Bogotá D.C.». '.$instruccion;
     }
 
     /**

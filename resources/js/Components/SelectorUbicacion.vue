@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import Selector from "@/Components/Selector.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
+import Aviso from "@/Components/Aviso.vue";
 
 /*
  * La regla 5.1.1 del documento 1, en un solo sitio.
@@ -57,6 +58,16 @@ const departamentoElegido = computed(() =>
 // de una vez es lo que la lista encadenada existe para evitar.
 const ciudades = computed(() => departamentoElegido.value?.ciudades ?? []);
 
+/*
+ * Bogotá no está entre los municipios de Cundinamarca (D.7, HD-07): el DANE la
+ * define como Distrito Capital, un departamento propio. El catálogo está bien
+ * así y no se toca; lo que hace falta es que quien busca Cundinamarca porque
+ * nació o vive en Bogotá no se quede mirando una lista donde no está.
+ */
+const avisaCundinamarca = computed(
+    () => esColombia.value && departamentoElegido.value?.texto === "Cundinamarca",
+);
+
 function cambiar(cambios) {
     emit("update:modelValue", { ...props.modelValue, ...cambios });
 }
@@ -107,6 +118,12 @@ function cambiarDepartamento(departamento) {
                 :error="errores.ciudad ?? ''"
                 @update:model-value="(ciudad) => cambiar({ ciudad })"
             />
+
+            <Aviso v-if="avisaCundinamarca" class="sm:col-span-3">
+                Bogotá no está en esta lista: es su propio departamento, no un
+                municipio de Cundinamarca. Búsquela como «Bogotá D.C.» en el
+                selector de departamento.
+            </Aviso>
         </template>
 
         <template v-else>

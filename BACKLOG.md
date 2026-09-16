@@ -2224,7 +2224,7 @@ listado y la exportación las agregan **al final**, después de cargo, contrato 
 donde no rompen las tres columnas obligatorias de toda exportación (documento, nombre, cargo) ni las
 tres columnas que arma la tarjeta del listado en móvil.
 
-### [ ] HD-07 · Bogotá está bajo «Bogotá D.C.» y quien busca Cundinamarca no la encuentra
+### [x] HD-07 · Bogotá está bajo «Bogotá D.C.» y quien busca Cundinamarca no la encuentra
 
 El catálogo es correcto y **no se toca**: el DANE define Bogotá como Distrito Capital, entidad
 propia de nivel departamental con código 11, no como municipio de Cundinamarca. Cundinamarca tiene
@@ -2244,6 +2244,23 @@ escribir en vez de solo rechazar la fila; y las instrucciones de las plantillas 
 departamento lo advierten.
 **Fuente:** `resources/js/Components/Selector.vue` · `app/CargaInicial/` ·
 `docs/06-decisiones-pendientes.md` D.7
+
+Hecho: el catálogo no se tocó, como manda D.7. `SelectorUbicacion` —el componente compartido detrás
+de nacimiento, expedición y residencia en el asistente, y también de la ciudad en `CrearEmpresa`
+del panel del proveedor— avisa con `Aviso` en cuanto el departamento elegido es Cundinamarca: «Bogotá
+no está en esta lista: es su propio departamento, no un municipio de Cundinamarca. Búsquela como
+«Bogotá D.C.» en el selector de departamento.». **El buscador ya encontraba «Bogotá D.C.» al escribir
+«Bogotá»** sin tocar nada: `Selector` filtra por coincidencia de texto, y «Bogotá» es substring de
+«Bogotá D.C.»; quedó con prueba nueva sobre la lista real de departamentos para dejarlo protegido. En
+`PlantillaDeEmpleados`, `esBogota()` reconoce «Bogotá» y «Bogotá D.C.» escritos con o sin puntuación
+—**sin adivinar nada más**, ninguna otra forma ni abreviatura— y `motivoDeBogota()` reemplaza el
+rechazo genérico por la explicación y la columna exacta donde escribir «Bogotá D.C.», en los tres
+puntos donde un departamento o un municipio no resuelven: el departamento de nacimiento o residencia,
+el municipio dentro de un departamento ya resuelto, y el lugar de expedición de una sola celda. La
+plantilla real de `plantillas/` se editó por el método seguro de HD-06 —el XML de `sheet1.xml` a mano
+con `ZipArchive`, verificado archivo por archivo contra el original— para que las instrucciones de
+«Departamento de nacimiento», «Departamento de residencia» y «Lugar de expedición del documento»
+adviertan lo mismo.
 
 ### [ ] HD-08 · La plantilla de empleados pide el lugar de expedición en una sola columna
 

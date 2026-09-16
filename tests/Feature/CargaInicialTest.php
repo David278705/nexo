@@ -351,6 +351,48 @@ describe('la validación de la plantilla de empleados', function () {
             ->toContain('no es un municipio de Antioquia');
     });
 
+    /*
+     * HD-07 (documento 6, D.7): el catálogo no se toca —Bogotá sigue sin ser
+     * un municipio de Cundinamarca, porque el DANE la trata como su propio
+     * departamento— pero el rechazo deja de ser el genérico «no es un
+     * municipio» y explica qué escribir en su lugar.
+     */
+    it('explica que Bogotá no es un municipio de Cundinamarca y qué escribir en su lugar', function () {
+        Departamento::factory()->create(['nombre' => 'Cundinamarca']);
+
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Departamento de residencia' => 'Cundinamarca',
+                'Ciudad de residencia' => 'Bogotá',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('Distrito Capital')
+            ->toContain('«Bogotá D.C.»');
+    });
+
+    it('explica que Bogotá se busca como «Bogotá D.C.» cuando se escribe como si fuera el departamento', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Departamento de nacimiento' => 'Bogotá',
+                'Ciudad de nacimiento' => 'Bogotá',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('«Bogotá D.C.»');
+    });
+
+    it('explica Bogotá también en el lugar de expedición del documento', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Lugar de expedición del documento' => 'Bogotá']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('«Bogotá D.C.»');
+    });
+
     it('pide el departamento entre paréntesis cuando el lugar de expedición está repetido', function () {
         $santander = Departamento::factory()->create(['nombre' => 'Santander']);
         Ciudad::factory()->de($santander)->create(['nombre' => 'Albania']);

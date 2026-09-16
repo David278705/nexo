@@ -21,6 +21,16 @@ const departamentos = [
         texto: "Valle del Cauca",
         ciudades: [{ valor: 20, texto: "Cali" }],
     },
+    {
+        valor: 3,
+        texto: "Cundinamarca",
+        ciudades: [{ valor: 30, texto: "Soacha" }],
+    },
+    {
+        valor: 4,
+        texto: "Bogotá D.C.",
+        ciudades: [{ valor: 40, texto: "Bogotá D.C." }],
+    },
 ];
 
 function montar(ubicacion, extras = {}) {
@@ -123,5 +133,67 @@ describe("SelectorUbicacion", () => {
         expect(componente.text()).toContain("País de nacimiento");
         expect(componente.text()).toContain("Departamento de nacimiento");
         expect(componente.text()).toContain("Ciudad de nacimiento");
+    });
+
+    /*
+     * D.7 / HD-07: el catálogo no se toca —Bogotá sigue sin estar entre los
+     * municipios de Cundinamarca, porque el DANE la trata como su propio
+     * departamento—, así que quien busca Cundinamarca porque nació o vive en
+     * Bogotá necesita que la pantalla se lo explique.
+     */
+    it("avisa que Bogotá se busca aparte al elegir Cundinamarca", () => {
+        const componente = montar({ pais: "CO", departamento: 3 });
+        const aviso = componente.find('[role="status"]');
+
+        expect(aviso.exists()).toBe(true);
+        expect(aviso.text()).toContain("Bogotá D.C.");
+    });
+
+    it("no avisa de Bogotá con otro departamento elegido", () => {
+        const componente = montar({ pais: "CO", departamento: 1 });
+
+        expect(componente.find('[role="status"]').exists()).toBe(false);
+    });
+
+    it("no avisa de Bogotá mientras no se haya elegido departamento", () => {
+        const componente = montar({ pais: "CO" });
+
+        expect(componente.find('[role="status"]').exists()).toBe(false);
+    });
+
+    it("escribir «Bogotá» en el buscador de departamentos encuentra «Bogotá D.C.»", async () => {
+        // Con más de diez departamentos el Selector cambia a combobox con
+        // búsqueda (documento 3, 3.4): es la lista real, no la reducida de
+        // arriba.
+        const muchosDepartamentos = [
+            ...departamentos,
+            ...Array.from({ length: 8 }, (_, indice) => ({
+                valor: 100 + indice,
+                texto: `Departamento ${indice}`,
+                ciudades: [],
+            })),
+        ];
+
+        const componente = mount(SelectorUbicacion, {
+            props: {
+                modelValue: { pais: "CO", departamento: "", ciudad: "" },
+                paises,
+                departamentos: muchosDepartamentos,
+                codigoDeColombia: "CO",
+            },
+            attachTo: document.body,
+        });
+
+        const campoDeDepartamento = componente.find('[role="combobox"]');
+
+        await campoDeDepartamento.trigger("focus");
+        await campoDeDepartamento.setValue("Bogotá");
+        await campoDeDepartamento.trigger("input");
+
+        expect(
+            componente.findAll('[role="option"]').map((opcion) => opcion.text()),
+        ).toEqual(["Bogotá D.C."]);
+
+        componente.unmount();
     });
 });
