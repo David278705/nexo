@@ -2345,7 +2345,7 @@ archivo por archivo contra el original—: las columnas Z y AA se repropósitan 
 primer par, y los cinco pares restantes se agregaron al final (`AJ` a `AS`), seis pruebas nuevas en
 `CargaInicialTest.php` cubren el caso completo de David (2018, tres prórrogas) y las cinco validaciones.
 
-### [ ] HD-10 · Los ejemplos de las plantillas no coinciden con los catálogos del sistema
+### [x] HD-10 · Los ejemplos de las plantillas no coinciden con los catálogos del sistema
 
 La plantilla del histórico de incapacidades trae `SURA` como ejemplo en su primera fila. En el
 catálogo la EPS se llama **`Sura EPS`**, así que quien copie el ejemplo recibe un error. David pidió
@@ -2362,6 +2362,25 @@ instrucciones de cada plantilla enseña los valores admitidos de cada columna de
 y las columnas de lista se validan sin distinguir mayúsculas ni tildes, de modo que «suspension»
 entre igual que «suspensión».
 **Fuente:** `app/CargaInicial/Plantillas/` · `app/CargaInicial/Columna.php`
+
+Hecho: los tres ejemplos reales que no coincidían con su catálogo —`Q2` y `S2` de la plantilla de
+empleados (EPS y ARL) y `F2` de la de incapacidades (EPS), los tres con «Sura» donde el catálogo dice
+«Sura EPS» o «ARL Sura»— se corrigieron editando el XML de los dos `.xlsx` reales a mano con
+`ZipArchive`, comparado archivo por archivo contra el original. **Las columnas de lista ya
+comparaban sin mayúsculas ni tildes desde antes de esta tarea**: `TextoDeCelda::comparable()` ya
+hacía `Str::ascii()` y `Str::lower()`, así que «suspension» sin tilde ya entraba igual que
+«Suspensión» — se agregaron dos pruebas que lo demuestran (una de catálogo, EPS, y una de lista,
+Origen y tipo de novedad) para que quede protegido y no sea solo una lectura del código. **Lo que
+faltaba de verdad eran los valores admitidos de las columnas de catálogo en las instrucciones**: `EPS`,
+`Fondo de pensión`, `ARL`, `Caja de compensación` y `Entidad bancaria` de la plantilla de empleados, y
+`EPS que la expide` de incapacidades, ninguna traía su lista —a diferencia de las columnas de lista
+por enumerado, que ya la traían todas—; se completaron con los nombres exactos de
+`database/data/entidades.php`, la misma fuente del seeder (D.5). La prueba nueva
+`acepta el ejemplo real de las seis plantillas de plantillas/` ejecuta la plantilla de empleados de
+verdad y simula las otras cinco con sus archivos reales de `plantillas/`, encadenadas por el mismo
+documento de ejemplo, así que un ejemplo futuro que se desfase de su catálogo la pone en rojo. La
+tarea dice «siete plantillas» pero el catálogo (`CatalogoDePlantillas`) y el resto del código dicen
+consistentemente «seis»: se resolvió sobre las seis reales, sin inventar una séptima.
 
 ### [ ] HD-11 · El cambio a término indefinido siempre se registra con la fecha de hoy
 

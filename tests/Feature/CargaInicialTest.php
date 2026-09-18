@@ -10,6 +10,7 @@ use App\CargaInicial\LectorDeArchivo;
 use App\CargaInicial\Plantilla;
 use App\CargaInicial\Plantillas\PlantillaDeEmpleados;
 use App\CargaInicial\Plantillas\PlantillaDeIncapacidades;
+use App\CargaInicial\Plantillas\PlantillaDeLicencias;
 use App\CargaInicial\Plantillas\PlantillaDeMovimientos;
 use App\CargaInicial\Plantillas\PlantillaDePerfilSociodemografico;
 use App\CargaInicial\Plantillas\PlantillaDeVacaciones;
@@ -17,6 +18,7 @@ use App\CargaInicial\ResultadoDeLaCarga;
 use App\CargaInicial\ResultadoDeSimulacion;
 use App\CargaInicial\SimulacionDeCarga;
 use App\Dominio\Calculo\SaldoDeVacaciones;
+use App\Licencias\TipoDeLicencia;
 use App\Models\Arl;
 use App\Models\Banco;
 use App\Models\CajaCompensacion;
@@ -236,6 +238,45 @@ describe('el lector', function () {
 
             expect($leido->titulosQueFaltan)->toBe([], "faltan columnas en «{$plantilla->nombre()}»")
                 ->and($leido->filas)->not->toBeEmpty();
+        }
+    });
+
+    /**
+     * HD-10: el ejemplo de la fila 2 es lo primero que copia quien diligencia
+     * el archivo, así que tiene que pasar las reglas de su propia plantilla.
+     * Corre las seis con sus catálogos reales —los mismos nombres que
+     * `beforeEach` siembra— para que un ejemplo desfasado, como «SURA» en vez
+     * de «Sura EPS», se note aquí y no en la reunión de carga con el cliente.
+     */
+    it('acepta el ejemplo real de las seis plantillas de plantillas/', function () {
+        $this->empresa->forceFill(['perfil_sociodemografico_habilitado' => true])->save();
+
+        foreach (app(CatalogoDePlantillas::class)->todas() as $plantilla) {
+            $archivo = base_path('plantillas/'.nombreDelArchivo($plantilla->clave()));
+
+            if ($plantilla->clave() === PlantillaDeEmpleados::CLAVE) {
+                // Se ejecuta de verdad, y no solo se simula: las cinco
+                // plantillas siguientes se vinculan por documento con la
+                // planta ya cargada, y sin escribirla no habría planta.
+                try {
+                    ejecutar($plantilla, $archivo);
+                } catch (CargaRechazada $rechazo) {
+                    $motivos = $rechazo->simulacion === null
+                        ? $rechazo->getMessage()
+                        : implode(' | ', array_map(fn ($error) => $error->comoTexto(), $rechazo->simulacion->errores));
+
+                    expect(false)->toBeTrue("el ejemplo de «{$plantilla->nombre()}» no pasa sus propias reglas: {$motivos}");
+                }
+
+                continue;
+            }
+
+            $resultado = simular($plantilla, $archivo);
+
+            expect($resultado->hayErrores())->toBeFalse(
+                "el ejemplo de «{$plantilla->nombre()}» no pasa sus propias reglas: ".
+                implode(' | ', array_map(fn ($error) => $error->comoTexto(), $resultado->errores))
+            );
         }
     });
 
@@ -581,6 +622,47 @@ describe('las plantillas que se vinculan por documento', function () {
         expect($valores['vinculacion_id'])->toBe($vinculacion->id)
             ->and($valores['es_prorroga'])->toBe('no')
             ->and($valores['origen'])->toBe('comun');
+    });
+
+    /**
+     * HD-10: la comparación ignora mayúsculas y tildes tanto en una columna de
+     * catálogo (EPS, contra la tabla) como en una de lista (Origen, contra el
+     * enumerado), así que un empleado no rebota por cómo lo escribió el cliente.
+     */
+    it('no distingue mayúsculas ni tildes al leer una columna de catálogo o de lista', function () {
+        empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDeIncapacidades, [[
+            'Número de documento' => '43887201',
+            'Fecha de inicio' => '14/07/2025',
+            'Fecha de terminación' => '16/07/2025',
+            'Código de diagnóstico' => 'J06.9',
+            '¿Es prórroga?' => 'No',
+            'EPS que la expide' => 'sura eps',
+            'Origen' => 'comun',
+        ]]);
+
+        $resultado = simular(new PlantillaDeIncapacidades, $archivo);
+
+        expect($resultado->hayErrores())->toBeFalse()
+            ->and($resultado->valores()[0]['eps_id'])->toBe(Eps::query()->first()?->id)
+            ->and($resultado->valores()[0]['origen'])->toBe('comun');
+    });
+
+    it('«suspension» sin tilde entra igual que la etiqueta «Suspensión» del tipo de novedad', function () {
+        empleadoDeLaPlanta();
+
+        $archivo = archivoDeCarga(new PlantillaDeLicencias, [[
+            'Número de documento' => '43887201',
+            'Tipo de novedad' => 'suspension',
+            'Fecha inicial' => '16/03/2025',
+            'Fecha final' => '15/04/2025',
+        ]]);
+
+        $resultado = simular(new PlantillaDeLicencias, $archivo);
+
+        expect($resultado->hayErrores())->toBeFalse()
+            ->and($resultado->valores()[0]['tipo'])->toBe(TipoDeLicencia::Suspension->value);
     });
 
     it('traduce los nombres que la plantilla del perfil escribe distinto del sistema', function () {

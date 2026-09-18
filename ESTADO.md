@@ -1,87 +1,59 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-18 · Tarea `HD-09`
-**Verificación:** verde. 1.271 de 1.271 pruebas de Pest, Pint y PHPStan sin errores, build y 409 de
-Vitest — seis pruebas más que `HD-08`, las de las prórrogas de la plantilla de empleados.
-**Siguiente tarea:** `HD-10` · Los ejemplos de las plantillas no coinciden con los catálogos del sistema.
+**Última sesión:** 2026-09-18 · Tarea `HD-10`
+**Verificación:** verde. 1.274 de 1.274 pruebas de Pest, Pint y PHPStan sin errores, build y 409 de
+Vitest — dos pruebas más que `HD-09`, las de la comparación sin mayúsculas ni tildes, más la que
+recorre las seis plantillas reales con su ejemplo.
+**Siguiente tarea:** `HD-11` · El cambio a término indefinido siempre se registra con la fecha de
+hoy, en vez de con la fecha real en que se acordó.
 
 ## Qué se hizo
 
-`HD-09` pedía que la plantilla de empleados dejara registrar las prórrogas de un contrato a término
-fijo una por una: hoy solo guardaba `Prórrogas ya realizadas` —un número— y `Fecha de inicio del
-contrato vigente` —una fecha que, además, nunca se convertía en nada: se validaba y se descartaba—,
-así que con alguien que entró en 2018 con varias prórrogas no había dónde poner cuándo empezó y
-terminó cada una.
+`HD-10` pedía que ningún ejemplo de las plantillas usara un valor que su propio catálogo rechazara,
+que las instrucciones mostraran los valores admitidos de cada columna de lista o de catálogo, y que
+la comparación ignorara mayúsculas y tildes.
 
-- **Doce columnas nuevas reemplazan a las dos viejas.** `Fecha de inicio de la prórroga N` / `Fecha
-  de fin de la prórroga N`, para N de 1 a 6 (documento 6, D.7). `columnasDeProrrogas()` las genera y
-  `PlantillaDeEmpleados::columnas()` las coloca justo después de `Fecha de finalización del
-  contrato`, el mismo sitio lógico que ocupaban las dos columnas que reemplazan.
-- **La validación vive en `completar()`, no en `reglas()`.** Es una cadena con estado —cada prórroga
-  depende de la anterior— y el patrón ya establecido para eso en esta plantilla es `$fila->error()`
-  dentro de `completar()`, igual que la resolución de departamento/ciudad. Tres métodos:
-  - `prorrogasEscritas()` recorre las seis y devuelve los números con las dos fechas completas, en
-    orden; si hay un par a medias o una prórroga saltada, anota el error y devuelve `null` sin seguir.
-  - `prorrogas()` decide si el bloque aplica: si el contrato no es a término fijo, cualquier prórroga
-    escrita es un error («son solo para el contrato a término fijo»).
-  - `encadenarProrrogas()` comprueba que la primera empiece después de la fecha de ingreso, que cada
-    una siguiente empiece el día después de que termina la anterior, y que la última cargada termine
-    el mismo día que «Fecha de finalización del contrato» —si no coincidiera, `registrarPeriodo()` la
-    sobreescribiría en silencio más adelante, así que se prefiere rechazar el archivo a adivinar cuál
-    de las dos fechas es la buena—.
-  - Ninguna revalida una celda que ya falló al leerse (`$fila->yaFallo()`): una fecha ilegible o un
-    `tipo_contrato` que no se pudo traducir no producen un segundo mensaje encima del primero.
-- **`escribir()` construye el historial real**, no solo escribe la vinculación. `registrarProrrogas()`
-  corrige primero el periodo inicial —que `ObservadorDeVinculacion` crea con la fecha de finalización
-  *vigente* porque no sabe de prórrogas— al día anterior al inicio de la primera prórroga, y encadena
-  cada tramo llamando a `Vinculacion::registrarPeriodo()`, el mismo método que usa «Renovar contrato»
-  desde la pantalla. Una prórroga cargada y una digitada acaban idénticas en `periodos_contractuales`.
-- **El tipo de cada prórroga se guarda como pactada**, sin preguntarlo. La plantilla solo pide las dos
-  fechas, y C.1 (corregida por Angela) ya estableció que el tipo no cambia ningún cálculo: el cupo de
-  tres prórrogas cortas es de la cadena entera, sin mirar si cada una fue pactada o automática. Guardar
-  un tipo fijo es una decisión de ingeniería, no una regla laboral inventada.
-- **C.1 y C.2 quedan evaluadas sobre el historial real sin escribir código nuevo para eso.** Con
-  tramos de verdad en `periodos_contractuales`, `HistorialDeContrato::contratoInicialEsInferiorAUnAnio()`
-  y `prorrogasCortas()` —C.1— y `fechaDelTopeLegal()` —C.2— ya leían el historial correcto; lo que
-  estaba mal antes era el historial mismo, no las cuentas.
-- **`prorrogas_previas_a_la_carga` (REV-09) se dejó intacto.** No se tocó `RegistroDeEmpleado`,
-  `HistorialDeContrato`, `ListadoDeContratos`, `DetalleDelContrato` ni las tres alertas que la leen:
-  la columna sigue existiendo, pero ningún camino nuevo la vuelve a escribir —la plantilla ya no
-  manda `prorrogas_realizadas`—, así que queda en su valor por defecto (0) para toda carga futura y
-  solo sirve de respaldo si alguna vez hay datos guardados con la plantilla anterior. Tocar esos cinco
-  archivos para borrarla del todo era más riesgo del que esta tarea pedía resolver.
-- **La plantilla real de `plantillas/1 - Empleados actuales (obligatoria).xlsx`** se editó con el
-  método seguro de siempre: el XML de `sheet1.xml` (Instrucciones), `sheet2.xml` (Empleados) y
-  `comment1.xml` a mano con `ZipArchive`, comparado archivo por archivo contra el original antes de
-  dejarlo —ningún otro archivo interno del `.zip` cambió—. Las columnas físicas `Z` y `AA` (antes
-  «Fecha de inicio del contrato vigente» y «Prórrogas ya realizadas») se repropósitan en su sitio como
-  el primer par, con su validación de fecha y su estilo de columna de fecha; los cinco pares restantes
-  se agregaron al final del archivo (`AJ` a `AS`), siguiendo el mismo patrón ya usado por REV-08,
-  HD-06 y HD-08: el lector busca cada columna por su título, no por su posición. Las instrucciones
-  ganaron diez filas nuevas y el bloque general de «Contratos a término fijo» se reescribió para
-  explicar el encadenamiento.
-- **Pruebas**: siete casos nuevos en `tests/Feature/CargaInicialTest.php` — el caso completo de David
-  (ingreso en 2018, tres prórrogas, dos de un año exacto y una corta) verificando los cuatro tramos,
-  la fecha de fin vigente y que `prorrogasAcumuladas()`, `contratoInicialEsInferiorAUnAnio()` y
-  `prorrogasCortas()` leen el historial reconstruido; y cinco de validación (prórroga saltada, par
-  incompleto, contrato no fijo, primera prórroga antes del ingreso, hueco entre prórrogas, y
-  desajuste con la fecha de finalización del contrato).
+- **Tres ejemplos reales no coincidían con su catálogo**, los tres con «Sura» donde el sistema pide
+  el nombre completo: `Q2` (EPS) y `S2` (ARL) de la plantilla de empleados, y `F2` (EPS que la
+  expide) de la de incapacidades. Se corrigieron a «Sura EPS» y «ARL Sura» editando a mano el XML de
+  `sheet2.xml` de los dos `.xlsx` reales con `ZipArchive::addFromString()` —el mismo método seguro de
+  HD-06 a HD-09—, comparando cada entrada del `.zip` contra el original antes de dejarlo: en los dos
+  archivos solo cambiaron `sheet1.xml` (instrucciones) y `sheet2.xml` (datos), nada más.
+- **La comparación sin mayúsculas ni tildes ya existía.** `TextoDeCelda::comparable()` ya aplicaba
+  `Str::ascii()` y `Str::lower()` antes de esta tarea, así que «suspension» sin tilde ya entraba
+  igual que la etiqueta «Suspensión», y «SURA EPS» en mayúsculas igual que «Sura EPS». No hizo falta
+  tocar `LecturaDeCelda` ni `CatalogosDeCarga`. Se agregaron dos pruebas en
+  `tests/Feature/CargaInicialTest.php` que lo demuestran —una de columna de catálogo (EPS) y una de
+  columna de lista (Origen y tipo de novedad)— para que quede protegido con una prueba y no sea solo
+  una lectura del código.
+- **Lo que sí faltaba eran los valores admitidos de las columnas de catálogo en las instrucciones.**
+  Las columnas de lista por enumerado (Tipo de documento, Género, Tipo de contrato, Nivel de riesgo,
+  Estado civil, Nivel educativo, Tipo de vivienda, Medio de transporte, Tiempo de desplazamiento,
+  Origen, Tipo de novedad, Tipo de movimiento) ya traían su lista en la hoja de instrucciones. Las
+  cinco columnas de catálogo —EPS, Fondo de pensión, ARL, Caja de compensación y Entidad bancaria de
+  la plantilla de empleados, y EPS que la expide de incapacidades— no traían ninguna. Se completaron
+  con los nombres exactos de `database/data/entidades.php`, la misma fuente que carga
+  `EntidadesSeeder` (decisión D.5), editando `sheet1.xml` de los dos archivos con el mismo método.
+- **Prueba nueva que recorre las seis plantillas reales de `plantillas/`.** `acepta el ejemplo real
+  de las seis plantillas de plantillas/`, en `describe('el lector', ...)`, ejecuta de verdad la
+  plantilla de empleados con su archivo real —así queda la planta cargada— y simula las otras cinco
+  también con sus archivos reales, encadenadas por el mismo documento de ejemplo (43887201). Si un
+  ejemplo futuro se desfasa de su catálogo, esta prueba lo pone en rojo antes de que llegue a una
+  reunión de carga con un cliente.
+- **La tarea decía «siete plantillas» y el código dice consistentemente «seis»** —`CatalogoDePlantillas`,
+  `Plantilla.php`, el test que ya existía—. No hay una séptima plantilla en ningún lugar del sistema;
+  se resolvió sobre las seis reales sin inventar una que no existe. Queda anotado por si David
+  quería decir otra cosa con «siete».
 
 ## Decisiones tomadas
 
-- **El tipo de cada prórroga cargada se guarda como «pactada».** La plantilla no lo pregunta —D.7 solo
-  pide pares de fecha— y C.1 ya resolvió que el tipo no cambia ningún cálculo del sistema, así que fijar
-  un valor no es inventar una regla laboral, es una decisión de qué constante usar donde el archivo no
-  trae el dato.
-- **El fin del periodo inicial se deriva, no se pregunta aparte.** Con al menos una prórroga cargada,
-  el fin del contrato original es el día anterior al inicio de la primera: es la misma regla de
-  contigüidad que ya usa `Vinculacion::renovar()` para calcular dónde empieza el tramo siguiente, así
-  que no hacía falta una columna nueva para ese dato.
-- **`prorrogas_previas_a_la_carga` no se eliminó.** Quitarla de raíz tocaba `RegistroDeEmpleado`,
-  `HistorialDeContrato`, dos pantallas y tres alertas por un beneficio puramente estético —ya no la
-  escribe nadie—, y el riesgo de romper algo de esas cinco piezas no lo justificaba dentro de esta
-  tarea. Si en algún momento se confirma que no hay datos reales que dependan de ella, retirarla es
-  candidato a una tarea `REV-` propia.
+- **Los valores admitidos de las columnas de catálogo se escriben como texto fijo en la instrucción**,
+  igual que ya se hacía con las columnas de lista por enumerado. Es la misma convención que ya tenía
+  el archivo, y la alternativa —dejarlas sin lista, como estaban— es justo el hueco que esta tarea
+  pedía cerrar. El riesgo es el mismo que ya corrían las columnas de enumerado: si el catálogo cambia
+  desde el panel del proveedor (F1B-04), el texto de la instrucción no se actualiza solo. No es un
+  riesgo nuevo de esta tarea, es el mismo que ya existía para Género o Tipo de contrato; queda anotado
+  abajo para quien construya alguna vez una instrucción que se genere del catálogo en vez de copiarse.
 
 ## Preguntas para Angela
 
@@ -100,41 +72,43 @@ terminó cada una.
   completo de REV-10, la de `HD-04` (incapacidad que interrumpe vacaciones ya registradas), la de
   `HD-06` (celular y correo en el asistente, y que la plantilla real abra sin errores en Excel de
   verdad), la de `HD-07` (Cundinamarca/Bogotá en el asistente), la de `HD-08` (departamento y ciudad
-  de expedición en la plantilla real) y ahora también `HD-09`: abrir la plantilla real de
-  `plantillas/` en Excel de verdad y comprobar a ojo que los doce campos de prórroga se ven bien, se
-  pueden llenar y que la fila de ejemplo no quedó rara (aquí solo se verificó con PhpSpreadsheet y
+  de expedición en la plantilla real), la de `HD-09` (los doce campos de prórroga en la plantilla
+  real) y ahora también `HD-10`: abrir en Excel de verdad las dos plantillas que se tocaron —empleados
+  e incapacidades— y comprobar a ojo que las instrucciones de EPS, fondo, ARL, caja y banco se leen
+  bien y no quedaron demasiado largas para la celda (aquí solo se verificó con PhpSpreadsheet y
   comparando el `.zip` byte a byte contra el original, no con Excel de verdad).
+- **La tarea decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
+  Si te referías a otra cosa —por ejemplo, contar también
+  `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
+  fuente de los catálogos—, dilo y se ajusta. Por ahora `HD-10` se resolvió sobre las seis reales.
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
 
 ## Notas para la próxima sesión
 
-- **`HD-10` es la siguiente**: los ejemplos de las plantillas (`SURA` en vez de `Sura EPS`,
-  `suspension` sin tilde) no coinciden con los catálogos del sistema, y las instrucciones no traen las
-  listas de valores admitidos. Toca las siete plantillas y `app/CargaInicial/Columna.php` —comparación
-  sin distinguir mayúsculas ni tildes—.
+- **`HD-11` es la siguiente**: `CambioAIndefinido::fechaDelCambio()` devuelve siempre `Carbon::today()`;
+  hay que dejar que el formulario acepte una fecha editable hacia atrás (no anterior al inicio del
+  periodo vigente ni posterior a hoy) y que el historial, las alertas y el modal de confirmación usen
+  esa fecha en vez de «hoy».
 - **El método seguro para tocar un `.xlsx` real** sigue siendo el mismo: copiarlo aparte primero,
-  decodificar las entidades numéricas (`&#243;`) a UTF-8 literal antes de comparar cadenas —esta
-  sesión mezclaba las dos formas dentro del mismo archivo y el primer intento de reemplazo falló por
-  eso—, editar el XML del `.zip` a mano con `ZipArchive::addFromString()` —nunca cargar y volver a
-  guardar el libro completo con `PhpOffice\PhpSpreadsheet\Writer\Xlsx`, que corrompe la tabla de
-  cadenas y borra los comentarios en este archivo en particular—, verificar con PhpSpreadsheet **y**
-  comparando cada entrada del `.zip` contra el original antes de dejarlo. Cuando una columna nueva no
-  necesita reemplazar a una vieja, agregarla al final (`AJ` en adelante aquí) sigue siendo más seguro
-  que insertarla en medio: el lector busca por título, no por posición.
-- **`./vendor/bin/pest` a secas se queda sin memoria** en la exportación a Excel, con el
-  `memory_limit` de 128M del php.ini de esta máquina. `composer verificar` no: corre con el límite
-  que le pone Composer. Para correr la batería entera, `composer verificar` o
-  `php -d memory_limit=1G vendor/bin/pest`.
+  editar el XML del `.zip` a mano con `ZipArchive::addFromString()` —nunca cargar y volver a guardar
+  el libro completo con `PhpOffice\PhpSpreadsheet\Writer\Xlsx`, que corrompe la tabla de cadenas y
+  borra los comentarios en estos archivos en particular—, verificar con PhpSpreadsheet **y**
+  comparando cada entrada del `.zip` contra el original antes de dejarlo. Esta vez las dos plantillas
+  tocadas no usan `sharedStrings.xml`: guardan el texto como `inlineStr` directo en cada celda de
+  `sheet1.xml`/`sheet2.xml`, así que la búsqueda y reemplazo fue sobre esos dos archivos únicamente.
+- **`unzip` y `git stash` por línea de comandos pidieron aprobación en este entorno** y la sesión es
+  autónoma, así que no se pudieron usar. `ZipArchive` de PHP (`php -r '...'`) no tuvo ese problema y
+  fue suficiente para todo: listar el contenido del `.zip`, leer y escribir entradas, y comparar
+  archivo por archivo entre el original y el nuevo. Si una sesión futura necesita `unzip` o `git
+  stash` para algo, mejor asumir de entrada que hay que buscar el equivalente en PHP o en `git`
+  sin subcomandos interactivos.
+- **`database/data/entidades.php` es la fuente de verdad de los nombres exactos de EPS, fondos, ARL,
+  cajas y bancos** —la misma que lee `EntidadesSeeder`—, más rápida de consultar que la base de datos
+  para saber qué nombre literal espera cada catálogo.
 - **Un archivo de pruebas de Feature corrido solo, fuera de `composer verificar`, puede fallar por
   una función global no cargada** (por ejemplo `ownerEnElPanel()`, definida en `CrearEmpresaTest.php`
   y usada también en `CargaInicialTest.php`): Pest solo la resuelve cuando descubre el árbol completo
   de pruebas. No es una prueba rota; es correr un archivo aislado. `composer verificar` la corre
   siempre completa y ahí sí queda verde.
-- **Dentro de `app(ContextoTenant::class)->paraTenant(...)`, todo lo que dependa del global scope de
-  `PerteneceATenant` tiene que resolverse dentro del mismo closure.** Una relación ya cargada con
-  `with()` se puede leer después sin problema, pero una consulta nueva —incluida la que arma
-  `HistorialDeContrato::de()` al pedir `->historial()`— hecha fuera del closure no encuentra nada: el
-  contexto de empresa ya se restableció. El primer intento de la prueba del historial de HD-09 falló
-  exactamente por esto.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
   `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.
