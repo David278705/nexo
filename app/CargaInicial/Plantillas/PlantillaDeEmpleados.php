@@ -91,7 +91,8 @@ class PlantillaDeEmpleados extends Plantilla
 
             Columna::fecha('Fecha de expedición del documento', 'fecha_expedicion_documento'),
             Columna::texto('País de expedición del documento', 'expedicion.pais'),
-            Columna::texto('Lugar de expedición del documento', 'expedicion.ciudad'),
+            Columna::texto('Departamento de expedición del documento', 'expedicion.departamento'),
+            Columna::texto('Ciudad de expedición del documento', 'expedicion.ciudad'),
 
             Columna::texto('Dirección de residencia', 'direccion'),
             Columna::texto('Departamento de residencia', 'residencia.departamento'),
@@ -262,13 +263,6 @@ class PlantillaDeEmpleados extends Plantilla
         return $fechaDeLaCarga->copy();
     }
 
-    protected function equivalencias(): array
-    {
-        return [
-            'expedicion.departamento' => 'Lugar de expedición del documento',
-        ];
-    }
-
     /**
      * El formulario de registro de empleado alimentado con la fila, para que
      * sus reglas se decidan con los mismos datos con los que se decidirían en
@@ -355,28 +349,13 @@ class PlantillaDeEmpleados extends Plantilla
 
     /**
      * El lugar de expedición del documento sigue la regla 5.1.1, igual que el
-     * nacimiento: el país decide si el departamento y la ciudad se resuelven
-     * contra el catálogo o se dejan como texto libre. Sin país escrito se
-     * asume Colombia, que es el comportamiento que tenía la plantilla antes
-     * de esta columna y el que sigue teniendo casi cualquier archivo real.
-     *
-     * A diferencia del nacimiento, la plantilla no trae departamento y ciudad
-     * en columnas separadas: «Lugar de expedición del documento» es una sola
-     * celda. Dentro de Colombia eso ya se resolvía contra los municipios, con
-     * el departamento entre paréntesis solo para desambiguar un nombre
-     * repetido —hay dos Albania y dos Guadalupe—. Fuera de Colombia, donde no
-     * hay catálogo contra el que resolver nada, esa misma sintaxis pasa a ser
-     * obligatoria: es la única forma de que la celda traiga las dos cosas que
-     * pide `RegistrarEmpleado`.
+     * nacimiento y la residencia: el país decide si el departamento y la
+     * ciudad se resuelven contra el catálogo o se dejan como texto libre, cada
+     * uno en su propia columna (HD-08). Sin país escrito se asume Colombia,
+     * que es el comportamiento que ya tenía la plantilla.
      */
     private function expedicion(FilaTraducida $fila, CatalogosDeCarga $catalogos): void
     {
-        $lugar = $fila->valor('expedicion.ciudad');
-
-        if (! is_string($lugar)) {
-            return;
-        }
-
         $paisEscrito = $fila->valor('expedicion.pais');
 
         $codigo = is_string($paisEscrito) && $paisEscrito !== ''
@@ -395,87 +374,13 @@ class PlantillaDeEmpleados extends Plantilla
 
         $fila->poner('expedicion.pais', $codigo);
 
-        if ($codigo !== Pais::COLOMBIA) {
-            $this->expedicionEnElExterior($fila, $lugar);
-
-            return;
+        // Fuera de Colombia el departamento y la ciudad quedan como texto
+        // libre, igual que el nacimiento (documento 6, A.2): el sistema no
+        // tiene con qué comprobarlos y la responsabilidad de que estén bien
+        // es del cliente.
+        if ($codigo === Pais::COLOMBIA) {
+            $this->enColombia($fila, 'expedicion', 'Departamento de expedición del documento', 'Ciudad de expedición del documento', $catalogos);
         }
-
-        [$nombre, $departamento] = $this->conDepartamentoEntreParentesis($lugar);
-
-        if ($departamento !== null) {
-            $identificador = $catalogos->departamento($departamento);
-
-            if ($identificador === null) {
-                $motivo = $this->esBogota($departamento)
-                    ? $this->motivoDeBogota('Lugar de expedición del documento', 'Lugar de expedición del documento')
-                    : "«{$departamento}» no es un departamento de Colombia.";
-
-                $this->sinResolver($fila, 'expedicion', 'Lugar de expedición del documento', $motivo);
-
-                return;
-            }
-
-            $this->municipioDe($fila, 'expedicion', $identificador, $nombre, 'Lugar de expedición del documento', $catalogos);
-
-            return;
-        }
-
-        $candidatos = $catalogos->ciudadesLlamadas($nombre);
-
-        if ($candidatos === []) {
-            $motivo = $this->esBogota($nombre)
-                ? $this->motivoDeBogota('Lugar de expedición del documento', 'Lugar de expedición del documento')
-                : "«{$lugar}» no es un municipio de Colombia. Escríbalo tal como aparece en la lista de ciudades del sistema.";
-
-            $this->sinResolver($fila, 'expedicion', 'Lugar de expedición del documento', $motivo);
-
-            return;
-        }
-
-        if (count($candidatos) > 1) {
-            $departamentos = implode(', ', array_map(
-                fn (array $candidato): string => (string) $catalogos->nombreDeDepartamento($candidato['departamento']),
-                $candidatos,
-            ));
-
-            $this->sinResolver(
-                $fila,
-                'expedicion',
-                'Lugar de expedición del documento',
-                "Hay más de un municipio llamado «{$nombre}» ({$departamentos}). Escríbalo con su departamento entre paréntesis, por ejemplo «{$nombre} (".
-                    (string) $catalogos->nombreDeDepartamento($candidatos[0]['departamento']).')».',
-            );
-
-            return;
-        }
-
-        $fila->poner('expedicion.departamento', $candidatos[0]['departamento']);
-        $fila->poner('expedicion.ciudad', $candidatos[0]['id']);
-    }
-
-    /**
-     * Fuera de Colombia el departamento y la ciudad quedan como texto libre,
-     * igual que el nacimiento (documento 6, A.2): el sistema no tiene con qué
-     * comprobarlos y la responsabilidad de que estén bien es del cliente.
-     */
-    private function expedicionEnElExterior(FilaTraducida $fila, string $lugar): void
-    {
-        [$ciudad, $departamento] = $this->conDepartamentoEntreParentesis($lugar);
-
-        if ($departamento === null) {
-            $this->sinResolver(
-                $fila,
-                'expedicion',
-                'Lugar de expedición del documento',
-                'Fuera de Colombia, escriba el lugar de expedición como «Ciudad (Departamento o región)», por ejemplo «Madrid (Madrid)».',
-            );
-
-            return;
-        }
-
-        $fila->poner('expedicion.ciudad', $ciudad);
-        $fila->poner('expedicion.departamento', $departamento);
     }
 
     /**
@@ -558,9 +463,8 @@ class PlantillaDeEmpleados extends Plantilla
 
     /**
      * El motivo específico de Bogotá, con el nombre exacto que hay que
-     * escribir y en qué columna. Si las dos columnas son la misma —el lugar
-     * de expedición, que junta departamento y ciudad en una sola celda—, la
-     * instrucción no se repite.
+     * escribir y en qué columna. Si las dos columnas fueran la misma, la
+     * instrucción no se repetiría.
      */
     private function motivoDeBogota(string $tituloDepartamento, string $tituloCiudad): string
     {
@@ -587,20 +491,5 @@ class PlantillaDeEmpleados extends Plantilla
         $fila->poner($prefijo.'.ciudad', null);
 
         $fila->error($titulo, $motivo, $prefijo.'.departamento', $prefijo.'.ciudad');
-    }
-
-    /**
-     * Separa «Albania (La Guajira)» en sus dos partes. Sin paréntesis, el
-     * departamento es nulo.
-     *
-     * @return array{string, string|null}
-     */
-    private function conDepartamentoEntreParentesis(string $escrito): array
-    {
-        if (preg_match('/^(.+?)\s*\((.+)\)$/u', $escrito, $partes) !== 1) {
-            return [$escrito, null];
-        }
-
-        return [trim($partes[1]), trim($partes[2])];
     }
 }

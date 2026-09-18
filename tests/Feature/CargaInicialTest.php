@@ -120,7 +120,8 @@ function filaDeEmpleado(array $cambios = []): array
         'Departamento de nacimiento' => 'Antioquia',
         'Ciudad de nacimiento' => 'Medellín',
         'Fecha de expedición del documento' => '05/08/2009',
-        'Lugar de expedición del documento' => 'Medellín',
+        'Departamento de expedición del documento' => 'Antioquia',
+        'Ciudad de expedición del documento' => 'Medellín',
         'Dirección de residencia' => 'Calle 33 # 74-20 Apto 502',
         'Departamento de residencia' => 'Antioquia',
         'Ciudad de residencia' => 'Medellín',
@@ -384,32 +385,41 @@ describe('la validación de la plantilla de empleados', function () {
             ->toContain('«Bogotá D.C.»');
     });
 
-    it('explica Bogotá también en el lugar de expedición del documento', function () {
+    it('explica Bogotá también en el departamento de expedición del documento', function () {
         $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
-            filaDeEmpleado(['Lugar de expedición del documento' => 'Bogotá']),
+            filaDeEmpleado([
+                'Departamento de expedición del documento' => 'Bogotá',
+                'Ciudad de expedición del documento' => 'Bogotá',
+            ]),
         ]);
 
         expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
             ->toContain('«Bogotá D.C.»');
     });
 
-    it('pide el departamento entre paréntesis cuando el lugar de expedición está repetido', function () {
-        $santander = Departamento::factory()->create(['nombre' => 'Santander']);
-        Ciudad::factory()->de($santander)->create(['nombre' => 'Albania']);
-        Ciudad::factory()->de($this->antioquia)->create(['nombre' => 'Albania']);
-
+    it('no acepta para la expedición un municipio que no sea del departamento escrito', function () {
         $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
-            filaDeEmpleado(['Lugar de expedición del documento' => 'Albania']),
+            filaDeEmpleado(['Ciudad de expedición del documento' => 'Cartagena']),
         ]);
 
         expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
-            ->toContain('Hay más de un municipio llamado «Albania»');
+            ->toContain('no es un municipio de Antioquia');
+    });
 
-        $conDepartamento = archivoDeCarga(new PlantillaDeEmpleados, [
-            filaDeEmpleado(['Lugar de expedición del documento' => 'Albania (Santander)']),
+    it('pide el departamento y la ciudad de expedición en el mismo orden que el asistente manual', function () {
+        $campos = array_map(
+            fn (Columna $columna): string => $columna->campo,
+            (new PlantillaDeEmpleados)->columnas(),
+        );
+
+        $posicion = array_search('fecha_expedicion_documento', $campos, true);
+
+        expect(array_slice($campos, $posicion, 4))->toBe([
+            'fecha_expedicion_documento',
+            'expedicion.pais',
+            'expedicion.departamento',
+            'expedicion.ciudad',
         ]);
-
-        expect(simular(new PlantillaDeEmpleados, $conDepartamento)->hayErrores())->toBeFalse();
     });
 
     it('deja el departamento y la ciudad del exterior como texto libre', function () {
@@ -447,27 +457,18 @@ describe('la validación de la plantilla de empleados', function () {
             ->toContain('no está en la lista de países del sistema');
     });
 
-    it('exige el formato «Ciudad (Departamento)» para el lugar de expedición del exterior', function () {
+    it('deja el departamento y la ciudad de expedición del exterior en sus propias columnas, sin paréntesis', function () {
         Pais::query()->create(['codigo' => 'VE', 'nombre' => 'Venezuela', 'activo' => true]);
 
-        $sinFormato = archivoDeCarga(new PlantillaDeEmpleados, [
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
             filaDeEmpleado([
                 'País de expedición del documento' => 'Venezuela',
-                'Lugar de expedición del documento' => 'Caracas',
+                'Departamento de expedición del documento' => 'Distrito Capital',
+                'Ciudad de expedición del documento' => 'Caracas',
             ]),
         ]);
 
-        expect(simular(new PlantillaDeEmpleados, $sinFormato)->motivosDe(2)[0])
-            ->toContain('Ciudad (Departamento o región)');
-
-        $conFormato = archivoDeCarga(new PlantillaDeEmpleados, [
-            filaDeEmpleado([
-                'País de expedición del documento' => 'Venezuela',
-                'Lugar de expedición del documento' => 'Caracas (Distrito Capital)',
-            ]),
-        ]);
-
-        $valores = simular(new PlantillaDeEmpleados, $conFormato)->valores()[0];
+        $valores = simular(new PlantillaDeEmpleados, $archivo)->valores()[0];
 
         expect($valores['expedicion']['pais'])->toBe('VE')
             ->and($valores['expedicion']['ciudad'])->toBe('Caracas')
@@ -480,7 +481,8 @@ describe('la validación de la plantilla de empleados', function () {
         $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
             filaDeEmpleado([
                 'País de expedición del documento' => 'Venezuela',
-                'Lugar de expedición del documento' => 'Caracas (Distrito Capital)',
+                'Departamento de expedición del documento' => 'Distrito Capital',
+                'Ciudad de expedición del documento' => 'Caracas',
             ]),
         ]);
 

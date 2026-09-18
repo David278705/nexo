@@ -2262,7 +2262,7 @@ con `ZipArchive`, verificado archivo por archivo contra el original— para que 
 «Departamento de nacimiento», «Departamento de residencia» y «Lugar de expedición del documento»
 adviertan lo mismo.
 
-### [ ] HD-08 · La plantilla de empleados pide el lugar de expedición en una sola columna
+### [x] HD-08 · La plantilla de empleados pide el lugar de expedición en una sola columna
 
 El asistente de registro manual pide el lugar de expedición del documento en tres campos —país,
 departamento y ciudad—. La plantilla de carga masiva pide `País de expedición del documento` y
@@ -2284,6 +2284,25 @@ exterior se llena poniendo el departamento o estado en su columna y la ciudad en
 paréntesis; las filas que ya se cargaron con el formato anterior siguen leyéndose; y una prueba
 comprueba que el orden de columnas de la plantilla es el mismo que el del asistente manual.
 **Fuente:** `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` · `app/Models/Persona.php`
+
+Hecho: `PlantillaDeEmpleados::columnas()` separa `expedicion.departamento` de `expedicion.ciudad`,
+en el mismo orden país → departamento → ciudad que ya usan nacimiento y el asistente manual (probado).
+`expedicion()` dejó de ser el único método con su propia lógica de paréntesis y desambiguación: ahora
+llama a `enColombia()`, el mismo método compartido por nacimiento y residencia, así que
+`expedicionEnElExterior()` y `conDepartamentoEntreParentesis()` sobraban y se borraron. Fuera de
+Colombia cada columna se escribe libre y sin paréntesis, como pidió David. **`equivalencias()`
+también sobraba**: existía solo para que un error de `expedicion.departamento` señalara la columna
+combinada de antes; con columna propia, `columnaDe()` ya la encuentra sola. **Las personas ya
+cargadas no se tocan**: `Persona` ya guardaba `departamento_expedicion_exterior` y
+`ciudad_expedicion_exterior` por separado desde antes de esta tarea —el formato de una sola celda
+era solo de la plantilla, nunca del modelo—, así que ninguna fila ya cargada cambia de significado.
+La plantilla real de `plantillas/` se editó por el método seguro ya conocido: `M1` («Lugar de
+expedición del documento») se renombra en su sitio a «Ciudad de expedición del documento», y
+«Departamento de expedición del documento» se agrega en una columna nueva al final (`AI`), siguiendo
+el mismo patrón que REV-08 y HD-06 ya usaron para columnas agregadas después —el lector busca por
+título, no por posición, y esas dos sesiones ya dejaron el archivo real con «País de expedición del
+documento» y «Celular»/«Correo electrónico» fuera de su sitio "natural"—. Comparado archivo por
+archivo contra el original: solo cambiaron `sheet1.xml` y `sheet2.xml`.
 
 ### [ ] HD-09 · La plantilla no deja registrar las prórrogas una por una
 

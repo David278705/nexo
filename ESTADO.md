@@ -1,53 +1,76 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-16 · Tarea `HD-07`
-**Verificación:** verde. 1.264 de 1.264 pruebas de Pest, Pint y PHPStan sin errores, build y 409 de
-Vitest — tres más que `HD-06`, las que se sumaron a `SelectorUbicacion.test.js`.
-**Siguiente tarea:** `HD-08` · La plantilla de empleados pide el lugar de expedición en una sola
-columna.
+**Última sesión:** 2026-09-18 · Tarea `HD-08`
+**Verificación:** verde. 1.265 de 1.265 pruebas de Pest, Pint y PHPStan sin errores, build y 409 de
+Vitest — una más que `HD-07`, la del orden de columnas de expedición.
+**Siguiente tarea:** `HD-09` · La plantilla no deja registrar las prórrogas una por una.
 
 ## Qué se hizo
 
-`HD-07` pedía arreglar la guía alrededor de Bogotá/Cundinamarca sin tocar el catálogo (documento 6,
-D.7 ya lo dejó decidido): quien busca Cundinamarca porque nació o vive en Bogotá no la encuentra
-debajo, porque el DANE la trata como su propio departamento y el catálogo ya lo refleja bien.
+`HD-08` pedía separar el lugar de expedición del documento en «Departamento de expedición del
+documento» y «Ciudad de expedición del documento», igual que ya están nacimiento y residencia: hoy
+la plantilla mezclaba las dos cosas en una sola celda («Lugar de expedición del documento»), con el
+departamento entre paréntesis solo para desambiguar, y eso hacía que quien expidió el documento fuera
+de Colombia tuviera que escribir «Ciudad (Departamento)» en vez de cada dato en su columna.
 
-- **`SelectorUbicacion.vue`, el componente compartido**, avisa en cuanto el departamento elegido es
-  Cundinamarca: un `Aviso` debajo del selector de ciudad explica que Bogotá se busca como
-  «Bogotá D.C.». Es un solo sitio porque el componente ya es compartido por las tres ubicaciones del
-  asistente de empleado (nacimiento, expedición, residencia) y por la ciudad de `CrearEmpresa` del
-  panel del proveedor: el aviso llega a las cuatro sin duplicar nada.
-- **El buscador de departamentos ya encontraba «Bogotá D.C.» al escribir «Bogotá»**, sin que hiciera
-  falta tocar nada: `Selector` filtra opciones por coincidencia de texto y «Bogotá» es una
-  subcadena de «Bogotá D.C.». Quedó con una prueba nueva sobre una lista realista de departamentos
-  (más de diez, el umbral que activa el buscador) para que quede protegido y no sea un accidente.
-- **La carga masiva explica en vez de solo rechazar.** `PlantillaDeEmpleados` gana `esBogota()`,
-  que reconoce «Bogotá» y «Bogotá D.C.» escritos con o sin puntuación —y **nada más**: ninguna otra
-  forma ni abreviatura, que sería adivinar lo que `TextoDeCelda` explícitamente no hace—, y
-  `motivoDeBogota()`, que arma la explicación y dice la columna exacta donde escribir «Bogotá D.C.».
-  Se conecta en los tres puntos donde un departamento o un municipio pueden no resolver: el
-  departamento de nacimiento o residencia (`enColombia()`), el municipio dentro de un departamento ya
-  resuelto —el caso de David, Cundinamarca con «Bogotá» de ciudad— (`municipioDe()`), y el lugar de
-  expedición de una sola celda (`expedicion()`), con y sin el departamento entre paréntesis.
-- **La plantilla real de `plantillas/1 - Empleados actuales (obligatoria).xlsx` también se
-  actualizó**, con el método seguro que dejó anotado `HD-06`: editar el XML de `xl/worksheets/sheet1.xml`
-  a mano con `ZipArchive::addFromString()`, nunca cargar y volver a guardar el libro completo. Las
-  instrucciones de «Departamento de nacimiento» (antes vacía), «Departamento de residencia» y «Lugar
-  de expedición del documento» ahora advierten lo mismo. Se comparó archivo por archivo contra el
-  original antes de dejarlo: solo cambió `sheet1.xml`, los comentarios de `xl/comments/comment1.xml`
-  quedaron bit a bit idénticos.
+- **`PlantillaDeEmpleados::columnas()`** ahora trae `Departamento de expedición del documento` y
+  `Ciudad de expedición del documento` como columnas propias, en el orden país → departamento →
+  ciudad, el mismo que ya usan nacimiento y el asistente manual de cuatro pasos (`RegistrarEmpleado`
+  ya validaba `expedicion.departamento` y `expedicion.ciudad` por separado desde antes: la plantilla
+  era la única pieza atrasada).
+- **`expedicion()` se simplificó de raíz.** Con el departamento en su propia columna, la ciudad ya no
+  necesita desambiguarse contra el país entero ni contra un nombre repetido («hay dos Albania»): el
+  departamento la acota, exactamente el mismo problema que ya resolvía `enColombia()` para nacimiento
+  y residencia. `expedicion()` ahora llama a ese método compartido, y `expedicionEnElExterior()` y
+  `conDepartamentoEntreParentesis()` —los dos existían solo por la celda combinada— se borraron.
+  `equivalencias()` también sobraba: solo servía para que un error de `expedicion.departamento`
+  señalara la columna combinada de antes; con columna propia, `columnaDe()` la encuentra sola.
+- **Fuera de Colombia cada columna es texto libre**, sin paréntesis, que era el pedido explícito de
+  David con su ejemplo de Venezuela.
+- **Las personas ya cargadas no cambian de significado.** `Persona` ya guardaba
+  `departamento_expedicion_exterior` y `ciudad_expedicion_exterior` como columnas separadas desde
+  antes de esta tarea —la celda combinada era solo un formato de la plantilla al leer el archivo,
+  nunca la forma en que el sistema guardaba el dato—, así que ninguna fila que ya se cargó con el
+  formato anterior cambia lo que significa ni deja de leerse bien en la ficha del empleado.
+- **La plantilla real de `plantillas/1 - Empleados actuales (obligatoria).xlsx`** se editó con el
+  método seguro de siempre —el XML de `sheet1.xml` y `sheet2.xml` a mano con `ZipArchive`, comparado
+  archivo por archivo contra el original antes de dejarlo: ningún otro archivo interno del `.zip`
+  cambió—. La columna `M` (antes «Lugar de expedición del documento») se renombró en su sitio a
+  «Ciudad de expedición del documento» —su comentario de Excel ya decía «Ciudad donde se expidió el
+  documento.», así que no hizo falta tocarlo—, y «Departamento de expedición del documento» se agregó
+  como columna nueva al final (`AI`), siguiendo el mismo patrón que ya usaron REV-08 y HD-06 para sus
+  columnas agregadas después de la construcción original: el lector busca cada columna por su título
+  en la fila 1, no por su posición, así que el archivo real ya tenía «País de expedición del
+  documento» y «Celular»/«Correo electrónico» fuera de su orden "natural" sin que eso rompiera nada.
+  Las instrucciones de la hoja «Instrucciones» se actualizaron igual: la fila de «Lugar de
+  expedición» pasó a ser la de «Ciudad» (sin el texto de los paréntesis) y se agregó una fila nueva
+  al final para «Departamento de expedición del documento», con la misma nota de Bogotá que ya
+  llevan «Departamento de nacimiento» y «Departamento de residencia».
+- **Pruebas**: `tests/Feature/CargaInicialTest.php` — la fila de ejemplo (`filaDeEmpleado()`) ahora
+  trae las dos columnas nuevas; el caso de Bogotá se probó sobre el departamento de expedición; el
+  caso de la ciudad repetida con paréntesis se reemplazó por uno equivalente al de residencia («no
+  acepta un municipio que no sea del departamento escrito»); el caso del exterior ya no exige el
+  formato «Ciudad (Departamento)» sino que llena cada columna directo; y una prueba nueva comprueba
+  que `fecha_expedicion_documento`, `expedicion.pais`, `expedicion.departamento` y `expedicion.ciudad`
+  aparecen consecutivos y en ese orden en `columnas()`.
 
 ## Decisiones tomadas
 
-- **El catálogo no se tocó**, como manda D.7 con esas palabras. Toda la tarea fue guía, no datos.
-- **El reconocimiento de «Bogotá» es literal y no adivina variantes.** Solo «Bogotá» y «Bogotá D.C.»
-  (con o sin tildes, mayúsculas o puntuación) disparan el mensaje específico. No se agregó «Distrito
-  Capital», «D.C.» a secas ni ninguna otra forma que nadie pidió: es la misma prudencia de
-  `TextoDeCelda`, que ya declara que no corrige errores de escritura ni adivina abreviaturas.
-- **El aviso del selector vive en `SelectorUbicacion`, no en `Selector`.** `Selector` es genérico —lo
-  usan filtros, EPS, bancos— y no sabe qué opción es Cundinamarca. `SelectorUbicacion` sí conoce la
-  lista de departamentos por su `texto`, así que ahí es donde el aviso tiene sentido y se comparte
-  automáticamente con las cuatro pantallas que ya lo usan.
+- **«Las filas que ya se cargaron con el formato anterior siguen leyéndose» se leyó como filas ya
+  importadas (personas ya en la base de datos), no como archivos `.xlsx` ya diligenciados con el
+  formato viejo esperando subirse.** El modelo `Persona` nunca guardó una celda combinada —ya tenía
+  columnas separadas para departamento y ciudad de expedición desde antes de esta tarea—, así que el
+  cambio de la plantilla no mueve nada de lo que ya está guardado. No se construyó un mecanismo para
+  aceptar archivos `.xlsx` recién descargados con el título viejo «Lugar de expedición del
+  documento»: el lector busca columnas por título exacto (`app/CargaInicial/Plantilla.php`, «el
+  título es la llave») y las plantillas piden explícitamente no reordenar ni renombrar columnas: un
+  archivo con el título antiguo ya se rechazaba como «columna faltante» antes de esta tarea para
+  cualquier cambio de columnas, no es un caso nuevo que haya que resolver aquí.
+- **La columna nueva se agregó al final del archivo real, no junto a «País de expedición».** Es el
+  mismo patrón ya usado por REV-08 y HD-06: insertar una columna en medio de un archivo de 202 filas
+  con validaciones de lista obliga a desplazar cartas, anchos y referencias de decenas de columnas
+  para un beneficio puramente estético, porque el lector no depende de la posición. Agregar al final
+  es el camino que ya se usó dos veces y es el de menor riesgo de corromper el archivo real.
 
 ## Preguntas para Angela
 
@@ -65,28 +88,28 @@ debajo, porque el DANE la trata como su propio departamento y el catálogo ya lo
   REV-12, el formulario de acceso de prueba tras F5-08, la pestaña «Facturación» de REV-11, el flujo
   completo de REV-10, la de `HD-04` (incapacidad que interrumpe vacaciones ya registradas), la de
   `HD-06` (celular y correo en el asistente, y que la plantilla real abra sin errores en Excel de
-  verdad) y ahora también `HD-07`: abrir el asistente de registro, elegir Cundinamarca como
-  departamento y comprobar a ojo que el aviso de Bogotá se ve bien, y que la plantilla real
-  descargable de `plantillas/` sigue abriendo sin errores en Excel de verdad (aquí solo se verificó
-  con PhpSpreadsheet y comparando el `.zip` byte a byte contra el original, no con Excel).
+  verdad), la de `HD-07` (Cundinamarca/Bogotá en el asistente) y ahora también `HD-08`: abrir la
+  plantilla real de `plantillas/` en Excel de verdad y comprobar a ojo que «Ciudad de expedición del
+  documento» y «Departamento de expedición del documento» se ven bien y se pueden llenar (aquí solo
+  se verificó con PhpSpreadsheet y comparando el `.zip` byte a byte contra el original, no con Excel
+  de verdad).
 - **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
 
 ## Notas para la próxima sesión
 
-- **`HD-08` es la siguiente**: separar el lugar de expedición del documento en «Departamento de
-  expedición» y «Ciudad de expedición», igual que ya están nacimiento y residencia, y dejar que
-  quien expidió el documento fuera de Colombia escriba cada uno en su columna sin paréntesis. Nota
-  de la propia tarea: el orden de columnas ya quedó bien por `REV-08`, solo hay que comprobarlo.
-- **`HD-08`, `HD-09` y `HD-10` tocan las tres la plantilla de empleados**, igual que ya pasó con
-  `HD-06` y `HD-07`. El método seguro para tocar el `.xlsx` real sigue siendo el mismo: copiarlo
-  aparte primero, editar el XML del `.zip` a mano con `ZipArchive::addFromString()` —nunca cargar y
-  volver a guardar el libro completo con `PhpOffice\PhpSpreadsheet\Writer\Xlsx`, que corrompe la
-  tabla de cadenas y borra los comentarios en este archivo en particular—, y verificar con
-  PhpSpreadsheet **y** comparando cada entrada del `.zip` contra el original antes de dejarlo. Si
-  `HD-08` separa el lugar de expedición en dos columnas, la función `expedicion()` de
-  `PlantillaDeEmpleados` deja de tener sentido tal como está —hoy vive de que es una sola celda— y
-  `motivoDeBogota()` de esta sesión probablemente se simplifica: con departamento y ciudad separados
-  ahí también, el caso de expedición se vuelve igual al de nacimiento y residencia.
+- **`HD-09` es la siguiente**: la plantilla guarda `Prórrogas ya realizadas` —un número— y `Fecha de
+  inicio del contrato vigente`, y con eso no se puede reconstruir cada prórroga por separado (caso
+  real de David: alguien que entró en 2018 con varias prórrogas de término fijo).
+- **`HD-09` y `HD-10` siguen tocando la plantilla de empleados** (o las de histórico). El método
+  seguro para tocar un `.xlsx` real sigue siendo el mismo: copiarlo aparte primero, editar el XML del
+  `.zip` a mano con `ZipArchive::addFromString()` —nunca cargar y volver a guardar el libro completo
+  con `PhpOffice\PhpSpreadsheet\Writer\Xlsx`, que corrompe la tabla de cadenas y borra los comentarios
+  en este archivo en particular—, verificar con PhpSpreadsheet **y** comparando cada entrada del
+  `.zip` contra el original antes de dejarlo. **Dato nuevo de esta sesión**: cuando se agrega una
+  columna al archivo real, agregarla al final (no en medio, junto a su columna "hermana" temática) es
+  mucho más seguro y ya es el patrón establecido por tres tareas seguidas (REV-08, HD-06, HD-08): el
+  lector busca por título, no por posición, así que el orden físico del archivo real no tiene que
+  coincidir con el orden del array `columnas()` de PHP.
 - **`./vendor/bin/pest` a secas se queda sin memoria** en la exportación a Excel, con el
   `memory_limit` de 128M del php.ini de esta máquina. `composer verificar` no: corre con el límite
   que le pone Composer. Para correr la batería entera, `composer verificar` o
