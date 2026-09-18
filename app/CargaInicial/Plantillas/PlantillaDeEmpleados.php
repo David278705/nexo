@@ -9,6 +9,7 @@ use App\CargaInicial\FilaTraducida;
 use App\CargaInicial\PlantaDeLaEmpresa;
 use App\CargaInicial\Plantilla;
 use App\CargaInicial\TextoDeCelda;
+use App\Contratacion\EventoContractual;
 use App\Contratacion\Genero;
 use App\Contratacion\RegistroDeEmpleado;
 use App\Contratacion\TipoContrato;
@@ -21,6 +22,7 @@ use App\Models\CajaCompensacion;
 use App\Models\Eps;
 use App\Models\FondoPension;
 use App\Models\Pais;
+use App\Models\Vinculacion;
 use Illuminate\Support\Carbon;
 
 /**
@@ -40,9 +42,15 @@ use Illuminate\Support\Carbon;
  *   lo justifica la propia plantilla: aquí van «únicamente las personas
  *   vinculadas hoy». El formulario sí admite una fecha futura, porque registrar
  *   a quien empieza el lunes es legítimo; cargarla en el histórico inicial no.
- * - **Las dos columnas del contrato vigente**, que en el sistema viven en el
- *   historial de periodos y no en la vinculación. Aquí se leen y se comprueban;
- *   quien las convierta en periodos contractuales es la ejecución de la carga.
+ * - **Hasta seis prórrogas del contrato a término fijo**, en pares de fecha de
+ *   inicio y fecha de fin (documento 6, D.7 y HD-09). Antes de esta tarea la
+ *   plantilla solo guardaba un número de prórrogas y la fecha de inicio del
+ *   periodo vigente, y ese dato nunca se convertía en un tramo del historial:
+ *   con un contrato de varias prórrogas no había dónde poner cuándo empezó y
+ *   terminó cada una. Ahora cada par se convierte en un tramo real de
+ *   `periodos_contractuales`, por el mismo camino que «Renovar contrato»
+ *   (`escribir()`), así que el tope de cuatro años y el cupo de prórrogas
+ *   cortas (documento 6, C.1 y C.2) se calculan sobre el historial de verdad.
  * - **Ningún documento se repite dentro del archivo** (documento 2, 6.2).
  *
  * **Lo que no se toca es la regla 5 del proyecto.** El documento es único por
@@ -110,8 +118,7 @@ class PlantillaDeEmpleados extends Plantilla
             Columna::lista('Tipo de contrato', 'tipo_contrato', TipoContrato::paraElegir()),
             Columna::fecha('Fecha de ingreso', 'fecha_ingreso'),
             Columna::fecha('Fecha de finalización del contrato', 'fecha_fin'),
-            Columna::fecha('Fecha de inicio del contrato vigente', 'fecha_inicio_periodo_vigente'),
-            Columna::entero('Prórrogas ya realizadas', 'prorrogas_realizadas'),
+            ...$this->columnasDeProrrogas(),
 
             Columna::dinero('Salario mensual', 'salario'),
             Columna::dinero('Bonificación mensual', 'bonificacion'),
@@ -141,18 +148,24 @@ class PlantillaDeEmpleados extends Plantilla
         'Riesgo V' => 'riesgo_v',
     ];
 
+    /**
+     * Cuántas prórrogas caben en la plantilla (documento 6, D.7, y HD-09).
+     */
+    private const MAXIMO_DE_PRORROGAS = 6;
+
     public function completar(FilaTraducida $fila, CatalogosDeCarga $catalogos, PlantaDeLaEmpresa $planta): void
     {
         $this->nacimiento($fila, $catalogos);
         $this->residencia($fila, $catalogos);
         $this->expedicion($fila, $catalogos);
+        $this->prorrogas($fila);
     }
 
     public function reglas(FilaTraducida $fila): array
     {
         return [
             ...$this->formulario($fila)->rules(),
-            ...$this->delArchivo($fila),
+            ...$this->delArchivo(),
         ];
     }
 
@@ -160,8 +173,6 @@ class PlantillaDeEmpleados extends Plantilla
     {
         return [
             ...$this->formulario(new FilaTraducida(0))->attributes(),
-            'fecha_inicio_periodo_vigente' => 'fecha de inicio del contrato vigente',
-            'prorrogas_realizadas' => 'número de prórrogas ya realizadas',
             'saldo_inicial_vacaciones' => 'días de vacaciones disponibles hoy',
         ];
     }
@@ -172,8 +183,6 @@ class PlantillaDeEmpleados extends Plantilla
             ...$this->formulario(new FilaTraducida(0))->messages(),
             'fecha_ingreso.before_or_equal' => 'La fecha de ingreso no puede ser futura: en esta plantilla van únicamente las personas vinculadas hoy.',
             'saldo_inicial_vacaciones.required' => 'Los días de vacaciones disponibles hoy son obligatorios: sin ese dato el saldo de esta persona arrancaría en cero.',
-            'fecha_inicio_periodo_vigente.after_or_equal' => 'El contrato vigente no puede empezar antes de la fecha de ingreso.',
-            'fecha_inicio_periodo_vigente.before' => 'El contrato vigente tiene que empezar antes de su fecha de finalización.',
         ];
     }
 
@@ -238,19 +247,73 @@ class PlantillaDeEmpleados extends Plantilla
      * inventarse las fechas de los tramos intermedios, y el principio 13.1 del
      * documento 1 lo prohíbe con esas palabras: «no se inventan registros».
      *
-     * **«Prórrogas ya realizadas» sí llega a la vinculación, pero no como
-     * tramo (REV-09).** `RegistroDeEmpleado` la guarda aparte, en
-     * `prorrogas_previas_a_la_carga`, y `HistorialDeContrato::prorrogasCortas()`
-     * la suma al conteo que hace sobre los tramos de verdad: es lo único que el
-     * cupo de prórrogas cortas del artículo 46 necesitaba de ese número. El
-     * historial que se ve en pantalla sigue sin inventar ninguna fila.
+     * **Las prórrogas sí se convierten en tramos del historial (HD-09).**
+     * `registrarProrrogas()` las agrega una por una, en orden, por el mismo
+     * camino que agregaría «Renovar contrato» desde la pantalla.
      */
     public function escribir(array $valores, Carbon $fechaDeLaCarga): void
     {
-        app(RegistroDeEmpleado::class)->ejecutar([
+        $vinculacion = app(RegistroDeEmpleado::class)->ejecutar([
             ...$valores,
             'fecha_corte_saldo' => $fechaDeLaCarga->toDateString(),
         ]);
+
+        $this->registrarProrrogas($vinculacion, $valores);
+    }
+
+    /**
+     * Reconstruye tramo a tramo las prórrogas que trae la carga (HD-09), por
+     * el mismo camino que las registraría «Renovar contrato» en pantalla:
+     * `Vinculacion::registrarPeriodo()`. Así una prórroga cargada y una
+     * digitada acaban idénticas en `periodos_contractuales`, y el tope de
+     * cuatro años y el cupo de prórrogas cortas (documento 6, C.1 y C.2) se
+     * calculan sobre el historial real.
+     *
+     * **El tipo de prórroga se registra como pactada.** La plantilla no
+     * pregunta si cada prórroga fue pactada por escrito o llegó por silencio
+     * —solo pide sus dos fechas—, y la distinción no cambia ningún cálculo:
+     * C.1 ya estableció que el cupo de tres prórrogas cortas es de la cadena
+     * entera, sin mirar el tipo. Aquí solo decide el texto con el que se lee
+     * el tramo en el historial.
+     *
+     * **El periodo inicial nació hace un instante con la fecha de
+     * finalización vigente**, porque `ObservadorDeVinculacion` no sabe de
+     * prórrogas. Si hay al menos una, su fin real es el día anterior al
+     * inicio de la primera —los tramos son siempre contiguos, la misma regla
+     * con la que `Vinculacion::renovar()` calcula dónde empieza el
+     * siguiente— y se corrige antes de encadenarlas.
+     *
+     * @param  array<string, mixed>  $valores
+     */
+    private function registrarProrrogas(Vinculacion $vinculacion, array $valores): void
+    {
+        /** @var array<int, array{inicio?: string|null, fin?: string|null}> $todas */
+        $todas = $valores['prorrogas'] ?? [];
+
+        $completas = array_filter(
+            $todas,
+            fn (array $tramo): bool => isset($tramo['inicio'], $tramo['fin']),
+        );
+
+        if ($completas === []) {
+            return;
+        }
+
+        ksort($completas);
+
+        $primera = reset($completas);
+
+        $inicial = $vinculacion->periodos()->where('orden', 1)->first();
+        $inicial?->update(['fecha_fin' => Carbon::parse((string) $primera['inicio'])->subDay()]);
+
+        foreach ($completas as $tramo) {
+            $vinculacion->registrarPeriodo(
+                EventoContractual::ProrrogaPactada,
+                TipoContrato::Fijo,
+                Carbon::parse((string) $tramo['inicio']),
+                Carbon::parse((string) $tramo['fin']),
+            );
+        }
     }
 
     public function dependeDeLaPlanta(): bool
@@ -279,25 +342,10 @@ class PlantillaDeEmpleados extends Plantilla
      *
      * @return array<string, mixed>
      */
-    private function delArchivo(FilaTraducida $fila): array
+    private function delArchivo(): array
     {
-        $ingreso = $fila->valor('fecha_ingreso');
-        $fin = $fila->valor('fecha_fin');
-
-        $vigente = ['nullable', 'date'];
-
-        if (is_string($ingreso)) {
-            $vigente[] = 'after_or_equal:fecha_ingreso';
-        }
-
-        if (is_string($fin)) {
-            $vigente[] = 'before:fecha_fin';
-        }
-
         return [
             'fecha_ingreso' => ['required', 'date', 'before_or_equal:today'],
-            'fecha_inicio_periodo_vigente' => $vigente,
-            'prorrogas_realizadas' => ['nullable', 'integer', 'min:0'],
 
             // El único campo cuya ausencia bloquea la carga (documento 2, 6.2).
             'saldo_inicial_vacaciones' => ['required', 'numeric', 'min:0'],
@@ -491,5 +539,194 @@ class PlantillaDeEmpleados extends Plantilla
         $fila->poner($prefijo.'.ciudad', null);
 
         $fila->error($titulo, $motivo, $prefijo.'.departamento', $prefijo.'.ciudad');
+    }
+
+    /**
+     * Los pares de fecha de inicio y fecha de fin de las hasta seis prórrogas
+     * (documento 6, D.7, y HD-09), en un bloque marcado «solo para término
+     * fijo» del prototipo real.
+     *
+     * @return list<Columna>
+     */
+    private function columnasDeProrrogas(): array
+    {
+        $columnas = [];
+
+        for ($n = 1; $n <= self::MAXIMO_DE_PRORROGAS; $n++) {
+            $columnas[] = Columna::fecha("Fecha de inicio de la prórroga {$n}", "prorrogas.{$n}.inicio");
+            $columnas[] = Columna::fecha("Fecha de fin de la prórroga {$n}", "prorrogas.{$n}.fin");
+        }
+
+        return $columnas;
+    }
+
+    /**
+     * Valida el bloque de prórrogas de la fila: que sean solo del contrato a
+     * término fijo, que no salten ninguna y que encadenen sin huecos con la
+     * fecha de ingreso y con «Fecha de finalización del contrato» (HD-09).
+     */
+    private function prorrogas(FilaTraducida $fila): void
+    {
+        $numeros = $this->prorrogasEscritas($fila);
+
+        if ($numeros === null || $numeros === [] || $fila->yaFallo('tipo_contrato')) {
+            return;
+        }
+
+        if ($fila->valor('tipo_contrato') !== TipoContrato::Fijo->value) {
+            foreach ($numeros as $n) {
+                $fila->error(
+                    "Fecha de inicio de la prórroga {$n}",
+                    'Las columnas de prórroga son solo para el contrato a término fijo: en las demás modalidades se dejan vacías.',
+                    "prorrogas.{$n}.inicio",
+                    "prorrogas.{$n}.fin",
+                );
+            }
+
+            return;
+        }
+
+        $this->encadenarProrrogas($fila, $numeros);
+    }
+
+    /**
+     * Los números de prórroga con sus dos fechas completas, en orden.
+     *
+     * Nulo cuando ya se anotó un error de par incompleto o de prórroga
+     * saltada y no hay más que comprobar en esta fila. Una celda que ya
+     * falló al leerse (una fecha ilegible, por ejemplo) tampoco se vuelve a
+     * juzgar aquí: ese error ya quedó anotado por quien la leyó.
+     *
+     * @return list<int>|null
+     */
+    private function prorrogasEscritas(FilaTraducida $fila): ?array
+    {
+        $numeros = [];
+        $huecoDesde = null;
+
+        for ($n = 1; $n <= self::MAXIMO_DE_PRORROGAS; $n++) {
+            $campoInicio = "prorrogas.{$n}.inicio";
+            $campoFin = "prorrogas.{$n}.fin";
+
+            if ($fila->yaFallo($campoInicio) || $fila->yaFallo($campoFin)) {
+                return null;
+            }
+
+            $inicio = $fila->valor($campoInicio);
+            $fin = $fila->valor($campoFin);
+
+            if ($inicio === null && $fin === null) {
+                $huecoDesde ??= $n;
+
+                continue;
+            }
+
+            if ($inicio === null || $fin === null) {
+                $fila->error(
+                    "Fecha de inicio de la prórroga {$n}",
+                    "La prórroga {$n} necesita las dos fechas: inicio y fin.",
+                    $campoInicio,
+                    $campoFin,
+                );
+
+                return null;
+            }
+
+            if ($huecoDesde !== null) {
+                $fila->error(
+                    "Fecha de inicio de la prórroga {$n}",
+                    "No puede registrar la prórroga {$n} sin haber registrado antes la prórroga {$huecoDesde}.",
+                    $campoInicio,
+                    $campoFin,
+                );
+
+                return null;
+            }
+
+            $numeros[] = $n;
+        }
+
+        return $numeros;
+    }
+
+    /**
+     * Que cada prórroga encadene sin huecos: la primera después de la fecha
+     * de ingreso, cada una después el día siguiente a la anterior, y la
+     * última exactamente en «Fecha de finalización del contrato» —que es de
+     * donde sale la fecha de fin vigente de la vinculación—.
+     *
+     * @param  list<int>  $numeros
+     */
+    private function encadenarProrrogas(FilaTraducida $fila, array $numeros): void
+    {
+        $finDelContrato = $fila->valor('fecha_fin');
+
+        if (! is_string($finDelContrato)) {
+            // Sin fecha de finalización no hay con qué comprobar el
+            // encadenamiento; su propia regla ya señala esa ausencia.
+            return;
+        }
+
+        $ingresoEscrito = $fila->valor('fecha_ingreso');
+
+        if (! is_string($ingresoEscrito)) {
+            return;
+        }
+
+        $ingreso = Carbon::parse($ingresoEscrito);
+        $anteriorFin = null;
+        $ultimo = end($numeros);
+
+        foreach ($numeros as $n) {
+            $inicio = Carbon::parse((string) $fila->valor("prorrogas.{$n}.inicio"));
+            $fin = Carbon::parse((string) $fila->valor("prorrogas.{$n}.fin"));
+
+            if ($anteriorFin === null) {
+                // La primera prórroga solo tiene que empezar después del
+                // ingreso: el fin del periodo inicial se deriva de esta
+                // misma fecha, no se pregunta aparte.
+                if (! $inicio->greaterThan($ingreso)) {
+                    $fila->error(
+                        "Fecha de inicio de la prórroga {$n}",
+                        "La prórroga {$n} tiene que empezar después de la fecha de ingreso.",
+                        "prorrogas.{$n}.inicio",
+                    );
+
+                    return;
+                }
+            } elseif (! $inicio->equalTo($anteriorFin->copy()->addDay())) {
+                $fila->error(
+                    "Fecha de inicio de la prórroga {$n}",
+                    "La prórroga {$n} tiene que empezar el ".$anteriorFin->copy()->addDay()->format('d/m/Y').
+                        ', el día siguiente a la finalización de la prórroga anterior.',
+                    "prorrogas.{$n}.inicio",
+                );
+
+                return;
+            }
+
+            if (! $fin->greaterThan($inicio)) {
+                $fila->error(
+                    "Fecha de fin de la prórroga {$n}",
+                    "La prórroga {$n} tiene que terminar después de que empieza.",
+                    "prorrogas.{$n}.fin",
+                );
+
+                return;
+            }
+
+            if ($n === $ultimo && ! $fin->equalTo(Carbon::parse($finDelContrato))) {
+                $fila->error(
+                    "Fecha de fin de la prórroga {$n}",
+                    'La última prórroga registrada tiene que terminar el mismo día que la «Fecha de finalización del contrato»: '.
+                        $fin->format('d/m/Y').' contra '.Carbon::parse($finDelContrato)->format('d/m/Y').'.',
+                    "prorrogas.{$n}.fin",
+                );
+
+                return;
+            }
+
+            $anteriorFin = $fin;
+        }
     }
 }

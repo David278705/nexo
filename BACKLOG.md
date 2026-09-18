@@ -2304,7 +2304,7 @@ título, no por posición, y esas dos sesiones ya dejaron el archivo real con «
 documento» y «Celular»/«Correo electrónico» fuera de su sitio "natural"—. Comparado archivo por
 archivo contra el original: solo cambiaron `sheet1.xml` y `sheet2.xml`.
 
-### [ ] HD-09 · La plantilla no deja registrar las prórrogas una por una
+### [x] HD-09 · La plantilla no deja registrar las prórrogas una por una
 
 Hoy la plantilla guarda `Prórrogas ya realizadas` —un número— y `Fecha de inicio del contrato
 vigente`. Con eso no se sabe cuándo empezó y terminó cada prórroga. David lo encontró cargando a
@@ -2323,6 +2323,27 @@ sale de las filas cargadas y no de un número escrito a mano; y las reglas de C.
 6 —la cuarta prórroga y el tope de cuatro años— se evalúan sobre ese historial.
 **Fuente:** `app/CargaInicial/Plantillas/PlantillaDeEmpleados.php` ·
 `docs/06-decisiones-pendientes.md` C.1, C.2, D.7 · `app/Models/PeriodoContractual.php`
+
+Hecho: `Fecha de inicio del contrato vigente` y `Prórrogas ya realizadas` se reemplazaron por seis
+pares `Fecha de inicio de la prórroga N` / `Fecha de fin de la prórroga N`, resueltos por
+`columnasDeProrrogas()`. **`completar()` valida la cadena antes de escribir nada**: `prorrogas()`
+rechaza el bloque si el contrato no es a término fijo, `prorrogasEscritas()` exige el par completo y
+sin saltar ninguna prórroga, y `encadenarProrrogas()` comprueba que la primera empiece después del
+ingreso, que cada una siguiente empiece el día después de que termina la anterior, y que la última
+cargada termine el mismo día que «Fecha de finalización del contrato». **`escribir()` construye el
+historial real**: `registrarProrrogas()` corrige el fin del periodo inicial —que `ObservadorDeVinculacion`
+crea con la fecha de finalización vigente, sin saber de prórrogas— al día anterior a la primera, y
+encadena cada tramo con `Vinculacion::registrarPeriodo()`, el mismo camino de «Renovar contrato». El
+tipo de prórroga se guarda como pactada: la plantilla no pregunta cuál fue, y C.1 ya estableció que el
+cupo no distingue por tipo. Con tramos reales, `HistorialDeContrato::prorrogasCortas()` y
+`contratoInicialEsInferiorAUnAnio()` —C.1— y `fechaDelTopeLegal()` —C.2— quedan correctos por
+construcción, sin código nuevo. `prorrogas_previas_a_la_carga` (REV-09) se dejó intacto para no
+romper nada: con las columnas nuevas ningún registro futuro lo vuelve a usar, y solo sirve de respaldo
+si alguna vez hay datos cargados con la plantilla anterior. La plantilla real de `plantillas/1 -
+Empleados actuales (obligatoria).xlsx` se editó con el método de siempre —XML a mano, comparado
+archivo por archivo contra el original—: las columnas Z y AA se repropósitan en su sitio como el
+primer par, y los cinco pares restantes se agregaron al final (`AJ` a `AS`), seis pruebas nuevas en
+`CargaInicialTest.php` cubren el caso completo de David (2018, tres prórrogas) y las cinco validaciones.
 
 ### [ ] HD-10 · Los ejemplos de las plantillas no coinciden con los catálogos del sistema
 

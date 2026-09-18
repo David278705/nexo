@@ -25,6 +25,7 @@ use App\Models\Departamento;
 use App\Models\Eps;
 use App\Models\FondoPension;
 use App\Models\Pais;
+use App\Models\PeriodoContractual;
 use App\Models\Persona;
 use App\Models\RegistroDeCarga;
 use App\Models\Tenant;
@@ -734,28 +735,156 @@ describe('la ejecución de la carga', function () {
             ->and($saldos['tresMesesDespues'])->toBe(21.0);
     });
 
-    it('guarda las prórrogas ya realizadas aparte, sin inventar tramos en el historial (REV-09)', function () {
+    it('reconstruye tramo a tramo el historial cuando la plantilla trae varias prórrogas (HD-09)', function () {
+        // El caso real de David: alguien que entró en 2018 con contrato a
+        // término fijo y varias prórrogas, sin dónde ponerlas antes de esta
+        // tarea. El periodo inicial dura seis meses —menos de un año, así que
+        // gasta cupo corto (C.1)—, la primera prórroga es también de seis
+        // meses y las dos siguientes de un año exacto cada una.
         $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
             filaDeEmpleado([
                 'Tipo de contrato' => 'Término fijo',
-                'Fecha de finalización del contrato' => '31/12/2026',
-                'Prórrogas ya realizadas' => 2,
+                'Fecha de ingreso' => '01/01/2018',
+                'Fecha de finalización del contrato' => '31/12/2020',
+                'Fecha de inicio de la prórroga 1' => '01/07/2018',
+                'Fecha de fin de la prórroga 1' => '31/12/2018',
+                'Fecha de inicio de la prórroga 2' => '01/01/2019',
+                'Fecha de fin de la prórroga 2' => '31/12/2019',
+                'Fecha de inicio de la prórroga 3' => '01/01/2020',
+                'Fecha de fin de la prórroga 3' => '31/12/2020',
             ]),
         ]);
 
         ejecutar(new PlantillaDeEmpleados, $archivo);
 
-        $vinculacion = app(ContextoTenant::class)->paraTenant(
-            test()->empresa,
-            fn (): Vinculacion => Vinculacion::query()->with('periodos')->firstOrFail(),
-        );
+        // Todo se lee dentro del contexto de la empresa: el historial se
+        // recalcula con una consulta propia, y fuera del contexto el global
+        // scope de `PerteneceATenant` no encontraría ningún tramo.
+        $resultado = app(ContextoTenant::class)->paraTenant(test()->empresa, function (): array {
+            $vinculacion = Vinculacion::query()->with('periodos')->firstOrFail();
+            $periodos = $vinculacion->periodos->values();
+            $historial = $vinculacion->historial();
 
-        expect($vinculacion->prorrogas_previas_a_la_carga)->toBe(2)
-            // El historial solo trae el periodo inicial: nada se inventó.
-            ->and($vinculacion->periodos)->toHaveCount(1)
-            ->and($vinculacion->historial()->prorrogasCortas())->toBe(2)
-            ->and($vinculacion->historial()->notaDeCargaInicial())
-            ->toBe('Y 2 prórrogas anteriores a la carga inicial, sin detalle.');
+            return [
+                'periodos' => $periodos->map(fn (PeriodoContractual $periodo): array => [
+                    'evento' => $periodo->evento->value,
+                    'inicio' => $periodo->fecha_inicio->toDateString(),
+                    'fin' => $periodo->fecha_fin->toDateString(),
+                ])->all(),
+                'fechaFinVigente' => $vinculacion->fecha_fin->toDateString(),
+                'prorrogasAcumuladas' => $historial->prorrogasAcumuladas(),
+                'contratoInicialEsInferiorAUnAnio' => $historial->contratoInicialEsInferiorAUnAnio(),
+                'prorrogasCortas' => $historial->prorrogasCortas(),
+                'prorrogasCortasRestantes' => $historial->prorrogasCortasRestantes(),
+            ];
+        });
+
+        expect($resultado['periodos'])->toHaveCount(4)
+            // El periodo inicial no dura hasta el vencimiento vigente: dura
+            // hasta el día antes de que empiece la primera prórroga, que es
+            // justo el dato que la plantilla anterior no podía reconstruir.
+            ->and($resultado['periodos'][0])->toBe(['evento' => 'inicial', 'inicio' => '2018-01-01', 'fin' => '2018-06-30'])
+            ->and($resultado['periodos'][1])->toBe(['evento' => 'prorroga_pactada', 'inicio' => '2018-07-01', 'fin' => '2018-12-31'])
+            ->and($resultado['periodos'][2])->toBe(['evento' => 'prorroga_pactada', 'inicio' => '2019-01-01', 'fin' => '2019-12-31'])
+            ->and($resultado['periodos'][3])->toBe(['evento' => 'prorroga_pactada', 'inicio' => '2020-01-01', 'fin' => '2020-12-31'])
+            // Lo vigente de la vinculación termina donde termina la última
+            // prórroga, como si «Renovar contrato» la hubiera registrado tres
+            // veces desde la pantalla.
+            ->and($resultado['fechaFinVigente'])->toBe('2020-12-31')
+            // El conteo sale de las filas cargadas, no de un número aparte:
+            // el periodo inicial dura menos de un año —así que la regla de
+            // C.1 aplica—, pero para el cupo solo cuentan las prórrogas, y de
+            // las tres solo la primera es corta; la segunda y la tercera
+            // duran exactamente un año.
+            ->and($resultado['prorrogasAcumuladas'])->toBe(3)
+            ->and($resultado['contratoInicialEsInferiorAUnAnio'])->toBeTrue()
+            ->and($resultado['prorrogasCortas'])->toBe(1)
+            ->and($resultado['prorrogasCortasRestantes'])->toBe(2);
+    });
+
+    it('no permite cargar una prórroga sin haber cargado antes la anterior', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de finalización del contrato' => '31/12/2026',
+                'Fecha de inicio de la prórroga 2' => '01/01/2027',
+                'Fecha de fin de la prórroga 2' => '31/12/2027',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('sin haber registrado antes la prórroga 1');
+    });
+
+    it('exige las dos fechas de cada prórroga cargada', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de finalización del contrato' => '31/12/2026',
+                'Fecha de inicio de la prórroga 1' => '01/01/2026',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('necesita las dos fechas');
+    });
+
+    it('no admite columnas de prórroga en un contrato que no es a término fijo', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Fecha de inicio de la prórroga 1' => '01/01/2026',
+                'Fecha de fin de la prórroga 1' => '31/12/2026',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('solo para el contrato a término fijo');
+    });
+
+    it('la primera prórroga tiene que empezar después de la fecha de ingreso', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de ingreso' => '01/01/2026',
+                'Fecha de finalización del contrato' => '31/12/2026',
+                'Fecha de inicio de la prórroga 1' => '01/01/2026',
+                'Fecha de fin de la prórroga 1' => '31/12/2026',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('después de la fecha de ingreso');
+    });
+
+    it('cada prórroga tiene que empezar el día siguiente a la anterior, sin huecos', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de finalización del contrato' => '31/12/2027',
+                'Fecha de inicio de la prórroga 1' => '01/01/2026',
+                'Fecha de fin de la prórroga 1' => '31/12/2026',
+                // Debería empezar el 01/01/2027: deja un día sin cubrir.
+                'Fecha de inicio de la prórroga 2' => '02/01/2027',
+                'Fecha de fin de la prórroga 2' => '31/12/2027',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('el día siguiente a la finalización de la prórroga anterior');
+    });
+
+    it('la última prórroga cargada tiene que terminar igual que la fecha de finalización del contrato', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de finalización del contrato' => '31/12/2026',
+                'Fecha de inicio de la prórroga 1' => '01/01/2026',
+                'Fecha de fin de la prórroga 1' => '30/11/2026',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('tiene que terminar el mismo día');
     });
 
     it('un empleado registrado a mano no lleva ninguna prórroga previa a la carga', function () {
