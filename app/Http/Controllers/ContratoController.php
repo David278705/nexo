@@ -71,21 +71,31 @@ class ContratoController extends Controller
     }
 
     /**
-     * El detalle, y con él el estado del modal de renovación.
+     * El detalle, y con él el estado de los modales de renovación y de cambio a
+     * término indefinido.
      *
-     * `tipo` y `fecha_fin` llegan cuando el modal está abierto y el usuario
-     * acaba de cambiar uno de los dos: la pantalla vuelve a pedir solo la prop
-     * `renovacion` y el servidor devuelve la proyección recalculada. Es lo que
-     * evita que el modal cuente días en el navegador.
+     * `tipo` y `fecha_fin` llegan cuando el modal de renovación está abierto y
+     * el usuario acaba de cambiar uno de los dos; `fecha` cuando es el de
+     * cambio a término indefinido el que está abierto y se acaba de editar la
+     * fecha propuesta. En los dos casos la pantalla vuelve a pedir solo su prop
+     * y el servidor devuelve el cálculo recalculado: es lo que evita que el
+     * modal cuente un día por su cuenta.
      */
     public function detalle(Request $peticion, Vinculacion $contrato): RespuestaInertia
     {
+        $tipo = $peticion->query('tipo');
+        $fechaFin = $peticion->query('fecha_fin');
+        $fecha = $peticion->query('fecha');
+
         return Inertia::render(
             'Contratos/Detalle',
-            DetalleDelContrato::de($contrato)->paraLaPantalla([
-                'tipo' => $peticion->query('tipo'),
-                'fecha_fin' => $peticion->query('fecha_fin'),
-            ]),
+            DetalleDelContrato::de($contrato)->paraLaPantalla(
+                [
+                    'tipo' => is_string($tipo) ? $tipo : null,
+                    'fecha_fin' => is_string($fechaFin) ? $fechaFin : null,
+                ],
+                is_string($fecha) ? $fecha : null,
+            ),
         );
     }
 
@@ -109,16 +119,15 @@ class ContratoController extends Controller
     /**
      * Convierte el contrato a término indefinido (documento 1, 5.5).
      *
-     * Es una confirmación y no un formulario: no llega ningún dato, así que aquí
-     * no se lee ninguno. Que la acción exista en ese contrato lo comprueba
-     * `CambiarATerminoIndefinido`, y el tramo lo escribe
-     * `Vinculacion::cambiarATerminoIndefinido()`.
+     * El único dato que llega es la fecha del cambio (HD-11), ya validada por
+     * `CambiarATerminoIndefinido` contra el rango que la propia pantalla
+     * enseña. El tramo lo escribe `Vinculacion::cambiarATerminoIndefinido()`.
      */
     public function cambiarAIndefinido(
         CambiarATerminoIndefinido $peticion,
         Vinculacion $contrato,
     ): RedirectResponse {
-        $periodo = $contrato->cambiarATerminoIndefinido();
+        $periodo = $contrato->cambiarATerminoIndefinido($peticion->fecha());
 
         return redirect()
             ->route('contratos.detalle', $contrato)

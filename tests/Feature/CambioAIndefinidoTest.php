@@ -47,11 +47,34 @@ beforeEach(function () {
 
 /**
  * Confirma el cambio a término indefinido.
+ *
+ * Sin `$fecha`, envía la propuesta por defecto —hoy, el mismo día de
+ * `beforeEach()`—, así que las pruebas escritas antes de HD-11 no tienen que
+ * saber que ahora el formulario pide una fecha.
  */
-function cambiarAIndefinido(Vinculacion $contrato): TestResponse
+function cambiarAIndefinido(Vinculacion $contrato, ?string $fecha = null): TestResponse
 {
     return test()->actingAs(test()->usuario)
-        ->post('/contratos/'.$contrato->getKey().'/indefinido');
+        ->post('/contratos/'.$contrato->getKey().'/indefinido', [
+            'fecha' => $fecha ?? Carbon::today()->toDateString(),
+        ]);
+}
+
+/**
+ * Lo que el servidor manda al modal de cambio a término indefinido, con la
+ * fecha digitada que se le pase.
+ *
+ * @return array<string, mixed>
+ */
+function cambioAIndefinidoDe(Vinculacion $contrato, ?string $fecha = null): array
+{
+    $query = $fecha === null ? '' : '?'.http_build_query(['fecha' => $fecha]);
+
+    $respuesta = test()->actingAs(test()->usuario)->get('/contratos/'.$contrato->getKey().$query);
+
+    $respuesta->assertOk();
+
+    return $respuesta->viewData('page')['props']['cambioAIndefinido'];
 }
 
 describe('cuándo se ofrece la acción', function () {
@@ -220,6 +243,84 @@ describe('el efecto del cambio', function () {
         cambiarAIndefinido($contrato);
 
         expect(tramosDe($contrato)->last()->fecha_inicio->toDateString())->toBe('2026-10-01');
+    });
+});
+
+describe('la fecha del cambio (HD-11)', function () {
+    it('propone hoy y el rango editable hacia atrás hasta el inicio del periodo vigente', function () {
+        $contrato = contratoFijo('Juan', '2025-07-15', '2026-09-12');
+
+        $cambio = cambioAIndefinidoDe($contrato);
+
+        expect($cambio['fecha'])->toBe('2026-08-20');
+        expect($cambio['minimo'])->toBe('2025-07-15');
+        expect($cambio['maximo'])->toBe('2026-08-20');
+    });
+
+    it('acepta una fecha anterior a hoy y la usa como inicio del tramo indefinido', function () {
+        $contrato = contratoFijo('Juan', '2025-07-15', '2026-09-12');
+
+        cambiarAIndefinido($contrato, '2026-08-13');
+
+        expect(tramosDe($contrato)->last()->fecha_inicio->toDateString())->toBe('2026-08-13');
+    });
+
+    it('las implicaciones dicen la fecha elegida y no «hoy» literal', function () {
+        $contrato = contratoFijo('Juan', '2025-07-15', '2026-09-12');
+
+        $cambio = cambioAIndefinidoDe($contrato, '2026-08-13');
+
+        expect($cambio['fecha'])->toBe('2026-08-13');
+        expect(implode(' ', $cambio['implicaciones']))
+            ->toContain('13/08/2026')
+            ->not->toContain('la fecha de hoy');
+    });
+
+    it('rechaza una fecha anterior al inicio del periodo vigente', function () {
+        $contrato = contratoFijo('Juan', '2025-07-15', '2026-09-12');
+
+        cambiarAIndefinido($contrato, '2025-07-14')->assertSessionHasErrors('fecha');
+
+        expect(tramosDe($contrato))->toHaveCount(1);
+    });
+
+    it('rechaza una fecha posterior a hoy', function () {
+        $contrato = contratoFijo('Juan', '2025-07-15', '2026-09-12');
+
+        cambiarAIndefinido($contrato, '2026-08-21')->assertSessionHasErrors('fecha');
+
+        expect(tramosDe($contrato))->toHaveCount(1);
+    });
+
+    it('en pantalla ignora una fecha fuera de rango y vuelve a la propuesta por defecto', function () {
+        $contrato = contratoFijo('Juan', '2025-07-15', '2026-09-12');
+
+        expect(cambioAIndefinidoDe($contrato, '2026-08-21')['fecha'])->toBe('2026-08-20');
+        expect(cambioAIndefinidoDe($contrato, '2025-07-14')['fecha'])->toBe('2026-08-20');
+    });
+
+    it('conserva el ajuste de coherencia: en un contrato que aún no ha empezado solo admite la fecha del periodo vigente', function () {
+        $contrato = contratoFijo('Futuro', '2026-10-01', '2027-03-31');
+
+        $cambio = cambioAIndefinidoDe($contrato);
+
+        expect($cambio['fecha'])->toBe('2026-10-01');
+        expect($cambio['minimo'])->toBe('2026-10-01');
+        expect($cambio['maximo'])->toBe('2026-10-01');
+
+        cambiarAIndefinido($contrato, '2026-08-20')->assertSessionHasErrors('fecha');
+        expect(tramosDe($contrato))->toHaveCount(1);
+    });
+
+    it('el historial contractual queda con la fecha elegida y no con la de hoy', function () {
+        $contrato = contratoFijo('Juan', '2025-07-15', '2026-09-12');
+
+        cambiarAIndefinido($contrato, '2026-08-13');
+
+        $props = detalleDeContrato($contrato->fresh());
+        $fila = collect($props['historial'])->firstWhere('evento', 'Cambio a término indefinido');
+
+        expect($fila['desde'])->toBe('13/08/2026');
     });
 });
 

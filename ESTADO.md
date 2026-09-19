@@ -1,59 +1,53 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-18 · Tarea `HD-10`
-**Verificación:** verde. 1.274 de 1.274 pruebas de Pest, Pint y PHPStan sin errores, build y 409 de
-Vitest — dos pruebas más que `HD-09`, las de la comparación sin mayúsculas ni tildes, más la que
-recorre las seis plantillas reales con su ejemplo.
-**Siguiente tarea:** `HD-11` · El cambio a término indefinido siempre se registra con la fecha de
-hoy, en vez de con la fecha real en que se acordó.
+**Última sesión:** 2026-09-19 · Tarea `HD-11`
+**Verificación:** verde. 1.282 de 1.282 pruebas de Pest, Pint y PHPStan sin errores, build y 410 de
+Vitest — ocho pruebas de Pest más que `HD-10` y una de Vitest más.
+**Siguiente tarea:** `HD-12` · Se puede terminar un contrato cuyo estado nadie ha aclarado.
 
 ## Qué se hizo
 
-`HD-10` pedía que ningún ejemplo de las plantillas usara un valor que su propio catálogo rechazara,
-que las instrucciones mostraran los valores admitidos de cada columna de lista o de catálogo, y que
-la comparación ignorara mayúsculas y tildes.
+`HD-11` pedía que el cambio a término indefinido dejara de registrarse siempre con la fecha de hoy:
+David encontró contratos vencidos sin gestionar que en realidad ya se habían vuelto indefinidos días
+antes, y hasta ahora no había forma de decirlo.
 
-- **Tres ejemplos reales no coincidían con su catálogo**, los tres con «Sura» donde el sistema pide
-  el nombre completo: `Q2` (EPS) y `S2` (ARL) de la plantilla de empleados, y `F2` (EPS que la
-  expide) de la de incapacidades. Se corrigieron a «Sura EPS» y «ARL Sura» editando a mano el XML de
-  `sheet2.xml` de los dos `.xlsx` reales con `ZipArchive::addFromString()` —el mismo método seguro de
-  HD-06 a HD-09—, comparando cada entrada del `.zip` contra el original antes de dejarlo: en los dos
-  archivos solo cambiaron `sheet1.xml` (instrucciones) y `sheet2.xml` (datos), nada más.
-- **La comparación sin mayúsculas ni tildes ya existía.** `TextoDeCelda::comparable()` ya aplicaba
-  `Str::ascii()` y `Str::lower()` antes de esta tarea, así que «suspension» sin tilde ya entraba
-  igual que la etiqueta «Suspensión», y «SURA EPS» en mayúsculas igual que «Sura EPS». No hizo falta
-  tocar `LecturaDeCelda` ni `CatalogosDeCarga`. Se agregaron dos pruebas en
-  `tests/Feature/CargaInicialTest.php` que lo demuestran —una de columna de catálogo (EPS) y una de
-  columna de lista (Origen y tipo de novedad)— para que quede protegido con una prueba y no sea solo
-  una lectura del código.
-- **Lo que sí faltaba eran los valores admitidos de las columnas de catálogo en las instrucciones.**
-  Las columnas de lista por enumerado (Tipo de documento, Género, Tipo de contrato, Nivel de riesgo,
-  Estado civil, Nivel educativo, Tipo de vivienda, Medio de transporte, Tiempo de desplazamiento,
-  Origen, Tipo de novedad, Tipo de movimiento) ya traían su lista en la hoja de instrucciones. Las
-  cinco columnas de catálogo —EPS, Fondo de pensión, ARL, Caja de compensación y Entidad bancaria de
-  la plantilla de empleados, y EPS que la expide de incapacidades— no traían ninguna. Se completaron
-  con los nombres exactos de `database/data/entidades.php`, la misma fuente que carga
-  `EntidadesSeeder` (decisión D.5), editando `sheet1.xml` de los dos archivos con el mismo método.
-- **Prueba nueva que recorre las seis plantillas reales de `plantillas/`.** `acepta el ejemplo real
-  de las seis plantillas de plantillas/`, en `describe('el lector', ...)`, ejecuta de verdad la
-  plantilla de empleados con su archivo real —así queda la planta cargada— y simula las otras cinco
-  también con sus archivos reales, encadenadas por el mismo documento de ejemplo (43887201). Si un
-  ejemplo futuro se desfasa de su catálogo, esta prueba lo pone en rojo antes de que llegue a una
-  reunión de carga con un cliente.
-- **La tarea decía «siete plantillas» y el código dice consistentemente «seis»** —`CatalogoDePlantillas`,
-  `Plantilla.php`, el test que ya existía—. No hay una séptima plantilla en ningún lugar del sistema;
-  se resolvió sobre las seis reales sin inventar una que no existe. Queda anotado por si David
-  quería decir otra cosa con «siete».
+- **`CambioAIndefinido` gana dos límites explícitos**, `limiteInferior()` —el inicio del periodo
+  vigente— y `limiteSuperior()` —hoy, salvo que el contrato todavía no haya empezado, en cuyo caso
+  sube hasta el mismo límite inferior—. Es el mismo ajuste de coherencia que ya existía en F1-11,
+  ahora nombrado y reutilizado en vez de repetido.
+- **`fechaDelCambio()` deja de llamar a `Carbon::today()` a ciegas**: recibe la fecha ya validada por
+  el formulario y solo por defecto —sin argumento— propone `limiteSuperior()`.
+- **`CambiarATerminoIndefinido` valida `fecha`** con `after_or_equal`/`before_or_equal` contra esos
+  dos mismos límites. En el contrato que aún no ha empezado los dos límites coinciden, así que ese
+  caso queda cubierto por la misma regla, sin una excepción aparte.
+- **La quinta implicación del modal dejó de decir «con la fecha de hoy»**: ahora dice «con fecha del»
+  seguido de la fecha que de verdad se va a guardar, para que nunca prometa una cosa y guarde otra.
+- **`ModalDeCambioAIndefinido.vue` estrenó un `CampoFecha`**, propuesto en `cambio.fecha` y con
+  recarga parcial (`only: ['cambioAIndefinido']`) al estilo de `ModalDeRenovacion`: cada vez que se
+  digita otra fecha, las cinco implicaciones se vuelven a pedir al servidor.
+- **`CampoFecha` y `CampoTexto` ganaron los props opcionales `minimo`/`maximo`**, que se enlazan al
+  `min`/`max` nativo de `input[type=date]`. Es cortesía del navegador y no reemplaza la validación:
+  el servidor sigue rechazando lo que esté fuera de rango aunque alguien edite el HTML.
+- **Ocho pruebas nuevas en `CambioAIndefinidoTest.php`**: la propuesta y el rango, la fecha pasada
+  aceptada, el texto sin «hoy» literal, los dos rechazos (antes del periodo vigente, después de hoy),
+  el caso silencioso de una fecha fuera de rango en pantalla (vuelve a la propuesta por defecto sin
+  reventar), el contrato futuro (solo admite la fecha del periodo vigente) y que el historial quede
+  con la fecha elegida y no con la de hoy.
 
 ## Decisiones tomadas
 
-- **Los valores admitidos de las columnas de catálogo se escriben como texto fijo en la instrucción**,
-  igual que ya se hacía con las columnas de lista por enumerado. Es la misma convención que ya tenía
-  el archivo, y la alternativa —dejarlas sin lista, como estaban— es justo el hueco que esta tarea
-  pedía cerrar. El riesgo es el mismo que ya corrían las columnas de enumerado: si el catálogo cambia
-  desde el panel del proveedor (F1B-04), el texto de la instrucción no se actualiza solo. No es un
-  riesgo nuevo de esta tarea, es el mismo que ya existía para Género o Tipo de contrato; queda anotado
-  abajo para quien construya alguna vez una instrucción que se genere del catálogo en vez de copiarse.
+- **El límite superior de la fecha, y no una regla aparte, es lo que resuelve el contrato que aún no
+  ha empezado.** En vez de escribir una excepción para ese caso, `limiteSuperior()` sube hasta
+  `limiteInferior()` cuando este cae después de hoy, así que `after_or_equal` y `before_or_equal`
+  terminan pidiendo la misma fecha sin que la regla lo sepa. Es el mismo comportamiento de F1-11, solo
+  que ahora nombrado.
+- **Una fecha digitada en pantalla que cae fuera de rango se ignora en silencio y vuelve a la
+  propuesta por defecto**, igual que ya hacía `RenovacionDeContrato::resolver()` con una prórroga a
+  medio digitar: no es un error todavía, es una petición GET de la pantalla mientras se escribe. El
+  error de verdad solo aparece si se envía el formulario con esa fecha, y ahí sí lo bloquea
+  `CambiarATerminoIndefinido`.
+- **`minimo`/`maximo` en `CampoFecha` son nuevos y opcionales**, sin valor por defecto que afecte a
+  ningún otro de los más de veinte usos existentes del componente.
 
 ## Preguntas para Angela
 
@@ -73,10 +67,9 @@ la comparación ignorara mayúsculas y tildes.
   `HD-06` (celular y correo en el asistente, y que la plantilla real abra sin errores en Excel de
   verdad), la de `HD-07` (Cundinamarca/Bogotá en el asistente), la de `HD-08` (departamento y ciudad
   de expedición en la plantilla real), la de `HD-09` (los doce campos de prórroga en la plantilla
-  real) y ahora también `HD-10`: abrir en Excel de verdad las dos plantillas que se tocaron —empleados
-  e incapacidades— y comprobar a ojo que las instrucciones de EPS, fondo, ARL, caja y banco se leen
-  bien y no quedaron demasiado largas para la celda (aquí solo se verificó con PhpSpreadsheet y
-  comparando el `.zip` byte a byte contra el original, no con Excel de verdad).
+  real), la de `HD-10` (abrir en Excel de verdad las plantillas de empleados e incapacidades) y ahora
+  también `HD-11`: abrir el modal de «Cambiar a término indefinido» en el navegador de verdad y
+  comprobar que el calendario nativo respeta el rango y que el texto se lee bien con una fecha pasada.
 - **La tarea decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
   Si te referías a otra cosa —por ejemplo, contar también
   `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
@@ -85,30 +78,18 @@ la comparación ignorara mayúsculas y tildes.
 
 ## Notas para la próxima sesión
 
-- **`HD-11` es la siguiente**: `CambioAIndefinido::fechaDelCambio()` devuelve siempre `Carbon::today()`;
-  hay que dejar que el formulario acepte una fecha editable hacia atrás (no anterior al inicio del
-  periodo vigente ni posterior a hoy) y que el historial, las alertas y el modal de confirmación usen
-  esa fecha en vez de «hoy».
-- **El método seguro para tocar un `.xlsx` real** sigue siendo el mismo: copiarlo aparte primero,
-  editar el XML del `.zip` a mano con `ZipArchive::addFromString()` —nunca cargar y volver a guardar
-  el libro completo con `PhpOffice\PhpSpreadsheet\Writer\Xlsx`, que corrompe la tabla de cadenas y
-  borra los comentarios en estos archivos en particular—, verificar con PhpSpreadsheet **y**
-  comparando cada entrada del `.zip` contra el original antes de dejarlo. Esta vez las dos plantillas
-  tocadas no usan `sharedStrings.xml`: guardan el texto como `inlineStr` directo en cada celda de
-  `sheet1.xml`/`sheet2.xml`, así que la búsqueda y reemplazo fue sobre esos dos archivos únicamente.
-- **`unzip` y `git stash` por línea de comandos pidieron aprobación en este entorno** y la sesión es
-  autónoma, así que no se pudieron usar. `ZipArchive` de PHP (`php -r '...'`) no tuvo ese problema y
-  fue suficiente para todo: listar el contenido del `.zip`, leer y escribir entradas, y comparar
-  archivo por archivo entre el original y el nuevo. Si una sesión futura necesita `unzip` o `git
-  stash` para algo, mejor asumir de entrada que hay que buscar el equivalente en PHP o en `git`
-  sin subcomandos interactivos.
-- **`database/data/entidades.php` es la fuente de verdad de los nombres exactos de EPS, fondos, ARL,
-  cajas y bancos** —la misma que lee `EntidadesSeeder`—, más rápida de consultar que la base de datos
-  para saber qué nombre literal espera cada catálogo.
-- **Un archivo de pruebas de Feature corrido solo, fuera de `composer verificar`, puede fallar por
-  una función global no cargada** (por ejemplo `ownerEnElPanel()`, definida en `CrearEmpresaTest.php`
-  y usada también en `CargaInicialTest.php`): Pest solo la resuelve cuando descubre el árbol completo
-  de pruebas. No es una prueba rota; es correr un archivo aislado. `composer verificar` la corre
-  siempre completa y ahí sí queda verde.
+- **`HD-12` es la siguiente**: se puede terminar un contrato a término fijo del 1 de enero al 31 de
+  marzo de 2026 que ya venció sin que nadie lo haya gestionado. Leer el enunciado completo en
+  `BACKLOG.md` antes de empezar.
+- **El patrón «recarga parcial al digitar» ya tiene dos ejemplos gemelos**: `ModalDeRenovacion.vue`
+  con `only: ['renovacion']` y ahora `ModalDeCambioAIndefinido.vue` con
+  `only: ['cambioAIndefinido']`. Si una tercera acción del contrato necesita lo mismo, el patrón ya
+  está probado dos veces y no hay que inventarlo de nuevo: `useForm` con los campos digitados,
+  `watch` sobre ellos que dispara `router.get(url, campos, { only: [...], preserveState: true,
+  preserveScroll: true, replace: true })`, y un segundo `watch` sobre `abierto` que limpia errores al
+  cerrar.
+- **`CampoFecha` y `CampoTexto` ya aceptan `minimo`/`maximo`** para el `min`/`max` nativo de
+  `input[type=date]`. Si otra pantalla necesita acotar un calendario, ya no hay que tocar el
+  componente compartido, solo pasar los dos props.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
   `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.

@@ -198,10 +198,11 @@ class Vinculacion extends Model
     /**
      * Convierte el contrato a término indefinido (documento 1, 5.5).
      *
-     * El tramo nuevo empieza el día en que se hace el cambio y **no lleva fecha
-     * de fin**: un indefinido no vence, así que `registrarPeriodo()` deja también
-     * `fecha_fin` de la vinculación en nulo y con ella desaparecen el preaviso y
-     * las alertas de vencimiento.
+     * El tramo nuevo empieza el día en que las partes acordaron el cambio
+     * (HD-11) —`$fecha`, digitada en el modal y editable hacia atrás— y **no
+     * lleva fecha de fin**: un indefinido no vence, así que `registrarPeriodo()`
+     * deja también `fecha_fin` de la vinculación en nulo y con ella desaparecen
+     * el preaviso y las alertas de vencimiento.
      *
      * **La fecha de ingreso no se toca**, que es el criterio de la tarea: el
      * vínculo es el mismo y solo cambia su modalidad, así que la antigüedad y la
@@ -209,15 +210,17 @@ class Vinculacion extends Model
      * el tramo inicial también se deja intacto: es lo que se pactó, y reescribirlo
      * borraría la trazabilidad que el cambio pretende dejar.
      *
-     * Aquí no se valida: que el contrato sea a término fijo lo comprueba
-     * `CambiarATerminoIndefinido`.
+     * Aquí no se valida: que el contrato sea a término fijo y que `$fecha` esté
+     * dentro del rango permitido lo comprueba `CambiarATerminoIndefinido`.
+     * Sin ella, `CambioAIndefinido::fechaDelCambio()` propone hoy —o el inicio
+     * del periodo vigente, si el contrato todavía no ha empezado—.
      */
-    public function cambiarATerminoIndefinido(): PeriodoContractual
+    public function cambiarATerminoIndefinido(?Carbon $fecha = null): PeriodoContractual
     {
         return $this->registrarPeriodo(
             EventoContractual::CambioAIndefinido,
             TipoContrato::Indefinido,
-            CambioAIndefinido::de($this)->fechaDelCambio(),
+            CambioAIndefinido::de($this)->fechaDelCambio($fecha),
         );
     }
 

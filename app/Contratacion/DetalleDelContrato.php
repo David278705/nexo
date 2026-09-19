@@ -45,9 +45,10 @@ class DetalleDelContrato
 
     /**
      * @param  array{tipo?: string|null, fecha_fin?: string|null}  $propuesta  Lo digitado en el modal de renovación.
+     * @param  string|null  $fechaCambio  Lo digitado en el modal de cambio a término indefinido.
      * @return array<string, mixed>
      */
-    public function paraLaPantalla(array $propuesta = []): array
+    public function paraLaPantalla(array $propuesta = [], ?string $fechaCambio = null): array
     {
         return [
             'contrato' => $this->encabezado(),
@@ -72,7 +73,7 @@ class DetalleDelContrato
              * servidor.
              */
             'cambioAIndefinido' => CambioAIndefinido::de($this->vinculacion, $this->historial)
-                ->paraLaPantalla(),
+                ->paraLaPantalla($fechaCambio),
         ];
     }
 

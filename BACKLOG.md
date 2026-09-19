@@ -2382,7 +2382,7 @@ documento de ejemplo, así que un ejemplo futuro que se desfase de su catálogo 
 tarea dice «siete plantillas» pero el catálogo (`CatalogoDePlantillas`) y el resto del código dicen
 consistentemente «seis»: se resolvió sobre las seis reales, sin inventar una séptima.
 
-### [ ] HD-11 · El cambio a término indefinido siempre se registra con la fecha de hoy
+### [x] HD-11 · El cambio a término indefinido siempre se registra con la fecha de hoy
 
 `CambioAIndefinido::fechaDelCambio()` devuelve `Carbon::today()` sin más, y el modal se lo anuncia
 al usuario: *«el cambio queda registrado en el historial con la fecha de hoy»*. David señaló el caso
@@ -2399,6 +2399,26 @@ que dependen de él usan esa fecha; y el ajuste de coherencia que ya existe para
 todavía no ha empezado se conserva.
 **Fuente:** `app/Contratacion/CambioAIndefinido.php` ·
 `app/Http/Requests/CambiarATerminoIndefinido.php` · `docs/01-especificacion-funcional.md` 5.5
+
+Hecho: `CambioAIndefinido` gana `limiteInferior()` —el inicio del periodo vigente— y
+`limiteSuperior()` —hoy, o el mismo límite inferior si el contrato todavía no ha empezado, que es el
+ajuste de coherencia de F1-11 conservado tal cual—; `fechaDelCambio()` ahora recibe la fecha ya
+validada y solo por defecto propone `limiteSuperior()`. `CambiarATerminoIndefinido` valida `fecha`
+con `after_or_equal`/`before_or_equal` contra esos dos mismos límites, así que el rango que rechaza
+el servidor es literalmente el que la pantalla propone; en el contrato que aún no ha empezado los dos
+límites caen en el mismo día y por eso solo esa fecha se admite, sin una regla aparte. `Vinculacion::
+cambiarATerminoIndefinido()` recibe la fecha y la pasa a `registrarPeriodo()`, así que el historial
+—y con él cualquier alerta futura, porque todas leen `periodos_contractuales`— queda con la fecha
+elegida. La quinta implicación del modal dejó de decir «con la fecha de hoy» y ahora dice «con fecha
+del» seguido de la fecha que de verdad se va a guardar, para que nunca mienta si se elige una fecha
+pasada. `ModalDeCambioAIndefinido.vue` estrenó un `CampoFecha`, propuesto en `cambio.fecha` y con
+recarga parcial (`only: ['cambioAIndefinido']`) igual que `ModalDeRenovacion`, para que las
+implicaciones se vuelvan a pedir al servidor cada vez que se digita otra fecha. `CampoFecha` y
+`CampoTexto` ganaron los props opcionales `minimo`/`maximo`, que se enlazan al `min`/`max` nativo del
+`input[type=date]`: es cortesía del navegador, la validación real sigue siendo la del servidor. Ocho
+pruebas nuevas en `CambioAIndefinidoTest.php` cubren la propuesta, la fecha aceptada, el texto sin
+«hoy», los dos rechazos de rango, el caso silencioso de una fecha fuera de rango en pantalla, el
+contrato futuro y la fecha que queda en el historial.
 
 ### [ ] HD-12 · Se puede terminar un contrato cuyo estado nadie ha aclarado
 

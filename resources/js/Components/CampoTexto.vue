@@ -15,6 +15,10 @@ const props = defineProps({
     autocompletar: { type: String, default: "" },
     soloLectura: { type: Boolean, default: false },
     autoenfoque: { type: Boolean, default: false },
+    // Límites nativos de un campo de tipo `date`. Vacíos en cualquier otro
+    // campo, así que no afectan a nadie más.
+    minimo: { type: String, default: "" },
+    maximo: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:modelValue", "salir"]);
@@ -52,6 +56,8 @@ const descripcion = computed(() => {
             :autocomplete="autocompletar || undefined"
             :readonly="soloLectura"
             :autofocus="autoenfoque"
+            :min="minimo || undefined"
+            :max="maximo || undefined"
             :aria-invalid="error ? 'true' : undefined"
             :aria-describedby="descripcion"
             class="mt-1 block h-control w-full rounded-[var(--radius-caja)] border bg-superficie px-3 text-tabla text-texto placeholder:text-texto-terciario"

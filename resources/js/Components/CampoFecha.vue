@@ -17,6 +17,11 @@ defineProps({
     ayuda: { type: String, default: "" },
     opcional: { type: Boolean, default: false },
     soloLectura: { type: Boolean, default: false },
+    // Límites del calendario nativo, en `AAAA-MM-DD`. La validación de verdad
+    // sigue siendo la del servidor: esto es la cortesía de no dejar elegir en
+    // el navegador una fecha que ya se sabe que se va a rechazar.
+    minimo: { type: String, default: "" },
+    maximo: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:modelValue", "salir"]);
@@ -31,6 +36,8 @@ const emit = defineEmits(["update:modelValue", "salir"]);
         :ayuda="ayuda"
         :opcional="opcional"
         :solo-lectura="soloLectura"
+        :minimo="minimo"
+        :maximo="maximo"
         @update:model-value="emit('update:modelValue', $event)"
         @salir="emit('salir', $event)"
     />
