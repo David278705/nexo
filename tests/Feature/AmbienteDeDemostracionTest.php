@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Proveedor\AmbienteDeDemostracion;
+use App\Proveedor\PlantaDeMuestra;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -62,7 +63,7 @@ it('restaura el ambiente con la misma planta, sin importar cuántas veces se res
     $ambiente->restaurar();
     $segundaVez = documentosDeLaPlanta($ambiente);
 
-    expect($primeraVez)->toHaveCount(8)
+    expect($primeraVez)->toHaveCount(PlantaDeMuestra::TOTAL)
         ->and($segundaVez)->toEqual($primeraVez);
 });
 
@@ -72,7 +73,7 @@ it('deja constancia de cuándo quedó restaurado por última vez', function () {
     $ambiente->restaurar();
 
     expect($ambiente->estado()['restauradoEn'])->not->toBeNull()
-        ->and($ambiente->estado()['personas'])->toBe(8);
+        ->and($ambiente->estado()['personas'])->toBe(PlantaDeMuestra::TOTAL);
 });
 
 it('vacía con borrado lógico: la restauración anterior queda en el histórico, no desaparece', function () {
@@ -86,8 +87,11 @@ it('vacía con borrado lógico: la restauración anterior queda en el histórico
     $vivas = DB::table('personas')->where('tenant_id', $tenant->getKey())->whereNull('deleted_at')->count();
     $conLasBorradas = DB::table('personas')->where('tenant_id', $tenant->getKey())->count();
 
-    expect($vivas)->toBe(8)
-        ->and($conLasBorradas)->toBe(16);
+    // Dos restauraciones dejan una planta viva y la anterior borrada
+    // lógicamente: el doble de filas, que es la regla 4 del proyecto —nunca
+    // borrado físico— vista desde la tabla.
+    expect($vivas)->toBe(PlantaDeMuestra::TOTAL)
+        ->and($conLasBorradas)->toBe(PlantaDeMuestra::TOTAL * 2);
 });
 
 it('deja un contrato a término fijo por vencer, para que la demostración siempre tenga algo próximo a mostrar', function () {
@@ -125,7 +129,7 @@ it('el comando de consola corre la misma restauración que el botón del panel',
 
     $ambiente = app(AmbienteDeDemostracion::class);
 
-    expect($ambiente->estado()['personas'])->toBe(8);
+    expect($ambiente->estado()['personas'])->toBe(PlantaDeMuestra::TOTAL);
 });
 
 /**

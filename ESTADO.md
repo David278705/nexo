@@ -1,36 +1,64 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-20 · Tarea `HD-16`
-**Verificación:** verde. 1.308 de 1.308 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
-Vitest — dos pruebas de Pest más que `HD-15`, las de Vitest no cambian.
-**Siguiente tarea:** ninguna. **El backlog está completo**: no queda ninguna tarea `[ ]`. Quedan las
-bloqueadas `[!]` y las decisiones de abajo, que esperan a una persona.
+**Última sesión:** 2026-09-20 · Dos hallazgos de David probando el sistema, fuera del backlog:
+la planta de la empresa de prueba estaba casi vacía y no había forma de entrar en una máquina nueva.
+**Verificación:** verde. 1.319 de 1.319 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
+Vitest — once pruebas de Pest más que `HD-16`, las de Vitest no cambian.
+**Siguiente tarea:** ninguna. **El backlog sigue completo**: no queda ninguna tarea `[ ]`.
 
 ## Qué se hizo
 
-`HD-16` pedía que la nota del saldo de vacaciones nombrara los cuatro términos de la fórmula.
+### La empresa de prueba parecía usada pero estaba vacía
 
-- **La nota** (`FichaDeEmpleado::notaDelSaldo()`) dice ahora: saldo inicial de la carga, más 1,25 días por
-  mes cumplido (desde el ingreso o desde la fecha de corte), menos los días de vacaciones ya disfrutados,
-  menos la reducción por licencias, ausencias y suspensiones si la empresa tiene ese parámetro activo.
-- **El 1,25 sale de `reglas_laborales.dias_vacaciones_por_mes`**, la misma constante del motor, y no de un
-  número escrito en el texto.
-- **Un solo sitio:** el encabezado de la ficha y el modal de novedades ya compartían
-  `saldoDeVacaciones()`, y la pantalla de vacaciones enseña sus propios números sin nota. No había texto
-  repetido que quitar; se dejó el método privado y documentado.
-- **Pruebas** (`FichaDeEmpleadoTest.php`): una arma saldo inicial, acumulación, un disfrute y una suspensión,
-  comprueba 10 + 5 − 5 − 0,625 = 9,375, que quitar el disfrute o la suspensión (`SaldoDeVacaciones::sin()`)
-  mueve el saldo exactamente en su parte, y que la nota nombra cada término; otra, que ficha y modal llevan
-  la misma nota.
+David entraba a una ficha cualquiera y no encontraba nada. El motivo estaba en
+`AmbienteDeDemostracion::planta()`: ocho personas, y **una sola novedad cada una como mucho**. Era
+una demostración de *situaciones* —una persona por caso— y por eso siete de cada ocho fichas salían
+en blanco.
+
+- **`App\Proveedor\PlantaDeMuestra` es nueva** y se quedó con la planta: 28 personas, 7 de ellas
+  inactivas. Cubre los tres tipos de contrato, los tres de licencia, los dos orígenes de incapacidad
+  y **los siete tipos de salida**, uno cada uno, para que el filtro del listado de terminaciones
+  tenga algo que filtrar. Gente con tres temporadas de vacaciones, prórrogas encadenadas, aumentos y
+  promociones.
+- **Los datos siguen siendo fijos, no aleatorios**, que era la propiedad que la planta anterior
+  cuidaba: la demostración tiene que lucir igual de poblada siempre. Lo único relativo a hoy son las
+  fechas. Los diez «veteranos» se derivan del índice en vez de estar escritos uno por uno —derivar no
+  es sortear: el mismo índice da siempre la misma persona—.
+- **Ninguna persona tiene dos novedades que se pisen.** Las novedades de cada quien se reparten en
+  meses distintos a propósito, porque desde `HD-03` el sistema rechaza los traslapes y una planta que
+  los tuviera estaría enseñando datos que sus propios formularios no dejarían registrar.
+
+### No había con qué entrar en una máquina nueva
+
+El `Test User` del seeder de Laravel tiene `tenant_id` nulo y rol `admin`: un usuario de empresa sin
+empresa, que no sirve para entrar a ninguna parte. Y la única empresa que existía era la de
+demostración, que es de **solo lectura**, así que tampoco servía para probar nada que se registre.
+
+- **`DesarrolloSeeder` es nuevo**: crea la cuenta del proveedor (`owner@nexo.local`), una empresa
+  normal y **escribible** (`Empresa de Pruebas S.A.S.`, sin `es_ambiente_demo`) con su
+  superadministrador (`admin@empresademo.local`), y le escribe la misma `PlantaDeMuestra`. Las dos
+  claves son `password`.
+- **No corre fuera de local**, y el guardia está dentro del propio seeder y no en quien lo llama:
+  crea contraseñas conocidas, que en un servidor de verdad sería una puerta trasera.
+- **`DatabaseSeeder` ya no crea el `Test User`** y llama al seeder de desarrollo solo en local. Con
+  eso, `php artisan migrate:fresh --seed` deja la máquina lista de un golpe.
+- **Escribe con auditoría, al revés que la demostración.** `ObservadorDeAuditoria::sinAuditar()` solo
+  se deja usar dentro del ambiente de demostración —es una protección de REV-07 que se respetó en vez
+  de rodear—, y además el rastro le da contenido a la pantalla de auditoría, que si no nacería vacía.
 
 ## Decisiones tomadas
 
-- **La reducción por suspensiones se dice condicional.** En el motor solo aplica si la empresa activó
-  `suspensiones_afectan_vacaciones` (documento 2, 3.4), y una nota que la presentara como incondicional
-  sería falsa para las empresas que lo tienen apagado.
-- **La prueba ata la nota a la fórmula por comportamiento**, no leyendo el comentario de la clase: si la
-  fórmula pierde o gana un término, los importes esperados se rompen; si la nota calla uno, se rompen las
-  frases. No detecta un quinto término nuevo que nadie mencione en ninguno de los dos lados.
+- **La empresa de demostración sigue siendo de solo lectura.** El candado protege lo que explora un
+  prospecto con un acceso de prueba. Por eso se hicieron **dos** empresas y no una: la de
+  demostración, rica pero intocable, y la de desarrollo, rica y escribible. Enriquecer solo la
+  primera habría dejado a David mirando sin poder registrar.
+- **`WithoutModelEvents` se mudó de `DatabaseSeeder` a `CatalogosSeeder`.** Desde el padre silenciaba
+  también lo que viniera después, y lo que viene después necesita justamente esos eventos: de ellos
+  cuelgan el `tenant_id` que pone `PerteneceATenant` y el periodo inicial que abre
+  `ObservadorDeVinculacion`. Fue la causa real del primer fallo del seeder, no la que parecía.
+- **Las pruebas dejaron de repetir el número 8.** `AmbienteDeDemostracionTest` lee ahora
+  `PlantaDeMuestra::TOTAL`, y el `16` de las filas borradas lógicamente pasó a ser `TOTAL * 2`, que es
+  lo que de verdad significa.
 
 ## Preguntas para Angela
 
@@ -38,49 +66,25 @@ bloqueadas `[!]` y las decisiones de abajo, que esperan a una persona.
 
 ## Decisiones para David
 
-- **`HD-12` mencionaba una «carga masiva de terminaciones» que no existe.** Las seis plantillas de
-  `CatalogoDePlantillas` son empleados, perfil, incapacidades, vacaciones, licencias y movimientos;
-  ningún documento pide una de terminaciones. La regla del vacío ya vale para el registro y la
-  corrección por pantalla. ¿Quieres una plantilla de terminaciones (y entonces es una tarea nueva, con
-  su propia fuente y sus criterios) o el punto se da por descartado?
-- **`HD-05` sigue bloqueada**, esperando el calendario de festivos de 2016-2025 (o 2015-2024, falta
-  fijar el rango) verificado a mano. Ver la sesión de `HD-06` para el detalle.
-- **`F6-07` sigue esperándote**: los cuatro pasos de la restauración de prueba en Railway,
-  en `docs/07-plan-de-incidentes.md` sección 4.
-- **`F3-06b` sigue esperándote**: proveedor transaccional, `.env`, DNS (SPF/DKIM/DMARC) y correr
-  `alertas:prueba`. Con `MAIL_MAILER=log` en local, ninguna alerta sale de la máquina de verdad.
-- **Verificaciones manuales heredadas y todavía sin hacer**: la ficha de empresa del proveedor tras
-  REV-12, el formulario de acceso de prueba tras F5-08, la pestaña «Facturación» de REV-11, el flujo
-  completo de REV-10, la de `HD-04` (incapacidad que interrumpe vacaciones ya registradas), la de
-  `HD-06` (celular y correo en el asistente, y que la plantilla real abra sin errores en Excel de
-  verdad), la de `HD-07` (Cundinamarca/Bogotá en el asistente), la de `HD-08` (departamento y ciudad
-  de expedición en la plantilla real), la de `HD-09` (los doce campos de prórroga en la plantilla
-  real), la de `HD-10` (abrir en Excel de verdad las plantillas de empleados e incapacidades), la de
-  `HD-11` (abrir el modal de «Cambiar a término indefinido» en el navegador y comprobar que el
-  calendario nativo respeta el rango), la de `HD-12` (registrar una salida para un contrato a término
-  fijo vencido y comprobar que el mensaje se lee bien debajo de «Fecha de salida»), la de `HD-13`
-  (mirar la barra lateral y comprobar que el encabezado «Cambios y salidas» cabe sin cortarse), la de
-  `HD-14` (abrir `/incapacidades` y comprobar que con la columna EPS la tabla cabe sin desbordar, y
-  pulsar «Días» para ver el orden en los dos sentidos), la de `HD-15` (mirar la barra lateral y
-  comprobar que «Licencias, ausencias y suspensiones», 35 caracteres en una barra de 236 px, se parte en
-  dos líneas sin cortarse, y que el botón «Nueva licencia, ausencia o suspensión» cabe junto a
-  «Exportar» en escritorio y en móvil) y ahora también `HD-16`: abrir una ficha y comprobar que la
-  nota nueva, bastante más larga que la anterior, se lee bien bajo «Saldo de vacaciones» tanto en el
-  encabezado como en el modal de novedades, sin desbordar ni empujar los otros datos.
-- **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
-  Si te referías a otra cosa —por ejemplo, contar también
-  `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
-  fuente de los catálogos—, dilo y se ajusta. Por ahora `HD-10` se resolvió sobre las seis reales.
-- **`stash@{0}` sigue en el repositorio y ya no sirve para nada.** No hay que aplicarlo.
+- **Las verificaciones manuales pendientes ahora sí se pueden hacer.** La lista larga que venía
+  arrastrándose desde `HD-04` estaba bloqueada en la práctica porque no había una empresa con datos y
+  escribible. Ya la hay: entra como `admin@empresademo.local` / `password`.
+- **`HD-12` mencionaba una «carga masiva de terminaciones» que no existe.** ¿Quieres una plantilla de
+  terminaciones —y entonces es tarea nueva— o el punto se da por descartado?
+- **`HD-05` sigue bloqueada**, esperando el calendario de festivos de 2016-2025 verificado a mano.
+- **`F6-07` y `F3-06b` siguen esperándote** (Railway y proveedor transaccional de correo).
+- **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis.**
+- **`stash@{0}` sigue en el repositorio y ya no sirve para nada.**
 
 ## Notas para la próxima sesión
 
-- **No hay tarea `[ ]` en el backlog.** Antes de inventar trabajo, conviene un punto de control con
-  `/revisar` (la serie `HD-*` tocó ficha, licencias, incapacidades y plantillas) y resolver las
-  decisiones de arriba, que son lo que de verdad desbloquea más tareas.
-- **Para correr un archivo de Pest suelto que use `usuarioDe()`** hay que incluir `RolesYPermisosTest.php`,
-  y `empleadoParaNovedad()` vive en `FlujoDeNovedadTest.php`. Fuera de `paraTenant()` las consultas
-  devuelven vacío —también `FichaDeEmpleado::de()` falla, porque su persona no se resuelve—: una prueba
-  puede pasar en vacío si no afirma la lista exacta.
+- **No hay tarea `[ ]` en el backlog.** Sigue conviniendo un punto de control con `/revisar` antes de
+  inventar trabajo.
+- **Hay dos empresas en local y hacen cosas distintas.** `Empresa Demo Nexo S.A.S.` es de solo
+  lectura y se restaura con `demostracion:restaurar`; `Empresa de Pruebas S.A.S.` es escribible y la
+  escribe `db:seed --class=DesarrolloSeeder`, que es idempotente —si ya hay personas, no duplica—.
+- **Para correr un archivo de Pest suelto que use `usuarioDe()`** hay que incluir
+  `RolesYPermisosTest.php`, y `empleadoParaNovedad()` vive en `FlujoDeNovedadTest.php`. Y
+  `php -d memory_limit=1G vendor/bin/pest`, que con el límite del php.ini de esta máquina se muere.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
-  `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.
+  `php artisan serve --port=8014` hay que relanzarlo.
