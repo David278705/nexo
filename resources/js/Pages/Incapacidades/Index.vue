@@ -47,10 +47,11 @@ const columnas = [
     { clave: "cargo", titulo: "Cargo" },
     { clave: "inicio", titulo: "Inicio", ordenable: true },
     { clave: "fin", titulo: "Fin", ordenable: true },
-    { clave: "dias", titulo: "Días", numerica: true },
+    { clave: "dias", titulo: "Días", numerica: true, ordenable: true },
     { clave: "diagnostico", titulo: "Diagnóstico" },
     { clave: "origen", titulo: "Origen" },
     { clave: "prorroga", titulo: "Prórroga" },
+    { clave: "eps", titulo: "EPS" },
     { clave: "acciones", titulo: "Acciones" },
 ];
 

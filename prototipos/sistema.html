@@ -490,7 +490,7 @@ tbody tr:hover{background:#f6f9fc;cursor:pointer}
       <div class="tabla-wrap">
         <table><thead><tr>
           <th>Documento</th><th>Nombre</th><th>Cargo</th><th>Inicio</th><th>Fin</th>
-          <th class="num">Días</th><th>Diagnóstico</th><th>Origen</th><th>Prórroga</th></tr></thead>
+          <th class="num">Días</th><th>Diagnóstico</th><th>Origen</th><th>Prórroga</th><th>EPS</th></tr></thead>
           <tbody id="tb-inc"></tbody></table>
       </div>
     </section>
@@ -769,11 +769,11 @@ const contratos=[
  ['Sandra Milena Ospina','Término fijo','15/03/2026','14/10/2026','1','14/09/2026','ok','Vence en 58 días']
 ];
 const incapacidades=[
- ['43887201','Carolina Restrepo Vélez','Coordinadora de Operaciones','14/07/2026','16/07/2026','3','J06.9','Común','No'],
- ['71654322','Andrés Felipe Gómez','Conductor','02/08/2026','09/08/2026','8','M54.5','Laboral','No'],
- ['52998741','Marcela Ruiz Cárdenas','Analista de Compras','21/07/2026','23/07/2026','3','A09','Común','No'],
- ['8412337','Ramiro Antonio Peña','Operario','05/08/2026','11/08/2026','7','S61.0','Laboral','Sí'],
- ['1094778120','Daniela Cardona Sierra','Auxiliar Administrativa','30/07/2026','31/07/2026','2','R51','Común','No']
+ ['43887201','Carolina Restrepo Vélez','Coordinadora de Operaciones','14/07/2026','16/07/2026','3','J06.9','Común','No','Sura'],
+ ['71654322','Andrés Felipe Gómez','Conductor','02/08/2026','09/08/2026','8','M54.5','Laboral','No','Sanitas'],
+ ['52998741','Marcela Ruiz Cárdenas','Analista de Compras','21/07/2026','23/07/2026','3','A09','Común','No','Nueva EPS'],
+ ['8412337','Ramiro Antonio Peña','Operario','05/08/2026','11/08/2026','7','S61.0','Laboral','Sí','Sura'],
+ ['1094778120','Daniela Cardona Sierra','Auxiliar Administrativa','30/07/2026','31/07/2026','2','R51','Común','No','Sanitas']
 ];
 const vacaciones=[
  ['43887201','Carolina Restrepo Vélez','Coordinadora de Operaciones','04/07/2026','15/07/2026','8','17,25'],
@@ -820,7 +820,7 @@ document.getElementById('tb-con').innerHTML = contratos.map(x=>
 
 document.getElementById('tb-inc').innerHTML = incapacidades.map(x=>
  '<tr onclick="abrir(\'m-borrar\')"><td>'+x[0]+'</td><td><b>'+x[1]+'</b></td><td>'+x[2]+'</td><td>'+x[3]+'</td><td>'+x[4]+
- '</td><td class="num">'+x[5]+'</td><td>'+x[6]+'</td><td>'+x[7]+'</td><td>'+x[8]+'</td></tr>').join('');
+ '</td><td class="num">'+x[5]+'</td><td>'+x[6]+'</td><td>'+x[7]+'</td><td>'+x[8]+'</td><td>'+x[9]+'</td></tr>').join('');
 
 document.getElementById('tb-vac').innerHTML = vacaciones.map(x=>
  '<tr onclick="abrir(\'m-borrar\')"><td>'+x[0]+'</td><td><b>'+x[1]+'</b></td><td>'+x[2]+'</td><td>'+x[3]+'</td><td>'+x[4]+

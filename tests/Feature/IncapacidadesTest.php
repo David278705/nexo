@@ -11,6 +11,7 @@ use App\Models\Persona;
 use App\Models\Tenant;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
 /**
@@ -239,6 +240,114 @@ describe('editar y eliminar (documento 1, 6.2)', function () {
             ->assertSessionHas('estado', 'Incapacidad eliminada.');
 
         expect(Incapacidad::withoutGlobalScopes()->whereNotNull('deleted_at')->count())->toBe(1);
+    });
+});
+
+describe('la EPS y el orden por días del listado (HD-14)', function () {
+    /**
+     * Crea una incapacidad de `$dias` días corridos que empieza el 1 de julio
+     * de 2026 más `$desplazamiento` días.
+     */
+    function incapacidadDeDias(Tenant $empresa, Eps $eps, int $dias, int $desplazamiento = 0, ?int $vinculacion = null): Incapacidad
+    {
+        $inicio = now()->setDate(2026, 7, 1)->startOfDay()->addDays($desplazamiento);
+
+        return app(ContextoTenant::class)->paraTenant($empresa, fn () => Incapacidad::factory()
+            ->de($vinculacion !== null ? Vinculacion::query()->findOrFail($vinculacion) : empleadoParaNovedad())
+            ->create([
+                'eps_id' => $eps->id,
+                'fecha_inicio' => $inicio,
+                'fecha_fin' => $inicio->copy()->addDays($dias - 1),
+            ]));
+    }
+
+    function diasDeLasFilas($respuesta): array
+    {
+        return array_column($respuesta->viewData('page')['props']['incapacidades']['filas'], 'dias');
+    }
+
+    it('la EPS es la última columna de la fila, después de «Prórroga»', function () {
+        $incapacidad = incapacidadDeDias($this->empresa, $this->eps, 3);
+
+        $claves = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => array_keys(ListadoDeIncapacidades::fila($incapacidad->load(['vinculacion.persona', 'eps']))),
+        );
+
+        expect(array_slice($claves, -2))->toBe(['prorroga', 'eps']);
+
+        $respuesta = $this->actingAs($this->usuario)->get('/incapacidades');
+
+        expect($respuesta->viewData('page')['props']['incapacidades']['filas'][0]['eps'])->toBe('Sura EPS');
+    });
+
+    it('ordena por días de menor a mayor y de mayor a menor', function () {
+        incapacidadDeDias($this->empresa, $this->eps, 8, 0);
+        incapacidadDeDias($this->empresa, $this->eps, 1, 1);
+        incapacidadDeDias($this->empresa, $this->eps, 30, 2);
+        incapacidadDeDias($this->empresa, $this->eps, 3, 3);
+
+        $ascendente = $this->actingAs($this->usuario)->get('/incapacidades?orden=dias&direccion=asc');
+        $descendente = $this->actingAs($this->usuario)->get('/incapacidades?orden=dias&direccion=desc');
+
+        expect(diasDeLasFilas($ascendente))->toBe([1, 3, 8, 30])
+            ->and(diasDeLasFilas($descendente))->toBe([30, 8, 3, 1])
+            ->and($ascendente->viewData('page')['props']['filtros']['orden'])->toBe('dias');
+    });
+
+    it('el orden se resuelve en la consulta: la incapacidad más larga sale en la primera página aunque sea la más antigua', function () {
+        // 26 incapacidades de 2 días y una de 40 que empieza antes que todas.
+        // Por inicio sería la primera fila de la primera página; por días
+        // ascendente tiene que irse al final, a la segunda página. Si el orden
+        // se hiciera en PHP sobre la página ya cargada, la de 40 días seguiría
+        // en la primera página y la segunda no la traería.
+        $vinculacion = empleadoParaNovedad();
+
+        foreach (range(1, 26) as $desplazamiento) {
+            incapacidadDeDias($this->empresa, $this->eps, 2, $desplazamiento, $vinculacion->id);
+        }
+
+        incapacidadDeDias($this->empresa, $this->eps, 40, 0, $vinculacion->id);
+
+        $primera = $this->actingAs($this->usuario)->get('/incapacidades?orden=dias&direccion=asc');
+        $segunda = $this->actingAs($this->usuario)->get('/incapacidades?orden=dias&direccion=asc&page=2');
+        $masLargaPrimero = $this->actingAs($this->usuario)->get('/incapacidades?orden=dias&direccion=desc');
+
+        expect(diasDeLasFilas($primera))->toHaveCount(25)->and(diasDeLasFilas($primera))->each->toBe(2)
+            ->and(diasDeLasFilas($segunda))->toBe([2, 40])
+            ->and(diasDeLasFilas($masLargaPrimero)[0])->toBe(40);
+    });
+
+    it('la llave de orden coincide con los días que enseña la tabla', function () {
+        foreach ([5, 1, 12, 3, 12, 2] as $posicion => $dias) {
+            incapacidadDeDias($this->empresa, $this->eps, $dias, $posicion);
+        }
+
+        $listado = ListadoDeIncapacidades::desde(Request::create('/incapacidades', 'GET', ['orden' => 'dias', 'direccion' => 'asc']));
+        $ordenadas = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => $listado->consulta()->get()->map(fn (Incapacidad $incapacidad) => $incapacidad->dias())->all(),
+        );
+
+        expect($ordenadas)->toBe([1, 2, 3, 5, 12, 12]);
+    });
+
+    it('la exportación trae las mismas columnas que la tabla, con la EPS al final, y respeta el orden por días', function () {
+        incapacidadDeDias($this->empresa, $this->eps, 8, 0);
+        incapacidadDeDias($this->empresa, $this->eps, 2, 1);
+
+        $listado = ListadoDeIncapacidades::desde(Request::create('/incapacidades', 'GET', ['orden' => 'dias', 'direccion' => 'desc']));
+        $exportacion = new IncapacidadesExport($listado);
+
+        $encabezados = $exportacion->headings();
+        $filas = app(ContextoTenant::class)->paraTenant(
+            $this->empresa,
+            fn () => $exportacion->collection()->map(fn (Incapacidad $i) => $exportacion->map($i))->all(),
+        );
+
+        expect(array_slice($encabezados, -2))->toBe(['Prórroga', 'EPS'])
+            ->and(array_column($filas, 5))->toBe([8, 2])
+            ->and(end($filas[0]))->toBe('Sura EPS');
     });
 });
 

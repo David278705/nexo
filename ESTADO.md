@@ -1,32 +1,31 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-20 · Tarea `HD-13`
-**Verificación:** verde. 1.300 de 1.300 pruebas de Pest, Pint y PHPStan sin errores, build y 410 de
-Vitest — tres pruebas de Pest más que `HD-12`, Vitest sin cambios.
-**Siguiente tarea:** `HD-14` · El listado de incapacidades no enseña la EPS ni deja ordenar por días.
+**Última sesión:** 2026-09-20 · Tarea `HD-14`
+**Verificación:** verde. 1.305 de 1.305 pruebas de Pest, Pint y PHPStan sin errores, build y 413 de
+Vitest — cinco pruebas de Pest y tres de Vitest más que `HD-13`.
+**Siguiente tarea:** `HD-15` · El botón «Nueva licencia» no nombra las tres cosas que registra.
 
 ## Qué se hizo
 
-`HD-13` pedía que el grupo del menú que reúne aumentos y terminaciones dejara de llamarse
-«Movimientos», igual que uno de sus hijos.
+`HD-14` pedía que el listado de incapacidades enseñara la EPS y dejara ordenar por días.
 
-- **`Modulo::grupo()`** devuelve «Cambios y salidas» para `Movimientos` y `Terminaciones`. Es el único
-  sitio donde está escrito el nombre; el componente `BarraLateral.vue` solo pinta lo que llega.
-- **La etiqueta del módulo y la pestaña de la ficha siguen siendo «Movimientos»**, que ahí es exacto.
-- **El prototipo** (`prototipos/sistema.html`) lleva el mismo encabezado, y `docs/03-diseno-e-interfaz.md`
-  §4.2 ahora nombra los cuatro grupos del menú (Personal, Novedades, Cambios y salidas, Sistema).
-- **Tres pruebas nuevas** en `EstructuraTest.php`: el nombre del grupo para los dos módulos, que ningún
-  grupo repite la etiqueta de un módulo, y que la prop compartida con la barra lateral lo trae. Los
-  fixtures de Vitest de Movimientos y Terminaciones usan el nombre nuevo.
+- **La EPS** es una columna más de la tabla, después de «Prórroga» y antes de «Acciones». La fila
+  (`ListadoDeIncapacidades::fila()`) y la exportación ya la traían; se corrigió el comentario que decía
+  que la tabla no la enseñaba.
+- **«Días» ordena** en los dos sentidos. `columnasDeOrden()` admite `dias`, resuelto en la consulta con
+  `ORDER BY (fecha_fin - fecha_inicio)`, así que el orden vale para todas las páginas y la exportación
+  sale en el mismo orden.
+- **El prototipo** lleva la columna EPS en la tabla de incapacidades.
+- **Pruebas:** cinco de Pest en `IncapacidadesTest.php` (EPS última en la fila y en la exportación, orden
+  ascendente y descendente, orden a través de dos páginas, llave de orden contra `dias()`) y tres de
+  Vitest en `Incapacidades/Index.test.js`, archivo nuevo.
 
 ## Decisiones tomadas
 
-- **«Cambios y salidas», la propuesta del enunciado**, sin alternativas: dice en dos palabras lo que son
-  un aumento de salario y una terminación y no choca con ninguna etiqueta.
-- **Se documentó el menú agrupado en el capítulo 4.2**, porque los grupos no estaban en ningún
-  documento y la tarea pedía dejar prototipo y pruebas «de acuerdo».
-- **Alertas figura dentro de «Sistema» en el documento** porque así lo agrupa el código, aunque el
-  prototipo no la muestra en el menú.
+- **La resta de fechas del `ORDER BY` es una llave de orden, no un conteo.** Los días que se enseñan
+  siguen saliendo de `Incapacidad::dias()`, o sea del motor; una prueba comprueba que ambos ordenen igual.
+- **«Última columna» se leyó como última de datos.** «Acciones» sigue a la derecha porque son botones,
+  no un dato.
 
 ## Preguntas para Angela
 
@@ -54,9 +53,10 @@ Vitest — tres pruebas de Pest más que `HD-12`, Vitest sin cambios.
   real), la de `HD-10` (abrir en Excel de verdad las plantillas de empleados e incapacidades), la de
   `HD-11` (abrir el modal de «Cambiar a término indefinido» en el navegador y comprobar que el
   calendario nativo respeta el rango), la de `HD-12` (registrar una salida para un contrato a término
-  fijo vencido y comprobar que el mensaje se lee bien debajo de «Fecha de salida») y ahora también
-  `HD-13`: mirar la barra lateral en el navegador y comprobar que el encabezado «Cambios y salidas»
-  cabe sin cortarse.
+  fijo vencido y comprobar que el mensaje se lee bien debajo de «Fecha de salida»), la de `HD-13`
+  (mirar la barra lateral y comprobar que el encabezado «Cambios y salidas» cabe sin cortarse) y ahora
+  también `HD-14`: abrir `/incapacidades` en el navegador y comprobar que con la columna EPS la tabla
+  cabe sin desbordar el ancho, y pulsar «Días» para ver el orden en los dos sentidos.
 - **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
   Si te referías a otra cosa —por ejemplo, contar también
   `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
@@ -65,10 +65,13 @@ Vitest — tres pruebas de Pest más que `HD-12`, Vitest sin cambios.
 
 ## Notas para la próxima sesión
 
-- **`HD-14` es la siguiente**: el listado de incapacidades no muestra la EPS ni deja ordenar por días,
-  y las dos cosas están así a propósito. Leer el enunciado completo en `BACKLOG.md`; el comentario que
-  explica el porqué de cada decisión está en el código y hay que leerlo antes de cambiarlo.
-- **Para correr `EstructuraTest.php` suelto hay que incluir `RolesYPermisosTest.php`**: `usuarioDe()`
-  vive ahí y Pest solo carga las funciones de los archivos que corre.
+- **`HD-15` es la siguiente**: el botón «Nueva licencia» no nombra las tres figuras que registra
+  (licencia no remunerada, ausencia y suspensión). Ojo con el alcance: el enunciado pide también que el
+  nombre del módulo en el menú y en los encabezados sea coherente; hay que ver qué usa hoy
+  `Modulo::Licencias->etiqueta()` y no romper `EstructuraTest.php`, que ya vigila que los grupos no
+  repitan etiquetas.
+- **Para correr un archivo de Pest suelto que use `usuarioDe()`** hay que incluir `RolesYPermisosTest.php`,
+  y `empleadoParaNovedad()` vive en `FlujoDeNovedadTest.php`. Fuera de `paraTenant()` las consultas
+  devuelven vacío: una prueba puede pasar en vacío si no afirma la lista exacta.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
   `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.

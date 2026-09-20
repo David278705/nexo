@@ -101,10 +101,10 @@ class ListadoDeIncapacidades extends Listado
      * módulo, y a esa pantalla no llega quien no tiene el permiso: no hay un
      * segundo lector de esta fila que necesite verla recortada.
      *
-     * `eps` es el único dato que la tabla no enseña —no cabe entre las nueve
-     * columnas y ya está como filtro—: está aquí porque el reporte de
-     * incapacidades del documento 1, 11.4 lo pide con origen, diagnóstico y
-     * días, y esos tres van a la exportación desde F2-04.
+     * `eps` es la última columna de la tabla, después de «Prórroga», y va
+     * también a la exportación: el reporte de incapacidades del documento 1,
+     * 11.4 la pide con origen, diagnóstico y días. Pantalla y archivo leen esta
+     * misma fila, así que no pueden traer columnas distintas.
      *
      * @return array<string, string|int>
      */
@@ -184,7 +184,26 @@ class ListadoDeIncapacidades extends Listado
             'nombre' => fn (Builder $consulta, string $sentido) => self::porNombreDeLaPersonaDeLaNovedad($consulta, $sentido, 'incapacidades'),
             'inicio' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_inicio', $sentido),
             'fin' => fn (Builder $consulta, string $sentido) => $consulta->orderBy('fecha_fin', $sentido),
+            'dias' => fn (Builder $consulta, string $sentido) => self::porDias($consulta, $sentido),
         ];
+    }
+
+    /**
+     * Ordena por la duración, en la consulta y no sobre la página ya cargada:
+     * ordenar en PHP solo reordenaría las 25 filas de la página y «lo más largo
+     * primero» sería falso en cuanto hubiera una segunda página.
+     *
+     * `fecha_fin - fecha_inicio` es una **llave de orden, no un conteo**: los
+     * días que se enseñan siguen saliendo de `Incapacidad::dias()` y del motor.
+     * Como los días corridos son esa resta más uno, ordenar por una es ordenar
+     * por la otra; una prueba lo comprueba contra `dias()` para que no se
+     * separen si la regla cambia.
+     *
+     * @param  Builder<Incapacidad>  $consulta
+     */
+    private static function porDias(Builder $consulta, string $sentido): void
+    {
+        $consulta->orderByRaw("(incapacidades.fecha_fin - incapacidades.fecha_inicio) {$sentido}");
     }
 
     protected static function ordenPorDefecto(): string

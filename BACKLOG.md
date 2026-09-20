@@ -2489,7 +2489,7 @@ nombre nuevo. Tres pruebas en `EstructuraTest.php`: el nombre de los dos módulo
 repite la etiqueta de un módulo** (así el fallo de esta tarea no vuelve a colarse en otro grupo) y que
 la prop compartida con la barra lateral lo trae.
 
-### [ ] HD-14 · El listado de incapacidades no enseña la EPS ni deja ordenar por días
+### [x] HD-14 · El listado de incapacidades no enseña la EPS ni deja ordenar por días
 
 Las dos cosas están así a propósito y las dos hay que cambiarlas. El comentario de
 `ListadoDeIncapacidades::fila()` dice que la EPS *«es el único dato que la tabla no enseña —no cabe
@@ -2503,6 +2503,16 @@ orden por días se resuelve en la consulta y no en PHP sobre la página ya pagin
 sigue trayendo las mismas columnas que la tabla.
 **Fuente:** `app/Incapacidades/ListadoDeIncapacidades.php` · `app/Listados/Listado.php` ·
 `docs/01-especificacion-funcional.md` 11.3
+
+Hecho: `Incapacidades/Index.vue` declara la columna `eps` después de «Prórroga» (y antes de «Acciones»,
+que no es un dato) y marca «Días» como ordenable. `columnasDeOrden()` admite `dias`, resuelto con
+`ORDER BY (fecha_fin - fecha_inicio)` en la consulta —una **llave de orden, no un conteo**: los días
+que se enseñan siguen saliendo de `Incapacidad::dias()`—, así que la exportación, que usa la misma
+`consulta()`, sale en el mismo orden. La fila ya traía `eps` y la exportación ya tenía la columna; solo
+se corrigió el comentario de `fila()`, que decía que la tabla no la enseñaba. El prototipo lleva la
+columna. Cinco pruebas de Pest (EPS última en fila y exportación, orden en los dos sentidos, orden a
+través de páginas, llave de orden contra `dias()`) y tres de Vitest (`Incapacidades/Index.test.js`, que
+no existía).
 
 ### [ ] HD-15 · El botón «Nueva licencia» no nombra las tres cosas que registra
 
