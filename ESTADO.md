@@ -1,35 +1,36 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-20 · Tarea `HD-15`
-**Verificación:** verde. 1.306 de 1.306 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
-Vitest — una prueba de Pest y dos de Vitest más que `HD-14`.
-**Siguiente tarea:** `HD-16` · La nota del saldo de vacaciones no menciona el disfrute.
+**Última sesión:** 2026-09-20 · Tarea `HD-16`
+**Verificación:** verde. 1.308 de 1.308 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
+Vitest — dos pruebas de Pest más que `HD-15`, las de Vitest no cambian.
+**Siguiente tarea:** ninguna. **El backlog está completo**: no queda ninguna tarea `[ ]`. Quedan las
+bloqueadas `[!]` y las decisiones de abajo, que esperan a una persona.
 
 ## Qué se hizo
 
-`HD-15` pedía que el botón «Nueva licencia» nombrara las tres figuras que registra el módulo.
+`HD-16` pedía que la nota del saldo de vacaciones nombrara los cuatro términos de la fórmula.
 
-- **El nombre del módulo es «Licencias, ausencias y suspensiones»**, en el menú
-  (`Modulo::Licencias->etiqueta()`) y en el encabezado de la pantalla, que ya lo llevaba. Es el nombre
-  que el documento 1 usa en filtros e informes.
-- **El modal** se titula «Nueva licencia, ausencia o suspensión» y, al editar, «Editar licencia,
-  ausencia o suspensión» (`TipoDeNovedad::Licencia`).
-- **El botón** ya no tiene texto propio: muestra el título del modal, así que no se separan.
-- **Documento 3** (menú, barra lateral y tabla de pantallas) y **prototipo** llevan los mismos nombres;
-  el botón del prototipo decía «+ Nueva novedad».
-- **Pruebas:** un Pest en `EstructuraTest.php` (menú y los dos títulos mencionan la raíz de cada figura
-  del enum `TipoDeLicencia`, así que una cuarta figura lo pondría en rojo) y dos de Vitest en
-  `Licencias/Index.test.js` (botón y encabezado). Se actualizaron tres expectativas que fijaban los
-  nombres viejos.
+- **La nota** (`FichaDeEmpleado::notaDelSaldo()`) dice ahora: saldo inicial de la carga, más 1,25 días por
+  mes cumplido (desde el ingreso o desde la fecha de corte), menos los días de vacaciones ya disfrutados,
+  menos la reducción por licencias, ausencias y suspensiones si la empresa tiene ese parámetro activo.
+- **El 1,25 sale de `reglas_laborales.dias_vacaciones_por_mes`**, la misma constante del motor, y no de un
+  número escrito en el texto.
+- **Un solo sitio:** el encabezado de la ficha y el modal de novedades ya compartían
+  `saldoDeVacaciones()`, y la pantalla de vacaciones enseña sus propios números sin nota. No había texto
+  repetido que quitar; se dejó el método privado y documentado.
+- **Pruebas** (`FichaDeEmpleadoTest.php`): una arma saldo inicial, acumulación, un disfrute y una suspensión,
+  comprueba 10 + 5 − 5 − 0,625 = 9,375, que quitar el disfrute o la suspensión (`SaldoDeVacaciones::sin()`)
+  mueve el saldo exactamente en su parte, y que la nota nombra cada término; otra, que ficha y modal llevan
+  la misma nota.
 
 ## Decisiones tomadas
 
-- **Se eligió el nombre completo del documento 1 y no uno abreviado.** Cualquier nombre corto para el
-  menú («Licencias y suspensiones», «Ausencias») habría dejado una de las tres figuras escondida detrás
-  de otra, que es justo lo que la tarea prohíbe.
-- **La hoja del Excel de carga no se renombró.** `PlantillaDeLicencias::hoja()` sigue siendo «Licencias y
-  ausencias»: Excel limita el nombre de una hoja a 31 caracteres y el nuevo tiene 35, y además es el
-  formato de la plantilla real que recibe el cliente.
+- **La reducción por suspensiones se dice condicional.** En el motor solo aplica si la empresa activó
+  `suspensiones_afectan_vacaciones` (documento 2, 3.4), y una nota que la presentara como incondicional
+  sería falsa para las empresas que lo tienen apagado.
+- **La prueba ata la nota a la fórmula por comportamiento**, no leyendo el comentario de la clase: si la
+  fórmula pierde o gana un término, los importes esperados se rompen; si la nota calla uno, se rompen las
+  frases. No detecta un quinto término nuevo que nadie mencione en ninguno de los dos lados.
 
 ## Preguntas para Angela
 
@@ -60,10 +61,12 @@ Vitest — una prueba de Pest y dos de Vitest más que `HD-14`.
   fijo vencido y comprobar que el mensaje se lee bien debajo de «Fecha de salida»), la de `HD-13`
   (mirar la barra lateral y comprobar que el encabezado «Cambios y salidas» cabe sin cortarse), la de
   `HD-14` (abrir `/incapacidades` y comprobar que con la columna EPS la tabla cabe sin desbordar, y
-  pulsar «Días» para ver el orden en los dos sentidos) y ahora también `HD-15`: mirar la barra
-  lateral y comprobar que «Licencias, ausencias y suspensiones» (35 caracteres en una barra de 236 px)
-  se parte en dos líneas sin cortarse, y que el botón «Nueva licencia, ausencia o suspensión» cabe
-  junto a «Exportar» en el ancho de escritorio y en móvil.
+  pulsar «Días» para ver el orden en los dos sentidos), la de `HD-15` (mirar la barra lateral y
+  comprobar que «Licencias, ausencias y suspensiones», 35 caracteres en una barra de 236 px, se parte en
+  dos líneas sin cortarse, y que el botón «Nueva licencia, ausencia o suspensión» cabe junto a
+  «Exportar» en escritorio y en móvil) y ahora también `HD-16`: abrir una ficha y comprobar que la
+  nota nueva, bastante más larga que la anterior, se lee bien bajo «Saldo de vacaciones» tanto en el
+  encabezado como en el modal de novedades, sin desbordar ni empujar los otros datos.
 - **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
   Si te referías a otra cosa —por ejemplo, contar también
   `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
@@ -72,12 +75,12 @@ Vitest — una prueba de Pest y dos de Vitest más que `HD-14`.
 
 ## Notas para la próxima sesión
 
-- **`HD-16` es la siguiente**: la nota del saldo de vacaciones en la ficha
-  (`app/Contratacion/FichaDeEmpleado.php`) debe nombrar los cuatro términos de la fórmula, vivir en un
-  solo sitio y tener una prueba que la ate a la fórmula de `SaldoDeVacaciones`. Ojo con el «un solo
-  sitio»: hay que buscar qué otras pantallas enseñan el saldo antes de decidir dónde vive el texto.
+- **No hay tarea `[ ]` en el backlog.** Antes de inventar trabajo, conviene un punto de control con
+  `/revisar` (la serie `HD-*` tocó ficha, licencias, incapacidades y plantillas) y resolver las
+  decisiones de arriba, que son lo que de verdad desbloquea más tareas.
 - **Para correr un archivo de Pest suelto que use `usuarioDe()`** hay que incluir `RolesYPermisosTest.php`,
   y `empleadoParaNovedad()` vive en `FlujoDeNovedadTest.php`. Fuera de `paraTenant()` las consultas
-  devuelven vacío: una prueba puede pasar en vacío si no afirma la lista exacta.
+  devuelven vacío —también `FichaDeEmpleado::de()` falla, porque su persona no se resuelve—: una prueba
+  puede pasar en vacío si no afirma la lista exacta.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
   `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.

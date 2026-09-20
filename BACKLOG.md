@@ -2537,7 +2537,7 @@ tiene 35, y además es el formato de la plantilla real. Un Pest nuevo (`Estructu
 menú y los dos títulos mencionen la raíz de cada figura del enum `TipoDeLicencia`, y dos de Vitest
 comprueban el botón y el encabezado.
 
-### [ ] HD-16 · La nota del saldo de vacaciones no menciona el disfrute
+### [x] HD-16 · La nota del saldo de vacaciones no menciona el disfrute
 
 La ficha explica el saldo así: *«Calculado a hoy: 1,25 días por cada mes cumplido desde el ingreso,
 o desde la fecha de corte si el saldo vino de la carga inicial»*. Cuenta de dónde sale lo acumulado
@@ -2550,3 +2550,15 @@ pantalla que enseña el saldo; y una prueba lo comprueba, para que la nota y la 
 el día que la fórmula cambie.
 **Fuente:** `app/Contratacion/FichaDeEmpleado.php` · `app/Dominio/Calculo/SaldoDeVacaciones.php` ·
 `CLAUDE.md` regla 2
+
+Hecho: la nota de `FichaDeEmpleado::saldoDeVacaciones()` sale ahora de un único método privado,
+`notaDelSaldo()`, y nombra los cuatro términos de la fórmula: el saldo inicial de la carga, más 1,25 días
+por mes cumplido (leído de `reglas_laborales.dias_vacaciones_por_mes`, ya no escrito a mano), menos los
+días de vacaciones ya disfrutados, menos la reducción por licencias, ausencias y suspensiones si la
+empresa tiene ese parámetro activo (es condicional en el motor, y la nota lo dice). Se buscó qué otras
+pantallas enseñan el saldo: el encabezado de la ficha y el modal de novedades comparten
+`saldoDeVacaciones()`, y la pantalla de vacaciones enseña sus propios números sin nota, así que no había
+texto que deduplicar. Dos pruebas de Pest en `FichaDeEmpleadoTest`: una arma un empleado con saldo inicial,
+acumulación, un disfrute y una suspensión, comprueba que el saldo vale 10 + 5 − 5 − 0,625 = 9,375, que
+quitar el disfrute o la suspensión mueve el número exactamente en su parte (`SaldoDeVacaciones::sin()`), y
+que la nota nombra cada término; la otra, que ficha y modal llevan la misma nota.

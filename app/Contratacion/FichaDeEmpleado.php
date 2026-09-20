@@ -210,8 +210,31 @@ class FichaDeEmpleado
             'etiqueta' => 'Saldo de vacaciones',
             'valor' => Formato::diasDecimales($saldo),
             'pendiente' => false,
-            'nota' => 'Calculado a hoy: 1,25 días por cada mes cumplido desde el ingreso, o desde la fecha de corte si el saldo vino de la carga inicial.',
+            'nota' => self::notaDelSaldo(),
         ];
+    }
+
+    /**
+     * La explicación del saldo, con los cuatro términos de la fórmula de
+     * `SaldoDeVacaciones` (documento 2, 3.4).
+     *
+     * Es el único sitio donde está escrita: el encabezado de la ficha y el modal
+     * de novedades piden el saldo a `saldoDeVacaciones()`, y la pantalla de
+     * vacaciones enseña sus propios números sin esta nota. Una prueba ata el
+     * texto a la fórmula (`FichaDeEmpleadoTest`), porque una nota que cuenta de
+     * dónde sale lo que se suma y calla lo que se resta deja al usuario
+     * creyendo que el saldo solo sube.
+     *
+     * Los 1,25 salen de la misma constante del motor y no de un número suelto.
+     */
+    private static function notaDelSaldo(): string
+    {
+        $porMes = str_replace('.', ',', (string) config('reglas_laborales.dias_vacaciones_por_mes'));
+
+        return 'Calculado a hoy: el saldo inicial de la carga, más '.$porMes.' días por cada mes cumplido '
+            .'desde el ingreso (o desde la fecha de corte, si el saldo vino de la carga inicial), '
+            .'menos los días de vacaciones ya disfrutados, '
+            .'menos la reducción por licencias, ausencias y suspensiones si la empresa tiene ese parámetro activo.';
     }
 
     /**

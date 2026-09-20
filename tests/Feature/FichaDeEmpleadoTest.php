@@ -4,9 +4,11 @@ use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
 use App\Contratacion\EstadoCivil;
 use App\Contratacion\EventoContractual;
+use App\Contratacion\FichaDeEmpleado;
 use App\Contratacion\NivelEducativo;
 use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoRiesgo;
+use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Incapacidades\OrigenIncapacidad;
 use App\Licencias\TipoDeLicencia;
 use App\Models\Eps;
@@ -163,6 +165,68 @@ describe('el encabezado', function () {
 
         expect($saldo['pendiente'])->toBeFalse()
             ->and($saldo['valor'])->toBe('12,50 días');
+    });
+
+    /*
+     * HD-16. La nota del saldo tiene que decir lo mismo que la fórmula de
+     * `SaldoDeVacaciones`: cuatro términos, y los cuatro mueven el número. Si la
+     * fórmula gana o pierde un término, o la nota calla uno, esta prueba se pone
+     * en rojo en lugar de dejar que una explicación vieja conviva con un saldo nuevo.
+     */
+    it('explica el saldo con los cuatro términos de la fórmula, y los cuatro cambian el número', function () {
+        Carbon::setTestNow('2026-08-19');
+        $this->empresa->update(['suspensiones_afectan_vacaciones' => true]);
+
+        // Corte el 31 de marzo con 10 días: de abril a julio son cuatro meses
+        // cerrados, 5 días acumulados.
+        $empleado = empleadoDe([], [
+            'fecha_ingreso' => '2025-01-01',
+            'saldo_inicial_vacaciones' => 10,
+            'fecha_corte_saldo' => Carbon::parse('2026-03-31'),
+        ]);
+
+        [$vacacion, $suspension] = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => [
+            Vacacion::factory()->de($empleado)->del27al31DeJulio(2026)->create(),
+            Licencia::factory()->de($empleado)->create([
+                'tipo' => TipoDeLicencia::Suspension,
+                'fecha_inicio' => '2026-06-01',
+                'fecha_fin' => '2026-06-15',
+            ]),
+        ]);
+
+        $saldo = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => SaldoDeVacaciones::de($empleado));
+
+        $completo = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $saldo->al(Carbon::today()));
+        $sinDisfrute = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $saldo->sin($vacacion)->al(Carbon::today()));
+        $sinSuspension = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => $saldo->sin($suspension)->al(Carbon::today()));
+
+        // saldo inicial + acumulación − disfrute − suspensiones: 10 + 5 − 5 − 0,625.
+        expect($completo)->toBe(9.375)
+            ->and($sinDisfrute - $completo)->toBe(5.0)
+            ->and($sinSuspension - $completo)->toBe(0.625);
+
+        $nota = datoDelResumen(fichaDe($empleado), 'Saldo de vacaciones')['nota'];
+
+        expect($nota)
+            ->toContain('saldo inicial')
+            ->toContain('1,25 días por cada mes cumplido')
+            ->toContain('vacaciones ya disfrutados')
+            ->toContain('suspensiones');
+    });
+
+    it('lleva la misma nota en el encabezado de la ficha y en el modal de novedades', function () {
+        $empleado = empleadoDe();
+
+        [$enLaFicha, $enElModal] = app(ContextoTenant::class)->paraTenant($this->empresa, function () use ($empleado) {
+            $ficha = FichaDeEmpleado::de($empleado);
+
+            return [
+                $ficha->saldoDeVacaciones()['nota'],
+                collect($ficha->resumenParaNovedad())->firstWhere('etiqueta', 'Saldo de vacaciones')['nota'],
+            ];
+        });
+
+        expect($enElModal)->toBe($enLaFicha)->not->toBe('');
     });
 
     it('cuenta la antigüedad en años y meses cumplidos desde el ingreso', function () {
