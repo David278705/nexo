@@ -1,53 +1,44 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-19 · Tarea `HD-11`
-**Verificación:** verde. 1.282 de 1.282 pruebas de Pest, Pint y PHPStan sin errores, build y 410 de
-Vitest — ocho pruebas de Pest más que `HD-10` y una de Vitest más.
-**Siguiente tarea:** `HD-12` · Se puede terminar un contrato cuyo estado nadie ha aclarado.
+**Última sesión:** 2026-09-20 · Tarea `HD-12`
+**Verificación:** verde. 1.297 de 1.297 pruebas de Pest, Pint y PHPStan sin errores, build y 410 de
+Vitest — quince pruebas de Pest más que `HD-11`, Vitest sin cambios.
+**Siguiente tarea:** `HD-13` · El grupo «Movimientos» del menú contiene «Movimientos» y «Terminaciones».
 
 ## Qué se hizo
 
-`HD-11` pedía que el cambio a término indefinido dejara de registrarse siempre con la fecha de hoy:
-David encontró contratos vencidos sin gestionar que en realidad ya se habían vuelto indefinidos días
-antes, y hasta ahora no había forma de decirlo.
+`HD-12` pedía bloquear la terminación de un contrato a término fijo que venció sin que nadie
+registrara qué pasó después (D.7 de `docs/06-decisiones-pendientes.md`, decidida por David el
+2026-09-16). El código lo dejó escrito la sesión del 19 de septiembre sin llegar a confirmarlo; esta
+sesión lo revisó, corrió la verificación completa en verde y cerró la tarea.
 
-- **`CambioAIndefinido` gana dos límites explícitos**, `limiteInferior()` —el inicio del periodo
-  vigente— y `limiteSuperior()` —hoy, salvo que el contrato todavía no haya empezado, en cuyo caso
-  sube hasta el mismo límite inferior—. Es el mismo ajuste de coherencia que ya existía en F1-11,
-  ahora nombrado y reutilizado en vez de repetido.
-- **`fechaDelCambio()` deja de llamar a `Carbon::today()` a ciegas**: recibe la fecha ya validada por
-  el formulario y solo por defecto —sin argumento— propone `limiteSuperior()`.
-- **`CambiarATerminoIndefinido` valida `fecha`** con `after_or_equal`/`before_or_equal` contra esos
-  dos mismos límites. En el contrato que aún no ha empezado los dos límites coinciden, así que ese
-  caso queda cubierto por la misma regla, sin una excepción aparte.
-- **La quinta implicación del modal dejó de decir «con la fecha de hoy»**: ahora dice «con fecha del»
-  seguido de la fecha que de verdad se va a guardar, para que nunca prometa una cosa y guarde otra.
-- **`ModalDeCambioAIndefinido.vue` estrenó un `CampoFecha`**, propuesto en `cambio.fecha` y con
-  recarga parcial (`only: ['cambioAIndefinido']`) al estilo de `ModalDeRenovacion`: cada vez que se
-  digita otra fecha, las cinco implicaciones se vuelven a pedir al servidor.
-- **`CampoFecha` y `CampoTexto` ganaron los props opcionales `minimo`/`maximo`**, que se enlazan al
-  `min`/`max` nativo de `input[type=date]`. Es cortesía del navegador y no reemplaza la validación:
-  el servidor sigue rechazando lo que esté fuera de rango aunque alguien edite el HTML.
-- **Ocho pruebas nuevas en `CambioAIndefinidoTest.php`**: la propuesta y el rango, la fecha pasada
-  aceptada, el texto sin «hoy» literal, los dos rechazos (antes del periodo vigente, después de hoy),
-  el caso silencioso de una fecha fuera de rango en pantalla (vuelve a la propuesta por defecto sin
-  reventar), el contrato futuro (solo admite la fecha del periodo vigente) y que el historial quede
-  con la fecha elegida y no con la de hoy.
+- **`App\Terminaciones\ContratoSinAclarar`** responde una sola pregunta: ¿la fecha de salida deja un
+  vacío después del último vencimiento registrado? Solo aplica al término fijo con fecha de
+  vencimiento en el último tramo de `HistorialDeContrato`; indefinido y obra o labor no tienen fecha
+  contra la que medir y no se ven afectados.
+- **El vacío corre del día siguiente al vencimiento hasta la fecha de salida, ambos incluidos.** En el
+  caso de David (prórroga hasta el 30 de junio, salida el 10 de septiembre): «los días del 1 de julio
+  de 2026 al 10 de septiembre de 2026». Si es un solo día, el mensaje lo dice en singular. Salir el
+  mismo día del vencimiento o antes sigue funcionando igual.
+- **`RegistrarTerminacion` lo comprueba** después de las reglas propias del campo y lo devuelve como
+  error de `fecha_salida`, que el modal ya pintaba debajo de ese campo. Si el empleado o la fecha ya
+  tienen otro error, no se añade este.
+- **`EditarTerminacion` lo hereda** sobrescribiendo solo `vinculacionDeLaSalida()`: corregir una
+  salida hacia una fecha posterior al vencimiento se bloquea igual que registrarla.
+- **El mensaje nombra las dos salidas** —registrar la prórroga o el cambio a término indefinido, en
+  Contratos— y la razón (sin saber qué contrato regía no se sabe qué indemnización aplicaría).
+- **Quince pruebas nuevas** en `TerminacionDeContratoSinAclararTest.php`: el caso exacto, el singular,
+  que se desbloquea al registrar la prórroga que cubre o al pasar a indefinido, que una prórroga corta
+  sigue bloqueando con las fechas nuevas, y lo que la regla no toca.
 
 ## Decisiones tomadas
 
-- **El límite superior de la fecha, y no una regla aparte, es lo que resuelve el contrato que aún no
-  ha empezado.** En vez de escribir una excepción para ese caso, `limiteSuperior()` sube hasta
-  `limiteInferior()` cuando este cae después de hoy, así que `after_or_equal` y `before_or_equal`
-  terminan pidiendo la misma fecha sin que la regla lo sepa. Es el mismo comportamiento de F1-11, solo
-  que ahora nombrado.
-- **Una fecha digitada en pantalla que cae fuera de rango se ignora en silencio y vuelve a la
-  propuesta por defecto**, igual que ya hacía `RenovacionDeContrato::resolver()` con una prórroga a
-  medio digitar: no es un error todavía, es una petición GET de la pantalla mientras se escribe. El
-  error de verdad solo aparece si se envía el formulario con esa fecha, y ahí sí lo bloquea
-  `CambiarATerminoIndefinido`.
-- **`minimo`/`maximo` en `CampoFecha` son nuevos y opcionales**, sin valor por defecto que afecte a
-  ningún otro de los más de veinte usos existentes del componente.
+- **El mensaje no es un enlace a Contratos**, es texto: quien registra terminaciones puede no tener el
+  módulo de contratos, y un enlace que lleva a un 403 es peor que decir dónde ir.
+- **El error va en `fecha_salida`**, el dato que hay que cambiar o que obliga a aclarar primero el
+  contrato, y no en un error general del formulario.
+- **No se construyó la carga masiva de terminaciones** que menciona el «Hecho cuando»: no existe (ver
+  la pregunta para David abajo). Crearla habría sido inventar alcance.
 
 ## Preguntas para Angela
 
@@ -55,6 +46,11 @@ antes, y hasta ahora no había forma de decirlo.
 
 ## Decisiones para David
 
+- **`HD-12` menciona una «carga masiva de terminaciones» que no existe.** Las seis plantillas de
+  `CatalogoDePlantillas` son empleados, perfil, incapacidades, vacaciones, licencias y movimientos;
+  ningún documento pide una de terminaciones. La regla del vacío ya vale para el registro y la
+  corrección por pantalla. ¿Quieres una plantilla de terminaciones (y entonces es una tarea nueva, con
+  su propia fuente y sus criterios) o el punto se da por descartado?
 - **`HD-05` sigue bloqueada**, esperando el calendario de festivos de 2016-2025 (o 2015-2024, falta
   fijar el rango) verificado a mano. Ver la sesión de `HD-06` para el detalle.
 - **`F6-07` sigue esperándote**: los cuatro pasos de la restauración de prueba en Railway,
@@ -67,10 +63,12 @@ antes, y hasta ahora no había forma de decirlo.
   `HD-06` (celular y correo en el asistente, y que la plantilla real abra sin errores en Excel de
   verdad), la de `HD-07` (Cundinamarca/Bogotá en el asistente), la de `HD-08` (departamento y ciudad
   de expedición en la plantilla real), la de `HD-09` (los doce campos de prórroga en la plantilla
-  real), la de `HD-10` (abrir en Excel de verdad las plantillas de empleados e incapacidades) y ahora
-  también `HD-11`: abrir el modal de «Cambiar a término indefinido» en el navegador de verdad y
-  comprobar que el calendario nativo respeta el rango y que el texto se lee bien con una fecha pasada.
-- **La tarea decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
+  real), la de `HD-10` (abrir en Excel de verdad las plantillas de empleados e incapacidades), la de
+  `HD-11` (abrir el modal de «Cambiar a término indefinido» en el navegador y comprobar que el
+  calendario nativo respeta el rango) y ahora también `HD-12`: en el navegador, registrar una salida
+  para un contrato a término fijo vencido y comprobar que el mensaje se lee bien debajo del campo
+  «Fecha de salida».
+- **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
   Si te referías a otra cosa —por ejemplo, contar también
   `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
   fuente de los catálogos—, dilo y se ajusta. Por ahora `HD-10` se resolvió sobre las seis reales.
@@ -78,18 +76,11 @@ antes, y hasta ahora no había forma de decirlo.
 
 ## Notas para la próxima sesión
 
-- **`HD-12` es la siguiente**: se puede terminar un contrato a término fijo del 1 de enero al 31 de
-  marzo de 2026 que ya venció sin que nadie lo haya gestionado. Leer el enunciado completo en
-  `BACKLOG.md` antes de empezar.
-- **El patrón «recarga parcial al digitar» ya tiene dos ejemplos gemelos**: `ModalDeRenovacion.vue`
-  con `only: ['renovacion']` y ahora `ModalDeCambioAIndefinido.vue` con
-  `only: ['cambioAIndefinido']`. Si una tercera acción del contrato necesita lo mismo, el patrón ya
-  está probado dos veces y no hay que inventarlo de nuevo: `useForm` con los campos digitados,
-  `watch` sobre ellos que dispara `router.get(url, campos, { only: [...], preserveState: true,
-  preserveScroll: true, replace: true })`, y un segundo `watch` sobre `abierto` que limpia errores al
-  cerrar.
-- **`CampoFecha` y `CampoTexto` ya aceptan `minimo`/`maximo`** para el `min`/`max` nativo de
-  `input[type=date]`. Si otra pantalla necesita acotar un calendario, ya no hay que tocar el
-  componente compartido, solo pasar los dos props.
+- **`HD-13` es la siguiente**: `Modulo::grupo()` agrupa `Movimientos` y `Terminaciones` bajo un
+  encabezado llamado, también, «Movimientos». Leer el enunciado completo en `BACKLOG.md`.
+- **`ContratoSinAclarar::para($vinculacion, $fechaDeSalida)`** es reutilizable si otra pantalla
+  necesita saber si un contrato a término fijo quedó en el aire.
+- **La bitácora de `HD-12` lleva fecha 2026-09-19** (`bitacora/2026-09-19-HD-12.md`) porque el código
+  se escribió ese día; el cierre fue el 20. No hace falta renombrarla.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
   `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.

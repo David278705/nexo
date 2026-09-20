@@ -2420,7 +2420,7 @@ pruebas nuevas en `CambioAIndefinidoTest.php` cubren la propuesta, la fecha acep
 «hoy», los dos rechazos de rango, el caso silencioso de una fecha fuera de rango en pantalla, el
 contrato futuro y la fecha que queda en el historial.
 
-### [ ] HD-12 · Se puede terminar un contrato cuyo estado nadie ha aclarado
+### [x] HD-12 · Se puede terminar un contrato cuyo estado nadie ha aclarado
 
 David reprodujo el caso: alguien con contrato a término fijo del 1 de enero al 31 de marzo de 2026 y
 una prórroga hasta el 30 de junio, sin nada registrado después. Registró la terminación con fecha
@@ -2440,6 +2440,29 @@ afectado; una terminación dentro del periodo vigente sigue funcionando igual; y
 terminaciones aplica la misma regla y la reporta fila por fila.
 **Fuente:** `app/Terminaciones/` · `app/Http/Requests/RegistrarTerminacion.php` ·
 `docs/06-decisiones-pendientes.md` D.7
+
+Hecho: `App\Terminaciones\ContratoSinAclarar` responde una sola pregunta —si la fecha de salida deja
+un vacío después del último vencimiento registrado— y, si lo deja, escribe el mensaje con las fechas
+exactas. Solo aplica al término fijo con fecha de vencimiento en el último tramo del historial
+(`HistorialDeContrato`); indefinido y obra o labor no tienen fecha contra la que medir y no se ven
+afectados. El vacío corre del día siguiente al vencimiento hasta la fecha de salida, los dos
+incluidos: en el caso de David, «los días del 1 de julio de 2026 al 10 de septiembre de 2026»; si es
+un solo día, lo dice en singular. Salir el mismo día del vencimiento o antes sigue funcionando igual.
+`RegistrarTerminacion` lo comprueba después de las reglas propias del campo y lo devuelve como error
+de `fecha_salida`, que el modal ya pintaba debajo de ese campo; `EditarTerminacion` lo hereda y
+sobrescribe solo `vinculacionDeLaSalida()`, así que **corregir una salida a una fecha posterior al
+vencimiento se bloquea igual que registrarla**. El mensaje nombra las dos salidas —registrar la
+prórroga o el cambio a término indefinido, en Contratos— y no es un enlace porque quien registra
+terminaciones puede no tener el módulo de contratos. Quince pruebas nuevas en
+`TerminacionDeContratoSinAclararTest.php`: el caso exacto, el singular, que se desbloquea al registrar
+la prórroga que cubre o al pasar a indefinido, que una prórroga corta sigue bloqueando con las fechas
+nuevas, y lo que la regla no toca.
+
+**Un punto del «Hecho cuando» no tiene de qué colgarse y no se construyó:** «la carga masiva de
+terminaciones aplica la misma regla y la reporta fila por fila». **No existe ninguna carga masiva de
+terminaciones**: las seis plantillas de `CatalogoDePlantillas` son empleados, perfil, incapacidades,
+vacaciones, licencias y movimientos, y ningún documento pide una séptima de terminaciones. Crearla
+sería inventar alcance; la pregunta para David está en `ESTADO.md`.
 
 ### [ ] HD-13 · El grupo «Movimientos» del menú contiene «Movimientos» y «Terminaciones»
 

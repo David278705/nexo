@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Terminacion;
+use App\Models\Vinculacion;
+
 /**
  * Las reglas de la corrección de una salida (REV-03).
  *
@@ -31,5 +34,16 @@ class EditarTerminacion extends RegistrarTerminacion
         unset($reglas['vinculacion_id']);
 
         return $reglas;
+    }
+
+    /**
+     * La del empleado de la salida que se corrige. Cambiar la fecha a una
+     * posterior al vencimiento deja el mismo vacío que registrarla así.
+     */
+    protected function vinculacionDeLaSalida(): ?Vinculacion
+    {
+        $terminacion = $this->route('terminacion');
+
+        return $terminacion instanceof Terminacion ? $terminacion->vinculacion : null;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Vinculacion;
+use App\Terminaciones\ContratoSinAclarar;
 use App\Terminaciones\TipoDeSalida;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,6 +26,9 @@ use Illuminate\Validation\Validator;
  *   opciones al cambiar el tipo es comodidad, no control.
  * - **En expiración del plazo y obra terminada el motivo no se pide.** Lo
  *   autocompleta `TipoDeSalida::motivoResultante()` y se ignora el que llegue.
+ * - **Un contrato a término fijo no puede quedar en el aire** (documento 6,
+ *   D.7). Si la fecha de salida cae después del último vencimiento registrado,
+ *   la salida se bloquea diciendo el vacío exacto: ver `ContratoSinAclarar`.
  *
  * Lo que aquí **no** se comprueba, porque ningún documento lo fija: que la
  * fecha de salida no sea futura y que no sea anterior a la de ingreso. Una
@@ -120,6 +124,7 @@ class RegistrarTerminacion extends FormRequest
      */
     protected function withValidator(Validator $validador): void
     {
+        $validador->after($this->comprobarElContrato(...));
         $validador->after(function (Validator $validador): void {
             $tipo = TipoDeSalida::tryFrom((string) $this->input('tipo_salida'));
 
@@ -139,5 +144,42 @@ class RegistrarTerminacion extends FormRequest
                 $validador->errors()->add('motivo', 'Ese motivo no corresponde al tipo de salida elegido.');
             }
         });
+    }
+
+    /**
+     * La vinculación a la que pertenece esta salida: la del empleado elegido al
+     * registrar. La corrección la sobrescribe, porque ahí el empleado no se
+     * digita: es el de la salida que se está corrigiendo.
+     */
+    protected function vinculacionDeLaSalida(): ?Vinculacion
+    {
+        return Vinculacion::query()->find($this->input('vinculacion_id'));
+    }
+
+    /**
+     * Bloquea la salida que dejaría el contrato a término fijo sin aclarar
+     * (documento 6, D.7). El error va en la fecha de salida, que es el dato que
+     * hay que cambiar, o que obliga a aclarar primero el contrato.
+     *
+     * Solo se mira si el empleado y la fecha ya pasaron sus propias reglas: un
+     * segundo error sobre una fecha que ni siquiera es una fecha no ayuda.
+     */
+    private function comprobarElContrato(Validator $validador): void
+    {
+        if ($validador->errors()->hasAny(['fecha_salida', 'vinculacion_id'])) {
+            return;
+        }
+
+        $vinculacion = $this->vinculacionDeLaSalida();
+
+        if (! $vinculacion instanceof Vinculacion) {
+            return;
+        }
+
+        $vacio = ContratoSinAclarar::para($vinculacion, $this->fechaDeSalida());
+
+        if ($vacio instanceof ContratoSinAclarar) {
+            $validador->errors()->add('fecha_salida', $vacio->mensaje());
+        }
     }
 }
