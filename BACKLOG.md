@@ -2464,7 +2464,7 @@ terminaciones**: las seis plantillas de `CatalogoDePlantillas` son empleados, pe
 vacaciones, licencias y movimientos, y ningún documento pide una séptima de terminaciones. Crearla
 sería inventar alcance; la pregunta para David está en `ESTADO.md`.
 
-### [ ] HD-13 · El grupo «Movimientos» del menú contiene «Movimientos» y «Terminaciones»
+### [x] HD-13 · El grupo «Movimientos» del menú contiene «Movimientos» y «Terminaciones»
 
 `Modulo::grupo()` agrupa `Movimientos` y `Terminaciones` bajo un encabezado llamado, también,
 «Movimientos». La barra lateral queda con un grupo y un hijo del mismo nombre. David se confundió
@@ -2478,6 +2478,16 @@ el componente; la pestaña «Movimientos» de la ficha del empleado conserva su 
 exacto; y las pruebas de navegación y el prototipo quedan de acuerdo.
 **Fuente:** `app/Autorizacion/Modulo.php` · `prototipos/sistema.html` ·
 `docs/03-diseno-e-interfaz.md` cap. 4
+
+Hecho: `Modulo::grupo()` devuelve «Cambios y salidas» para `Movimientos` y `Terminaciones`; es el único
+sitio donde vive el nombre, porque la barra lateral solo pinta lo que llega en la prop compartida. La
+etiqueta del módulo sigue siendo «Movimientos», y la pestaña «Movimientos» de la ficha del empleado no
+se tocó. El prototipo (`prototipos/sistema.html`) lleva el mismo encabezado, y el capítulo 4.2 de
+`docs/03-diseno-e-interfaz.md` ahora nombra los cuatro grupos del menú, que antes no aparecían en
+ninguna parte. Los fixtures de `Movimientos/Index.test.js` y `Terminaciones/Index.test.js` usan el
+nombre nuevo. Tres pruebas en `EstructuraTest.php`: el nombre de los dos módulos, que **ningún grupo
+repite la etiqueta de un módulo** (así el fallo de esta tarea no vuelve a colarse en otro grupo) y que
+la prop compartida con la barra lateral lo trae.
 
 ### [ ] HD-14 · El listado de incapacidades no enseña la EPS ni deja ordenar por días
 

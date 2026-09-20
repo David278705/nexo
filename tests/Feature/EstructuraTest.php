@@ -89,6 +89,43 @@ it('manda al menú la etiqueta, el grupo y la dirección de cada módulo', funct
         });
 });
 
+it('agrupa aumentos y terminaciones bajo un encabezado que no se llama como ninguno de los dos', function () {
+    expect(Modulo::Movimientos->grupo())->toBe('Cambios y salidas')
+        ->and(Modulo::Terminaciones->grupo())->toBe('Cambios y salidas')
+        ->and(Modulo::Movimientos->etiqueta())->toBe('Movimientos')
+        ->and(Modulo::Terminaciones->etiqueta())->toBe('Terminaciones');
+});
+
+it('no le da a ningún grupo del menú el nombre de una de las secciones que agrupa', function () {
+    foreach (Modulo::cases() as $modulo) {
+        $repetidas = array_filter(
+            Modulo::cases(),
+            fn (Modulo $otro) => $otro->grupo() !== null && $otro->grupo() === $modulo->etiqueta(),
+        );
+
+        expect($repetidas)->toBeEmpty("El grupo «{$modulo->etiqueta()}» repite el nombre de una sección.");
+    }
+});
+
+it('manda a la barra lateral el grupo de movimientos y terminaciones con su nombre nuevo', function () {
+    $empresa = Tenant::factory()->create();
+    $usuario = usuarioDe($empresa, Rol::Administrador, Modulo::Movimientos, Modulo::Terminaciones);
+
+    $this->actingAs($usuario)
+        ->get('/')
+        ->assertInertia(function ($pagina) {
+            $grupos = collect($pagina->toArray()['props']['usuario']['modulos'])
+                ->whereIn('clave', ['movimientos', 'terminaciones'])
+                ->pluck('grupo', 'clave')
+                ->all();
+
+            expect($grupos)->toBe([
+                'movimientos' => 'Cambios y salidas',
+                'terminaciones' => 'Cambios y salidas',
+            ]);
+        });
+});
+
 it('muestra en el encabezado la empresa donde se está trabajando', function () {
     $empresa = Tenant::factory()->create([
         'nombre' => 'Distribuidora El Progreso S.A.S.',

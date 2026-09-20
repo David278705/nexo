@@ -84,6 +84,10 @@ enum Modulo: string
     /**
      * El grupo bajo el que la barra lateral agrupa el módulo, como en
      * `prototipos/sistema.html`. `Inicio` va suelto arriba, sin encabezado.
+     *
+     * Ningún grupo se llama como uno de sus hijos: «Cambios y salidas» reúne
+     * los aumentos y promociones y las terminaciones, y por eso no repite
+     * «Movimientos», que es el nombre del módulo de los primeros.
      */
     public function grupo(): ?string
     {
@@ -91,7 +95,7 @@ enum Modulo: string
             self::Inicio => null,
             self::Empleados, self::Contratos => 'Personal',
             self::Incapacidades, self::Vacaciones, self::Licencias => 'Novedades',
-            self::Movimientos, self::Terminaciones => 'Movimientos',
+            self::Movimientos, self::Terminaciones => 'Cambios y salidas',
             self::Alertas, self::Auditoria, self::Configuracion => 'Sistema',
         };
     }

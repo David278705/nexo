@@ -203,6 +203,8 @@ Barra lateral fija a la izquierda con los módulos, y el contenido a la derecha.
 | Auditoría | Registro de todas las acciones. | Con permiso |
 | Configuración | Empresa, parámetros, usuarios y facturación. | Solo superadministrador |
 
+La barra lateral reúne las secciones bajo cuatro encabezados: Personal (Empleados, Contratos), Novedades (Incapacidades, Vacaciones, Licencias y ausencias), Cambios y salidas (Movimientos, Terminaciones) y Sistema (Alertas, Auditoría, Configuración). Inicio va suelto arriba. Ningún encabezado repite el nombre de una sección: «Cambios y salidas» dice en dos palabras lo que son un aumento de salario y una terminación, y deja «Movimientos» para el módulo de aumentos y promociones.
+
 **REGLA.** Un módulo al que el usuario no tiene acceso **no aparece en el menú** . Ocultarlo no es un control de seguridad —eso se verifica en el servidor— pero sí es una decisión de diseño: mostrar opciones que producen un mensaje de "no tienes permiso" es una forma de maltratar al usuario.
 
 ### 4.3 Encabezado

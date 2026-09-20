@@ -1,44 +1,32 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-20 · Tarea `HD-12`
-**Verificación:** verde. 1.297 de 1.297 pruebas de Pest, Pint y PHPStan sin errores, build y 410 de
-Vitest — quince pruebas de Pest más que `HD-11`, Vitest sin cambios.
-**Siguiente tarea:** `HD-13` · El grupo «Movimientos» del menú contiene «Movimientos» y «Terminaciones».
+**Última sesión:** 2026-09-20 · Tarea `HD-13`
+**Verificación:** verde. 1.300 de 1.300 pruebas de Pest, Pint y PHPStan sin errores, build y 410 de
+Vitest — tres pruebas de Pest más que `HD-12`, Vitest sin cambios.
+**Siguiente tarea:** `HD-14` · El listado de incapacidades no enseña la EPS ni deja ordenar por días.
 
 ## Qué se hizo
 
-`HD-12` pedía bloquear la terminación de un contrato a término fijo que venció sin que nadie
-registrara qué pasó después (D.7 de `docs/06-decisiones-pendientes.md`, decidida por David el
-2026-09-16). El código lo dejó escrito la sesión del 19 de septiembre sin llegar a confirmarlo; esta
-sesión lo revisó, corrió la verificación completa en verde y cerró la tarea.
+`HD-13` pedía que el grupo del menú que reúne aumentos y terminaciones dejara de llamarse
+«Movimientos», igual que uno de sus hijos.
 
-- **`App\Terminaciones\ContratoSinAclarar`** responde una sola pregunta: ¿la fecha de salida deja un
-  vacío después del último vencimiento registrado? Solo aplica al término fijo con fecha de
-  vencimiento en el último tramo de `HistorialDeContrato`; indefinido y obra o labor no tienen fecha
-  contra la que medir y no se ven afectados.
-- **El vacío corre del día siguiente al vencimiento hasta la fecha de salida, ambos incluidos.** En el
-  caso de David (prórroga hasta el 30 de junio, salida el 10 de septiembre): «los días del 1 de julio
-  de 2026 al 10 de septiembre de 2026». Si es un solo día, el mensaje lo dice en singular. Salir el
-  mismo día del vencimiento o antes sigue funcionando igual.
-- **`RegistrarTerminacion` lo comprueba** después de las reglas propias del campo y lo devuelve como
-  error de `fecha_salida`, que el modal ya pintaba debajo de ese campo. Si el empleado o la fecha ya
-  tienen otro error, no se añade este.
-- **`EditarTerminacion` lo hereda** sobrescribiendo solo `vinculacionDeLaSalida()`: corregir una
-  salida hacia una fecha posterior al vencimiento se bloquea igual que registrarla.
-- **El mensaje nombra las dos salidas** —registrar la prórroga o el cambio a término indefinido, en
-  Contratos— y la razón (sin saber qué contrato regía no se sabe qué indemnización aplicaría).
-- **Quince pruebas nuevas** en `TerminacionDeContratoSinAclararTest.php`: el caso exacto, el singular,
-  que se desbloquea al registrar la prórroga que cubre o al pasar a indefinido, que una prórroga corta
-  sigue bloqueando con las fechas nuevas, y lo que la regla no toca.
+- **`Modulo::grupo()`** devuelve «Cambios y salidas» para `Movimientos` y `Terminaciones`. Es el único
+  sitio donde está escrito el nombre; el componente `BarraLateral.vue` solo pinta lo que llega.
+- **La etiqueta del módulo y la pestaña de la ficha siguen siendo «Movimientos»**, que ahí es exacto.
+- **El prototipo** (`prototipos/sistema.html`) lleva el mismo encabezado, y `docs/03-diseno-e-interfaz.md`
+  §4.2 ahora nombra los cuatro grupos del menú (Personal, Novedades, Cambios y salidas, Sistema).
+- **Tres pruebas nuevas** en `EstructuraTest.php`: el nombre del grupo para los dos módulos, que ningún
+  grupo repite la etiqueta de un módulo, y que la prop compartida con la barra lateral lo trae. Los
+  fixtures de Vitest de Movimientos y Terminaciones usan el nombre nuevo.
 
 ## Decisiones tomadas
 
-- **El mensaje no es un enlace a Contratos**, es texto: quien registra terminaciones puede no tener el
-  módulo de contratos, y un enlace que lleva a un 403 es peor que decir dónde ir.
-- **El error va en `fecha_salida`**, el dato que hay que cambiar o que obliga a aclarar primero el
-  contrato, y no en un error general del formulario.
-- **No se construyó la carga masiva de terminaciones** que menciona el «Hecho cuando»: no existe (ver
-  la pregunta para David abajo). Crearla habría sido inventar alcance.
+- **«Cambios y salidas», la propuesta del enunciado**, sin alternativas: dice en dos palabras lo que son
+  un aumento de salario y una terminación y no choca con ninguna etiqueta.
+- **Se documentó el menú agrupado en el capítulo 4.2**, porque los grupos no estaban en ningún
+  documento y la tarea pedía dejar prototipo y pruebas «de acuerdo».
+- **Alertas figura dentro de «Sistema» en el documento** porque así lo agrupa el código, aunque el
+  prototipo no la muestra en el menú.
 
 ## Preguntas para Angela
 
@@ -46,7 +34,7 @@ sesión lo revisó, corrió la verificación completa en verde y cerró la tarea
 
 ## Decisiones para David
 
-- **`HD-12` menciona una «carga masiva de terminaciones» que no existe.** Las seis plantillas de
+- **`HD-12` mencionaba una «carga masiva de terminaciones» que no existe.** Las seis plantillas de
   `CatalogoDePlantillas` son empleados, perfil, incapacidades, vacaciones, licencias y movimientos;
   ningún documento pide una de terminaciones. La regla del vacío ya vale para el registro y la
   corrección por pantalla. ¿Quieres una plantilla de terminaciones (y entonces es una tarea nueva, con
@@ -65,9 +53,10 @@ sesión lo revisó, corrió la verificación completa en verde y cerró la tarea
   de expedición en la plantilla real), la de `HD-09` (los doce campos de prórroga en la plantilla
   real), la de `HD-10` (abrir en Excel de verdad las plantillas de empleados e incapacidades), la de
   `HD-11` (abrir el modal de «Cambiar a término indefinido» en el navegador y comprobar que el
-  calendario nativo respeta el rango) y ahora también `HD-12`: en el navegador, registrar una salida
-  para un contrato a término fijo vencido y comprobar que el mensaje se lee bien debajo del campo
-  «Fecha de salida».
+  calendario nativo respeta el rango), la de `HD-12` (registrar una salida para un contrato a término
+  fijo vencido y comprobar que el mensaje se lee bien debajo de «Fecha de salida») y ahora también
+  `HD-13`: mirar la barra lateral en el navegador y comprobar que el encabezado «Cambios y salidas»
+  cabe sin cortarse.
 - **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
   Si te referías a otra cosa —por ejemplo, contar también
   `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
@@ -76,11 +65,10 @@ sesión lo revisó, corrió la verificación completa en verde y cerró la tarea
 
 ## Notas para la próxima sesión
 
-- **`HD-13` es la siguiente**: `Modulo::grupo()` agrupa `Movimientos` y `Terminaciones` bajo un
-  encabezado llamado, también, «Movimientos». Leer el enunciado completo en `BACKLOG.md`.
-- **`ContratoSinAclarar::para($vinculacion, $fechaDeSalida)`** es reutilizable si otra pantalla
-  necesita saber si un contrato a término fijo quedó en el aire.
-- **La bitácora de `HD-12` lleva fecha 2026-09-19** (`bitacora/2026-09-19-HD-12.md`) porque el código
-  se escribió ese día; el cierre fue el 20. No hace falta renombrarla.
+- **`HD-14` es la siguiente**: el listado de incapacidades no muestra la EPS ni deja ordenar por días,
+  y las dos cosas están así a propósito. Leer el enunciado completo en `BACKLOG.md`; el comentario que
+  explica el porqué de cada decisión está en el código y hay que leerlo antes de cambiarlo.
+- **Para correr `EstructuraTest.php` suelto hay que incluir `RolesYPermisosTest.php`**: `usuarioDe()`
+  vive ahí y Pest solo carga las funciones de los archivos que corre.
 - **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
   `php artisan serve --port=8014` hay que relanzarlo. Para el bucle largo conviene `composer dev`.

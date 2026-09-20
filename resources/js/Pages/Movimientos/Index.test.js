@@ -48,7 +48,7 @@ const pagina = {
                 {
                     clave: "movimientos",
                     etiqueta: "Movimientos",
-                    grupo: "Movimientos",
+                    grupo: "Cambios y salidas",
                     url: "/movimientos",
                 },
             ],

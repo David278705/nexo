@@ -61,7 +61,7 @@ const pagina = {
                 {
                     clave: "terminaciones",
                     etiqueta: "Terminaciones",
-                    grupo: "Movimientos",
+                    grupo: "Cambios y salidas",
                     url: "/terminaciones",
                 },
             ],
