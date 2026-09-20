@@ -188,7 +188,7 @@ tbody tr:hover{background:#f6f9fc;cursor:pointer}
       <div class="grupo">Novedades</div>
       <a data-ir="incapacidades"><span class="ic">✚</span> Incapacidades</a>
       <a data-ir="vacaciones"><span class="ic">☀</span> Vacaciones</a>
-      <a data-ir="licencias"><span class="ic">◔</span> Licencias y ausencias</a>
+      <a data-ir="licencias"><span class="ic">◔</span> Licencias, ausencias y suspensiones</a>
       <div class="grupo">Cambios y salidas</div>
       <a data-ir="movimientos"><span class="ic">↗</span> Aumentos y promociones</a>
       <a data-ir="terminaciones"><span class="ic">→</span> Terminaciones</a>
@@ -521,11 +521,11 @@ tbody tr:hover{background:#f6f9fc;cursor:pointer}
     <!-- ══════════════ LICENCIAS ══════════════ -->
     <section class="pantalla" id="p-licencias">
       <div class="cab">
-        <div><h1>Licencias y ausencias</h1>
+        <div><h1>Licencias, ausencias y suspensiones</h1>
           <div class="sub" style="margin:0">Licencias no remuneradas, ausencias y suspensiones. Todas suspenden el contrato.</div></div>
         <div style="display:flex;gap:9px">
           <button class="btn btn-s">Exportar</button>
-          <button class="btn btn-p" onclick="abrirNovedad('licencia')">+ Nueva novedad</button></div>
+          <button class="btn btn-p" onclick="abrirNovedad('licencia')">+ Nueva licencia, ausencia o suspensión</button></div>
       </div>
       <div class="aviso a-in" style="margin-bottom:16px"><span>ℹ</span>
         <div>Estos días se cuentan <b>corridos</b>: si dentro del periodo cae un domingo o un festivo,
@@ -868,7 +868,7 @@ function toast(t){const el=document.getElementById('toast');el.textContent=t;el.
 /* ══════════════ flujo de novedad ══════════════ */
 let tipoNovedad='incapacidad';
 const TITULOS={incapacidad:'Nueva incapacidad',vacaciones:'Registrar vacaciones',
-  licencia:'Nueva licencia o ausencia',movimiento:'Nuevo movimiento salarial',terminacion:'Registrar terminación'};
+  licencia:'Nueva licencia, ausencia o suspensión',movimiento:'Nuevo movimiento salarial',terminacion:'Registrar terminación'};
 
 function abrirNovedad(t){
   tipoNovedad=t;

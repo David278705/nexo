@@ -143,7 +143,7 @@ describe('los cinco módulos comparten el flujo', function () {
         expect($titulos)->toBe([
             'Nueva incapacidad',
             'Registrar vacaciones',
-            'Nueva licencia o ausencia',
+            'Nueva licencia, ausencia o suspensión',
             'Nuevo movimiento salarial',
             'Registrar terminación',
         ]);

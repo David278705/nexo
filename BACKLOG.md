@@ -2514,7 +2514,7 @@ columna. Cinco pruebas de Pest (EPS última en fila y exportación, orden en los
 través de páginas, llave de orden contra `dias()`) y tres de Vitest (`Incapacidades/Index.test.js`, que
 no existía).
 
-### [ ] HD-15 · El botón «Nueva licencia» no nombra las tres cosas que registra
+### [x] HD-15 · El botón «Nueva licencia» no nombra las tres cosas que registra
 
 El módulo registra licencias no remuneradas, ausencias y suspensiones —tres figuras distintas, con
 efectos distintos sobre el saldo de vacaciones—, pero el botón dice solo «Nueva licencia». El título
@@ -2525,6 +2525,17 @@ en los encabezados de pantalla es coherente con ellas; y ninguna de las tres que
 del nombre de otra.
 **Fuente:** `resources/js/Pages/Licencias/Index.vue` · `app/Licencias/TipoDeLicencia.php` ·
 `docs/01-especificacion-funcional.md` 6.5
+
+Hecho: el nombre único es el que ya usaba el documento 1 en los capítulos de filtros e informes,
+«Licencias, ausencias y suspensiones». `Modulo::Licencias->etiqueta()` (el menú) lo lleva, y el
+encabezado de la pantalla ya lo llevaba. `TipoDeNovedad::Licencia` da «Nueva licencia, ausencia o
+suspensión» y «Editar licencia, ausencia o suspensión»; el botón de la página ya no tiene texto propio
+sino que muestra ese mismo título, así que botón y modal no pueden separarse. El documento 3 (4.2 y 5.5)
+y el prototipo llevan los mismos nombres. **La hoja del Excel de carga** (`PlantillaDeLicencias::hoja()`,
+«Licencias y ausencias») **no se tocó**: Excel limita el nombre de una hoja a 31 caracteres y el nuevo
+tiene 35, y además es el formato de la plantilla real. Un Pest nuevo (`EstructuraTest.php`) exige que el
+menú y los dos títulos mencionen la raíz de cada figura del enum `TipoDeLicencia`, y dos de Vitest
+comprueban el botón y el encabezado.
 
 ### [ ] HD-16 · La nota del saldo de vacaciones no menciona el disfrute
 

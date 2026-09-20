@@ -44,7 +44,7 @@ const pagina = {
             modulos: [
                 {
                     clave: "licencias",
-                    etiqueta: "Licencias y ausencias",
+                    etiqueta: "Licencias, ausencias y suspensiones",
                     grupo: "Novedades",
                     url: "/licencias",
                 },
@@ -56,7 +56,7 @@ const pagina = {
             tipos: [
                 {
                     clave: "licencia",
-                    titulo: "Nueva licencia o ausencia",
+                    titulo: "Nueva licencia, ausencia o suspensión",
                     modulo: "licencias",
                 },
             ],
@@ -138,7 +138,9 @@ function opcionesDe(etiqueta) {
  * aparecen el selector de tipo y las dos fechas.
  */
 async function abrirYSeleccionar() {
-    boton("Nueva licencia").dispatchEvent(new Event("click"));
+    boton("Nueva licencia, ausencia o suspensión").dispatchEvent(
+        new Event("click"),
+    );
     await nextTick();
 
     const campo = document.body.querySelector('[role="dialog"] input');
@@ -236,6 +238,38 @@ describe("el selector de tres tipos (F2-07)", () => {
         await elegir("Tipo de novedad", "suspension");
 
         expect(boton("Guardar").disabled).toBe(false);
+
+        componente.unmount();
+    });
+});
+
+describe("los nombres de las tres figuras (HD-15)", () => {
+    beforeEach(() => {
+        document.body.innerHTML = "";
+    });
+
+    it("el botón de registrar nombra las tres figuras, con las mismas palabras del título del modal", () => {
+        const componente = montar();
+
+        const texto = [...document.body.querySelectorAll("button")]
+            .map((candidato) => candidato.textContent.trim())
+            .find((candidato) => candidato.startsWith("Nueva"));
+
+        expect(texto).toBe("Nueva licencia, ausencia o suspensión");
+        expect(texto).toBe(pagina.props.flujoDeNovedad.tipos[0].titulo);
+
+        componente.unmount();
+    });
+
+    it("el encabezado de la pantalla nombra las tres figuras, como el menú", () => {
+        const componente = montar();
+
+        const encabezado = document.body.querySelector("h1").textContent.trim();
+
+        expect(encabezado).toBe(pagina.props.usuario.modulos[0].etiqueta);
+        expect(encabezado).toMatch(/licencias/i);
+        expect(encabezado).toMatch(/ausencias/i);
+        expect(encabezado).toMatch(/suspensiones/i);
 
         componente.unmount();
     });

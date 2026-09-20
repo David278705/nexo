@@ -2,7 +2,9 @@
 
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
+use App\Licencias\TipoDeLicencia;
 use App\Models\Tenant;
+use App\Novedades\TipoDeNovedad;
 
 /**
  * El armazón de la aplicación: barra lateral, encabezado y navegación entre
@@ -82,11 +84,32 @@ it('manda al menú la etiqueta, el grupo y la dirección de cada módulo', funct
                 'url' => '/',
             ])->and($modulos[1])->toBe([
                 'clave' => 'licencias',
-                'etiqueta' => 'Licencias y ausencias',
+                'etiqueta' => 'Licencias, ausencias y suspensiones',
                 'grupo' => 'Novedades',
                 'url' => '/licencias',
             ]);
         });
+});
+
+it('nombra las tres figuras de licencias en el menú y en los títulos del modal', function () {
+    // La raíz de cada figura sale del propio selector, así que una cuarta
+    // figura pone esta prueba en rojo hasta que los tres nombres la mencionen.
+    // Ocho letras bastan para que «licencia» valga por «licencias» y
+    // «suspensi» por «suspensión» y «suspensiones».
+    $raices = array_map(
+        fn (TipoDeLicencia $tipo): string => mb_substr(mb_strtolower($tipo->etiqueta()), 0, 8),
+        TipoDeLicencia::cases(),
+    );
+
+    foreach ([
+        Modulo::Licencias->etiqueta(),
+        TipoDeNovedad::Licencia->tituloDelModal(),
+        TipoDeNovedad::Licencia->tituloDeEdicion(),
+    ] as $texto) {
+        foreach ($raices as $raiz) {
+            expect(mb_strtolower($texto))->toContain($raiz);
+        }
+    }
 });
 
 it('agrupa aumentos y terminaciones bajo un encabezado que no se llama como ninguno de los dos', function () {

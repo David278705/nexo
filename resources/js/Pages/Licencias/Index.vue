@@ -77,9 +77,11 @@ const flujo = computed(() => usePage().props.flujoDeNovedad);
 const tipo = computed(() =>
     flujo.value.tipos.find((clase) => clase.clave === "licencia"),
 );
-const titulo = computed(() => tipo.value?.titulo ?? "Nueva licencia o ausencia");
+const titulo = computed(
+    () => tipo.value?.titulo ?? "Nueva licencia, ausencia o suspensión",
+);
 const tituloEdicion = computed(
-    () => tipo.value?.tituloEdicion ?? "Editar licencia o ausencia",
+    () => tipo.value?.tituloEdicion ?? "Editar licencia, ausencia o suspensión",
 );
 
 const abierto = ref(false);
@@ -210,7 +212,7 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                 </a>
 
                 <Boton tipo="button" @click="abrirModal">
-                    Nueva licencia
+                    {{ titulo }}
                 </Boton>
             </div>
         </div>

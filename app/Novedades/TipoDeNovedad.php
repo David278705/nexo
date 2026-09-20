@@ -56,7 +56,7 @@ enum TipoDeNovedad: string
         return match ($this) {
             self::Incapacidad => 'Nueva incapacidad',
             self::Vacaciones => 'Registrar vacaciones',
-            self::Licencia => 'Nueva licencia o ausencia',
+            self::Licencia => 'Nueva licencia, ausencia o suspensión',
             self::Movimiento => 'Nuevo movimiento salarial',
             self::Terminacion => 'Registrar terminación',
         };
@@ -80,7 +80,7 @@ enum TipoDeNovedad: string
         return match ($this) {
             self::Incapacidad => 'Editar incapacidad',
             self::Vacaciones => 'Editar vacaciones',
-            self::Licencia => 'Editar licencia o ausencia',
+            self::Licencia => 'Editar licencia, ausencia o suspensión',
             self::Movimiento => 'Editar movimiento salarial',
             self::Terminacion => 'Editar terminación',
         };

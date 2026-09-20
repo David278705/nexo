@@ -197,13 +197,13 @@ Barra lateral fija a la izquierda con los módulos, y el contenido a la derecha.
 | Inicio | Panel del día e indicadores. | Todos |
 | Empleados | Listado, ficha y registro de personas. | Con permiso |
 | Contratos | Contratos por vencer, detalle, renovaciones y cambio de modalidad. | Con permiso |
-| Novedades | Tres subsecciones: Incapacidades, Vacaciones, Licencias y ausencias. | Con permiso |
+| Novedades | Tres subsecciones: Incapacidades, Vacaciones, Licencias, ausencias y suspensiones. | Con permiso |
 | Movimientos | Aumentos salariales y promociones. | Con permiso |
 | Terminaciones | Registro de salidas. | Con permiso |
 | Auditoría | Registro de todas las acciones. | Con permiso |
 | Configuración | Empresa, parámetros, usuarios y facturación. | Solo superadministrador |
 
-La barra lateral reúne las secciones bajo cuatro encabezados: Personal (Empleados, Contratos), Novedades (Incapacidades, Vacaciones, Licencias y ausencias), Cambios y salidas (Movimientos, Terminaciones) y Sistema (Alertas, Auditoría, Configuración). Inicio va suelto arriba. Ningún encabezado repite el nombre de una sección: «Cambios y salidas» dice en dos palabras lo que son un aumento de salario y una terminación, y deja «Movimientos» para el módulo de aumentos y promociones.
+La barra lateral reúne las secciones bajo cuatro encabezados: Personal (Empleados, Contratos), Novedades (Incapacidades, Vacaciones, Licencias, ausencias y suspensiones), Cambios y salidas (Movimientos, Terminaciones) y Sistema (Alertas, Auditoría, Configuración). Inicio va suelto arriba. Ningún encabezado repite el nombre de una sección: «Cambios y salidas» dice en dos palabras lo que son un aumento de salario y una terminación, y deja «Movimientos» para el módulo de aumentos y promociones.
 
 **REGLA.** Un módulo al que el usuario no tiene acceso **no aparece en el menú** . Ocultarlo no es un control de seguridad —eso se verifica en el servidor— pero sí es una decisión de diseño: mostrar opciones que producen un mensaje de "no tienes permiso" es una forma de maltratar al usuario.
 
@@ -291,7 +291,7 @@ Las tres subsecciones comparten exactamente la misma estructura. Aprender una es
 |---|---|
 | Incapacidades | Campos de fechas, código de diagnóstico, prórroga, EPS y origen. Los días se cuentan corridos y se muestran al completar las fechas. El campo de diagnóstico solo aparece para usuarios con permiso. |
 | Vacaciones | Fechas y días hábiles calculados. Debajo, una franja permanente con el saldo actual del empleado y el saldo proyectado a la fecha de disfrute. Si los días solicitados superan el saldo proyectado, aparece una advertencia ámbar con el número exacto: "Al 28 de agosto tendrá 12,75 días disponibles. Estás registrando 14 días: faltan 1,25 días." La advertencia no bloquea. |
-| Licencias y ausencias | Un selector de tipo con tres opciones —licencia no remunerada, ausencia, suspensión— y las fechas. Los días se cuentan corridos, incluidos domingos y festivos, y así se explica en el texto de ayuda debajo del cálculo. |
+| Licencias, ausencias y suspensiones | Un selector de tipo con tres opciones —licencia no remunerada, ausencia, suspensión— y las fechas. El botón de registrar y el título del modal las nombran las tres: «Nueva licencia, ausencia o suspensión». Los días se cuentan corridos, incluidos domingos y festivos, y así se explica en el texto de ayuda debajo del cálculo. |
 
 ### 5.6 Movimientos, terminaciones y auditoría
 

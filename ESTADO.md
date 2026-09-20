@@ -1,31 +1,35 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-20 · Tarea `HD-14`
-**Verificación:** verde. 1.305 de 1.305 pruebas de Pest, Pint y PHPStan sin errores, build y 413 de
-Vitest — cinco pruebas de Pest y tres de Vitest más que `HD-13`.
-**Siguiente tarea:** `HD-15` · El botón «Nueva licencia» no nombra las tres cosas que registra.
+**Última sesión:** 2026-09-20 · Tarea `HD-15`
+**Verificación:** verde. 1.306 de 1.306 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
+Vitest — una prueba de Pest y dos de Vitest más que `HD-14`.
+**Siguiente tarea:** `HD-16` · La nota del saldo de vacaciones no menciona el disfrute.
 
 ## Qué se hizo
 
-`HD-14` pedía que el listado de incapacidades enseñara la EPS y dejara ordenar por días.
+`HD-15` pedía que el botón «Nueva licencia» nombrara las tres figuras que registra el módulo.
 
-- **La EPS** es una columna más de la tabla, después de «Prórroga» y antes de «Acciones». La fila
-  (`ListadoDeIncapacidades::fila()`) y la exportación ya la traían; se corrigió el comentario que decía
-  que la tabla no la enseñaba.
-- **«Días» ordena** en los dos sentidos. `columnasDeOrden()` admite `dias`, resuelto en la consulta con
-  `ORDER BY (fecha_fin - fecha_inicio)`, así que el orden vale para todas las páginas y la exportación
-  sale en el mismo orden.
-- **El prototipo** lleva la columna EPS en la tabla de incapacidades.
-- **Pruebas:** cinco de Pest en `IncapacidadesTest.php` (EPS última en la fila y en la exportación, orden
-  ascendente y descendente, orden a través de dos páginas, llave de orden contra `dias()`) y tres de
-  Vitest en `Incapacidades/Index.test.js`, archivo nuevo.
+- **El nombre del módulo es «Licencias, ausencias y suspensiones»**, en el menú
+  (`Modulo::Licencias->etiqueta()`) y en el encabezado de la pantalla, que ya lo llevaba. Es el nombre
+  que el documento 1 usa en filtros e informes.
+- **El modal** se titula «Nueva licencia, ausencia o suspensión» y, al editar, «Editar licencia,
+  ausencia o suspensión» (`TipoDeNovedad::Licencia`).
+- **El botón** ya no tiene texto propio: muestra el título del modal, así que no se separan.
+- **Documento 3** (menú, barra lateral y tabla de pantallas) y **prototipo** llevan los mismos nombres;
+  el botón del prototipo decía «+ Nueva novedad».
+- **Pruebas:** un Pest en `EstructuraTest.php` (menú y los dos títulos mencionan la raíz de cada figura
+  del enum `TipoDeLicencia`, así que una cuarta figura lo pondría en rojo) y dos de Vitest en
+  `Licencias/Index.test.js` (botón y encabezado). Se actualizaron tres expectativas que fijaban los
+  nombres viejos.
 
 ## Decisiones tomadas
 
-- **La resta de fechas del `ORDER BY` es una llave de orden, no un conteo.** Los días que se enseñan
-  siguen saliendo de `Incapacidad::dias()`, o sea del motor; una prueba comprueba que ambos ordenen igual.
-- **«Última columna» se leyó como última de datos.** «Acciones» sigue a la derecha porque son botones,
-  no un dato.
+- **Se eligió el nombre completo del documento 1 y no uno abreviado.** Cualquier nombre corto para el
+  menú («Licencias y suspensiones», «Ausencias») habría dejado una de las tres figuras escondida detrás
+  de otra, que es justo lo que la tarea prohíbe.
+- **La hoja del Excel de carga no se renombró.** `PlantillaDeLicencias::hoja()` sigue siendo «Licencias y
+  ausencias»: Excel limita el nombre de una hoja a 31 caracteres y el nuevo tiene 35, y además es el
+  formato de la plantilla real que recibe el cliente.
 
 ## Preguntas para Angela
 
@@ -54,9 +58,12 @@ Vitest — cinco pruebas de Pest y tres de Vitest más que `HD-13`.
   `HD-11` (abrir el modal de «Cambiar a término indefinido» en el navegador y comprobar que el
   calendario nativo respeta el rango), la de `HD-12` (registrar una salida para un contrato a término
   fijo vencido y comprobar que el mensaje se lee bien debajo de «Fecha de salida»), la de `HD-13`
-  (mirar la barra lateral y comprobar que el encabezado «Cambios y salidas» cabe sin cortarse) y ahora
-  también `HD-14`: abrir `/incapacidades` en el navegador y comprobar que con la columna EPS la tabla
-  cabe sin desbordar el ancho, y pulsar «Días» para ver el orden en los dos sentidos.
+  (mirar la barra lateral y comprobar que el encabezado «Cambios y salidas» cabe sin cortarse), la de
+  `HD-14` (abrir `/incapacidades` y comprobar que con la columna EPS la tabla cabe sin desbordar, y
+  pulsar «Días» para ver el orden en los dos sentidos) y ahora también `HD-15`: mirar la barra
+  lateral y comprobar que «Licencias, ausencias y suspensiones» (35 caracteres en una barra de 236 px)
+  se parte en dos líneas sin cortarse, y que el botón «Nueva licencia, ausencia o suspensión» cabe
+  junto a «Exportar» en el ancho de escritorio y en móvil.
 - **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis** (`CatalogoDePlantillas::todas()`).
   Si te referías a otra cosa —por ejemplo, contar también
   `Listas_Desplegables_Formulario_Empleados.xlsx`, que no es una plantilla que se cargue sino la
@@ -65,11 +72,10 @@ Vitest — cinco pruebas de Pest y tres de Vitest más que `HD-13`.
 
 ## Notas para la próxima sesión
 
-- **`HD-15` es la siguiente**: el botón «Nueva licencia» no nombra las tres figuras que registra
-  (licencia no remunerada, ausencia y suspensión). Ojo con el alcance: el enunciado pide también que el
-  nombre del módulo en el menú y en los encabezados sea coherente; hay que ver qué usa hoy
-  `Modulo::Licencias->etiqueta()` y no romper `EstructuraTest.php`, que ya vigila que los grupos no
-  repitan etiquetas.
+- **`HD-16` es la siguiente**: la nota del saldo de vacaciones en la ficha
+  (`app/Contratacion/FichaDeEmpleado.php`) debe nombrar los cuatro términos de la fórmula, vivir en un
+  solo sitio y tener una prueba que la ate a la fórmula de `SaldoDeVacaciones`. Ojo con el «un solo
+  sitio»: hay que buscar qué otras pantallas enseñan el saldo antes de decidir dónde vive el texto.
 - **Para correr un archivo de Pest suelto que use `usuarioDe()`** hay que incluir `RolesYPermisosTest.php`,
   y `empleadoParaNovedad()` vive en `FlujoDeNovedadTest.php`. Fuera de `paraTenant()` las consultas
   devuelven vacío: una prueba puede pasar en vacío si no afirma la lista exacta.

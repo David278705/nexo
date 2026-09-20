@@ -58,7 +58,7 @@ enum Modulo: string
             self::Contratos => 'Contratos',
             self::Incapacidades => 'Incapacidades',
             self::Vacaciones => 'Vacaciones',
-            self::Licencias => 'Licencias y ausencias',
+            self::Licencias => 'Licencias, ausencias y suspensiones',
             self::Movimientos => 'Movimientos',
             self::Terminaciones => 'Terminaciones',
             self::Alertas => 'Alertas',
