@@ -85,6 +85,8 @@ class SesionController extends Controller
         $this->limitador->limpiar($correo, $ip);
         $this->registro->exitoso($peticion, $autenticado);
 
+        $this->olvidarPretendidaInalcanzable($peticion, $autenticado);
+
         return redirect()->intended($this->destino($autenticado));
     }
 
@@ -110,5 +112,57 @@ class SesionController extends Controller
         return $usuario->esOwner()
             ? route(SeccionDelPanel::Inicio->nombreDeRuta())
             : route('inicio');
+    }
+
+    /**
+     * Descarta la dirección que se intentó visitar antes de entrar, cuando
+     * quien acaba de entrar no puede llegar a ella.
+     *
+     * `redirect()->intended()` prefiere esa dirección y solo cae en `destino()`
+     * si no hay ninguna, así que el cuidado que `destino()` ya tenía —no mandar
+     * al `owner` al entorno del cliente— se saltaba justo en el caso más común:
+     * quien abre la raíz del sistema, recibe el desvío a la pantalla de acceso
+     * y entra desde ahí. Esa visita deja `/` guardada, y el `owner` terminaba
+     * en el 403 de `SoloCliente` recién iniciada la sesión, en vez de en su
+     * panel.
+     *
+     * La regla es simétrica y por eso se escribe una sola vez: **la dirección
+     * pretendida sobrevive solo si pertenece al mundo de quien entró.** Al
+     * `owner`, el panel; a quien es de una empresa, todo lo que no sea el
+     * panel. Al revés, cada uno aterriza en un 403 que no explica nada y que
+     * parece un fallo del sistema, que es justamente como se reportó.
+     */
+    private function olvidarPretendidaInalcanzable(Request $peticion, User $usuario): void
+    {
+        $pretendida = $peticion->session()->get('url.intended');
+
+        if (! is_string($pretendida)) {
+            return;
+        }
+
+        if ($this->esDelPanel($pretendida) !== $usuario->esOwner()) {
+            $peticion->session()->forget('url.intended');
+        }
+    }
+
+    /**
+     * Si una dirección cae dentro del panel del proveedor.
+     *
+     * Se mira solo la ruta, no el anfitrión ni la consulta: lo que decide es
+     * el prefijo `/proveedor`, que es el mismo con el que el grupo de rutas
+     * declara todo el panel.
+     */
+    private function esDelPanel(string $direccion): bool
+    {
+        $ruta = parse_url($direccion, PHP_URL_PATH);
+
+        if (! is_string($ruta)) {
+            return false;
+        }
+
+        $ruta = '/'.ltrim($ruta, '/');
+        $prefijo = '/'.SeccionDelPanel::PREFIJO;
+
+        return $ruta === $prefijo || str_starts_with($ruta, $prefijo.'/');
     }
 }

@@ -298,3 +298,71 @@ function tokenDeInvitacion(User $invitado): string
 {
     return app(Invitaciones::class)->emitir($invitado);
 }
+
+/**
+ * A dónde aterriza cada quien después de entrar (reporte de David, 2026-09-21).
+ *
+ * `redirect()->intended()` prefiere la dirección que se intentó visitar antes
+ * de autenticarse, y solo cae en el destino propio del rol si no hay ninguna.
+ * Como abrir la raíz del sistema deja `/` guardada, el `owner` que entraba
+ * desde ahí terminaba en el 403 de `SoloCliente` en vez de en su panel: «no me
+ * lleva directo al panel de proveedor».
+ */
+describe('el destino después de entrar', function () {
+    it('lleva al owner a su panel aunque antes hubiera intentado abrir la raíz', function () {
+        $owner = User::factory()->owner()->create();
+
+        // Es el camino de cualquiera: abrir el sistema y que lo manden a entrar.
+        $this->get('/')->assertRedirect('/acceso');
+
+        $this->post('/acceso', [
+            'correo' => $owner->email,
+            'contrasena' => CONTRASENA,
+        ])->assertRedirect('/proveedor');
+    });
+
+    it('lleva al owner a su panel aunque antes hubiera intentado una sección del cliente', function () {
+        $owner = User::factory()->owner()->create();
+
+        $this->get('/empleados')->assertRedirect('/acceso');
+
+        $this->post('/acceso', [
+            'correo' => $owner->email,
+            'contrasena' => CONTRASENA,
+        ])->assertRedirect('/proveedor');
+    });
+
+    it('respeta la dirección pretendida del owner cuando sí es del panel', function () {
+        $owner = User::factory()->owner()->create();
+
+        $this->get('/proveedor/empresas')->assertRedirect('/acceso');
+
+        $this->post('/acceso', [
+            'correo' => $owner->email,
+            'contrasena' => CONTRASENA,
+        ])->assertRedirect('/proveedor/empresas');
+    });
+
+    it('no manda al usuario de una empresa al panel del proveedor, que para él es un 403', function () {
+        $usuario = usuarioDeEmpresa();
+
+        $this->get('/proveedor')->assertRedirect('/acceso');
+
+        $this->post('/acceso', [
+            'correo' => $usuario->email,
+            'contrasena' => CONTRASENA,
+        ])->assertRedirect('/');
+    });
+
+    it('respeta la dirección pretendida del usuario de empresa cuando es de su propio entorno', function () {
+        $empresa = Tenant::factory()->create();
+        $usuario = usuarioConModulos($empresa, Modulo::Empleados);
+
+        $this->get('/empleados')->assertRedirect('/acceso');
+
+        $this->post('/acceso', [
+            'correo' => $usuario->email,
+            'contrasena' => CONTRASENA,
+        ])->assertRedirect('/empleados');
+    });
+});

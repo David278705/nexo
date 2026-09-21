@@ -1,12 +1,40 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-20 · Dos hallazgos de David probando el sistema, fuera del backlog:
-la planta de la empresa de prueba estaba casi vacía y no había forma de entrar en una máquina nueva.
-**Verificación:** verde. 1.319 de 1.319 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
-Vitest — once pruebas de Pest más que `HD-16`, las de Vitest no cambian.
+**Última sesión:** 2026-09-21 · Bug reportado por David: entrar como proveedor no llevaba al panel.
+**Verificación:** verde. 1.324 de 1.324 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
+Vitest — cinco pruebas de Pest más que la sesión anterior.
 **Siguiente tarea:** ninguna. **El backlog sigue completo**: no queda ninguna tarea `[ ]`.
 
-## Qué se hizo
+## Qué se hizo (2026-09-21)
+
+### Entrar como proveedor caía en un 403, no en el panel
+
+David lo reportó como «está bugueado, no me lleva directo al panel de proveedor», y lo era.
+
+El camino que lo produce es el más común de todos: abrir la raíz del sistema. Sin sesión, `/` desvía
+a `/acceso` y **deja `/` guardada como dirección pretendida**. Al entrar,
+`redirect()->intended()` prefiere esa dirección y solo cae en `destino()` si no hay ninguna, así que
+el cuidado que `destino()` ya tenía —su propio comentario dice «mandarlo al inicio del cliente sería
+mandarlo a un 403 recién iniciada la sesión»— se saltaba justo en ese caso. El `owner` aterrizaba en
+el 403 de `SoloCliente`.
+
+- **`SesionController::olvidarPretendidaInalcanzable()`** descarta la dirección pretendida cuando
+  quien entró no puede llegar a ella. La regla se escribió **simétrica** porque el fallo lo es: un
+  usuario de empresa que intentara `/proveedor` antes de entrar aterrizaba en su propio 403. La
+  pretendida sobrevive solo si pertenece al mundo de quien entró.
+- **Cinco pruebas nuevas** en `AutenticacionTest.php`. Se comprobó que **tres se ponen rojas** al
+  quitar el arreglo —los tres casos del fallo— y que las dos de direcciones legítimas pasan en los
+  dos escenarios, que es lo que las hace valer algo.
+
+### Lo que no se tocó, a propósito
+
+- **`/` le sigue dando 403 al `owner`.** Es lo que `SoloCliente` documenta desde el documento 4, 4.1,
+  y tiene sus pruebas. Se arregló la causa —que el acceso lo mandara ahí— y no el síntoma. Queda la
+  pregunta de abajo por si se quiere cambiar.
+- **La pantalla del segundo factor sigue apareciendo una vez por sesión.** No es el bug: es el
+  diseño del capítulo 10 del documento 4.
+
+## Qué se hizo (2026-09-20)
 
 ### La empresa de prueba parecía usada pero estaba vacía
 
@@ -66,6 +94,11 @@ demostración, que es de **solo lectura**, así que tampoco servía para probar 
 
 ## Decisiones para David
 
+- **¿`/` debería desviar al `owner` a su panel en vez de darle 403?** Hoy da 403 porque el documento
+  4, 4.1 dice que el proveedor recibe 403 «en todas las secciones» del cliente, y `SoloCliente` lo
+  cumple al pie de la letra. Pero un `owner` que teclee la raíz por costumbre ve una pantalla de
+  error en vez de su panel, que es justo la sensación que se reportó como bug. Cambiarlo es una
+  línea; se dejó como está por no contradecir lo documentado sin decidirlo.
 - **Las verificaciones manuales pendientes ahora sí se pueden hacer.** La lista larga que venía
   arrastrándose desde `HD-04` estaba bloqueada en la práctica porque no había una empresa con datos y
   escribible. Ya la hay: entra como `admin@empresademo.local` / `password`.
