@@ -20,13 +20,16 @@ use App\Proveedor\EstadoDeCobro;
 use App\Proveedor\EstadoDeEmpresa;
 use App\Proveedor\FichaDeEmpresa;
 use App\Proveedor\ListadoDeEmpresas;
+use App\Proveedor\Salida\ExportacionDeLaEmpresa;
 use App\Proveedor\SaludDeUso;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as RespuestaInertia;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -262,6 +265,20 @@ class EmpresaController extends Controller
      * middleware y su segundo factor. Un documento societario de un cliente no
      * puede quedar en `public` a la espera de que nadie adivine el nombre.
      */
+    /**
+     * Toda la información de la empresa en un ZIP, para entregársela cuando se
+     * va (documento 6, A.4, paso 1). Deja la constancia de la entrega en la
+     * empresa, que es desde donde cuenta el periodo de gracia.
+     */
+    public function exportacion(Tenant $empresa, ExportacionDeLaEmpresa $exportacion): BinaryFileResponse
+    {
+        abort_if($empresa->getAttribute('datos_eliminados_en') !== null, 404);
+
+        $nombre = 'informacion-'.Str::slug((string) $empresa->getAttribute('nit')).'-'.now()->format('Y-m-d').'.zip';
+
+        return response()->download($exportacion->generar($empresa), $nombre)->deleteFileAfterSend();
+    }
+
     public function certificado(Tenant $empresa): StreamedResponse
     {
         abort_unless($empresa->tieneCertificadoDeCamara(), 404);

@@ -2619,3 +2619,27 @@ además rechaza «380.000» (para PHP, 380). Dos pruebas.
 **Hecho:** `Dockerfile` con FrankenPHP en modo clásico, `docker/arrancar.sh` con los roles web,
 worker y scheduler, `docker/php.ini` y `docs/08-despliegue.md`. Sin Docker en la máquina, se verificó
 con FrankenPHP real y el mismo comando del contenedor.
+
+### [x] PROD-09 · Documentos legales con versión, y nadie trabaja sin aceptarlos
+
+En la app no había términos, ni acuerdo de tratamiento de datos, ni nada que aceptar: un
+superadministrador empezaba a cargar datos de salud de sus empleados sin que constara ningún acuerdo.
+**Hecho:** `resources/legal/` con un archivo Markdown por documento —texto, título, versión y si
+exige aceptación, juntos—; hoy son cuatro borradores con un aviso en lugar del texto, porque el texto
+legal no se inventa (B.4). `ExigirAceptacionLegal` bloquea a toda la empresa hasta que su
+superadministrador acepta, y vuelve a pedirlo cuando sube una versión; la constancia
+(`aceptaciones_legales`, con RLS y su caso de aislamiento) guarda quién, qué versión, cuándo y desde
+qué IP. Los documentos se leen sin sesión en `/legal/{clave}`, Configuración tiene la pestaña
+«Documentos legales» con la plantilla para empleados, y `despliegue:verificar` avisa mientras quede
+un borrador. Decidido por David: bloquear y no solo avisar.
+
+### [x] PROD-10 · La salida del cliente: exportar todo y, con candados, eliminar
+
+A.4 promete entregarle al cliente que se va toda su información y no conservar nada, y no existía ni
+lo uno ni lo otro. **Hecho:** «Exportar toda la información» en la ficha de la empresa del panel (un
+ZIP con un CSV por tabla, el certificado y un `LEEME.txt`, sin contraseñas ni secretos) y
+`empresa:eliminar {nit}`, que borra para siempre solo con el servicio suspendido, la información ya
+entregada y el periodo de gracia cumplido, pide el NIT para confirmar e imprime la constancia. Es la
+única excepción a la regla 4, escrita en el `CLAUDE.md`. Qué se entrega, qué se borra y qué conserva
+el proveedor vive en un solo sitio, `TablasDeLaEmpresa`, y una prueba obliga a clasificar toda tabla
+nueva con `tenant_id`. Decidido por David: construirla con candados.

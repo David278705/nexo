@@ -271,6 +271,27 @@ class FichaDeEmpresa
             'estado' => $estado->etiqueta(),
             'estadoTono' => $estado->tono(),
             'clienteDesde' => 'Cliente desde el '.Formato::fechaLarga($this->empresa->getAttribute('created_at')),
+            'exportacion' => $this->exportacion(),
+        ];
+    }
+
+    /**
+     * Entregarle a la empresa toda su información (documento 6, A.4, paso 1).
+     *
+     * La fecha de la última entrega se enseña porque de ella cuenta el periodo
+     * de gracia antes de poder eliminar sus datos con `empresa:eliminar`. Si
+     * ya se eliminaron, no hay nada que exportar y el botón no aparece.
+     *
+     * @return array{disponible: bool, url: string, ultima: string|null}
+     */
+    private function exportacion(): array
+    {
+        $exportada = $this->empresa->getAttribute('datos_exportados_en');
+
+        return [
+            'disponible' => $this->empresa->getAttribute('datos_eliminados_en') === null,
+            'url' => '/proveedor/empresas/'.$this->empresa->getKey().'/exportacion',
+            'ultima' => $exportada === null ? null : 'Información entregada el '.Formato::fechaLarga($exportada),
         ];
     }
 

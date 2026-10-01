@@ -165,6 +165,21 @@ Y la prueba: `php artisan alertas:prueba` desde la consola. El correo tiene que 
       ejecución del día.
 - [ ] El simulacro de restauración de la base (`F6-07`, `docs/07-plan-de-incidentes.md` sección 4).
 
+## Los documentos legales
+
+Viven en `resources/legal/`, un archivo Markdown por documento: términos del servicio, acuerdo de
+tratamiento de datos, plantilla de autorización para empleados y política de tratamiento. Hoy los
+cuatro son **borradores con un aviso en lugar del texto**, y `despliegue:verificar` lo recuerda en
+cada arranque.
+
+**Antes de vender**, con los textos revisados por el abogado (documento 6, B.4): pega cada uno en su
+archivo, cambia `estado: borrador` por `estado: vigente` y sube la `version`. No hace falta tocar
+código. Cada empresa tendrá que aceptar las versiones nuevas la próxima vez que entre su
+superadministrador, y hasta entonces nadie de esa empresa puede trabajar: es a propósito.
+
+Los cuatro se leen en `https://app.tudominio.co/legal/{nombre-del-archivo}`, sin sesión, para
+enlazarlos desde el sitio web.
+
 ## Los certificados
 
 Hoy se guardan en el volumen del servicio web (`DISCO_CERTIFICADOS=local`). Es lo más simple y

@@ -137,6 +137,23 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | La salida de un cliente (documento 6, A.4)
+    |--------------------------------------------------------------------------
+    |
+    | Los días que tienen que pasar entre la entrega de toda su información y
+    | su eliminación definitiva: el «periodo de gracia corto y pactado» de A.4,
+    | por si el cliente nota que le falta algo. Treinta es lo habitual; si el
+    | contrato pacta otra cosa, se cambia aquí.
+    |
+    */
+    'salida' => [
+
+        'dias_de_gracia' => 30,
+
+    ],
+
     'cobro' => [
 
         // A cuántos días del próximo cobro la columna «Pago» pasa de «al

@@ -76,6 +76,8 @@ class Tenant extends Model
             'ultima_novedad_en' => 'datetime',
             'plan_inicia_el' => 'date',
             'es_ambiente_demo' => 'boolean',
+            'datos_exportados_en' => 'datetime',
+            'datos_eliminados_en' => 'datetime',
             'demo_restaurado_en' => 'datetime',
         ];
     }

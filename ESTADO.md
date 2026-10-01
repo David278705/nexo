@@ -1,11 +1,11 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-10-01 · Preparación para producción, bloque 1 (código), tareas `PROD-01` a
-`PROD-08` del backlog.
-**Verificación:** verde. 1.351 de 1.351 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
+**Última sesión:** 2026-10-01 · Preparación para producción, bloques 1 (código) y 2 (legal), tareas
+`PROD-01` a `PROD-10` del backlog.
+**Verificación:** verde. 1.388 de 1.388 pruebas de Pest, Pint y PHPStan sin errores, build y 418 de
 Vitest. `composer audit` sin avisos.
-**Siguiente tarea:** ninguna `[ ]` en el backlog. Lo que sigue son los bloques 2 a 4 de abajo, que
-piden decisiones de David antes de escribir código.
+**Siguiente tarea:** ninguna `[ ]` en el backlog. Lo que sigue son los bloques 3 y 4 de abajo y la
+parte no programable del 2, que piden decisiones de David antes de escribir código.
 
 ## Qué se hizo
 
@@ -26,6 +26,15 @@ encontraron cuatro bloques. Este es el primero, el de código, completo:
   contraseña llevaban al owner a un 403. Era el mismo fallo que ya se había corregido en el acceso.
 - **La guía**: `docs/08-despliegue.md`, paso a paso.
 
+**El bloque 2, en su parte de código, también está completo** (`PROD-09` y `PROD-10`):
+
+- **Documentos legales con versión** en `resources/legal/`, uno por archivo, y **nadie de una
+  empresa trabaja hasta que su superadministrador los acepta**. Queda constancia de quién, qué
+  versión, cuándo y desde qué IP. Hoy son borradores con un aviso, porque el texto no se inventa.
+- **La salida del cliente (A.4)**: «Exportar toda la información» en la ficha del panel, y
+  `empresa:eliminar {nit}` con cuatro candados. Es la única excepción a la regla 4, y está escrita
+  así en el `CLAUDE.md`.
+
 El detalle de cada pieza está en las tareas `PROD-*` del backlog y en los mensajes de sus commits.
 
 ## Decisiones tomadas
@@ -44,16 +53,18 @@ El detalle de cada pieza está en las tareas `PROD-*` del backlog y en los mensa
 ## Preguntas para Angela
 
 - (sin cambios) B.2, el fondo de cesantías y la norma de `HD-04`.
+- **Para el abogado: qué conserva el proveedor cuando un cliente se va.** `TablasDeLaEmpresa`
+  entrega y elimina todo lo del cliente, y conserva la empresa, sus suscripciones y pagos (la
+  contabilidad del proveedor) y las notas internas. Es una lectura de A.4 y de la Ley 1581, no una
+  instrucción expresa. Si el abogado dice otra cosa, se cambia una lista en un solo archivo.
 
 ## Decisiones para David
 
 **Los bloques 2 a 4 de la auditoría, que siguen pendientes:**
 
-- **Legal.** Sociedad y facturación electrónica ante la DIAN; contrato, acuerdo de tratamiento de
-  datos y autorización para empleados revisados por abogado (B.4). En la app no hay términos ni
-  política de tratamiento, y el superadministrador empieza a cargar datos de salud sin aceptar nada.
-  Y A.4 promete entregarle al cliente que se va toda su información, pero no existe un «exportar
-  todo».
+- **Legal (lo que no es código).** Sociedad y facturación electrónica ante la DIAN, y **los cuatro
+  textos de `resources/legal/` revisados por el abogado** (B.4). El mecanismo ya está: se pega cada
+  texto en su archivo, se pasa a `vigente` y se sube la versión (`docs/08-despliegue.md`).
 - **Salir al mercado.** No hay landing (la recomendación es un sitio estático en el dominio raíz y la
   aplicación en `app.`), ni tabla de precios (A.1, `planes` vacía), ni pasarela de pagos (la lista G
   la exige antes de vender), ni canal de soporte visible para el cliente, ni marca (el favicon pesa

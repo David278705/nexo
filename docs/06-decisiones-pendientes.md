@@ -133,6 +133,22 @@ Ninguna se traslada al proveedor. Al contrario: el principio de temporalidad de 
 5. Constancia de que la obligación de conservación queda en cabeza del cliente.
 *Punto en sentido contrario: retener la información como presión por facturas impagadas es mal negocio y jurídicamente delicado. La vía correcta ante el impago es suspender el servicio, no retener los datos.*
 
+##### Cómo quedó construido (2026-10-01)
+
+- **Paso 1:** el botón «Exportar toda la información» de la ficha de la empresa en el panel. Entrega
+  un ZIP con un CSV por tabla, el certificado de Cámara de Comercio y un `LEEME.txt`, y deja la
+  fecha de la entrega en la empresa.
+- **Pasos 2 y 3:** `php artisan empresa:eliminar {nit}`. Solo procede con el servicio suspendido, la
+  información ya entregada y el periodo de gracia cumplido (`config/panel.php`, `salida.dias_de_gracia`,
+  30 por defecto), y pide escribir el NIT para confirmar. Es la única excepción a la regla de nunca
+  borrar físicamente, y así está escrito en el `CLAUDE.md`.
+- **Paso 4:** el comando imprime la constancia de eliminación con los registros borrados por tabla.
+- **Lo que el proveedor conserva** —la empresa, sus suscripciones y pagos, y sus notas internas— y
+  por qué, está en `App\Proveedor\Salida\TablasDeLaEmpresa`. **Pendiente de confirmar con el
+  abogado**: es una lectura de esta sección y de la Ley 1581, no una instrucción expresa.
+- **Las copias de seguridad** no se pueden borrar de forma selectiva: los datos salen de ellas al
+  cumplirse su periodo de retención. La constancia lo dice así.
+
 ### A.5 Infraestructura y seguridad — RESUELTA: Railway
 
 **Decidido por David el 23 de agosto de 2026, siguiendo la recomendación de este mismo documento.**

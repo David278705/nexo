@@ -46,6 +46,11 @@ const props = {
         estado: "Activa",
         estadoTono: "exito",
         clienteDesde: "Cliente desde el 12 de febrero de 2026",
+        exportacion: {
+            disponible: true,
+            url: "/proveedor/empresas/7/exportacion",
+            ultima: null,
+        },
     },
     cifras: [
         { etiqueta: "Plan", valor: "Pequeña" },
@@ -251,6 +256,36 @@ describe("la ficha de la empresa", () => {
         expect(pantalla.text()).toContain("Cliente desde el 12 de febrero de 2026");
         expect(pantalla.text()).toContain("Creada por");
         expect(pantalla.text()).toContain("Pendiente de recibir");
+    });
+
+    it("ofrece exportar toda la información y dice cuándo se entregó la última vez", () => {
+        const pantalla = montar({
+            empresa: {
+                ...props.empresa,
+                exportacion: {
+                    disponible: true,
+                    url: "/proveedor/empresas/7/exportacion",
+                    ultima: "Información entregada el 1 de octubre de 2026",
+                },
+            },
+        });
+
+        const enlace = pantalla.find("a[href='/proveedor/empresas/7/exportacion']");
+
+        expect(enlace.exists()).toBe(true);
+        expect(enlace.text()).toBe("Exportar toda la información");
+        expect(pantalla.text()).toContain("Información entregada el 1 de octubre de 2026");
+    });
+
+    it("no ofrece exportar cuando los datos de la empresa ya se eliminaron", () => {
+        const pantalla = montar({
+            empresa: {
+                ...props.empresa,
+                exportacion: { disponible: false, url: "/proveedor/empresas/7/exportacion", ultima: null },
+            },
+        });
+
+        expect(pantalla.find("a[href='/proveedor/empresas/7/exportacion']").exists()).toBe(false);
     });
 
     it("avisa al activar el perfil sociodemográfico, no antes", async () => {

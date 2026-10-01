@@ -286,13 +286,32 @@ const columnasDeVisitas = [
                 </p>
             </div>
 
-            <Boton
-                tipo="button"
-                variante="secundario"
-                @click="modal = 'entorno'"
-            >
-                {{ acceso.boton }}
-            </Boton>
+            <div class="flex flex-col items-end gap-1">
+                <div class="flex flex-wrap gap-2">
+                    <!-- Una descarga, no una visita de Inertia: por eso un enlace
+                         con el aspecto del botón secundario. -->
+                    <a
+                        v-if="empresa.exportacion.disponible"
+                        :href="empresa.exportacion.url"
+                        class="inline-flex h-control items-center justify-center rounded-[var(--radius-caja)] border border-borde bg-superficie px-4 text-tabla font-medium text-texto transition-colors hover:bg-superficie-resaltada"
+                    >
+                        Exportar toda la información
+                    </a>
+                    <Boton
+                        tipo="button"
+                        variante="secundario"
+                        @click="modal = 'entorno'"
+                    >
+                        {{ acceso.boton }}
+                    </Boton>
+                </div>
+                <p
+                    v-if="empresa.exportacion.ultima"
+                    class="text-apoyo text-texto-secundario"
+                >
+                    {{ empresa.exportacion.ultima }}
+                </p>
+            </div>
         </div>
 
         <dl

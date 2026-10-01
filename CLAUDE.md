@@ -40,7 +40,9 @@ Una tarea por sesión. Si terminas antes de tiempo, **no empieces otra**: cierra
    incapacidades en días corridos, suspensiones en días corridos. Nunca una función con un parámetro
    que se pueda pasar mal.
 4. **Nunca borrado físico.** Todo es borrado lógico y toda acción queda en `auditoria`, escrita por
-   un observador, no a mano.
+   un observador, no a mano. **Una sola excepción, decidida y con candados:** `empresa:eliminar`
+   (`App\Proveedor\Salida\EliminacionDeLaEmpresa`) borra para siempre los datos de un cliente que ya
+   se fue, como exige el documento 6, A.4. No agregues otra.
 5. **Persona y Vinculación son entidades separadas.** Una persona puede tener varias vinculaciones a
    lo largo del tiempo. El documento es único por empresa en `personas`, no en `vinculaciones`.
 
