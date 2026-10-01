@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * es de ninguna empresa, es lo que el proveedor ofrece a todas.
  *
  * @property string $nombre
- * @property float $precio_mensual
+ * @property string $precio_mensual
  * @property int $empleados_incluidos
  * @property int $usuarios_incluidos
  * @property bool $activo

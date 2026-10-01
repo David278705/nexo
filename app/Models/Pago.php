@@ -18,7 +18,7 @@ use Illuminate\Support\Carbon;
  *
  * @property EstadoDeFactura $estado
  * @property Carbon $fecha
- * @property float $monto
+ * @property string $monto
  * @property string|null $numero_factura
  */
 class Pago extends Model

@@ -40,7 +40,7 @@ class GuardarPlan extends FormRequest
                     ->whereNull('deleted_at'),
             ],
             // El precio en pesos, con centavos permitidos pero no exigidos.
-            'precio_mensual' => ['required', 'numeric', 'min:0', 'max:99999999999'],
+            'precio_mensual' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999999'],
             'empleados_incluidos' => ['required', 'integer', 'min:1'],
             'usuarios_incluidos' => ['required', 'integer', 'min:1'],
         ];
@@ -69,7 +69,8 @@ class GuardarPlan extends FormRequest
     {
         return [
             'nombre' => (string) $this->input('nombre'),
-            'precio_mensual' => (float) $this->input('precio_mensual'),
+            // Texto decimal y no `float`: el dinero va en precisión fija.
+            'precio_mensual' => (string) $this->input('precio_mensual'),
             'empleados_incluidos' => $this->integer('empleados_incluidos'),
             'usuarios_incluidos' => $this->integer('usuarios_incluidos'),
         ];

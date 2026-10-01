@@ -254,7 +254,7 @@ it('no cuenta como ingreso recurrente lo que está suspendido', function () {
 it('registrar un pago adelanta el cobro un mes desde la fecha que tenía', function () {
     $suscripcion = empresaConSuscripcion($this->plan, ['proxima_fecha_cobro' => '2026-08-01']);
 
-    app(Suscripciones::class)->registrarPago($suscripcion, 380000, Carbon::parse('2026-08-05'), 'FE-1001');
+    app(Suscripciones::class)->registrarPago($suscripcion, '380000', Carbon::parse('2026-08-05'), 'FE-1001');
 
     expect($suscripcion->refresh()->proxima_fecha_cobro->toDateString())->toBe('2026-09-01');
 });
@@ -263,7 +263,7 @@ it('anular un pago lo deja en el historial y devuelve el cobro al mes anterior',
     $suscripcion = empresaConSuscripcion($this->plan, ['proxima_fecha_cobro' => '2026-08-01']);
     $servicio = app(Suscripciones::class);
 
-    $pago = $servicio->registrarPago($suscripcion, 380000, Carbon::parse('2026-08-05'), 'FE-1001');
+    $pago = $servicio->registrarPago($suscripcion, '380000', Carbon::parse('2026-08-05'), 'FE-1001');
     $servicio->anularPago($pago);
 
     expect($suscripcion->refresh()->proxima_fecha_cobro->toDateString())->toBe('2026-08-01')
@@ -292,6 +292,31 @@ it('no acepta dos pagos con el mismo número de factura', function () {
             'numero_factura' => 'FE-1001',
         ])
         ->assertSessionHasErrors('numero_factura');
+});
+
+it('rechaza un monto escrito con punto de miles, que se guardaría como 380 pesos', function () {
+    $suscripcion = empresaConSuscripcion($this->plan);
+
+    $this->actingAs(ownerEnElPanel())
+        ->post("/proveedor/suscripciones/{$suscripcion->id}/pagos", [
+            'monto' => '380.000',
+            'fecha' => '2026-08-05',
+        ])
+        ->assertSessionHasErrors('monto');
+
+    expect(Pago::query()->count())->toBe(0);
+});
+
+it('guarda el monto exacto, sin pasar por coma flotante', function () {
+    $suscripcion = empresaConSuscripcion($this->plan);
+
+    $this->actingAs(ownerEnElPanel())
+        ->post("/proveedor/suscripciones/{$suscripcion->id}/pagos", [
+            'monto' => '380000.10',
+            'fecha' => '2026-08-05',
+        ]);
+
+    expect(Pago::query()->firstOrFail()->monto)->toBe('380000.10');
 });
 
 it('no anula un pago de otra suscripción', function () {

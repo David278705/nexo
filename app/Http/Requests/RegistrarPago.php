@@ -32,7 +32,9 @@ class RegistrarPago extends FormRequest
     public function rules(): array
     {
         return [
-            'monto' => ['required', 'numeric', 'min:0.01', 'max:99999999999'],
+            // Con dos decimales como mucho, como el salario: además de fijar la
+            // precisión, rechaza «380.000», que para PHP sería 380 y no 380 mil.
+            'monto' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999999'],
             'fecha' => ['required', 'date'],
             'numero_factura' => [
                 'nullable',
@@ -56,9 +58,13 @@ class RegistrarPago extends FormRequest
         ];
     }
 
-    public function monto(): float
+    /**
+     * El monto como texto decimal, nunca como `float` (CLAUDE.md: el dinero va
+     * en decimales de precisión fija). La columna es `numeric(14,2)`.
+     */
+    public function monto(): string
     {
-        return (float) $this->input('monto');
+        return (string) $this->input('monto');
     }
 
     public function numeroFactura(): ?string

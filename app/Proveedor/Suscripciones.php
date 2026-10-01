@@ -169,7 +169,7 @@ class Suscripciones
      */
     public function registrarPago(
         Suscripcion $suscripcion,
-        float $monto,
+        string $monto,
         Carbon $fecha,
         ?string $numeroFactura = null,
     ): Pago {
