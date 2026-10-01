@@ -87,7 +87,7 @@ class SesionController extends Controller
 
         $this->olvidarPretendidaInalcanzable($peticion, $autenticado);
 
-        return redirect()->intended($this->destino($autenticado));
+        return redirect()->intended($autenticado->paginaDeInicio());
     }
 
     public function salir(Request $peticion): RedirectResponse
@@ -101,25 +101,11 @@ class SesionController extends Controller
     }
 
     /**
-     * A dónde va cada quien después de entrar.
-     *
-     * El `owner` no tiene nada que hacer en el entorno del cliente —ahí recibe
-     * 403 en todas las secciones— y su sitio es el panel del proveedor. Mandarlo
-     * al inicio del cliente sería mandarlo a un 403 recién iniciada la sesión.
-     */
-    private function destino(User $usuario): string
-    {
-        return $usuario->esOwner()
-            ? route(SeccionDelPanel::Inicio->nombreDeRuta())
-            : route('inicio');
-    }
-
-    /**
      * Descarta la dirección que se intentó visitar antes de entrar, cuando
      * quien acaba de entrar no puede llegar a ella.
      *
-     * `redirect()->intended()` prefiere esa dirección y solo cae en `destino()`
-     * si no hay ninguna, así que el cuidado que `destino()` ya tenía —no mandar
+     * `redirect()->intended()` prefiere esa dirección y solo cae en
+     * `User::paginaDeInicio()` si no hay ninguna, así que su cuidado —no mandar
      * al `owner` al entorno del cliente— se saltaba justo en el caso más común:
      * quien abre la raíz del sistema, recibe el desvío a la pantalla de acceso
      * y entra desde ahí. Esa visita deja `/` guardada, y el `owner` terminaba

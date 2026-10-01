@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Autorizacion\Modulo;
 use App\Autorizacion\Rol;
+use App\Autorizacion\SeccionDelPanel;
 use App\Notificaciones\RestablecerContrasena;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -85,6 +86,22 @@ class User extends Authenticatable
     public function esOwner(): bool
     {
         return $this->rol === Rol::Owner;
+    }
+
+    /**
+     * La primera pantalla de cada quien, la que le corresponde al entrar.
+     *
+     * El `owner` vive en el panel del proveedor y en el entorno del cliente
+     * recibe 403 (`SoloCliente`); el resto vive en el inicio de su empresa.
+     *
+     * Esta regla estaba escrita en cuatro sitios —el desvío de quien ya tiene
+     * sesión, el acceso, la invitación y el restablecimiento de contraseña— y
+     * los dos últimos la tenían mal: mandaban al `owner` a la raíz, o sea a un
+     * 403 recién definida su contraseña. Una regla, un sitio.
+     */
+    public function paginaDeInicio(): string
+    {
+        return $this->esOwner() ? '/'.SeccionDelPanel::PREFIJO : '/';
     }
 
     public function esSuperadministrador(): bool

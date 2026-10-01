@@ -365,4 +365,32 @@ describe('el destino después de entrar', function () {
             'contrasena' => CONTRASENA,
         ])->assertRedirect('/empleados');
     });
+
+    it('lleva al owner a su panel al aceptar su invitación, no a un 403', function () {
+        Notification::fake();
+
+        $owner = User::factory()->owner()->create();
+        $token = tokenDeInvitacion($owner);
+
+        $this->post("/invitacion/{$token}", [
+            'contrasena' => CONTRASENA_NUEVA,
+            'contrasena_confirmation' => CONTRASENA_NUEVA,
+        ])->assertRedirect('/proveedor');
+
+        $this->assertAuthenticatedAs($owner);
+    });
+
+    it('lleva al owner a su panel al restablecer su contraseña, no a un 403', function () {
+        $owner = User::factory()->owner()->create();
+        $token = Password::createToken($owner);
+
+        $this->post('/acceso/restablecer', [
+            'token' => $token,
+            'correo' => $owner->email,
+            'contrasena' => CONTRASENA_NUEVA,
+            'contrasena_confirmation' => CONTRASENA_NUEVA,
+        ])->assertRedirect('/proveedor');
+
+        $this->assertAuthenticatedAs($owner);
+    });
 });

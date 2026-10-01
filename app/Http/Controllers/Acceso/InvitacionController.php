@@ -78,7 +78,7 @@ class InvitacionController extends Controller
         $peticion->session()->regenerate();
         $this->registro->exitoso($peticion, $usuario);
 
-        return redirect()->route('inicio');
+        return redirect()->to($usuario->paginaDeInicio());
     }
 
     /**

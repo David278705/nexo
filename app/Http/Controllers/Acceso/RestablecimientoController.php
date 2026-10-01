@@ -73,6 +73,8 @@ class RestablecimientoController extends Controller
             throw ValidationException::withMessages(['correo' => __($estado)]);
         }
 
-        return redirect()->route('inicio');
+        // La sesión ya quedó iniciada dentro del `reset`; desde aquí cada quien
+        // va a su propia página de inicio, que para el `owner` es el panel.
+        return redirect()->to($peticion->user()?->paginaDeInicio() ?? '/');
     }
 }

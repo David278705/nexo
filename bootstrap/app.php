@@ -1,6 +1,5 @@
 <?php
 
-use App\Autorizacion\SeccionDelPanel;
 use App\Http\Middleware\BloquearEmpresaSuspendida;
 use App\Http\Middleware\CerrarAccesoDePruebaNoVigente;
 use App\Http\Middleware\EntornoDeSoloLectura;
@@ -80,13 +79,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/acceso');
 
         // A dónde va quien ya tiene sesión y vuelve a pedir la pantalla de
-        // acceso. El `owner` va al panel del proveedor: en el entorno del
-        // cliente recibe 403 en todas las secciones, así que mandarlo a la raíz
-        // sería mandarlo a un 403.
+        // acceso: a su propia página de inicio, que es una regla del usuario
+        // (`User::paginaDeInicio()`) y no se repite aquí.
         $middleware->redirectUsersTo(
-            fn (Request $peticion) => $peticion->user()?->esOwner() === true
-                ? '/'.SeccionDelPanel::PREFIJO
-                : '/',
+            fn (Request $peticion) => $peticion->user()?->paginaDeInicio() ?? '/',
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
