@@ -71,8 +71,15 @@ class CreacionDeEmpresa
      * En el disco privado, nunca en `public`: es un documento societario de un
      * cliente y una dirección adivinable lo dejaría al alcance de cualquiera.
      * Se recupera por la ruta del panel, que exige el rol `owner`.
+     *
+     * El disco sale de la configuración (`filesystems.certificados`) y no de
+     * una constante: en producción puede ser un volumen o un disco tipo S3, y
+     * cambiar de uno a otro no debe pedir tocar código.
      */
-    public const DISCO_DE_CERTIFICADOS = 'local';
+    public static function discoDeCertificados(): string
+    {
+        return (string) config('filesystems.certificados', 'local');
+    }
 
     public const CARPETA_DE_CERTIFICADOS = 'certificados-camara';
 
@@ -138,7 +145,7 @@ class CreacionDeEmpresa
             return [];
         }
 
-        $ruta = $archivo->store(self::CARPETA_DE_CERTIFICADOS, self::DISCO_DE_CERTIFICADOS);
+        $ruta = $archivo->store(self::CARPETA_DE_CERTIFICADOS, self::discoDeCertificados());
 
         return [
             'certificado_camara_ruta' => is_string($ruta) ? $ruta : null,

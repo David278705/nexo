@@ -266,7 +266,7 @@ class EmpresaController extends Controller
     {
         abort_unless($empresa->tieneCertificadoDeCamara(), 404);
 
-        return Storage::disk(CreacionDeEmpresa::DISCO_DE_CERTIFICADOS)->download(
+        return Storage::disk(CreacionDeEmpresa::discoDeCertificados())->download(
             (string) $empresa->getAttribute('certificado_camara_ruta'),
             (string) $empresa->getAttribute('certificado_camara_nombre'),
         );

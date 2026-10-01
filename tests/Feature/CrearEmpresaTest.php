@@ -191,7 +191,7 @@ it('no admite dos empresas con el mismo NIT', function () {
 
 it('guarda el certificado de cámara de comercio en el disco privado', function () {
     Notification::fake();
-    Storage::fake(CreacionDeEmpresa::DISCO_DE_CERTIFICADOS);
+    Storage::fake(CreacionDeEmpresa::discoDeCertificados());
 
     ownerEnElPanel();
 
@@ -204,7 +204,7 @@ it('guarda el certificado de cámara de comercio en el disco privado', function 
     expect($empresa->tieneCertificadoDeCamara())->toBeTrue()
         ->and($empresa->getAttribute('certificado_camara_nombre'))->toBe('camara.pdf');
 
-    Storage::disk(CreacionDeEmpresa::DISCO_DE_CERTIFICADOS)
+    Storage::disk(CreacionDeEmpresa::discoDeCertificados())
         ->assertExists((string) $empresa->getAttribute('certificado_camara_ruta'));
 
     $this->get("/proveedor/empresas/{$empresa->getKey()}/certificado")->assertOk();

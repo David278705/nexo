@@ -17,6 +17,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Disco de los certificados de Cámara de Comercio
+    |--------------------------------------------------------------------------
+    |
+    | Documentos societarios de los clientes: privados y que no se pueden
+    | perder. Con `local`, en Railway hace falta un volumen montado en
+    | `storage/app`, porque el disco del contenedor se borra en cada despliegue.
+    | Para crecer a varias réplicas del servicio web, se cambia a un disco tipo
+    | S3 con solo esta variable. Ver docs/08-despliegue.md.
+    |
+    */
+
+    'certificados' => env('DISCO_CERTIFICADOS', 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
