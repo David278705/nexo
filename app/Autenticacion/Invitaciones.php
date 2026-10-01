@@ -40,6 +40,24 @@ class Invitaciones
      */
     public function emitir(User $usuario): string
     {
+        $token = $this->generar($usuario);
+
+        $usuario->notify(new InvitacionAlSistema($token));
+
+        return $token;
+    }
+
+    /**
+     * La invitación sin el correo: deja vencidas las anteriores, guarda la
+     * nueva y devuelve el token en claro, que es la única vez que existe.
+     *
+     * Vive aparte de `emitir()` para `equipo:invitar`, que crea al primer
+     * `owner` de un servidor recién desplegado, cuando lo normal es que el
+     * correo todavía no esté configurado. Ese comando necesita el enlace aunque
+     * el envío falle, y con `emitir()` el token se perdería con la excepción.
+     */
+    public function generar(User $usuario): string
+    {
         Invitacion::query()
             ->where('user_id', $usuario->getKey())
             ->whereNull('aceptada_en')
@@ -52,8 +70,6 @@ class Invitaciones
             'token' => $this->hash($token),
             'expira_en' => Carbon::now()->addDays(self::DIAS_DE_VIGENCIA),
         ]);
-
-        $usuario->notify(new InvitacionAlSistema($token));
 
         return $token;
     }
