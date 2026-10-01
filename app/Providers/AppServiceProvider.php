@@ -25,6 +25,7 @@ use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Proveedor\AccesoAlEntorno;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -81,6 +82,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // En producción todo enlace sale con https://, también los que arma un
+        // proceso sin petición —el correo de una alerta lo arma la cola—. Las
+        // peticiones ya llegan como HTTPS gracias a `trustProxies`; esto cubre
+        // lo que no pasa por ninguna petición.
+        URL::forceHttps($this->app->isProduction());
+
         // La auditoría se engancha aquí, una sola vez y para todos los modelos.
         // No hay nada que agregar por cada tabla nueva: si se guarda en la base
         // de datos, queda registrado.

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\BloquearEmpresaSuspendida;
+use App\Http\Middleware\CabecerasDeSeguridad;
 use App\Http\Middleware\CerrarAccesoDePruebaNoVigente;
 use App\Http\Middleware\EntornoDeSoloLectura;
 use App\Http\Middleware\FueraDeUnaVisita;
@@ -30,6 +31,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Railway termina el HTTPS en su borde y le reenvía la petición a la
+        // aplicación por HTTP. Sin confiar en ese proxy, Laravel cree que todo
+        // llega por http://: los assets salen como http:// dentro de una página
+        // https:// —el navegador los bloquea y la pantalla queda en blanco— y
+        // las cookies seguras no viajan. `*` aquí significa «el que está justo
+        // delante», no «cualquiera»: la IP del cliente se sigue leyendo bien, y
+        // de ella dependen el límite de intentos de acceso y su registro.
+        $middleware->trustProxies(at: '*');
+
+        // En todas las respuestas, también descargas y páginas de error.
+        $middleware->append(CabecerasDeSeguridad::class);
+
         // ResolverTenant va antes que nada que consulte datos de negocio, y
         // después de la sesión, que es de donde sale el usuario autenticado.
         //
