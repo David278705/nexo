@@ -1,0 +1,33 @@
+# Lo que no entra en la imagen de producción.
+
+# Secretos y configuración local: en Railway todo llega como variable de entorno.
+.env
+.env.*
+
+# Se instalan o compilan dentro de la imagen, nunca se copian de la máquina.
+vendor
+node_modules
+public/build
+public/hot
+
+# Cachés generadas en la máquina de quien desarrolla. bootstrap/cache trae la
+# lista de paquetes de desarrollo (pail, sail...) que en producción no existen
+# y haría fallar el arranque; Laravel la regenera sola al primer arranque.
+bootstrap/cache/*.php
+storage/app/*
+storage/framework/*
+storage/logs/*
+
+# Nada de esto se ejecuta en producción.
+.git
+.claude
+.idea
+.vscode
+tests
+docs
+prototipos
+plantillas
+bitacora
+scripts
+*.log
+.phpunit.result.cache
