@@ -1,5 +1,6 @@
 <?php
 
+use App\Legal\DocumentosLegales;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -221,5 +222,17 @@ describe('despliegue:verificar', function () {
         comoRolCorrienteDeDespliegue(fn () => Artisan::call('despliegue:verificar'));
 
         expect(Artisan::output())->toContain('hace falta un volumen montado');
+    });
+
+    it('avisa de los documentos legales que siguen en borrador, pero deja arrancar', function () {
+        $carpeta = sys_get_temp_dir().'/nexo-legal-borrador-'.uniqid();
+        mkdir($carpeta);
+        file_put_contents("{$carpeta}/terminos.md", "---\ntitulo: Términos del servicio\nversion: 1\nestado: borrador\nexige_aceptacion: si\n---\n\nPendiente.\n");
+        app()->instance(DocumentosLegales::class, new DocumentosLegales($carpeta));
+
+        $codigo = comoRolCorrienteDeDespliegue(fn () => Artisan::call('despliegue:verificar'));
+
+        expect($codigo)->toBe(0)
+            ->and(Artisan::output())->toContain('Documentos legales todavía en borrador: Términos del servicio');
     });
 });

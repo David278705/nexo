@@ -11,6 +11,7 @@ use App\Exports\MovimientosExport;
 use App\Exports\TerminacionesExport;
 use App\Exports\VacacionesExport;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Models\AceptacionLegal;
 use App\Models\AlertaEnviada;
 use App\Models\Eps;
 use App\Models\Incapacidad;
@@ -1254,4 +1255,16 @@ casoDeAislamiento('alertas enviadas', [
     // proveedor (F5-05) enseña en el listado: si una fuga existiera, saldría
     // por ahí y con el nombre del empleado de la otra empresa dentro.
     'crear' => fn (string $asunto) => AlertaEnviada::factory()->create(['asunto' => $asunto]),
+]);
+
+casoDeAislamiento('aceptaciones legales', [
+    'tabla' => 'aceptaciones_legales',
+    'modelo' => AceptacionLegal::class,
+    'campo' => 'documento',
+    // La constancia de que una empresa aceptó un contrato guarda quién la
+    // representa, cuándo y desde qué dirección. Que otra empresa la viera
+    // revelaría todo eso, y que la contara como propia la dejaría trabajar sin
+    // haber aceptado nada.
+    'migracion' => function (): void {},
+    'crear' => fn (string $documento) => AceptacionLegal::factory()->create(['documento' => $documento]),
 ]);

@@ -4,6 +4,7 @@ use App\Http\Middleware\BloquearEmpresaSuspendida;
 use App\Http\Middleware\CabecerasDeSeguridad;
 use App\Http\Middleware\CerrarAccesoDePruebaNoVigente;
 use App\Http\Middleware\EntornoDeSoloLectura;
+use App\Http\Middleware\ExigirAceptacionLegal;
 use App\Http\Middleware\FueraDeUnaVisita;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolverTenant;
@@ -64,6 +65,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 // (documento 4, capítulo 6), lo único que se puede pedir es la
                 // pantalla que lo explica y cerrar sesión.
                 BloquearEmpresaSuspendida::class,
+                // Detrás de la suspensión: una empresa suspendida ve primero eso.
+                // Nadie de una empresa trabaja hasta que ella acepta los términos
+                // y el acuerdo de tratamiento de datos vigentes.
+                ExigirAceptacionLegal::class,
                 // La segunda condición no negociable del documento 4, 4.4: si
                 // quien pide es el proveedor dentro del entorno de un cliente,
                 // solo pasan las peticiones de lectura. Va en la pila y no en

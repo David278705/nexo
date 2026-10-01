@@ -110,6 +110,24 @@ const props = {
         habilitado: false,
         aviso: "Los 34 empleados ya registrados quedarán con estos campos vacíos.",
     },
+    legal: {
+        documentos: [
+            {
+                titulo: "Términos y condiciones del servicio",
+                version: "2",
+                url: "/legal/terminos",
+                aceptado: true,
+                aceptadoEn: "1 de octubre de 2026",
+                aceptadoPor: "Angela Lozano",
+            },
+        ],
+        plantillas: [
+            {
+                titulo: "Plantilla de autorización de tratamiento para empleados",
+                url: "/legal/autorizacion-empleados",
+            },
+        ],
+    },
     facturacion: {
         existe: true,
         plan: "Pequeña",
@@ -261,6 +279,17 @@ describe("la pantalla de parámetros", () => {
 
         expect(pantalla.text()).toContain("Todavía no hay un plan contratado");
         expect(pantalla.text()).not.toContain("Historial de pagos");
+    });
+
+    it("enseña lo que la empresa aceptó y la plantilla para sus empleados", async () => {
+        const pantalla = montar();
+
+        await pantalla.findAll("button[role='tab']")[4].trigger("click");
+
+        expect(pantalla.text()).toContain("Términos y condiciones del servicio");
+        expect(pantalla.text()).toContain("versión 2");
+        expect(pantalla.text()).toContain("Aceptado el 1 de octubre de 2026 por Angela Lozano");
+        expect(pantalla.find("a[href='/legal/autorizacion-empleados']").exists()).toBe(true);
     });
 
     it("pinta el listado de usuarios con su rol y sus módulos", async () => {

@@ -9,6 +9,7 @@ use App\Http\Requests\ActualizarModulosDeUsuario;
 use App\Http\Requests\DesactivarUsuario;
 use App\Http\Requests\GuardarParametros;
 use App\Http\Requests\InvitarUsuario;
+use App\Legal\AceptacionDeLaEmpresa;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -38,6 +39,7 @@ class ConfiguracionController extends Controller
             ...ParametrosDeLaEmpresa::de($empresa)->paraLaPantalla(),
             ...UsuariosDeLaEmpresa::de($empresa)->paraLaPantalla(),
             ...FacturacionDeLaEmpresa::de($empresa)->paraLaPantalla(),
+            ...AceptacionDeLaEmpresa::de($empresa)->paraLaPantalla(),
         ]);
     }
 

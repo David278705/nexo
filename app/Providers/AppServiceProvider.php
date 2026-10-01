@@ -20,6 +20,7 @@ use App\Dominio\Alertas\Reglas\PruebaIndefinidoQuinceDias;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoUnMes;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoVispera;
 use App\Dominio\Alertas\Reglas\UltimaRenovacionCorta;
+use App\Legal\DocumentosLegales;
 use App\Models\User;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
@@ -35,6 +36,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Los documentos legales del servicio, desde `resources/legal/`. Va en el
+        // contenedor para que las pruebas puedan usar otra carpeta: por defecto,
+        // una vacía (ver `Tests\TestCase`), y la propia en las del flujo legal.
+        $this->app->singleton(DocumentosLegales::class, fn () => DocumentosLegales::delProyecto());
+
         // Singleton: la empresa se resuelve una sola vez por petición y todo
         // el sistema lee de la misma instancia.
         $this->app->singleton(ContextoTenant::class);

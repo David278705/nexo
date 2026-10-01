@@ -41,6 +41,7 @@ const props = defineProps({
     usuarios: { type: Array, default: () => [] },
     modulosAsignables: { type: Array, default: () => [] },
     facturacion: { type: Object, required: true },
+    legal: { type: Object, required: true },
 });
 
 const pestanas = [
@@ -48,6 +49,7 @@ const pestanas = [
     { clave: "empresa", titulo: "Datos de la empresa" },
     { clave: "usuarios", titulo: "Usuarios y permisos" },
     { clave: "facturacion", titulo: "Facturación" },
+    { clave: "legal", titulo: "Documentos legales" },
 ];
 
 const activa = ref("parametros");
@@ -467,6 +469,67 @@ function confirmarDesactivar() {
                                 </TablaDatos>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div v-else-if="activa === 'legal'" class="grid gap-6 lg:grid-cols-2">
+                    <div>
+                        <h2 class="text-seccion font-semibold text-texto">
+                            Lo que la empresa aceptó
+                        </h2>
+                        <ul class="mt-3 space-y-3">
+                            <li
+                                v-for="documento in legal.documentos"
+                                :key="documento.url"
+                                class="text-sm"
+                            >
+                                <a
+                                    :href="documento.url"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="text-accion hover:underline"
+                                >
+                                    {{ documento.titulo }}
+                                </a>
+                                <span class="text-texto-terciario">
+                                    · versión {{ documento.version }}
+                                </span>
+                                <p
+                                    v-if="documento.aceptado"
+                                    class="mt-0.5 text-apoyo text-texto-secundario"
+                                >
+                                    Aceptado el {{ documento.aceptadoEn }} por
+                                    {{ documento.aceptadoPor }}.
+                                </p>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h2 class="text-seccion font-semibold text-texto">
+                            Para usar con tus empleados
+                        </h2>
+                        <p class="mt-1 text-apoyo text-texto-secundario">
+                            Como responsable del tratamiento, tu empresa le pide a cada
+                            empleado su autorización, incluida la expresa para los datos
+                            de salud.
+                        </p>
+                        <ul class="mt-3 space-y-2">
+                            <li
+                                v-for="plantilla in legal.plantillas"
+                                :key="plantilla.url"
+                                class="text-sm"
+                            >
+                                <a
+                                    :href="plantilla.url"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="text-accion hover:underline"
+                                >
+                                    {{ plantilla.titulo }}
+                                </a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>

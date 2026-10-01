@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Legal\DocumentoLegal;
+use App\Legal\DocumentosLegales;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -54,6 +56,7 @@ class VerificarDespliegue extends Command
             $this->registros(),
             $this->monitoreo(),
             $this->discoDeCertificados(),
+            $this->documentosLegales(),
         ];
 
         foreach ($revisiones as [$nivel, $mensaje]) {
@@ -194,5 +197,24 @@ class VerificarDespliegue extends Command
         return $driver === 'local'
             ? [self::AVISO, "Los certificados se guardan en el disco «{$disco}» del contenedor: hace falta un volumen montado en storage/app o se pierden en cada despliegue."]
             : [self::OK, "Los certificados se guardan en «{$disco}» ({$driver})."];
+    }
+
+    /**
+     * Un documento legal en borrador se puede aceptar, pero lo que se acepta
+     * no es el contrato: es un aviso de que el contrato falta. Avisa y no
+     * detiene, porque el primer despliegue suele hacerse antes de tener los
+     * textos revisados por el abogado.
+     *
+     * @return array{string, string}
+     */
+    private function documentosLegales(): array
+    {
+        $borradores = app(DocumentosLegales::class)->borradores();
+
+        return $borradores === []
+            ? [self::OK, 'Los documentos legales tienen su texto definitivo.']
+            : [self::AVISO, 'Documentos legales todavía en borrador: '
+                .implode(', ', array_map(fn (DocumentoLegal $d) => $d->titulo, $borradores))
+                .'. Las empresas aceptarían un aviso, no el contrato.'];
     }
 }

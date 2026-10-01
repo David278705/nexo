@@ -8,6 +8,7 @@ use App\Http\Controllers\Acceso\InvitacionController;
 use App\Http\Controllers\Acceso\RecuperacionController;
 use App\Http\Controllers\Acceso\RestablecimientoController;
 use App\Http\Controllers\Acceso\SesionController;
+use App\Http\Controllers\AceptacionLegalController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\ConfiguracionController;
@@ -67,6 +68,14 @@ Route::middleware('guest')->group(function () {
 Route::get('/prueba/{token}', [AccesoDePruebaController::class, 'entrar'])
     ->name('demostracion.entrar');
 
+/*
+ * Los documentos legales, públicos: cualquiera debe poder leer un contrato antes
+ * de firmarlo, y el sitio web los enlaza. Ver `App\Legal\DocumentosLegales`.
+ */
+Route::get('/legal/{clave}', [AceptacionLegalController::class, 'documento'])
+    ->where('clave', '[a-z0-9-]+')
+    ->name('legal.documento');
+
 Route::middleware('auth')->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('acceso.salir');
 
@@ -78,6 +87,16 @@ Route::middleware('auth')->group(function () {
      */
     Route::get('/suspendido', [ServicioSuspendidoController::class, 'mostrar'])
         ->name('suspendido');
+
+    /*
+     * Aceptar los documentos legales a nombre de la empresa. Es a donde
+     * `ExigirAceptacionLegal` manda a todo usuario de una empresa que tenga
+     * algo pendiente; solo el superadministrador puede aceptar.
+     */
+    Route::get('/aceptacion', [AceptacionLegalController::class, 'mostrar'])
+        ->name('aceptacion');
+    Route::post('/aceptacion', [AceptacionLegalController::class, 'aceptar'])
+        ->name('aceptacion.aceptar');
 
     /*
      * Salir del entorno de un cliente (documento 4, 4.4).
@@ -403,6 +422,9 @@ Route::middleware(['auth', 'proveedor'])
                 ->name('proveedor.empresas.resumen');
             Route::get('/empresas/{empresa}/certificado', [EmpresaController::class, 'certificado'])
                 ->name('proveedor.empresas.certificado');
+            // Toda la información de la empresa para entregársela (A.4).
+            Route::get('/empresas/{empresa}/exportacion', [EmpresaController::class, 'exportacion'])
+                ->name('proveedor.empresas.exportacion');
             Route::get('/empresas/{empresa}', [EmpresaController::class, 'ficha'])
                 ->whereNumber('empresa')
                 ->name('proveedor.empresas.ficha');
