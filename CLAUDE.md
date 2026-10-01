@@ -56,6 +56,8 @@ Está en `docs/`. Léela cuando la tarea lo pida; no la cargues entera sin motiv
 | `docs/04-panel-del-proveedor.md` | El panel interno del owner. |
 | `docs/05-plan-de-construccion.md` | Las ocho fases y sus criterios de terminado. |
 | `docs/06-decisiones-pendientes.md` | Lo que aún no está decidido. **Si tu tarea depende de algo de aquí, no lo inventes.** |
+| `docs/07-plan-de-incidentes.md` | Qué hacer si una alerta no sale, el sistema se cae o hay que restaurar. |
+| `docs/08-despliegue.md` | Cómo se despliega en Railway: la imagen, los tres procesos, las variables y lo que no hay que hacer. |
 | `prototipos/sistema.html` | Cómo se ve el sistema del cliente. Ábrelo antes de construir una pantalla. |
 | `prototipos/panel-proveedor.html` | Cómo se ve el panel interno. |
 

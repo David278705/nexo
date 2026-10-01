@@ -2562,3 +2562,60 @@ texto que deduplicar. Dos pruebas de Pest en `FichaDeEmpleadoTest`: una arma un 
 acumulación, un disfrute y una suspensión, comprueba que el saldo vale 10 + 5 − 5 − 0,625 = 9,375, que
 quitar el disfrute o la suspensión mueve el número exactamente en su parte (`SaldoDeVacaciones::sin()`), y
 que la nota nombra cada término; la otra, que ficha y modal llevan la misma nota.
+
+## Preparación para producción (1 de octubre de 2026)
+
+David preguntó qué faltaba para que el sistema funcionara al 100% con solo desplegarlo en Railway,
+configurar el dominio y el correo. La respuesta, verificada contra el código y contra la lista «G.
+Antes de vender la primera licencia» del documento 6, fue que las funciones estaban completas pero
+todo lo que rodea al software no: se agrupó en cuatro bloques —código, legal, salir al mercado y
+operación— y David pidió hacer el primero. Estas son sus tareas, todas hechas.
+
+Los bloques 2 a 4 siguen pendientes y están en `ESTADO.md`, «Decisiones para David».
+
+### [x] PROD-01 · La página de inicio de cada quien vive en un solo sitio
+
+La regla «el owner va al panel, el resto al inicio de su empresa» estaba en cuatro sitios y dos la
+tenían mal: aceptar una invitación y restablecer la contraseña llevaban al owner a `/`, o sea a un
+403. **Hecho:** `User::paginaDeInicio()`, leída por los cuatro. Dos pruebas nuevas.
+
+### [x] PROD-02 · `equipo:invitar` crea al primer owner de un servidor nuevo
+
+Tras desplegar nadie podía entrar: `DesarrolloSeeder` solo corre en local y «Equipo» es una pantalla
+pendiente. **Hecho:** el comando crea la cuenta owner y emite su invitación; la contraseña nunca pasa
+por la terminal. Imprime el enlace siempre, porque el correo no suele estar listo en el primer
+despliegue (`Invitaciones::emitir()` se partió en `generar()` más el envío). Seis pruebas.
+
+### [x] PROD-03 · RLS protege de verdad en producción, y el arranque lo comprueba
+
+PostgreSQL no le aplica RLS a un superusuario, y Railway entrega la base con uno solo. **Hecho:**
+`despliegue:preparar-base` crea con `DB_URL_ADMIN` el rol sin privilegios que viene en `DB_URL`;
+`despliegue:verificar` no deja arrancar si la aplicación se conecta como superusuario, con
+`APP_DEBUG` en producción o sin `APP_KEY`, y avisa de lo que solo degrada. Doce pruebas; la principal
+se conecta con el rol creado y le pregunta a PostgreSQL qué es.
+
+### [x] PROD-04 · El disco de los certificados se configura, no se programa
+
+**Hecho:** `filesystems.certificados` (`DISCO_CERTIFICADOS`) en lugar de una constante: de un volumen
+a un disco tipo S3 sin tocar código.
+
+### [x] PROD-05 · El proxy de Railway, HTTPS de punta a punta y cabeceras de seguridad
+
+**Hecho:** `trustProxies`, `URL::forceHttps` en producción, cookie de sesión segura por defecto y
+`CabecerasDeSeguridad` (frame-ancestors, nosniff, Referrer-Policy, Permissions-Policy, HSTS). Cinco
+pruebas, entre ellas que un `X-Forwarded-For` inventado no falsifica la IP del límite de intentos.
+
+### [x] PROD-06 · El dinero sin coma flotante
+
+**Hecho:** el monto de los pagos y el precio de los planes como texto decimal con `decimal:0,2`, que
+además rechaza «380.000» (para PHP, 380). Dos pruebas.
+
+### [x] PROD-07 · Parches de seguridad de las dependencias
+
+**Hecho:** Laravel 12.69.3, Flysystem 3.36 y CommonMark 2.10.3. `composer audit` sin avisos.
+
+### [x] PROD-08 · Una imagen, tres procesos y la guía de despliegue
+
+**Hecho:** `Dockerfile` con FrankenPHP en modo clásico, `docker/arrancar.sh` con los roles web,
+worker y scheduler, `docker/php.ini` y `docs/08-despliegue.md`. Sin Docker en la máquina, se verificó
+con FrankenPHP real y el mismo comando del contenedor.

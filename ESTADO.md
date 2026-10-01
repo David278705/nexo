@@ -1,123 +1,93 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-09-21 · Bug reportado por David: entrar como proveedor no llevaba al panel.
-**Verificación:** verde. 1.324 de 1.324 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
-Vitest — cinco pruebas de Pest más que la sesión anterior.
-**Siguiente tarea:** ninguna. **El backlog sigue completo**: no queda ninguna tarea `[ ]`.
+**Última sesión:** 2026-10-01 · Preparación para producción, bloque 1 (código), tareas `PROD-01` a
+`PROD-08` del backlog.
+**Verificación:** verde. 1.351 de 1.351 pruebas de Pest, Pint y PHPStan sin errores, build y 415 de
+Vitest. `composer audit` sin avisos.
+**Siguiente tarea:** ninguna `[ ]` en el backlog. Lo que sigue son los bloques 2 a 4 de abajo, que
+piden decisiones de David antes de escribir código.
 
-## Qué se hizo (2026-09-21)
+## Qué se hizo
 
-### Entrar como proveedor caía en un 403, no en el panel
+David preguntó qué faltaba para salir a producción con solo desplegar, poner dominio y correo. Se
+auditó el sistema contra la lista «G. Antes de vender la primera licencia» del documento 6 y se
+encontraron cuatro bloques. Este es el primero, el de código, completo:
 
-David lo reportó como «está bugueado, no me lleva directo al panel de proveedor», y lo era.
+- **Una imagen y tres procesos** (`Dockerfile`, `docker/arrancar.sh`): web, worker de cola y
+  scheduler. Sin los dos últimos, ninguna alerta salía.
+- **RLS protege en producción**: `despliegue:preparar-base` crea el rol sin privilegios y
+  `despliegue:verificar` no deja arrancar si la aplicación se conecta como superusuario.
+- **El primer owner**: `equipo:invitar`, por invitación, sin contraseña en la terminal.
+- **HTTPS detrás del proxy de Railway** y cabeceras de seguridad.
+- **El disco de los certificados** configurable por variable.
+- **El dinero sin `float`** en pagos y precios de plan.
+- **Parches de seguridad** de Laravel, Flysystem y CommonMark.
+- **El destino tras autenticarse en un solo sitio**: aceptar una invitación o restablecer la
+  contraseña llevaban al owner a un 403. Era el mismo fallo que ya se había corregido en el acceso.
+- **La guía**: `docs/08-despliegue.md`, paso a paso.
 
-El camino que lo produce es el más común de todos: abrir la raíz del sistema. Sin sesión, `/` desvía
-a `/acceso` y **deja `/` guardada como dirección pretendida**. Al entrar,
-`redirect()->intended()` prefiere esa dirección y solo cae en `destino()` si no hay ninguna, así que
-el cuidado que `destino()` ya tenía —su propio comentario dice «mandarlo al inicio del cliente sería
-mandarlo a un 403 recién iniciada la sesión»— se saltaba justo en ese caso. El `owner` aterrizaba en
-el 403 de `SoloCliente`.
-
-- **`SesionController::olvidarPretendidaInalcanzable()`** descarta la dirección pretendida cuando
-  quien entró no puede llegar a ella. La regla se escribió **simétrica** porque el fallo lo es: un
-  usuario de empresa que intentara `/proveedor` antes de entrar aterrizaba en su propio 403. La
-  pretendida sobrevive solo si pertenece al mundo de quien entró.
-- **Cinco pruebas nuevas** en `AutenticacionTest.php`. Se comprobó que **tres se ponen rojas** al
-  quitar el arreglo —los tres casos del fallo— y que las dos de direcciones legítimas pasan en los
-  dos escenarios, que es lo que las hace valer algo.
-
-### Lo que no se tocó, a propósito
-
-- **`/` le sigue dando 403 al `owner`.** Es lo que `SoloCliente` documenta desde el documento 4, 4.1,
-  y tiene sus pruebas. Se arregló la causa —que el acceso lo mandara ahí— y no el síntoma. Queda la
-  pregunta de abajo por si se quiere cambiar.
-- **La pantalla del segundo factor sigue apareciendo una vez por sesión.** No es el bug: es el
-  diseño del capítulo 10 del documento 4.
-
-## Qué se hizo (2026-09-20)
-
-### La empresa de prueba parecía usada pero estaba vacía
-
-David entraba a una ficha cualquiera y no encontraba nada. El motivo estaba en
-`AmbienteDeDemostracion::planta()`: ocho personas, y **una sola novedad cada una como mucho**. Era
-una demostración de *situaciones* —una persona por caso— y por eso siete de cada ocho fichas salían
-en blanco.
-
-- **`App\Proveedor\PlantaDeMuestra` es nueva** y se quedó con la planta: 28 personas, 7 de ellas
-  inactivas. Cubre los tres tipos de contrato, los tres de licencia, los dos orígenes de incapacidad
-  y **los siete tipos de salida**, uno cada uno, para que el filtro del listado de terminaciones
-  tenga algo que filtrar. Gente con tres temporadas de vacaciones, prórrogas encadenadas, aumentos y
-  promociones.
-- **Los datos siguen siendo fijos, no aleatorios**, que era la propiedad que la planta anterior
-  cuidaba: la demostración tiene que lucir igual de poblada siempre. Lo único relativo a hoy son las
-  fechas. Los diez «veteranos» se derivan del índice en vez de estar escritos uno por uno —derivar no
-  es sortear: el mismo índice da siempre la misma persona—.
-- **Ninguna persona tiene dos novedades que se pisen.** Las novedades de cada quien se reparten en
-  meses distintos a propósito, porque desde `HD-03` el sistema rechaza los traslapes y una planta que
-  los tuviera estaría enseñando datos que sus propios formularios no dejarían registrar.
-
-### No había con qué entrar en una máquina nueva
-
-El `Test User` del seeder de Laravel tiene `tenant_id` nulo y rol `admin`: un usuario de empresa sin
-empresa, que no sirve para entrar a ninguna parte. Y la única empresa que existía era la de
-demostración, que es de **solo lectura**, así que tampoco servía para probar nada que se registre.
-
-- **`DesarrolloSeeder` es nuevo**: crea la cuenta del proveedor (`owner@nexo.local`), una empresa
-  normal y **escribible** (`Empresa de Pruebas S.A.S.`, sin `es_ambiente_demo`) con su
-  superadministrador (`admin@empresademo.local`), y le escribe la misma `PlantaDeMuestra`. Las dos
-  claves son `password`.
-- **No corre fuera de local**, y el guardia está dentro del propio seeder y no en quien lo llama:
-  crea contraseñas conocidas, que en un servidor de verdad sería una puerta trasera.
-- **`DatabaseSeeder` ya no crea el `Test User`** y llama al seeder de desarrollo solo en local. Con
-  eso, `php artisan migrate:fresh --seed` deja la máquina lista de un golpe.
-- **Escribe con auditoría, al revés que la demostración.** `ObservadorDeAuditoria::sinAuditar()` solo
-  se deja usar dentro del ambiente de demostración —es una protección de REV-07 que se respetó en vez
-  de rodear—, y además el rastro le da contenido a la pantalla de auditoría, que si no nacería vacía.
+El detalle de cada pieza está en las tareas `PROD-*` del backlog y en los mensajes de sus commits.
 
 ## Decisiones tomadas
 
-- **La empresa de demostración sigue siendo de solo lectura.** El candado protege lo que explora un
-  prospecto con un acceso de prueba. Por eso se hicieron **dos** empresas y no una: la de
-  demostración, rica pero intocable, y la de desarrollo, rica y escribible. Enriquecer solo la
-  primera habría dejado a David mirando sin poder registrar.
-- **`WithoutModelEvents` se mudó de `DatabaseSeeder` a `CatalogosSeeder`.** Desde el padre silenciaba
-  también lo que viniera después, y lo que viene después necesita justamente esos eventos: de ellos
-  cuelgan el `tenant_id` que pone `PerteneceATenant` y el periodo inicial que abre
-  `ObservadorDeVinculacion`. Fue la causa real del primer fallo del seeder, no la que parecía.
-- **Las pruebas dejaron de repetir el número 8.** `AmbienteDeDemostracionTest` lee ahora
-  `PlantaDeMuestra::TOTAL`, y el `16` de las filas borradas lógicamente pasó a ser `TOTAL * 2`, que es
-  lo que de verdad significa.
+- **FrankenPHP en modo clásico, nunca en modo worker.** El modo worker mantiene la aplicación viva
+  entre peticiones, y la empresa en curso de `ContextoTenant` podría pasar de una a la siguiente.
+- **Un solo rol de base que también migra**, en lugar de un rol dueño y otro de solo datos. Es más
+  simple, y `FORCE ROW LEVEL SECURITY` hace que el dueño tampoco se salte las políticas.
+- **El contenedor corre como root**, igual que la imagen de FrankenPHP. Railway monta los volúmenes
+  como root, y dejar de serlo pediría un paso más al arrancar. Queda anotado en el `Dockerfile`.
+- **Sin una Content-Security-Policy de scripts**, solo `frame-ancestors`. Mal calibrada, una política
+  de scripts deja la aplicación en blanco sin avisar.
+- **El worker sin `--max-time`**: haría salir al proceso con código 0, y Railway, con su política por
+  defecto, no lo reiniciaría.
 
 ## Preguntas para Angela
 
-- (vacío, no cambia respecto a la sesión anterior)
+- (sin cambios) B.2, el fondo de cesantías y la norma de `HD-04`.
 
 ## Decisiones para David
 
-- **¿`/` debería desviar al `owner` a su panel en vez de darle 403?** Hoy da 403 porque el documento
-  4, 4.1 dice que el proveedor recibe 403 «en todas las secciones» del cliente, y `SoloCliente` lo
-  cumple al pie de la letra. Pero un `owner` que teclee la raíz por costumbre ve una pantalla de
-  error en vez de su panel, que es justo la sensación que se reportó como bug. Cambiarlo es una
-  línea; se dejó como está por no contradecir lo documentado sin decidirlo.
-- **Las verificaciones manuales pendientes ahora sí se pueden hacer.** La lista larga que venía
-  arrastrándose desde `HD-04` estaba bloqueada en la práctica porque no había una empresa con datos y
-  escribible. Ya la hay: entra como `admin@empresademo.local` / `password`.
-- **`HD-12` mencionaba una «carga masiva de terminaciones» que no existe.** ¿Quieres una plantilla de
-  terminaciones —y entonces es tarea nueva— o el punto se da por descartado?
-- **`HD-05` sigue bloqueada**, esperando el calendario de festivos de 2016-2025 verificado a mano.
-- **`F6-07` y `F3-06b` siguen esperándote** (Railway y proveedor transaccional de correo).
-- **La tarea `HD-10` decía «siete plantillas» y el código solo tiene seis.**
-- **`stash@{0}` sigue en el repositorio y ya no sirve para nada.**
+**Los bloques 2 a 4 de la auditoría, que siguen pendientes:**
+
+- **Legal.** Sociedad y facturación electrónica ante la DIAN; contrato, acuerdo de tratamiento de
+  datos y autorización para empleados revisados por abogado (B.4). En la app no hay términos ni
+  política de tratamiento, y el superadministrador empieza a cargar datos de salud sin aceptar nada.
+  Y A.4 promete entregarle al cliente que se va toda su información, pero no existe un «exportar
+  todo».
+- **Salir al mercado.** No hay landing (la recomendación es un sitio estático en el dominio raíz y la
+  aplicación en `app.`), ni tabla de precios (A.1, `planes` vacía), ni pasarela de pagos (la lista G
+  la exige antes de vender), ni canal de soporte visible para el cliente, ni marca (el favicon pesa
+  0 bytes).
+- **Operación.** Dominio y correo (`F3-06b`), el simulacro de restauración (`F6-07`, porque el plan
+  de incidentes da por hecho un *Point-in-Time Recovery* de Railway que nadie ha verificado), y las
+  verificaciones manuales en navegador que se arrastran desde `HD-04`.
+
+**Al desplegar, tres cosas que solo se comprueban allá** (están en `docs/08-despliegue.md`, paso 8):
+
+- **Que el registro de accesos guarde las IPs reales.** `trustProxies('*')` confía en un solo salto.
+  Si Railway tuviera dos, todos los usuarios se verían con la IP del proxy y el límite de intentos
+  los contaría como uno solo.
+- **Que la imagen compile.** Aquí no había Docker. Se verificó todo lo que se podía verificar sin él
+  —FrankenPHP real con el mismo comando, `optimize` en producción, que las imágenes base existan—,
+  pero la compilación misma la hace Railway por primera vez.
+- **Borrar `DB_URL_ADMIN`** después del primer despliegue.
+
+**De antes, sin cambios:** si `/` debería desviar al owner a su panel en vez de darle 403;
+`HD-05` (festivos históricos; se comprobó que el cálculo por ley Emiliani coincide fecha por fecha
+con 2025, 2026 y 2027, y podría generar los años anteriores si alguien coteja una muestra);
+`HD-12` y la plantilla de terminaciones que no existe; `stash@{0}`, que ya no sirve.
+
+**Un riesgo que no se tocó:** el campo «Monto recibido» es un número del navegador. Si alguien
+escribe «380.000», el navegador lo convierte en 380 antes de enviarlo, y el servidor no lo puede
+distinguir. La confirmación del pago enseña el monto, pero un campo de dinero con formato colombiano
+lo evitaría del todo.
 
 ## Notas para la próxima sesión
 
-- **No hay tarea `[ ]` en el backlog.** Sigue conviniendo un punto de control con `/revisar` antes de
-  inventar trabajo.
-- **Hay dos empresas en local y hacen cosas distintas.** `Empresa Demo Nexo S.A.S.` es de solo
-  lectura y se restaura con `demostracion:restaurar`; `Empresa de Pruebas S.A.S.` es escribible y la
-  escribe `db:seed --class=DesarrolloSeeder`, que es idempotente —si ya hay personas, no duplica—.
-- **Para correr un archivo de Pest suelto que use `usuarioDe()`** hay que incluir
-  `RolesYPermisosTest.php`, y `empleadoParaNovedad()` vive en `FlujoDeNovedadTest.php`. Y
-  `php -d memory_limit=1G vendor/bin/pest`, que con el límite del php.ini de esta máquina se muere.
-- **El entorno local no sobrevive al cierre de la sesión.** PostgreSQL sí, que es servicio de brew;
-  `php artisan serve --port=8014` hay que relanzarlo.
+- **`despliegue:verificar` falla en local, y es lo correcto**: en local la base se conecta como
+  `postgres`, que es superusuario. Sirve para ver de un vistazo qué le falta a una configuración.
+- **Para correr un archivo de Pest suelto** hay que incluir el que define sus helpers: `usuarioDe()`
+  vive en `RolesYPermisosTest.php`, `ownerEnElPanel()` en `CrearEmpresaTest.php`,
+  `ownerVerificable()` en `PanelDelProveedorTest.php`. Y siempre `php -d memory_limit=1G`.
+- **El entorno local no sobrevive al cierre de la sesión.** `php artisan serve --port=8014` hay que
+  relanzarlo.
