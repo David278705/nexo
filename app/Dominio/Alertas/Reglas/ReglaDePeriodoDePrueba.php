@@ -2,6 +2,7 @@
 
 namespace App\Dominio\Alertas\Reglas;
 
+use App\Contratacion\FechaFinEstimada;
 use App\Contratacion\TipoContrato;
 use App\Dominio\Alertas\AlertaPorEnviar;
 use App\Dominio\Alertas\ReferenciaTemporal;
@@ -92,7 +93,7 @@ abstract class ReglaDePeriodoDePrueba implements ReglaDeAlerta
 
             // Un contrato fijo de menos de cinco días no tiene periodo de
             // prueba que quepa. No hay nada de qué avisar.
-            if ($prueba->dias() < 1) {
+            if (! $prueba->aplica()) {
                 continue;
             }
 
@@ -117,9 +118,25 @@ abstract class ReglaDePeriodoDePrueba implements ReglaDeAlerta
                 $fechaDeEnvio,
                 $termina,
                 $this->asunto($nombre, $referencia),
-                $this->cuerpo($nombre, $cargo, $referencia),
+                $this->cuerpoCompleto($prueba, $nombre, $cargo, $referencia),
             );
         }
+    }
+
+    /**
+     * El cuerpo de la plantilla y, si el periodo sale de una fecha estimada,
+     * la nota que lo dice (`OL-01`).
+     *
+     * Va aquí y no en cada regla porque es una propiedad del cálculo, no del
+     * aviso: cualquier alerta de periodo de prueba que llegue a mirar una obra
+     * o labor tiene que llevarla, y escrita en cada una se olvidaría en la
+     * siguiente.
+     */
+    private function cuerpoCompleto(PeriodoDePrueba $prueba, string $nombre, string $cargo, ReferenciaTemporal $referencia): string
+    {
+        $cuerpo = $this->cuerpo($nombre, $cargo, $referencia);
+
+        return $prueba->esEstimado() ? $cuerpo.' '.FechaFinEstimada::NOTA : $cuerpo;
     }
 
     /**

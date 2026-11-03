@@ -45,6 +45,14 @@ const opciones = {
     ],
     riesgos: [{ valor: "riesgo_i", texto: "Riesgo I – Mínimo" }],
     contratoConFechaFin: "fijo",
+    contratoConFechaEstimada: "obra_labor",
+    // Los textos reales viven en `FechaFinEstimada` y los comprueba Pest; aquí
+    // basta con saber que el componente pinta los tres que le llegan.
+    avisoDeObraOLabor: {
+        titulo: "Está registrando un contrato de obra o labor",
+        explicacion: "El sistema calcula un periodo de prueba sugerido.",
+        riesgo: "El cálculo depende de la fecha que usted registre.",
+    },
     eps: [{ valor: 1, texto: "Sura EPS" }],
     fondosPension: [{ valor: 2, texto: "Porvenir" }],
     arls: [{ valor: 3, texto: "ARL Sura" }],
@@ -171,6 +179,65 @@ describe("Asistente de nuevo empleado", () => {
         await componente.vm.$nextTick();
 
         expect(componente.text()).toContain("Fecha de finalización");
+    });
+
+    describe("la obra o labor (OL-01)", () => {
+        async function enObraOLabor() {
+            const componente = montar();
+            componente.vm.form.tipo_contrato = "obra_labor";
+            await componente.vm.$nextTick();
+
+            return componente;
+        }
+
+        it("ofrece la fecha de finalización estimada, marcada opcional", async () => {
+            const texto = (await enObraOLabor()).text();
+
+            expect(texto).toContain("Fecha de finalización estimada");
+            expect(texto).toContain("Fecha de finalización estimada  (opcional)");
+        });
+
+        it("no la ofrece en las otras modalidades", async () => {
+            const componente = montar();
+
+            for (const tipo of ["indefinido", "fijo"]) {
+                componente.vm.form.tipo_contrato = tipo;
+                await componente.vm.$nextTick();
+
+                expect(componente.text()).not.toContain("estimada");
+            }
+        });
+
+        it("explica el cálculo y el riesgo con los textos del servidor", async () => {
+            const texto = (await enObraOLabor()).text();
+
+            expect(texto).toContain(opciones.avisoDeObraOLabor.titulo);
+            expect(texto).toContain(opciones.avisoDeObraOLabor.explicacion);
+            expect(texto).toContain(opciones.avisoDeObraOLabor.riesgo);
+        });
+
+        it("no muestra el aviso en las otras modalidades", async () => {
+            const componente = montar();
+            componente.vm.form.tipo_contrato = "fijo";
+            await componente.vm.$nextTick();
+
+            expect(componente.text()).not.toContain(opciones.avisoDeObraOLabor.titulo);
+        });
+
+        it("no impide avanzar si la fecha estimada se deja en blanco", async () => {
+            const componente = await enObraOLabor();
+
+            expect(componente.vm.pasos[2].campos).not.toContain("fecha_fin_estimada");
+        });
+
+        it("en el resumen dice que sin fecha no se calcula periodo de prueba", async () => {
+            const componente = await enObraOLabor();
+
+            expect(componente.vm.resumen).toContainEqual({
+                etiqueta: "Fecha de finalización estimada",
+                valor: "Sin registrar: no se calcula periodo de prueba",
+            });
+        });
     });
 
     it("no pide el país de la residencia, que siempre es Colombia", () => {

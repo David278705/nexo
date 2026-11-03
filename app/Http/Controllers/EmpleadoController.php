@@ -8,6 +8,7 @@ use App\Catalogos\Ubicaciones;
 use App\Contratacion\AdvertenciaDeReingreso;
 use App\Contratacion\BloqueSociodemografico;
 use App\Contratacion\EstadoVinculacion;
+use App\Contratacion\FechaFinEstimada;
 use App\Contratacion\FichaDeEmpleado;
 use App\Contratacion\Genero;
 use App\Contratacion\ListadoDeEmpleados;
@@ -117,6 +118,8 @@ class EmpleadoController extends Controller
                 'contratos' => TipoContrato::paraElegir(),
                 'riesgos' => TipoRiesgo::paraElegir(),
                 'contratoConFechaFin' => TipoContrato::Fijo->value,
+                'contratoConFechaEstimada' => TipoContrato::ObraLabor->value,
+                'avisoDeObraOLabor' => FechaFinEstimada::aviso(),
                 ...Entidades::paraFormulario(),
                 ...BloqueSociodemografico::opciones(),
             ],

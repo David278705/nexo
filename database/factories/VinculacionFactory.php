@@ -64,6 +64,15 @@ class VinculacionFactory extends Factory
         ]);
     }
 
+    /**
+     * Obra o labor con fecha de finalización estimada (`OL-01`), que es lo
+     * único que le da periodo de prueba.
+     */
+    public function deObraOLaborEstimadaHasta(string $fecha): static
+    {
+        return $this->deObraOLabor()->state(fn () => ['fecha_fin_estimada' => Carbon::parse($fecha)]);
+    }
+
     public function conIngreso(string $fecha): static
     {
         return $this->state(fn () => ['fecha_ingreso' => Carbon::parse($fecha)]);

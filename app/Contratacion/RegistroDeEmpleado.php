@@ -157,6 +157,11 @@ class RegistroDeEmpleado
             // con fecha de vencimiento, que dispararía alertas de renovación
             // sobre un contrato que no se renueva.
             'fecha_fin' => $tipoContrato->exigeFechaFin() ? $datos['fecha_fin'] : null,
+            // Solo la obra o labor, y opcional (`OL-01`). Con el mismo cuidado
+            // que la de arriba: una estimación en otra modalidad no se guarda.
+            'fecha_fin_estimada' => $tipoContrato->admiteFechaFinEstimada()
+                ? ($datos['fecha_fin_estimada'] ?? null)
+                : null,
 
             'salario' => $datos['salario'],
             'bonificacion' => $datos['bonificacion'],

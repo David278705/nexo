@@ -9,7 +9,8 @@ use App\Autorizacion\Modulo;
  * de prueba de entregabilidad, que no es una alerta y por eso va al final y
  * `esDelCalendario()` lo distingue.
  *
- * Son las trece del «resumen del calendario»: nueve individuales, una por
+ * Son las trece del «resumen del calendario» más las dos del periodo de prueba
+ * sugerido de la obra o labor (`OL-01`): once individuales, una por
  * empleado, y cuatro agrupadas —tres mensuales y la de obra o labor, que es
  * bimestral (documento 1, 9.6 y 9.7)—. Las tres que la misma
  * tabla lista como «en pantalla, al momento» —saldo insuficiente, documento
@@ -45,6 +46,14 @@ enum TipoDeAlerta: string
     case PruebaFijoDosDias = 'prueba_fijo_dos_dias';
 
     case PruebaFijoVispera = 'prueba_fijo_vispera';
+
+    // Periodo de prueba sugerido de la obra o labor con fecha estimada (`OL-01`).
+    // Son los dos avisos del término fijo, con nombre propio: el registro de
+    // envíos no puede decir «término fijo» sobre un contrato que no lo es.
+
+    case PruebaObraLaborDosDias = 'prueba_obra_labor_dos_dias';
+
+    case PruebaObraLaborVispera = 'prueba_obra_labor_vispera';
 
     // Vencimiento, prórrogas y topes del término fijo (documento 1, 9.4).
 
@@ -96,6 +105,8 @@ enum TipoDeAlerta: string
             self::PruebaIndefinidoVispera => 'Periodo de prueba: último día mañana',
             self::PruebaFijoDosDias => 'Periodo de prueba en término fijo: quedan 2 días',
             self::PruebaFijoVispera => 'Periodo de prueba en término fijo: último día mañana',
+            self::PruebaObraLaborDosDias => 'Periodo de prueba en obra o labor: quedan 2 días',
+            self::PruebaObraLaborVispera => 'Periodo de prueba en obra o labor: último día mañana',
             self::PlazoDeRenovacion => 'Plazo para definir la renovación',
             self::EfectoDelSilencio => 'Último día para avisar la no renovación',
             self::UltimaRenovacionCorta => 'Última renovación corta posible',
@@ -130,7 +141,7 @@ enum TipoDeAlerta: string
     }
 
     /**
-     * Si es una de las trece del «resumen del calendario» (documento 1, 9.7).
+     * Si es una de las alertas del «resumen del calendario» (documento 1, 9.7).
      *
      * Lo es todo lo que dispara una regla. La única que no lo es —el correo de
      * prueba de entregabilidad— existe para operar el sistema, no para avisarle

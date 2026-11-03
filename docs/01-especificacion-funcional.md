@@ -196,6 +196,7 @@ Donde se registra el ingreso de una persona a la empresa y donde nace toda la in
 | Tipo de contrato | Lista | Sí | Tres opciones: Término indefinido · Término fijo · Obra o labor. "Obra o labor" es una sola opción, no dos. |
 | Fecha de ingreso | Fecha | Sí | Sobre ella se calcula la acumulación de vacaciones y el periodo de prueba. |
 | Fecha de finalización | Fecha | Solo en término fijo | Alimenta el periodo de prueba, las alertas de renovación y el control del tope legal. |
+| Fecha de finalización estimada | Fecha | No. Solo existe en obra o labor | Si se registra, de ella sale el periodo de prueba sugerido, con las reglas del término fijo (9.3). Si no, la obra o labor no tiene periodo de prueba. No es un vencimiento: no dispara alertas de renovación ni de tope. Ver 5.4. |
 | Salario mensual | Numérico | Sí |  |
 | Bonificación | Numérico | Sí | Puede quedar en cero. |
 | Entidad bancaria | Lista | Sí | Solo la entidad, no el número de cuenta. |
@@ -229,7 +230,22 @@ Bloque opcional que la empresa activa o desactiva en la parametrización. Su raz
 |---|---|---|
 | Término indefinido | Solo fecha de ingreso | Es la regla legal por defecto desde la reforma laboral de 2025. |
 | Término fijo | Fecha de inicio y fecha de finalización | Sujeto a las reglas de prórroga y tope de duración de 5.5. |
-| Obra o labor | Solo fecha de ingreso | El contrato termina cuando termina la obra para la que se contrató a la persona. |
+| Obra o labor | Fecha de ingreso, y opcionalmente una fecha de finalización estimada | El contrato termina cuando termina la obra para la que se contrató a la persona. |
+
+#### Periodo de prueba en obra o labor
+
+**Decidido por David el 2026-11-02 (`OL-01`).** La obra o labor maneja periodo de prueba, calculado con
+las mismas reglas del término fijo —una quinta parte de la duración, sin exceder dos meses— sobre una
+**fecha de finalización estimada** que registra la empresa. El campo es opcional: si no se registra, el
+sistema no calcula periodo de prueba ni envía alertas sobre él.
+
+Al elegir obra o labor, el asistente de registro muestra un aviso que deja claro tres cosas: que la
+fecha es una estimación de la empresa, que el periodo de prueba se **sugiere** a partir de ella, y que
+el sistema no tiene cómo comprobar que corresponda a la obra real. Si la obra termina antes de lo
+estimado, el periodo calculado puede exceder el que la ley permite y no ser válido; verificarlo, y que
+esté pactado por escrito, le corresponde a la empresa. La ficha del empleado y los correos de alerta
+repiten la misma advertencia en una nota corta. Los textos exactos viven en
+`App\Contratacion\FechaFinEstimada`.
 
 Los contratos por prestación de servicios quedan expresamente fuera del sistema: no son laborales sino comerciales, y ninguna funcionalidad del sistema les aplica.
 
@@ -581,6 +597,10 @@ El sistema calcula el periodo de prueba a partir de la duración pactada: una qu
 | Dos días antes de finalizar el periodo de prueba | Aviso de que se aproxima el vencimiento, con la fecha. |
 | Un día antes de finalizar el periodo de prueba | Último aviso, con la fecha. |
 
+Los dos mismos avisos aplican a la **obra o labor con fecha de finalización estimada** (5.4), como dos
+tipos de alerta propios para que el registro de envíos no diga «término fijo» sobre un contrato que no
+lo es. Sus correos llevan la nota de que el periodo es una sugerencia calculada sobre una fecha estimada.
+
 ### 9.4 Vencimiento, prórrogas y topes del término fijo
 
 Es el conjunto de alertas de mayor valor comercial del producto.
@@ -607,13 +627,13 @@ No generan alertas de vencimiento, porque no hay fecha previsible. Sí generan u
 
 **No hay umbral de antigüedad y es a propósito** —decisión de Angela, agosto de 2026, que cierra D.2—. El listado los trae todos, sin importar cuánto lleven: no existe criterio legal para decir a partir de cuándo una obra es «prolongada», y el propósito de este correo es la visibilidad periódica, no señalar unos pocos. Por eso tampoco es mensual: cada dos meses da la visibilidad sin volverse ruido.
 
-**No reciben ninguna de las tres alertas de periodo de prueba** —respondido por Angela, revierte lo que decía esta sección antes de la revisión de agosto de 2026—. Sí aplican las alertas de vacaciones.
+**No reciben las tres alertas de periodo de prueba del indefinido** —respondido por Angela en la revisión de agosto de 2026—. **Desde el 2026-11-02 (`OL-01`), si la empresa registra una fecha de finalización estimada, reciben los dos avisos del término fijo** calculados sobre esa fecha (5.4 y 9.3); sin ella, ninguno. Sí aplican las alertas de vacaciones.
 
 ### 9.7 Resumen del calendario
 
 | Frecuencia | Alertas |
 |---|---|
-| Individuales, por empleado | Periodo de prueba en indefinido (3 avisos, no aplica a obra o labor) · Periodo de prueba en término fijo (2 avisos) · Plazo de renovación a 32 días · Efecto del silencio a 30 días · Última renovación corta · Cercanía al tope legal (3 meses antes). |
+| Individuales, por empleado | Periodo de prueba en indefinido (3 avisos) · Periodo de prueba en término fijo (2 avisos) · Periodo de prueba en obra o labor con fecha estimada (2 avisos) · Plazo de renovación a 32 días · Efecto del silencio a 30 días · Última renovación corta · Cercanía al tope legal (3 meses antes). |
 | Resumen mensual | Contratos vencidos sin gestionar · Acumulación de 15 días de vacaciones · Año cumplido sin disfrute mínimo. |
 | Resumen bimestral | Contratos de obra o labor activos. Es el único que no sale todos los meses (9.6). |
 | En pantalla, al momento | Saldo de vacaciones insuficiente · Documento inexistente · Advertencia de reingreso · Validaciones bloqueantes de prórroga. |

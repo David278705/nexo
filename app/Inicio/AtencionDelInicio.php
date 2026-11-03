@@ -2,7 +2,6 @@
 
 namespace App\Inicio;
 
-use App\Contratacion\TipoContrato;
 use App\Dominio\Calculo\PeriodoDePrueba;
 use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Models\Vinculacion;
@@ -104,12 +103,9 @@ enum AtencionDelInicio: string
      * anteayer ya no exige nada que se pueda hacer a tiempo, y ponerlo en una
      * tarjeta de acción sería pedir algo imposible.
      *
-     * **El contrato de obra o labor queda fuera.** La sección 9.6 dice que no le
-     * corresponde ninguna de las alertas de periodo de prueba, y lo que la
-     * tarjeta cuenta es exactamente eso: los periodos de prueba de los que hay
-     * que ocuparse esta semana. Las tres alertas todavía se lo mandan y eso es
-     * `REV-05`, que sigue pendiente en el backlog; esta pantalla no repite el
-     * error mientras tanto.
+     * **La obra o labor entra solo si tiene fecha estimada** (`OL-01`): es la
+     * única forma en que tiene periodo de prueba. La que no la tiene la salta
+     * `PeriodoDePrueba::aplica()`, igual que al fijo de menos de cinco días.
      *
      * @return list<int>
      */
@@ -130,7 +126,6 @@ enum AtencionDelInicio: string
          */
         $candidatas = Vinculacion::query()
             ->activas()
-            ->where('tipo_contrato', '!=', TipoContrato::ObraLabor->value)
             ->whereDate('fecha_ingreso', '<=', $hasta)
             ->whereDate('fecha_ingreso', '>=', $hoy->copy()->subMonths(self::MESES_DE_LA_VENTANA))
             ->get();
@@ -140,9 +135,10 @@ enum AtencionDelInicio: string
         foreach ($candidatas as $vinculacion) {
             $prueba = PeriodoDePrueba::de($vinculacion);
 
-            // Un contrato fijo de menos de cinco días no tiene periodo de prueba
-            // que quepa, igual que en `ReglaDePeriodoDePrueba`.
-            if ($prueba->dias() < 1) {
+            // Sin periodo de prueba que calcular —un fijo de menos de cinco
+            // días, una obra o labor sin fecha estimada—, igual que en
+            // `ReglaDePeriodoDePrueba`.
+            if (! $prueba->aplica()) {
                 continue;
             }
 

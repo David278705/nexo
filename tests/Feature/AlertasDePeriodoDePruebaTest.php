@@ -309,6 +309,8 @@ describe('el proceso diario con las cinco reglas registradas', function () {
             TipoDeAlerta::PruebaIndefinidoVispera,
             TipoDeAlerta::PruebaFijoDosDias,
             TipoDeAlerta::PruebaFijoVispera,
+            TipoDeAlerta::PruebaObraLaborDosDias,
+            TipoDeAlerta::PruebaObraLaborVispera,
             TipoDeAlerta::PlazoDeRenovacion,
             TipoDeAlerta::EfectoDelSilencio,
             TipoDeAlerta::UltimaRenovacionCorta,

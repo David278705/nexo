@@ -2643,3 +2643,43 @@ entregada y el periodo de gracia cumplido, pide el NIT para confirmar e imprime 
 única excepción a la regla 4, escrita en el `CLAUDE.md`. Qué se entrega, qué se borra y qué conserva
 el proveedor vive en un solo sitio, `TablasDeLaEmpresa`, y una prueba obliga a clasificar toda tabla
 nueva con `tenant_id`. Decidido por David: construirla con candados.
+
+## Decisiones de David (2 de noviembre de 2026)
+
+### [x] OL-01 · La obra o labor maneja periodo de prueba sobre una fecha estimada
+
+Hasta ahora la obra o labor no tenía periodo de prueba: `PeriodoDePrueba` le daba los dos meses del
+indefinido, pero ninguna alerta ni pantalla lo usaba (REV-05, documento 1, 9.6). David decidió que sí lo
+tenga: al registrar una obra o labor se puede poner una **fecha de finalización estimada**, opcional; si
+no se pone no hay periodo de prueba, y si se pone se calcula con las reglas del término fijo. Y al elegir
+obra o labor tiene que salir un aviso que deje claro que el periodo es una sugerencia sobre una fecha del
+cliente, que el sistema no puede comprobar, y que si la obra termina antes el periodo puede no ser válido.
+
+**Hecho cuando:** el asistente ofrece la fecha estimada solo en obra o labor y marcada opcional; el aviso
+sale al elegir la modalidad; el servidor la valida (posterior al ingreso, prohibida en las otras dos); el
+periodo de prueba se calcula sobre ella y no existe sin ella; la fecha estimada no se confunde con un
+vencimiento; la ficha y los correos dicen que el periodo es estimado.
+**Fuente:** decisión de David en sesión · `app/Dominio/Calculo/PeriodoDePrueba.php` ·
+`docs/01-especificacion-funcional.md` 5.4, 9.3, 9.6 y 9.7
+
+Hecho: columna nueva `vinculaciones.fecha_fin_estimada`, **aparte de `fecha_fin` a propósito**: medio
+sistema lee `fecha_fin` como vencimiento (renovación, vencidos, tope, filtro «vence»), y una estimación
+ahí haría «vencer» una obra o labor. `TipoContrato::admiteFechaFinEstimada()`, `RegistrarEmpleado` la
+valida y `RegistroDeEmpleado` solo la guarda en obra o labor. `PeriodoDePrueba` toma la quinta parte de la
+duración estimada con el tope de dos meses, da cero días sin fecha, y suma `aplica()` y `esEstimado()`.
+Las alertas son **dos tipos nuevos**, `PruebaObraLaborDosDias` y `PruebaObraLaborVispera`, con los textos
+del fijo: reutilizar los del fijo habría hecho que el registro de envíos dijera «término fijo» sobre una
+obra o labor. `ReglaDePeriodoDePrueba` agrega a todo correo de periodo estimado la nota de
+`FechaFinEstimada`, donde viven también los tres textos del aviso. La tarjeta «Periodos de prueba que
+terminan esta semana» ya no excluye la obra o labor y se apoya en `aplica()`. La ficha enseña la fecha
+estimada y el periodo sugerido con su nota. 23 pruebas en `ObraOLaborConFechaEstimadaTest.php` y 6 de
+Vitest en `Nuevo.test.js`.
+
+**Lo que no se tocó, a propósito, y queda para decidir:**
+
+- **La carga inicial.** La plantilla de empleados no tiene columna para la fecha estimada, así que las
+  obras cargadas por Excel quedan sin periodo de prueba. Agregarla cambia el formato de la plantilla real.
+- **El texto de la advertencia de reingreso** dice «usted recibirá las alertas de periodo de prueba
+  estipuladas». Es literal del documento 1, 5.6, y en una obra o labor sin fecha estimada no es cierto.
+- **No hay forma de corregir la fecha estimada** después de registrar: no existe edición del contrato, igual
+  que con la fecha de finalización del fijo, que solo se renueva.

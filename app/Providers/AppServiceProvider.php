@@ -19,6 +19,8 @@ use App\Dominio\Alertas\Reglas\PruebaFijoVispera;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoQuinceDias;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoUnMes;
 use App\Dominio\Alertas\Reglas\PruebaIndefinidoVispera;
+use App\Dominio\Alertas\Reglas\PruebaObraLaborDosDias;
+use App\Dominio\Alertas\Reglas\PruebaObraLaborVispera;
 use App\Dominio\Alertas\Reglas\UltimaRenovacionCorta;
 use App\Legal\DocumentosLegales;
 use App\Models\User;
@@ -54,7 +56,8 @@ class AppServiceProvider extends ServiceProvider
         // El catálogo de reglas de alerta, también singleton: es una lista que
         // se llena al arrancar y que el proceso diario recorre. Cada tarea de
         // la fase 3 suma aquí las suyas con una línea y no toca el proceso.
-        // Están las trece del capítulo 9 del documento 1.
+        // Están las trece del capítulo 9 del documento 1, más las dos de la
+        // obra o labor con fecha estimada.
         $this->app->singleton(CatalogoDeReglas::class, function (): CatalogoDeReglas {
             $catalogo = new CatalogoDeReglas;
 
@@ -64,6 +67,11 @@ class AppServiceProvider extends ServiceProvider
             $catalogo->registrar(new PruebaIndefinidoVispera);
             $catalogo->registrar(new PruebaFijoDosDias);
             $catalogo->registrar(new PruebaFijoVispera);
+
+            // Las dos del periodo de prueba sugerido de la obra o labor, que
+            // solo disparan si la empresa registró la fecha estimada (`OL-01`).
+            $catalogo->registrar(new PruebaObraLaborDosDias);
+            $catalogo->registrar(new PruebaObraLaborVispera);
 
             // Las cuatro del término fijo (documento 1, 9.4).
             $catalogo->registrar(new PlazoDeRenovacion);

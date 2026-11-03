@@ -39,6 +39,19 @@ enum TipoContrato: string
     }
 
     /**
+     * Si la modalidad admite una fecha de finalización estimada (`OL-01`).
+     *
+     * Solo la obra o labor, y siempre opcional. No es un vencimiento: es la
+     * fecha que la empresa calcula para el fin de la obra, y de ella sale el
+     * periodo de prueba sugerido con las reglas del término fijo. Por eso no
+     * es `exigeFechaFin()`: nada que lea un vencimiento debe leer esta fecha.
+     */
+    public function admiteFechaFinEstimada(): bool
+    {
+        return $this === self::ObraLabor;
+    }
+
+    /**
      * Si sobre esta modalidad se ofrecen renovar y cambiar a indefinido.
      *
      * Ambas acciones son exclusivas del término fijo (documento 1, 5.5). En

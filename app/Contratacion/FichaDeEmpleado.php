@@ -3,6 +3,7 @@
 namespace App\Contratacion;
 
 use App\Autorizacion\Modulo;
+use App\Dominio\Calculo\PeriodoDePrueba;
 use App\Dominio\Calculo\SaldoDeVacaciones;
 use App\Models\Ciudad;
 use App\Models\Incapacidad;
@@ -335,6 +336,13 @@ class FichaDeEmpleado
             'Bonificación' => Formato::dinero($this->vinculacion->getAttribute('bonificacion')),
         ];
 
+        // La obra o labor enseña su fecha estimada y el periodo de prueba que
+        // sale de ella, con la nota que dice que es una sugerencia (`OL-01`).
+        if ($tipo->admiteFechaFinEstimada()) {
+            $campos['Fecha de finalización estimada'] = Formato::fecha($this->vinculacion->fecha_fin_estimada);
+            $campos['Periodo de prueba sugerido'] = $this->periodoDePruebaSugerido();
+        }
+
         // Las dos cuentas del tope legal solo tienen sentido donde hay plazo
         // que topar: en el indefinido no existe el tope de cuatro años.
         if ($tipo->exigeFechaFin()) {
@@ -351,6 +359,20 @@ class FichaDeEmpleado
             'historial' => self::filasDelHistorial($historial),
             'notaDeHistorial' => $historial->notaDeCargaInicial(),
         ];
+    }
+
+    /**
+     * Hasta cuándo va el periodo de prueba de la obra o labor, o por qué no hay.
+     */
+    private function periodoDePruebaSugerido(): string
+    {
+        $prueba = PeriodoDePrueba::de($this->vinculacion);
+
+        if (! $prueba->aplica()) {
+            return 'Sin calcular: no se registró fecha de finalización estimada.';
+        }
+
+        return 'Hasta el '.Formato::fecha($prueba->terminaEl()).'. '.FechaFinEstimada::NOTA;
     }
 
     /**

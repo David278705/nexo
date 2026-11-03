@@ -74,6 +74,7 @@ const form = useForm({
     tipo_contrato: "",
     fecha_ingreso: "",
     fecha_fin: "",
+    fecha_fin_estimada: "",
     salario: "",
     bonificacion: "0",
     banco_id: "",
@@ -97,6 +98,13 @@ const form = useForm({
 // cambiar de modalidad.
 const llevaFechaFin = computed(
     () => form.tipo_contrato === props.opciones.contratoConFechaFin,
+);
+
+// La obra o labor admite una fecha de finalización estimada, siempre opcional
+// (`OL-01`). Igual que la del fijo, el campo desaparece al cambiar de modalidad,
+// y el servidor descarta lo que llegue en otra.
+const llevaFechaEstimada = computed(
+    () => form.tipo_contrato === props.opciones.contratoConFechaEstimada,
 );
 
 /*
@@ -306,6 +314,16 @@ const resumen = computed(() => [
     { etiqueta: "Fecha de ingreso", valor: form.fecha_ingreso },
     ...(llevaFechaFin.value
         ? [{ etiqueta: "Fecha de finalización", valor: form.fecha_fin }]
+        : []),
+    ...(llevaFechaEstimada.value
+        ? [
+              {
+                  etiqueta: "Fecha de finalización estimada",
+                  valor:
+                      form.fecha_fin_estimada ||
+                      "Sin registrar: no se calcula periodo de prueba",
+              },
+          ]
         : []),
     { etiqueta: "Salario mensual", valor: form.salario },
     { etiqueta: "Bonificación", valor: form.bonificacion },
@@ -631,6 +649,15 @@ const resumenDelPerfil = computed(() =>
                         :error="form.errors.fecha_fin ?? ''"
                     />
 
+                    <CampoFecha
+                        v-if="llevaFechaEstimada"
+                        v-model="form.fecha_fin_estimada"
+                        etiqueta="Fecha de finalización estimada"
+                        ayuda="De ella sale el periodo de prueba sugerido."
+                        opcional
+                        :error="form.errors.fecha_fin_estimada ?? ''"
+                    />
+
                     <CampoTexto
                         v-model="form.salario"
                         etiqueta="Salario mensual"
@@ -654,6 +681,24 @@ const resumenDelPerfil = computed(() =>
                         :error="form.errors.banco_id ?? ''"
                     />
                 </div>
+
+                <!--
+                    El aviso de la obra o labor (`OL-01`). Los tres textos llegan
+                    del servidor, de `FechaFinEstimada`, donde una prueba comprueba
+                    que siguen diciendo lo que dicen: son los que dejan claro que el
+                    periodo de prueba es una sugerencia sobre una fecha del cliente.
+                -->
+                <Aviso
+                    v-if="llevaFechaEstimada"
+                    tono="advertencia"
+                    :titulo="opciones.avisoDeObraOLabor.titulo"
+                    class="mt-4"
+                >
+                    <p>{{ opciones.avisoDeObraOLabor.explicacion }}</p>
+                    <p class="mt-2 font-semibold">
+                        {{ opciones.avisoDeObraOLabor.riesgo }}
+                    </p>
+                </Aviso>
             </div>
 
             <!-- Paso 4 · Perfil sociodemográfico, solo si la empresa lo habilitó -->

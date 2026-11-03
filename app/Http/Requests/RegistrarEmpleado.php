@@ -105,6 +105,7 @@ class RegistrarEmpleado extends FormRequest
 
             'cargo' => 'cargo',
             'tipo_contrato' => 'tipo de contrato',
+            'fecha_fin_estimada' => 'fecha de finalización estimada',
             'fecha_ingreso' => 'fecha de ingreso',
             'fecha_fin' => 'fecha de finalización',
             'salario' => 'salario mensual',
@@ -123,6 +124,8 @@ class RegistrarEmpleado extends FormRequest
             'fecha_fin.required' => 'El contrato a término fijo necesita fecha de finalización.',
             'fecha_fin.prohibited' => 'Solo el contrato a término fijo lleva fecha de finalización.',
             'fecha_fin.after' => 'La fecha de finalización tiene que ser posterior a la de ingreso.',
+            'fecha_fin_estimada.prohibited' => 'Solo el contrato de obra o labor lleva fecha de finalización estimada.',
+            'fecha_fin_estimada.after' => 'La fecha de finalización estimada tiene que ser posterior a la de ingreso.',
             'celular.regex' => 'El celular debe tener diez dígitos, sin espacios ni guiones.',
         ];
     }
@@ -226,6 +229,7 @@ class RegistrarEmpleado extends FormRequest
     private function contrato(): array
     {
         $esFijo = $this->input('tipo_contrato') === TipoContrato::Fijo->value;
+        $esObraOLabor = $this->input('tipo_contrato') === TipoContrato::ObraLabor->value;
 
         return [
             'cargo' => ['required', 'string', 'max:120'],
@@ -233,6 +237,14 @@ class RegistrarEmpleado extends FormRequest
             'fecha_ingreso' => ['required', 'date'],
             'fecha_fin' => $esFijo
                 ? ['required', 'date', 'after:fecha_ingreso']
+                : ['nullable', 'prohibited'],
+
+            // Opcional y solo en obra o labor (`OL-01`): sin ella no hay
+            // periodo de prueba. Posterior al ingreso por lo mismo que la del
+            // fijo: una obra que termina el día que empieza no tiene duración
+            // sobre la cual tomar la quinta parte.
+            'fecha_fin_estimada' => $esObraOLabor
+                ? ['nullable', 'date', 'after:fecha_ingreso']
                 : ['nullable', 'prohibited'],
 
             // Dinero en decimal de precisión fija: dos decimales y sin negativos.

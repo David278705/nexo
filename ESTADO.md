@@ -1,13 +1,43 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-10-01 · Preparación para producción, bloques 1 (código) y 2 (legal), tareas
-`PROD-01` a `PROD-10` del backlog.
-**Verificación:** verde. 1.388 de 1.388 pruebas de Pest, Pint y PHPStan sin errores, build y 418 de
-Vitest. `composer audit` sin avisos.
-**Siguiente tarea:** ninguna `[ ]` en el backlog. Lo que sigue son los bloques 3 y 4 de abajo y la
-parte no programable del 2, que piden decisiones de David antes de escribir código.
+**Última sesión:** 2026-11-02 · `OL-01`: la obra o labor maneja periodo de prueba sobre una fecha de
+finalización estimada, opcional. Antes, en la misma fecha: revisión dirigida y plan de salida al mercado
+(`docs/09-plan-de-salida-al-mercado.md`).
+**Verificación:** ver «Qué se hizo en OL-01».
+**`composer audit --locked`:** 5 avisos, tres altos (`phpoffice/phpspreadsheet`, `symfony/yaml`,
+`symfony/mime`). El `vendor/` local está atrasado frente al lock (Laravel 12.66.0 contra 12.69.3) y por
+eso allí salen 12.
+**Siguiente tarea:** el **paso 01** del plan de salida al mercado — `composer install`, actualizar los
+paquetes con avisos y `composer verificar`.
 
-## Qué se hizo
+## Qué se hizo en OL-01
+
+David decidió que la obra o labor tenga periodo de prueba, calculado con las reglas del término fijo
+sobre una fecha de finalización estimada que el cliente registra si quiere. El detalle está en la tarea
+`OL-01` del backlog. Tres cosas quedaron sin tocar y piden decisión de David: la columna en la plantilla
+de carga inicial, el texto de la advertencia de reingreso, y que no existe forma de corregir la fecha
+estimada después de registrarla.
+
+## El plan de salida al mercado (2026-11-02)
+
+David pidió una revisión del 100% del código y un plan ordenado, con costos, para poder vender.
+Está en `docs/09-plan-de-salida-al-mercado.md`: treinta pasos en siete fases, con el costo de cada
+uno y la cuenta del precio mínimo viable que pedía el documento 6, A.1.
+
+**Lo que concluyó la revisión:** el producto está terminado —once módulos del cliente, ocho de las
+nueve secciones del panel, el motor de alertas con sus trece reglas, el aislamiento con dos
+capas y 49 casos de prueba— y en las partes revisadas no se vieron fugas ni errores de cálculo; no fue una auditoría línea por línea. Lo que
+falta es casi todo lo que lo rodea, y el camino crítico no es el código (alrededor de una semana con la landing) sino el abogado y la Cámara de Comercio.
+
+**Lo que el plan agrega a lo que ya estaba anotado abajo:** los avisos de `composer audit`,
+el canal de soporte que no existe dentro de la aplicación, el canal de habeas data con los plazos de
+la Ley 1581, que **no están obligados al RNBD** mientras los activos no superen 100.000 UVT
+(~$5.237.400.000 en 2026), y que el IVA del SaaS es del 19%, lo que cambia cómo se publica el precio.
+
+**La versión compartible con el abogado y el contador:**
+https://claude.ai/artifact/CDMcrjydi9TpAp6LFhSU2g
+
+## Qué se hizo en la sesión anterior (2026-10-01)
 
 David preguntó qué faltaba para salir a producción con solo desplegar, poner dominio y correo. Se
 auditó el sistema contra la lista «G. Antes de vender la primera licencia» del documento 6 y se
@@ -53,6 +83,8 @@ El detalle de cada pieza está en las tareas `PROD-*` del backlog y en los mensa
 ## Preguntas para Angela
 
 - (sin cambios) B.2, el fondo de cesantías y la norma de `HD-04`.
+- **B.2 y la conservación tras la salida ya tienen respuesta investigada** en el paso 14 de
+  `docs/09-plan-de-salida-al-mercado.md`; falta validarla. Código sin cambios.
 - **Para el abogado: qué conserva el proveedor cuando un cliente se va.** `TablasDeLaEmpresa`
   entrega y elimina todo lo del cliente, y conserva la empresa, sus suscripciones y pagos (la
   contabilidad del proveedor) y las notas internas. Es una lectura de A.4 y de la Ley 1581, no una

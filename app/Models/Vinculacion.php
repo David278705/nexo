@@ -41,6 +41,7 @@ use LogicException;
  * @property TipoContrato $tipo_contrato
  * @property Carbon $fecha_ingreso
  * @property Carbon|null $fecha_fin
+ * @property Carbon|null $fecha_fin_estimada
  * @property-read Persona $persona
  * @property-read Collection<int, PeriodoContractual> $periodos
  */
@@ -58,6 +59,7 @@ class Vinculacion extends Model
         'tipo_contrato',
         'fecha_ingreso',
         'fecha_fin',
+        'fecha_fin_estimada',
         'salario',
         'bonificacion',
         'eps_id',
@@ -639,6 +641,7 @@ class Vinculacion extends Model
             'estado' => EstadoVinculacion::class,
             'fecha_ingreso' => 'date',
             'fecha_fin' => 'date',
+            'fecha_fin_estimada' => 'date',
             'fecha_corte_saldo' => 'date',
             'salario' => 'decimal:2',
             'bonificacion' => 'decimal:2',
