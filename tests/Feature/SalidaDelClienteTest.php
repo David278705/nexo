@@ -1,11 +1,15 @@
 <?php
 
 use App\Autenticacion\SegundoFactor;
+use App\Dominio\Alertas\EstadoDeAlerta;
 use App\Models\AceptacionLegal;
+use App\Models\AlertaEnviada;
+use App\Models\ConstanciaDeSalida;
 use App\Models\Pago;
 use App\Models\Suscripcion;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use App\Proveedor\PlantaDeMuestra;
 use App\Proveedor\Salida\EliminacionDeLaEmpresa;
@@ -41,6 +45,7 @@ function empresaConHistoria(string $nombre, string $nit): Tenant
     app(ContextoTenant::class)->paraTenant($empresa, function () {
         app(PlantaDeMuestra::class)->escribir();
         AceptacionLegal::factory()->create();
+        AlertaEnviada::factory()->de(Vinculacion::query()->firstOrFail())->enviada()->create();
     });
 
     $suscripcion = Suscripcion::factory()->create(['tenant_id' => $empresa->id]);
@@ -104,7 +109,7 @@ describe('la exportación', function () {
             $archivos[] = $zip->getNameIndex($i);
         }
 
-        foreach (TablasDeLaEmpresa::DEL_CLIENTE as $tabla) {
+        foreach (TablasDeLaEmpresa::aEntregar() as $tabla) {
             expect($archivos)->toContain("{$tabla}.csv");
         }
 
@@ -113,6 +118,21 @@ describe('la exportación', function () {
             ->and($this->empresa->refresh()->datos_exportados_en)->not->toBeNull();
 
         $zip->close();
+        unlink($ruta);
+    });
+
+    it('guarda la constancia de la entrega con la huella del archivo entregado', function () {
+        $ruta = app(ExportacionDeLaEmpresa::class)->generar($this->empresa);
+
+        $constancia = ConstanciaDeSalida::query()
+            ->where('tenant_id', $this->empresa->id)
+            ->where('tipo', ConstanciaDeSalida::ENTREGA)
+            ->sole();
+
+        expect($constancia->huella_sha256)->toBe(hash_file('sha256', $ruta))
+            ->and($constancia->detalle['personas'])->toBeGreaterThan(0)
+            ->and($constancia->detalle)->toHaveKeys(['aceptaciones_legales', 'alertas_enviadas']);
+
         unlink($ruta);
     });
 
@@ -208,6 +228,79 @@ describe('la eliminación', function () {
             ->and(Suscripcion::query()->where('tenant_id', $empresa->id)->count())->toBe(1)
             ->and(Pago::query()->count())->toBe(2)
             ->and($empresa->refresh()->datos_eliminados_en)->not->toBeNull();
+    });
+
+    it('nunca elimina la cuenta de prueba de un prospecto (PROD-17)', function () {
+        $cuenta = Tenant::factory()->create([
+            'es_cuenta_de_prueba' => true,
+            'estado' => Tenant::ESTADO_SUSPENDIDA,
+            'datos_exportados_en' => Carbon::now()->subDays(60),
+        ]);
+
+        expect(app(EliminacionDeLaEmpresa::class)->impedimento($cuenta))->toContain('cuenta de prueba');
+    });
+
+    it('conserva las aceptaciones legales, sueltas del usuario y con quién aceptó', function () {
+        $empresa = listaParaEliminar($this->empresa);
+        $antes = DB::table('aceptaciones_legales')->where('tenant_id', $empresa->id)->count();
+
+        app(EliminacionDeLaEmpresa::class)->eliminar($empresa);
+
+        $aceptaciones = DB::table('aceptaciones_legales')->where('tenant_id', $empresa->id)->get();
+
+        expect($aceptaciones)->toHaveCount($antes)
+            ->and($aceptaciones->pluck('user_id')->filter()->all())->toBe([])
+            ->and($aceptaciones->pluck('aceptado_por_nombre')->filter())->toHaveCount($antes)
+            ->and($aceptaciones->pluck('aceptado_por_correo')->filter())->toHaveCount($antes);
+    });
+
+    it('conserva el registro de alertas sin nada que identifique a una persona', function () {
+        $empresa = listaParaEliminar($this->empresa);
+        $antes = DB::table('alertas_enviadas')->where('tenant_id', $empresa->id)->count();
+
+        app(EliminacionDeLaEmpresa::class)->eliminar($empresa);
+
+        $alertas = DB::table('alertas_enviadas')->where('tenant_id', $empresa->id)->get();
+        $alerta = $alertas->first();
+
+        expect($alertas)->toHaveCount($antes)
+            ->and($alerta->vinculacion_id)->toBeNull()
+            ->and($alerta->asunto)->toBe(EliminacionDeLaEmpresa::ANONIMIZADO)
+            ->and($alerta->cuerpo)->toBe(EliminacionDeLaEmpresa::ANONIMIZADO)
+            ->and(json_decode($alerta->destinatarios, true))->toBe([])
+            ->and($alerta->clave)->toStartWith('eliminada-')
+            // Lo que prueba que la alerta salió sigue ahí.
+            ->and($alerta->estado)->toBe(EstadoDeAlerta::Enviada->value)
+            ->and($alerta->enviada_en)->not->toBeNull()
+            ->and($alerta->tipo)->not->toBeEmpty();
+    });
+
+    it('no toca las aceptaciones ni las alertas de la vecina', function () {
+        $empresa = listaParaEliminar($this->empresa);
+        $alertaDeLaVecina = DB::table('alertas_enviadas')->where('tenant_id', $this->vecina->id)->first();
+        $usuariosDeLasAceptaciones = DB::table('aceptaciones_legales')
+            ->where('tenant_id', $this->vecina->id)->pluck('user_id')->all();
+
+        app(EliminacionDeLaEmpresa::class)->eliminar($empresa);
+
+        expect(DB::table('alertas_enviadas')->where('id', $alertaDeLaVecina->id)->first())->toEqual($alertaDeLaVecina)
+            ->and(DB::table('aceptaciones_legales')->where('tenant_id', $this->vecina->id)->pluck('user_id')->all())
+            ->toBe($usuariosDeLasAceptaciones);
+    });
+
+    it('guarda la constancia de la eliminación con lo eliminado por tabla', function () {
+        $empresa = listaParaEliminar($this->empresa);
+
+        $conteo = app(EliminacionDeLaEmpresa::class)->eliminar($empresa);
+
+        $constancia = ConstanciaDeSalida::query()
+            ->where('tenant_id', $empresa->id)
+            ->where('tipo', ConstanciaDeSalida::ELIMINACION)
+            ->sole();
+
+        expect($constancia->detalle)->toBe($conteo)
+            ->and($constancia->detalle['personas'])->toBeGreaterThan(0)
+            ->and($constancia->detalle['alertas_enviadas (anonimizadas)'])->toBe(1);
     });
 
     it('borra también el certificado de Cámara de Comercio del disco', function () {

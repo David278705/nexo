@@ -5,6 +5,7 @@ namespace App\Auditoria;
 use App\Models\Acceso;
 use App\Models\AlertaEnviada;
 use App\Models\Auditoria;
+use App\Models\ConstanciaDeSalida;
 use App\Models\EjecucionDeAlertas;
 use App\Models\ErrorDeAplicacion;
 use App\Models\Invitacion;
@@ -80,6 +81,12 @@ class ObservadorDeAuditoria
         ErrorDeAplicacion::class,
         EjecucionDeAlertas::class,
         MetricaMensual::class,
+
+        // La constancia de la salida de un cliente (`PROD-15`) ya es, ella
+        // misma, la constancia: quién, cuándo y qué. Auditarla dejaría en la
+        // auditoría de esa empresa una línea más **después** de eliminarle
+        // todo, que es justo lo que la eliminación promete no dejar.
+        ConstanciaDeSalida::class,
     ];
 
     /**
@@ -134,7 +141,8 @@ class ObservadorDeAuditoria
      * nada que a nadie le sirva —es la misma planta de siempre, no un cambio
      * en los datos de un cliente—.
      *
-     * **Se restringe a la empresa marcada `es_ambiente_demo`.** El resto de
+     * **Se restringe a las empresas ficticias** —la demostración y las cuentas
+     * de prueba, `Tenant::esFicticia()`—. El resto de
      * la regla 4 del proyecto no tiene excepción: cualquier otra empresa
      * audita todo lo que escribe, así que este método revienta en vez de
      * dejarse abrir por accidente en el lugar equivocado, que sería la forma
@@ -149,7 +157,7 @@ class ObservadorDeAuditoria
     {
         $tenant = tenant_actual();
 
-        if (! $tenant instanceof Tenant || ! $tenant->getAttribute('es_ambiente_demo')) {
+        if (! $tenant instanceof Tenant || ! $tenant->esFicticia()) {
             throw SinAuditarRestringido::fueraDelAmbienteDeDemostracion();
         }
 

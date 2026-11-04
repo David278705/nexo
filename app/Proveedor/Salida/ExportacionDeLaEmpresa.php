@@ -2,6 +2,7 @@
 
 namespace App\Proveedor\Salida;
 
+use App\Models\ConstanciaDeSalida;
 use App\Models\Tenant;
 use App\Multiempresa\ContextoTenant;
 use App\Proveedor\CreacionDeEmpresa;
@@ -57,7 +58,7 @@ final class ExportacionDeLaEmpresa
         $conteo = $this->contexto->paraTenant($empresa, function () use ($empresa, $zip, $carpeta): array {
             $conteo = [];
 
-            foreach (TablasDeLaEmpresa::DEL_CLIENTE as $tabla) {
+            foreach (TablasDeLaEmpresa::aEntregar() as $tabla) {
                 $ruta = "{$carpeta}/{$tabla}.csv";
                 $conteo[$tabla] = $this->escribirCsv($tabla, (int) $empresa->getKey(), $ruta);
                 $zip->addFile($ruta, "{$tabla}.csv");
@@ -74,6 +75,17 @@ final class ExportacionDeLaEmpresa
 
         $zip->addFromString('LEEME.txt', $this->leeme($empresa, $conteo, $certificado));
         $zip->close();
+
+        // La constancia de la entrega, con la huella del archivo: prueba qué se
+        // entregó sin que el proveedor conserve su contenido (`PROD-15`).
+        ConstanciaDeSalida::query()->create([
+            'tenant_id' => $empresa->getKey(),
+            'tipo' => ConstanciaDeSalida::ENTREGA,
+            'ocurrida_en' => Carbon::now(),
+            'registrada_por' => auth()->user()?->getAttribute('name'),
+            'detalle' => $conteo,
+            'huella_sha256' => hash_file('sha256', $rutaDelZip),
+        ]);
 
         array_map('unlink', glob("{$carpeta}/*.csv") ?: []);
         rmdir($carpeta);

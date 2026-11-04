@@ -74,6 +74,10 @@ final class AceptacionDeLaEmpresa
                 ['documento' => $documento->clave, 'version' => $documento->version],
                 [
                     'user_id' => $usuario->getKey(),
+                    // Quién aceptó, guardado en la constancia misma: el usuario
+                    // se elimina si el cliente se va, la prueba no (`PROD-15`).
+                    'aceptado_por_nombre' => $usuario->name,
+                    'aceptado_por_correo' => $usuario->email,
                     'ip' => $ip,
                     'agente' => $agente === null ? null : mb_substr($agente, 0, 500),
                     'aceptado_en' => Carbon::now(),
@@ -115,7 +119,11 @@ final class AceptacionDeLaEmpresa
                 'url' => $documento->url(),
                 'aceptado' => $aceptacion !== null,
                 'aceptadoEn' => $aceptacion === null ? null : Formato::fecha($aceptacion->aceptado_en),
-                'aceptadoPor' => $aceptacion?->usuario?->name,
+                // El nombre guardado en la constancia, que es la prueba; el del
+                // usuario solo para las anteriores a esa columna (`PROD-15`).
+                'aceptadoPor' => $aceptacion === null
+                    ? null
+                    : ($aceptacion->aceptado_por_nombre ?? $aceptacion->usuario?->name),
             ];
         }, $this->documentos->queExigenAceptacion());
 

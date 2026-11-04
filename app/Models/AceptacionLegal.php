@@ -16,7 +16,9 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $tenant_id
- * @property int $user_id
+ * @property int|null $user_id
+ * @property string|null $aceptado_por_nombre
+ * @property string|null $aceptado_por_correo
  * @property string $documento
  * @property string $version
  * @property string|null $ip
@@ -35,6 +37,8 @@ class AceptacionLegal extends Model
 
     protected $fillable = [
         'user_id',
+        'aceptado_por_nombre',
+        'aceptado_por_correo',
         'documento',
         'version',
         'ip',

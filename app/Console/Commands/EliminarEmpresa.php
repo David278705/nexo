@@ -83,6 +83,9 @@ class EliminarEmpresa extends Command
         }
 
         $lineas[] = '';
+        $lineas[] = 'Se conservan: la aceptación de los documentos legales, el registro de alertas sin datos personales, '
+            .'las suscripciones y los pagos, y las constancias de la entrega y de esta eliminación.';
+        $lineas[] = 'Esta constancia quedó guardada en el sistema.';
         $lineas[] = 'Las copias de seguridad automáticas que todavía la contengan se eliminan solas al cumplirse su periodo de retención.';
 
         return implode(PHP_EOL, $lineas);

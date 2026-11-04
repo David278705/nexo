@@ -143,9 +143,11 @@ Ninguna se traslada al proveedor. Al contrario: el principio de temporalidad de 
   30 por defecto), y pide escribir el NIT para confirmar. Es la única excepción a la regla de nunca
   borrar físicamente, y así está escrito en el `CLAUDE.md`.
 - **Paso 4:** el comando imprime la constancia de eliminación con los registros borrados por tabla.
-- **Lo que el proveedor conserva** —la empresa, sus suscripciones y pagos, y sus notas internas— y
-  por qué, está en `App\Proveedor\Salida\TablasDeLaEmpresa`. **Pendiente de confirmar con el
-  abogado**: es una lectura de esta sección y de la Ley 1581, no una instrucción expresa.
+- **Lo que el proveedor conserva**, decidido por David el 2026-11-03 (`PROD-15`): la empresa, sus
+  suscripciones y pagos **sin plazo**, las notas internas, **la aceptación de los documentos legales**
+  —con el nombre y el correo de quien aceptó—, **el registro de alertas sin datos personales** y **las
+  constancias de entrega y de eliminación**, con la huella SHA-256 del archivo entregado. El porqué está
+  en `App\Proveedor\Salida\TablasDeLaEmpresa`. El abogado lo valida al redactar el contrato.
 - **Las copias de seguridad** no se pueden borrar de forma selectiva: los datos salen de ellas al
   cumplirse su periodo de retención. La constancia lo dice así.
 

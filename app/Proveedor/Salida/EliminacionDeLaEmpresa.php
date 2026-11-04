@@ -2,6 +2,7 @@
 
 namespace App\Proveedor\Salida;
 
+use App\Models\ConstanciaDeSalida;
 use App\Models\Tenant;
 use App\Multiempresa\ContextoTenant;
 use App\Presentacion\Formato;
@@ -27,8 +28,11 @@ use RuntimeException;
  *
  * Borra físicamente, en una transacción —o todo o nada—, las tablas que
  * `TablasDeLaEmpresa` marca para eliminar, en el orden que piden sus llaves
- * foráneas. Conserva la empresa misma, sus suscripciones y pagos, y las notas
- * del proveedor: son registros comerciales del proveedor, no datos personales.
+ * foráneas. Antes de borrar, anonimiza el registro de alertas y suelta las
+ * aceptaciones legales de sus usuarios, que son lo que se conserva (`PROD-15`).
+ * Conserva además la empresa misma, sus suscripciones y pagos, las notas del
+ * proveedor y las constancias de la salida, y deja la constancia de esta
+ * eliminación.
  *
  * El filtro por `tenant_id` se escribe a mano por la misma razón que en
  * `ExportacionDeLaEmpresa`: query builder sobre tablas crudas, y en local la
@@ -37,6 +41,11 @@ use RuntimeException;
  */
 final class EliminacionDeLaEmpresa
 {
+    /**
+     * Lo que queda en las columnas de texto obligatorias de una alerta anonimizada.
+     */
+    public const ANONIMIZADO = '(eliminado con la salida del cliente)';
+
     public function __construct(private readonly ContextoTenant $contexto) {}
 
     /**
@@ -44,8 +53,8 @@ final class EliminacionDeLaEmpresa
      */
     public function impedimento(Tenant $empresa): ?string
     {
-        if ($empresa->getAttribute('es_ambiente_demo') === true) {
-            return 'Es el ambiente de demostración: se restaura, no se elimina.';
+        if ($empresa->esFicticia()) {
+            return 'Es el ambiente de demostración o una cuenta de prueba: no es un cliente y no tiene salida que tramitar.';
         }
 
         $eliminada = $empresa->getAttribute('datos_eliminados_en');
@@ -95,6 +104,12 @@ final class EliminacionDeLaEmpresa
 
             // Las invitaciones no llevan `tenant_id`: cuelgan de los usuarios, y
             // tienen que irse antes que ellos.
+            // Lo que se conserva se separa de lo que se va a borrar antes de
+            // borrarlo: el registro de alertas apunta a vinculaciones y las
+            // aceptaciones a usuarios, y los dos dejan de existir.
+            $anonimizadas = $this->anonimizarAlertas($id);
+            $this->soltarAceptaciones($id);
+
             $conteo = [
                 'invitaciones' => DB::table('invitaciones')
                     ->whereIn('user_id', DB::table('users')->select('id')->where('tenant_id', $id))
@@ -111,6 +126,16 @@ final class EliminacionDeLaEmpresa
                 'certificado_camara_nombre' => null,
             ])->save();
 
+            $conteo['alertas_enviadas (anonimizadas)'] = $anonimizadas;
+
+            ConstanciaDeSalida::query()->create([
+                'tenant_id' => $id,
+                'tipo' => ConstanciaDeSalida::ELIMINACION,
+                'ocurrida_en' => Carbon::now(),
+                'registrada_por' => auth()->user()?->getAttribute('name'),
+                'detalle' => $conteo,
+            ]);
+
             return $conteo;
         }));
 
@@ -121,6 +146,42 @@ final class EliminacionDeLaEmpresa
         }
 
         return $conteo;
+    }
+
+    /**
+     * Le borra al registro de alertas todo lo que identifica a una persona y
+     * deja que la alerta salió, cuándo y con qué resultado.
+     *
+     * La clave se reemplaza porque es la idempotencia y la arma la regla con el
+     * empleado dentro; la nueva sigue siendo única por empresa.
+     */
+    private function anonimizarAlertas(int $empresaId): int
+    {
+        return DB::table('alertas_enviadas')->where('tenant_id', $empresaId)->update([
+            'vinculacion_id' => null,
+            'clave' => DB::raw("'eliminada-' || id"),
+            'asunto' => self::ANONIMIZADO,
+            'cuerpo' => self::ANONIMIZADO,
+            'destinatarios' => '[]',
+            'motivo_del_fallo' => null,
+            'updated_at' => Carbon::now(),
+        ]);
+    }
+
+    /**
+     * Suelta cada aceptación de su usuario, que se va a eliminar, sin perder
+     * quién aceptó: el nombre y el correo viven en la aceptación desde que se
+     * firmó. Las anteriores a esas columnas los toman aquí del usuario.
+     */
+    private function soltarAceptaciones(int $empresaId): void
+    {
+        DB::statement(
+            'update aceptaciones_legales a set aceptado_por_nombre = u.name, aceptado_por_correo = u.email '
+            .'from users u where u.id = a.user_id and a.tenant_id = ? and a.aceptado_por_nombre is null',
+            [$empresaId],
+        );
+
+        DB::table('aceptaciones_legales')->where('tenant_id', $empresaId)->update(['user_id' => null]);
     }
 
     /**

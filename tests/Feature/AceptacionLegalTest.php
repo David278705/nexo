@@ -116,6 +116,15 @@ describe('aceptar', function () {
         $this->actingAs($this->superadmin)->get('/')->assertOk();
     });
 
+    it('guarda en la constancia el nombre y el correo de quien aceptó, para que sobreviva al usuario', function () {
+        $this->actingAs($this->superadmin)->post('/aceptacion', ['acepto' => '1']);
+
+        $constancia = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => AceptacionLegal::query()->first());
+
+        expect($constancia->aceptado_por_nombre)->toBe($this->superadmin->name)
+            ->and($constancia->aceptado_por_correo)->toBe($this->superadmin->email);
+    });
+
     it('vuelve a pedir aceptar cuando el documento cambia de versión, y solo ese', function () {
         $this->actingAs($this->superadmin)->post('/aceptacion', ['acepto' => '1']);
 
