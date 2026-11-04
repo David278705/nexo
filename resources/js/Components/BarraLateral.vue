@@ -24,6 +24,9 @@ const props = defineProps({
     // sistema del cliente, y quien tiene las dos aplicaciones abiertas la
     // necesita.
     oscuro: { type: Boolean, default: false },
+    // A dónde escribe el cliente (`PROD-12`). Llega nulo para el proveedor y
+    // mientras no haya correo configurado, y entonces el bloque no existe.
+    soporte: { type: Object, default: null },
 });
 
 defineEmits(["navegar"]);
@@ -118,5 +121,33 @@ function estaActivo(modulo) {
                 </Link>
             </template>
         </nav>
+
+        <!--
+            El canal de soporte (`PROD-12`). Va al pie y fuera del menú porque no
+            es una sección: es a dónde escribir cuando algo no funciona. La
+            dirección se enseña como texto seleccionable además de enlace: un
+            «mailto» no siempre abre nada, y quien no tiene cliente de correo en
+            el equipo tiene que poder copiarla.
+        -->
+        <section
+            v-if="soporte"
+            class="border-t border-menu-borde px-[18px] py-4"
+            aria-labelledby="titulo-soporte"
+        >
+            <h2 id="titulo-soporte" class="text-apoyo font-semibold text-texto-invertido">
+                ¿Necesita ayuda?
+            </h2>
+            <p class="mt-1 text-apoyo text-menu-apoyo">Escríbanos a</p>
+            <a
+                :href="`mailto:${soporte.correo}`"
+                class="block break-all text-apoyo text-menu-texto underline hover:text-texto-invertido"
+            >
+                {{ soporte.correo }}
+            </a>
+            <p v-if="soporte.whatsapp" class="mt-1 text-apoyo text-menu-apoyo">
+                WhatsApp {{ soporte.whatsapp }}
+            </p>
+            <p class="mt-1 text-apoyo text-menu-apoyo">{{ soporte.horario }}</p>
+        </section>
     </div>
 </template>

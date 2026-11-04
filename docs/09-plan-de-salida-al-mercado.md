@@ -50,9 +50,12 @@ producción y está anotado así desde `F6-07`. Los comandos de la consola del s
 
 Esta semana. Sin costo.
 
-- [ ] `[Claude]` **01 · Actualizar las dependencias.** `composer install` para alinear el local con el lock,
-      actualizar los paquetes con avisos y `composer verificar`. Falta comprobar si PhpSpreadsheet
-      tiene corrección compatible con esta versión de Laravel Excel. **1 hora.**
+- [x] `[Claude]` **01 · Actualizar las dependencias.** **Hecho el 2026-11-03 (`PROD-13`).** El lock
+      del 1 de octubre se había generado con PHP 8.4 y traía Symfony 8.1, que exige PHP 8.4, aunque el
+      proyecto declara 8.2 como mínimo: por eso `composer install` fallaba en local y las pruebas
+      corrían contra un `vendor/` viejo. Se fijó `config.platform.php` en 8.2.12 y se actualizó: Laravel
+      12.71.0, PhpSpreadsheet 1.30.7, Symfony 7.4.22. `composer audit` sin avisos, en lo instalado y en
+      el lock; la verificación completa en verde. Producción sigue en PHP 8.4, que es compatible.
 - [ ] `[Los dos]` **02 · Fijar el nombre comercial y comprobar que esté libre.** Búsqueda de antecedentes en el
       registro de marcas de la SIC (gratis, en línea) y disponibilidad del dominio. Bloquea el
       dominio, el logo, la sociedad y la marca. **1 día.**
@@ -162,11 +165,17 @@ Esta semana. Sin costo.
       **$0 si lo hacen ustedes, o $400.000-$1.500.000 · 2-5 días.**
       **Mi parte:** puedo hacer una marca de palabra y un favicon válido, e instalarlos. Un diseñador lo
       hará mejor; esto evita salir con la pestaña en blanco.
-- [ ] `[Claude]` **16 · Canal de soporte visible dentro de la aplicación.** El contrato va a prometer tiempos de
-      respuesta y el cliente tiene que saber a dónde escribir. **$0 · 3 horas.**
-- [ ] `[Claude]` **17 · Campo de dinero con formato colombiano en «Monto recibido».** Hoy es un `number` del
-      navegador: «380.000» llega como 380. `PROD-06` lo mitigó (se rechaza en vez de guardarse mal),
-      pero sigue siendo un tropiezo donde se registra el dinero que entró. **$0 · 2 horas.**
+- [x] `[Claude]` **16 · Canal de soporte visible dentro de la aplicación.** **Hecho el 2026-11-03
+      (`PROD-12`).** Bloque «¿Necesita ayuda?» al pie de la barra lateral, con correo, WhatsApp opcional
+      y horario, para todo usuario de una empresa. Se configura con `SOPORTE_CORREO`,
+      `SOPORTE_WHATSAPP` y `SOPORTE_HORARIO`, sin tocar código; mientras el correo esté vacío no se
+      enseña y `despliegue:verificar` lo avisa. **Le falta a David:** crear el correo y ponerlo en
+      Railway. El horario tiene que coincidir con el SLA del paso 11.
+- [x] `[Claude]` **17 · Campo de dinero con formato colombiano.** **Hecho el 2026-11-03 (`PROD-11`).**
+      El problema no estaba solo en «Monto recibido»: eran **cinco campos**, también el salario y la
+      bonificación del registro de empleado, el nuevo salario de un movimiento y el valor mensual de un
+      plan. Los cinco usan ahora `CampoDinero`: se escribe «1.750.905» o «380.000,50», se ve
+      «$ 1.750.905» al salir del campo, y al servidor llega el número limpio.
 
 ## Fase 5 · Poner el sistema en producción
 

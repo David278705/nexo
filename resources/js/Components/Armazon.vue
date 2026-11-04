@@ -46,6 +46,7 @@ const estado = computed(() => pagina.props.estado ?? "");
  * está dentro, y el cliente no la ve nunca.
  */
 const visita = computed(() => pagina.props.visita ?? null);
+const soporte = computed(() => pagina.props.soporte ?? null);
 const modulos = computed(() => props.secciones ?? usuario.value?.modulos ?? []);
 const urlActual = computed(() => pagina.url.split("?")[0]);
 
@@ -144,6 +145,7 @@ watch(urlActual, () => {
                     :titulo="titulo"
                     :subtitulo="subtitulo"
                     :oscuro="oscuro"
+                    :soporte="soporte"
                 />
             </div>
         </aside>
@@ -169,6 +171,7 @@ watch(urlActual, () => {
                     :titulo="titulo"
                     :subtitulo="subtitulo"
                     :oscuro="oscuro"
+                    :soporte="soporte"
                     @navegar="menuAbierto = false"
                 />
             </div>

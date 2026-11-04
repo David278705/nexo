@@ -2683,3 +2683,38 @@ Vitest en `Nuevo.test.js`.
   estipuladas». Es literal del documento 1, 5.6, y en una obra o labor sin fecha estimada no es cierto.
 - **No hay forma de corregir la fecha estimada** después de registrar: no existe edición del contrato, igual
   que con la fecha de finalización del fijo, que solo se renueva.
+
+## Plan de salida al mercado, primera sesión de código (3 de noviembre de 2026)
+
+David pidió hacer lo que no necesitara nada de él en `docs/09-plan-de-salida-al-mercado.md`. Son los
+pasos 01, 16 y 17. Los documentos que me tocan (pasos 10, 11, 13, 03, 25 y 28) van en la sesión
+siguiente; el logo, la landing y pegar los textos legales esperan una decisión o un texto de David.
+
+### [x] PROD-13 · El lock de Composer instala en PHP 8.2 y no trae avisos de seguridad
+
+`composer install` fallaba en local: el lock del 1 de octubre traía Symfony 8.1, que exige PHP 8.4,
+aunque `composer.json` y el `CLAUDE.md` declaran 8.2 como mínimo. El `vendor/` local se había quedado en
+Laravel 12.66.0 y las pruebas corrían contra eso, no contra lo que se desplegaría. Además `composer audit
+--locked` reportaba 5 avisos, tres altos (PhpSpreadsheet, `symfony/yaml`, `symfony/mime`).
+
+Hecho: `config.platform.php` en 8.2.12, para que Composer resuelva lo que sirve al mínimo declarado, y
+`composer update` dentro de las restricciones: Laravel 12.71.0, PhpSpreadsheet 1.30.7, Symfony 7.4.22.
+`composer audit` y `composer audit --locked` sin avisos. Producción corre PHP 8.4 y es compatible.
+
+### [x] PROD-11 · Los campos de dinero se escriben como en Colombia
+
+Un campo `number` del navegador convertía «380.000» en 380. Hecho: `CampoDinero`, con las funciones puras
+de `Utilidades/pesos.js` (`leerPesos` y `formatearPesos`), en los cinco campos de dinero: salario y
+bonificación del registro de empleado, nuevo salario del movimiento, monto recibido del pago y valor
+mensual del plan. El punto es siempre separador de miles y la coma de centavos; al salir del campo se ve
+«$ 380.000», y al servidor llega «380000». `CampoTexto` suma `modoTeclado` (`inputmode`). 13 pruebas de
+las funciones y 7 del componente.
+
+### [x] PROD-12 · El cliente ve a dónde escribir cuando algo falla
+
+No había ningún canal de soporte visible para el cliente. Hecho: `config/soporte.php` con
+`SOPORTE_CORREO`, `SOPORTE_WHATSAPP` y `SOPORTE_HORARIO`; la prop compartida `soporte`, nula sin sesión,
+para el `owner` y sin correo; el bloque «¿Necesita ayuda?» al pie de `BarraLateral`, con la dirección
+como texto seleccionable además del enlace. `despliegue:verificar` avisa si falta el correo. 7 pruebas
+de Pest y 5 de Vitest.
+

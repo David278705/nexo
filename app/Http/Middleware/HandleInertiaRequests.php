@@ -54,6 +54,35 @@ class HandleInertiaRequests extends Middleware
              * en todas las pantallas porque en todas está mirando datos ajenos.
              */
             'visita' => fn (): ?array => app(AccesoAlEntorno::class)->paraLaFranja(),
+            // El canal de soporte de la barra lateral (`PROD-12`). Solo para los
+            // usuarios de una empresa: el proveedor no se escribe a sí mismo.
+            'soporte' => fn (): ?array => $this->soporte($request),
+        ];
+    }
+
+    /**
+     * A dónde escribe el cliente, o nulo si no hay a quién mostrárselo.
+     *
+     * Nulo sin sesión, para el `owner` y mientras no haya correo configurado:
+     * un canal sin dirección no es un canal.
+     *
+     * @return array{correo: string, whatsapp: string|null, horario: string}|null
+     */
+    private function soporte(Request $request): ?array
+    {
+        $usuario = $request->user();
+        $correo = trim((string) config('soporte.correo'));
+
+        if (! $usuario instanceof User || $usuario->esOwner() || $correo === '') {
+            return null;
+        }
+
+        $whatsapp = trim((string) config('soporte.whatsapp'));
+
+        return [
+            'correo' => $correo,
+            'whatsapp' => $whatsapp === '' ? null : $whatsapp,
+            'horario' => (string) config('soporte.horario'),
         ];
     }
 

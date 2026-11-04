@@ -1,15 +1,15 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-11-02 · `OL-01`: la obra o labor maneja periodo de prueba sobre una fecha de
-finalización estimada, opcional. Antes, en la misma fecha: revisión dirigida y plan de salida al mercado
-(`docs/09-plan-de-salida-al-mercado.md`).
-**Verificación:** ver «Qué se hizo en OL-01».
-**`composer audit --locked`:** 5 avisos, tres altos (`phpoffice/phpspreadsheet`, `symfony/yaml`,
-`symfony/mime`). El `vendor/` local está atrasado frente al lock (Laravel 12.66.0 contra 12.69.3) y por
-eso allí salen 12.
-**Siguiente tarea:** el **paso 01** del plan de salida al mercado — `composer install`, actualizar los
-paquetes con avisos y `composer verificar`.
+**Última sesión:** 2026-11-03 · Plan de salida al mercado, primera sesión de código: pasos 01, 16 y 17
+(`PROD-11`, `PROD-12`, `PROD-13`).
+**Verificación:** ver la tarea `PROD-13` del backlog; `composer audit` sin avisos.
+**Siguiente sesión:** los documentos que me tocan del plan —encargo para el abogado (pasos 10 y 25),
+opciones de SLA (11), procedimiento de habeas data (13), propuesta de precios (03) y guion de puesta en
+marcha (28)—. No piden nada de David para empezar.
 
+**Lo que espera a David:** crear el correo de soporte y ponerlo en `SOPORTE_CORREO`; el nombre comercial
+(bloquea el logo y la landing); los textos del abogado (bloquean el paso 12); y las tres preguntas de
+`OL-01` (columna en la carga inicial, texto de reingreso, corregir la fecha estimada).
 ## Qué se hizo en OL-01
 
 David decidió que la obra o labor tenga periodo de prueba, calculado con las reglas del término fijo

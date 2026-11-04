@@ -57,6 +57,7 @@ class VerificarDespliegue extends Command
             $this->monitoreo(),
             $this->discoDeCertificados(),
             $this->documentosLegales(),
+            $this->canalDeSoporte(),
         ];
 
         foreach ($revisiones as [$nivel, $mensaje]) {
@@ -197,6 +198,19 @@ class VerificarDespliegue extends Command
         return $driver === 'local'
             ? [self::AVISO, "Los certificados se guardan en el disco «{$disco}» del contenedor: hace falta un volumen montado en storage/app o se pierden en cada despliegue."]
             : [self::OK, "Los certificados se guardan en «{$disco}» ({$driver})."];
+    }
+
+    /**
+     * Sin correo de soporte, el cliente no tiene a dónde escribir y la barra
+     * lateral no enseña el bloque. Degrada, no expone: aviso.
+     *
+     * @return array{string, string}
+     */
+    private function canalDeSoporte(): array
+    {
+        return trim((string) config('soporte.correo')) === ''
+            ? [self::AVISO, 'SOPORTE_CORREO vacío: el cliente no ve a dónde escribir cuando algo falla.']
+            : [self::OK, 'El cliente ve el canal de soporte ('.config('soporte.correo').').'];
     }
 
     /**

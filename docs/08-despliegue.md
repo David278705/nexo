@@ -73,6 +73,11 @@ DISCO_CERTIFICADOS=local                  # ver «Los certificados» abajo
 MAIL_MAILER=log
 MAIL_FROM_ADDRESS=alertas@tudominio.co
 MAIL_FROM_NAME=Nexo
+
+# El canal de soporte que el cliente ve en la barra lateral. Vacío, no se enseña.
+SOPORTE_CORREO=soporte@tudominio.co
+SOPORTE_WHATSAPP=                         # opcional, diez dígitos
+SOPORTE_HORARIO="Lunes a viernes, de 8:00 a. m. a 5:00 p. m."   # el mismo del SLA
 ```
 
 ## Paso 3 · El servicio web

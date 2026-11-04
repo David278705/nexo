@@ -235,4 +235,21 @@ describe('despliegue:verificar', function () {
         expect($codigo)->toBe(0)
             ->and(Artisan::output())->toContain('Documentos legales todavía en borrador: Términos del servicio');
     });
+
+    it('avisa del canal de soporte sin correo, pero deja arrancar', function () {
+        config(['soporte.correo' => '']);
+
+        $codigo = comoRolCorrienteDeDespliegue(fn () => Artisan::call('despliegue:verificar'));
+
+        expect($codigo)->toBe(0)
+            ->and(Artisan::output())->toContain('SOPORTE_CORREO vacío');
+    });
+
+    it('confirma el canal de soporte cuando tiene correo', function () {
+        config(['soporte.correo' => 'soporte@nexo.co']);
+
+        comoRolCorrienteDeDespliegue(fn () => Artisan::call('despliegue:verificar'));
+
+        expect(Artisan::output())->toContain('El cliente ve el canal de soporte (soporte@nexo.co)');
+    });
 });
