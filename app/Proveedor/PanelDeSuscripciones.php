@@ -219,7 +219,7 @@ class PanelDeSuscripciones
     public static function empresasSinSuscripcion(): array
     {
         return Tenant::query()
-            ->where('es_ambiente_demo', false)
+            ->deClientes()
             ->whereDoesntHave('suscripcion')
             ->orderBy('nombre')
             ->get()

@@ -28,12 +28,13 @@ class AccesosDePrueba
     public function __construct(private readonly AmbienteDeDemostracion $ambiente) {}
 
     /**
-     * Genera un acceso nuevo hacia el ambiente de demostración y devuelve el
-     * token en claro, el único momento en que existe fuera de su hash.
+     * Genera un acceso nuevo con su propia cuenta de prueba, poblada con la
+     * planta de la demostración (`PROD-17`), y devuelve el token en claro, el
+     * único momento en que existe fuera de su hash.
      */
     public function generar(string $nombreProspecto, int $diasDeVigencia): string
     {
-        $tenant = $this->ambiente->tenant();
+        $tenant = $this->ambiente->crearCuentaDePrueba($nombreProspecto);
         $token = Str::random(64);
         $ahora = Carbon::now();
 

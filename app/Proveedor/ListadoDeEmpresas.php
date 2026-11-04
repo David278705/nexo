@@ -73,7 +73,10 @@ class ListadoDeEmpresas extends Listado
      */
     protected function base(): Builder
     {
+        // Las cuentas de prueba de los prospectos no son clientes y viven en
+        // la sección Demostración (`PROD-17`).
         return Tenant::query()
+            ->where('es_cuenta_de_prueba', false)
             ->withCount('usuarios')
             ->with('suscripcion');
     }

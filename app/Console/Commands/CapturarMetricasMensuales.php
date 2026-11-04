@@ -40,7 +40,7 @@ class CapturarMetricasMensuales extends Command
         }
 
         $empresasActivas = Tenant::query()
-            ->where('es_ambiente_demo', false)
+            ->deClientes()
             ->where('estado', EstadoDeEmpresa::Activa->value)
             ->count();
 

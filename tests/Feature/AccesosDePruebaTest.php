@@ -3,8 +3,17 @@
 use App\Http\Controllers\Acceso\AccesoDePruebaController;
 use App\Http\Middleware\CerrarAccesoDePruebaNoVigente;
 use App\Models\AccesoDePrueba;
+use App\Models\Arl;
+use App\Models\Banco;
+use App\Models\CajaCompensacion;
+use App\Models\Ciudad;
+use App\Models\Eps;
+use App\Models\FondoPension;
+use App\Models\Pais;
+use App\Models\Persona;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Multiempresa\ContextoTenant;
 use App\Proveedor\AccesosDePrueba;
 use App\Proveedor\AmbienteDeDemostracion;
 use Illuminate\Support\Facades\Auth;
@@ -22,16 +31,107 @@ use Tests\TestCase;
  */
 beforeEach(function () {
     $this->demo = Tenant::factory()->ambienteDeDemo()->create();
+
+    // Lo que pide la planta de muestra para poblar una cuenta de prueba, igual
+    // que en `DemostracionDelPanelTest`.
+    Pais::query()->firstOrCreate(['codigo' => Pais::COLOMBIA], ['nombre' => 'Colombia', 'activo' => true]);
+    Ciudad::factory()->create(['nombre' => 'Bogotá D.C.']);
+    Eps::query()->create(['nombre' => 'Sura EPS', 'activo' => true]);
+    FondoPension::query()->create(['nombre' => 'Protección', 'activo' => true]);
+    Arl::query()->create(['nombre' => 'ARL Sura', 'activo' => true]);
+    CajaCompensacion::query()->create(['nombre' => 'Compensar', 'activo' => true]);
+    Banco::query()->create(['nombre' => 'Bancolombia', 'activo' => true]);
 });
 
-it('genera un acceso y su enlace deja entrar al ambiente de demostración', function () {
+/**
+ * Cuántas personas tiene una empresa, contadas dentro de su contexto.
+ */
+function personasDe(Tenant $empresa): int
+{
+    return app(ContextoTenant::class)->paraTenant($empresa, fn (): int => Persona::query()->count());
+}
+
+it('genera un acceso y su enlace deja entrar a una cuenta de prueba propia, no a la demo compartida', function () {
     $token = app(AccesosDePrueba::class)->generar('Comercializadora Prospecto S.A.S.', 7);
 
     $respuesta = $this->get('/prueba/'.$token);
 
     $respuesta->assertRedirect(route('inicio'));
+
+    $cuenta = Auth::user()->tenant;
+
     expect(Auth::check())->toBeTrue()
-        ->and(Auth::user()->tenant_id)->toBe($this->demo->getKey());
+        ->and($cuenta->getKey())->not->toBe($this->demo->getKey())
+        ->and($cuenta->es_cuenta_de_prueba)->toBeTrue()
+        ->and($cuenta->nombre)->toBe('Demostración · Comercializadora Prospecto S.A.S.');
+});
+
+describe('la cuenta de prueba propia (PROD-17)', function () {
+    it('llega con la planta de muestra ya cargada', function () {
+        app(AccesosDePrueba::class)->generar('Prospecto con datos', 7);
+
+        $cuenta = Tenant::query()->where('es_cuenta_de_prueba', true)->sole();
+
+        expect(personasDe($cuenta))->toBeGreaterThan(0);
+    });
+
+    it('cada prospecto tiene la suya: dos accesos son dos empresas distintas', function () {
+        app(AccesosDePrueba::class)->generar('Primer prospecto', 7);
+        app(AccesosDePrueba::class)->generar('Segundo prospecto', 7);
+
+        $cuentas = Tenant::query()->where('es_cuenta_de_prueba', true)->get();
+
+        expect($cuentas)->toHaveCount(2)
+            ->and(AccesoDePrueba::query()->pluck('tenant_id')->unique())->toHaveCount(2);
+    });
+
+    it('lo que cambia un prospecto no lo ve el otro', function () {
+        app(AccesosDePrueba::class)->generar('Primer prospecto', 7);
+        app(AccesosDePrueba::class)->generar('Segundo prospecto', 7);
+        [$primera, $segunda] = Tenant::query()->where('es_cuenta_de_prueba', true)->orderBy('id')->get()->all();
+        $antes = personasDe($segunda);
+
+        app(ContextoTenant::class)->paraTenant($primera, fn () => Persona::factory()->create());
+
+        expect(personasDe($primera))->toBe($antes + 1)
+            ->and(personasDe($segunda))->toBe($antes);
+    });
+
+    it('no toca la demostración compartida', function () {
+        $antes = personasDe($this->demo);
+
+        app(AccesosDePrueba::class)->generar('Prospecto', 7);
+
+        expect(personasDe($this->demo))->toBe($antes);
+    });
+
+    it('es ficticia: no recibe alertas ni exige aceptar los documentos legales', function () {
+        $token = app(AccesosDePrueba::class)->generar('Prospecto', 7);
+        $cuenta = Tenant::query()->where('es_cuenta_de_prueba', true)->sole();
+
+        expect($cuenta->esFicticia())->toBeTrue()
+            ->and($cuenta->estado->value)->toBe(Tenant::ESTADO_EN_PRUEBA);
+
+        $this->get('/prueba/'.$token);
+        $this->get('/')->assertOk();
+    });
+
+    it('no cuenta como cliente', function () {
+        app(AccesosDePrueba::class)->generar('Prospecto', 7);
+
+        expect(Tenant::query()->deClientes()->where('es_cuenta_de_prueba', true)->count())->toBe(0);
+    });
+
+    it('un acceso antiguo que apunta a la demostración compartida sigue entrando a ella', function () {
+        $token = Str::random(64);
+        AccesoDePrueba::factory()->for($this->demo, 'tenant')->create([
+            'token' => hash('sha256', $token),
+        ]);
+
+        $this->get('/prueba/'.$token)->assertRedirect(route('inicio'));
+
+        expect(Auth::user()->tenant_id)->toBe($this->demo->getKey());
+    });
 });
 
 it('un acceso se puede volver a usar mientras siga vigente', function () {

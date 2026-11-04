@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Proveedor\EstadoDeEmpresa;
 use Database\Factories\TenantFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,6 +60,7 @@ class Tenant extends Model
         'certificado_camara_ruta',
         'certificado_camara_nombre',
         'es_ambiente_demo',
+        'es_cuenta_de_prueba',
         'demo_restaurado_en',
     ];
 
@@ -76,10 +78,35 @@ class Tenant extends Model
             'ultima_novedad_en' => 'datetime',
             'plan_inicia_el' => 'date',
             'es_ambiente_demo' => 'boolean',
+            'es_cuenta_de_prueba' => 'boolean',
             'datos_exportados_en' => 'datetime',
             'datos_eliminados_en' => 'datetime',
             'demo_restaurado_en' => 'datetime',
         ];
+    }
+
+    /**
+     * Si es una empresa ficticia: la demostración compartida o la cuenta de
+     * prueba de un prospecto (`PROD-17`). Ninguna de las dos es un cliente: no
+     * acepta documentos legales, no recibe alertas, no cuenta en las métricas
+     * del negocio y no se elimina con la salida de un cliente.
+     */
+    public function esFicticia(): bool
+    {
+        return $this->getAttribute('es_ambiente_demo') === true
+            || $this->getAttribute('es_cuenta_de_prueba') === true;
+    }
+
+    /**
+     * Solo las empresas que son clientes de verdad: sin la demostración ni las
+     * cuentas de prueba.
+     *
+     * @param  Builder<Tenant>  $consulta
+     * @return Builder<Tenant>
+     */
+    public function scopeDeClientes(Builder $consulta): Builder
+    {
+        return $consulta->where('es_ambiente_demo', false)->where('es_cuenta_de_prueba', false);
     }
 
     /**

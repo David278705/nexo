@@ -52,7 +52,7 @@ class AccesoDePruebaController extends Controller
         Auth::guard('web')->logout();
         $peticion->session()->invalidate();
 
-        Auth::login($this->ambiente->usuarioDeDemostracion());
+        Auth::login($this->ambiente->usuarioDelAcceso($acceso->tenant));
         $peticion->session()->regenerate();
         $peticion->session()->put(
             CerrarAccesoDePruebaNoVigente::CLAVE,

@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Quedan fuera:
  *
  * - **El `owner`**, dentro de una visita: mira, no acepta a nombre de nadie.
- * - **El ambiente de demostración**: datos ficticios, que nadie trata.
+ * - **La demostración y las cuentas de prueba**: datos ficticios, que nadie trata.
  */
 class ExigirAceptacionLegal
 {
@@ -38,7 +38,7 @@ class ExigirAceptacionLegal
     {
         $empresa = tenant_actual();
 
-        if (! $empresa instanceof Tenant || $empresa->getAttribute('es_ambiente_demo') === true) {
+        if (! $empresa instanceof Tenant || $empresa->esFicticia()) {
             return $siguiente($peticion);
         }
 

@@ -450,7 +450,7 @@ final class PanelDeInicio
     private static function bajasEntre(Carbon $desde, Carbon $hasta): int
     {
         return Tenant::onlyTrashed()
-            ->where('es_ambiente_demo', false)
+            ->deClientes()
             ->whereBetween('deleted_at', [$desde, $hasta])
             ->count();
     }
@@ -460,6 +460,6 @@ final class PanelDeInicio
      */
     private static function clientesReales(): Builder
     {
-        return Tenant::query()->where('es_ambiente_demo', false);
+        return Tenant::query()->deClientes();
     }
 }

@@ -17,6 +17,7 @@ use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -111,6 +112,68 @@ final class AmbienteDeDemostracion
         });
 
         return $tenant->refresh();
+    }
+
+    /**
+     * Una empresa ficticia propia para un prospecto, poblada con la misma planta
+     * de la demostración, y su usuario superadministrador (`PROD-17`).
+     *
+     * Es suya: lo que cambie no lo ve ningún otro prospecto y no se restaura
+     * cada noche. Nace `en_prueba`, así que el proceso de alertas no la mira, y
+     * marcada `es_cuenta_de_prueba`, así que nada la cuenta como cliente.
+     */
+    public function crearCuentaDePrueba(string $nombreProspecto): Tenant
+    {
+        return DB::transaction(function () use ($nombreProspecto): Tenant {
+            $cuenta = Tenant::query()->create([
+                'nombre' => 'Demostración · '.$nombreProspecto,
+                'nit' => 'PRUEBA-'.Str::upper(Str::random(10)),
+                'telefono' => '6017000000',
+                'ciudad_id' => $this->ciudadDeReferencia()->getKey(),
+                'estado' => Tenant::ESTADO_EN_PRUEBA,
+                'sabado_laboral' => false,
+                'suspensiones_afectan_vacaciones' => true,
+                'perfil_sociodemografico_habilitado' => false,
+                'es_cuenta_de_prueba' => true,
+            ]);
+
+            $this->contexto->paraTenant($cuenta, function () use ($cuenta): void {
+                ObservadorDeAuditoria::sinAuditar(function () use ($cuenta): void {
+                    User::query()->create([
+                        'tenant_id' => $cuenta->getKey(),
+                        'rol' => Rol::Superadministrador,
+                        'name' => 'Cuenta de demostración',
+                        'email' => 'prueba-'.$cuenta->getKey().'-'.Str::lower(Str::random(8)).'@demostracion.invalid',
+                        'password' => bin2hex(random_bytes(32)),
+                        'email_verified_at' => Carbon::now(),
+                    ]);
+
+                    $this->poblar();
+                });
+            });
+
+            return $cuenta;
+        });
+    }
+
+    /**
+     * Con quién entra un acceso de prueba: el superadministrador de su propia
+     * cuenta. Los accesos anteriores a `PROD-17` apuntan a la demostración
+     * compartida y entran con su usuario de siempre.
+     */
+    public function usuarioDelAcceso(Tenant $cuenta): User
+    {
+        if ($cuenta->getAttribute('es_cuenta_de_prueba') !== true) {
+            return $this->usuarioDeDemostracion();
+        }
+
+        /** @var User $usuario */
+        $usuario = User::query()
+            ->where('tenant_id', $cuenta->getKey())
+            ->where('rol', Rol::Superadministrador)
+            ->firstOrFail();
+
+        return $usuario;
     }
 
     /**
