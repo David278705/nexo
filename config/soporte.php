@@ -5,7 +5,7 @@
 | El canal de soporte que ve el cliente
 |--------------------------------------------------------------------------
 |
-| Paso 16 del plan de salida al mercado (`PROD-12`). El contrato va a
+| El canal de soporte del cliente (`PROD-12`). El contrato va a
 | prometer tiempos de respuesta, y el cliente tiene que saber a dónde
 | escribir para que ese reloj empiece a correr. Hasta ahora no había ningún
 | sitio dentro de la aplicación que lo dijera.
@@ -27,7 +27,7 @@ return [
     'whatsapp' => env('SOPORTE_WHATSAPP', ''),
 
     // Cuándo se responde. Tiene que coincidir con lo que diga el SLA del
-    // contrato (paso 11 del plan): si el contrato promete otra cosa, manda el
+    // contrato (`docs/salida/opciones-de-sla.md`): si el contrato promete otra cosa, manda el
     // contrato y este texto miente.
     'horario' => env('SOPORTE_HORARIO', 'Lunes a viernes, de 8:00 a. m. a 5:00 p. m.'),
 

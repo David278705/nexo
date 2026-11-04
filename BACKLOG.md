@@ -2749,3 +2749,58 @@ acciones quedan en la auditoría; solo la ponen y la quitan el superadministrado
 proveedor; y el aislamiento entre empresas tiene su caso si hace falta una tabla nueva.
 **Fuente:** Ley 1581 de 2012, artículos 15 y 18 · `docs/salida/manual-de-consultas-y-reclamos.md`, punto 6
 
+## Decisiones de David y lista única (3 de noviembre de 2026)
+
+David pidió cuatro cambios y que todo quedara en una sola lista en orden. Los cuatro están hechos; la
+lista vive en `docs/09-plan-de-salida-al-mercado.md` y es la única: `ESTADO.md` solo dice en qué paso va.
+
+### [x] PROD-18 · La escalera de mora: avisos a los 5 y 10 días, suspensión a los 15
+
+Antes 5, 15 y 30, la propuesta del documento 4. Hecho: `config/panel.php`, la prueba que fija los tres
+números en `SuscripcionesTest`, y los mismos números en el documento 4 y en el encargo al abogado. La
+suspensión sigue sin ser automática.
+
+### [x] PROD-15 · Al irse un cliente, el proveedor conserva lo suyo y las pruebas
+
+Decidido por David sobre la investigación del paso 14 del plan (`docs/salida/dos-preguntas-investigadas.md`).
+Hecho: `TablasDeLaEmpresa` pasa de tres listas a cinco. **Suscripciones y pagos** siguen sin borrarse nunca.
+**Las aceptaciones legales** se entregan y se conservan: guardan desde el momento de aceptar el nombre y el
+correo de quien aceptó, y al eliminar se sueltan del usuario (`user_id` admite nulo). **El registro de
+alertas** se entrega y se anonimiza: sin empleado, asunto, cuerpo, destinatarios ni motivo de fallo, con la
+clave reemplazada para no repetir; quedan el tipo, las fechas, el estado y la hora de envío. **Las
+constancias** de entrega y de eliminación se guardan en `constancias_de_salida`, tabla del proveedor sin RLS
+como `suscripciones`; la de entrega lleva la huella SHA-256 del ZIP. La constancia no se audita, para no
+dejar una línea en la auditoría del cliente después de eliminarla. Seis pruebas nuevas en
+`SalidaDelClienteTest` y una en `AceptacionLegalTest`.
+
+### [x] PROD-16 · La obra o labor se puede cambiar a término indefinido
+
+Es el otrosí que antes se hacía fuera del sistema y dejaba el contrato registrado como obra o labor. Hecho:
+`TipoContrato::admiteCambioAIndefinido()`, separado de `admiteRenovacion()`, que sigue siendo solo del fijo;
+el modal nombra la modalidad de la que se sale y, en obra o labor, dice que el contrato deja el listado
+bimestral. Cinco pruebas nuevas y dos ajustadas en `CambioAIndefinidoTest`.
+
+### [x] PROD-17 · Cada prospecto recibe su propia cuenta de prueba con datos
+
+Antes todos los accesos de prueba entraban a la única demostración con el mismo usuario. Hecho:
+`tenants.es_cuenta_de_prueba`; `AccesosDePrueba::generar()` crea con `crearCuentaDePrueba()` una empresa
+ficticia propia, poblada con `PlantaDeMuestra`, y el enlace entra con su superadministrador. La demostración
+compartida queda para la sesión guiada y se sigue restaurando. `Tenant::esFicticia()` y el alcance
+`deClientes()` sacan las dos de las métricas, de la aceptación legal, de la eliminación y del listado de
+empresas; las alertas ya no les llegan porque nacen `en_prueba`. Los accesos anteriores siguen entrando a la
+demostración compartida. Siete pruebas nuevas en `AccesosDePruebaTest`.
+
+### [ ] PROD-19 · El periodo de prueba no cambia cuando cambia la modalidad
+
+`PeriodoDePrueba` lee la modalidad vigente de la vinculación. Si un término fijo o una obra o labor pasa a
+indefinido en sus primeros meses, el periodo se recalcula como si el contrato hubiera nacido indefinido —dos
+meses desde el ingreso— y pueden salir alertas de un periodo de prueba que no existe: el periodo se pacta al
+inicio del contrato y un cambio de modalidad no abre uno nuevo (documento 6, C.3).
+
+**Hecho cuando:** el periodo de prueba se calcula con la modalidad y las fechas del **tramo inicial** del
+historial, no con las vigentes; un fijo de seis meses que pasa a indefinido al mes sigue teniendo su quinta
+parte; una obra o labor que pasa a indefinido conserva el periodo de su fecha estimada, o ninguno; y las
+pruebas del motor cubren los dos casos antes de tocar el código.
+**Fuente:** `app/Dominio/Calculo/PeriodoDePrueba.php` · `.claude/rules/20-calculo-y-reglas-legales.md` ·
+documento 6, C.3
+

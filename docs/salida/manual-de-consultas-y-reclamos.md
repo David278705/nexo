@@ -1,6 +1,6 @@
 # Manual de consultas y reclamos de datos personales
 
-> Paso 13 del plan de salida al mercado. Borrador del 2026-11-03 para revisión del abogado.
+> Pasos 4 y 11 del plan de salida al mercado. Borrador del 2026-11-03 para revisión del abogado.
 >
 > **Es obligatorio.** La Ley 1581 de 2012, artículo 18, literal f, le exige al encargado del tratamiento
 > «adoptar un manual interno de políticas y procedimientos para garantizar el adecuado cumplimiento de la

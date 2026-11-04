@@ -1,54 +1,22 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-11-03 · Plan de salida al mercado, segunda sesión: los cinco documentos de
-`docs/salida/` (`DOC-01`). Antes, el mismo día: pasos 01, 16 y 17 (`PROD-11`, `PROD-12`, `PROD-13`).
-**Verificación:** esta sesión no tocó código. La última verificación completa, de `PROD-12`, quedó en verde.
-**Siguiente tarea:** `PROD-14`, la marca de «reclamo en trámite» que exige la Ley 1581. No pide nada de
-David.
+**Última sesión:** 2026-11-03 · Cuatro cambios pedidos por David (`PROD-15` a `PROD-18`) y la lista única.
+**Verificación:** ver la tarea `PROD-17` del backlog.
+**Dónde vamos:** todo lo que falta está en **una sola lista**, `docs/09-plan-de-salida-al-mercado.md`,
+«Lo que falta, en orden». Lo siguiente es de David: los pasos 1 a 7 (cuatro decisiones y tres preguntas
+cortas) y arrancar los trámites 8 a 11. Lo siguiente mío, que no depende de nadie, son los pasos 12
+(`PROD-14`) y 13 (`PROD-19`).
 
-## Lo que espera una decisión de David
+**Regla para las próximas sesiones:** una decisión nueva, un hallazgo o una tarea nueva **entra a esa lista
+en su lugar**. No se anota en este archivo ni en ningún otro como pendiente suelto.
 
-Ninguna de estas bloquea a `PROD-14`, pero cada una bloquea un paso del plan:
+## Qué se hizo el 2 y el 3 de noviembre
 
-- **El nombre comercial.** Bloquea el logo (paso 15), la landing (26), el dominio y la marca.
-- **Los textos del abogado.** Bloquean pegarlos en el sistema (paso 12). El encargo ya está listo:
-  `docs/salida/encargo-al-abogado.md`.
-- **El correo de soporte** para `SOPORTE_CORREO`, y quién responde las consultas de datos personales.
-- **Confirmar el SLA** (`docs/salida/opciones-de-sla.md`) y **los precios**
-  (`docs/salida/propuesta-de-precios.md`).
-- **La invitación antes de la carga.** Hoy el superadministrador recibe su invitación al crear la empresa,
-  antes de que sus datos estén cargados, y los documentos 1 y 4 dicen lo contrario. Propuesta: que crear
-  la empresa no envíe la invitación y que se envíe desde la ficha al terminar la carga.
-- **¿WhatsApp en el soporte?** El documento 4, 13.2, pide un solo canal, el correo. Propuesta: quitar la
-  opción de WhatsApp que agregó `PROD-12`.
-- **Las tres de `OL-01`:** la columna de fecha estimada en la plantilla de Excel, el texto del aviso de
-  reingreso, y si hace falta corregir la fecha estimada después de registrarla.
-## Qué se hizo en OL-01
-
-David decidió que la obra o labor tenga periodo de prueba, calculado con las reglas del término fijo
-sobre una fecha de finalización estimada que el cliente registra si quiere. El detalle está en la tarea
-`OL-01` del backlog. Tres cosas quedaron sin tocar y piden decisión de David: la columna en la plantilla
-de carga inicial, el texto de la advertencia de reingreso, y que no existe forma de corregir la fecha
-estimada después de registrarla.
-
-## El plan de salida al mercado (2026-11-02)
-
-David pidió una revisión del 100% del código y un plan ordenado, con costos, para poder vender.
-Está en `docs/09-plan-de-salida-al-mercado.md`: treinta pasos en siete fases, con el costo de cada
-uno y la cuenta del precio mínimo viable que pedía el documento 6, A.1.
-
-**Lo que concluyó la revisión:** el producto está terminado —once módulos del cliente, ocho de las
-nueve secciones del panel, el motor de alertas con sus trece reglas, el aislamiento con dos
-capas y 49 casos de prueba— y en las partes revisadas no se vieron fugas ni errores de cálculo; no fue una auditoría línea por línea. Lo que
-falta es casi todo lo que lo rodea, y el camino crítico no es el código (alrededor de una semana con la landing) sino el abogado y la Cámara de Comercio.
-
-**Lo que el plan agrega a lo que ya estaba anotado abajo:** los avisos de `composer audit`,
-el canal de soporte que no existe dentro de la aplicación, el canal de habeas data con los plazos de
-la Ley 1581, que **no están obligados al RNBD** mientras los activos no superen 100.000 UVT
-(~$5.237.400.000 en 2026), y que el IVA del SaaS es del 19%, lo que cambia cómo se publica el precio.
-
-**La versión compartible con el abogado y el contador:**
-https://claude.ai/artifact/CDMcrjydi9TpAp6LFhSU2g
+Revisión dirigida del código y plan de salida al mercado; la obra o labor con fecha estimada (`OL-01`); las
+dependencias, los campos de dinero y el canal de soporte (`PROD-11` a `PROD-13`); los cinco documentos de
+`docs/salida/` (`DOC-01`); y los cuatro cambios pedidos por David: la escalera de mora, lo que se conserva al
+irse un cliente, la obra o labor a indefinido y la cuenta de prueba propia (`PROD-15` a `PROD-18`). El detalle
+de cada uno está en su tarea del backlog. Lo que queda está en la lista única.
 
 ## Qué se hizo en la sesión anterior (2026-10-01)
 
@@ -93,50 +61,10 @@ El detalle de cada pieza está en las tareas `PROD-*` del backlog y en los mensa
 - **El worker sin `--max-time`**: haría salir al proceso con código 0, y Railway, con su política por
   defecto, no lo reiniciaría.
 
-## Preguntas para Angela
+## Preguntas para Angela y decisiones para David
 
-- (sin cambios) B.2, el fondo de cesantías y la norma de `HD-04`.
-- **B.2 y la conservación tras la salida ya tienen respuesta investigada** en el paso 14 de
-  `docs/09-plan-de-salida-al-mercado.md`; falta validarla. Código sin cambios.
-- **Para el abogado: qué conserva el proveedor cuando un cliente se va.** `TablasDeLaEmpresa`
-  entrega y elimina todo lo del cliente, y conserva la empresa, sus suscripciones y pagos (la
-  contabilidad del proveedor) y las notas internas. Es una lectura de A.4 y de la Ley 1581, no una
-  instrucción expresa. Si el abogado dice otra cosa, se cambia una lista en un solo archivo.
-
-## Decisiones para David
-
-**Los bloques 2 a 4 de la auditoría, que siguen pendientes:**
-
-- **Legal (lo que no es código).** Sociedad y facturación electrónica ante la DIAN, y **los cuatro
-  textos de `resources/legal/` revisados por el abogado** (B.4). El mecanismo ya está: se pega cada
-  texto en su archivo, se pasa a `vigente` y se sube la versión (`docs/08-despliegue.md`).
-- **Salir al mercado.** No hay landing (la recomendación es un sitio estático en el dominio raíz y la
-  aplicación en `app.`), ni tabla de precios (A.1, `planes` vacía), ni pasarela de pagos (la lista G
-  la exige antes de vender), ni canal de soporte visible para el cliente, ni marca (el favicon pesa
-  0 bytes).
-- **Operación.** Dominio y correo (`F3-06b`), el simulacro de restauración (`F6-07`, porque el plan
-  de incidentes da por hecho un *Point-in-Time Recovery* de Railway que nadie ha verificado), y las
-  verificaciones manuales en navegador que se arrastran desde `HD-04`.
-
-**Al desplegar, tres cosas que solo se comprueban allá** (están en `docs/08-despliegue.md`, paso 8):
-
-- **Que el registro de accesos guarde las IPs reales.** `trustProxies('*')` confía en un solo salto.
-  Si Railway tuviera dos, todos los usuarios se verían con la IP del proxy y el límite de intentos
-  los contaría como uno solo.
-- **Que la imagen compile.** Aquí no había Docker. Se verificó todo lo que se podía verificar sin él
-  —FrankenPHP real con el mismo comando, `optimize` en producción, que las imágenes base existan—,
-  pero la compilación misma la hace Railway por primera vez.
-- **Borrar `DB_URL_ADMIN`** después del primer despliegue.
-
-**De antes, sin cambios:** si `/` debería desviar al owner a su panel en vez de darle 403;
-`HD-05` (festivos históricos; se comprobó que el cálculo por ley Emiliani coincide fecha por fecha
-con 2025, 2026 y 2027, y podría generar los años anteriores si alguien coteja una muestra);
-`HD-12` y la plantilla de terminaciones que no existe; `stash@{0}`, que ya no sirve.
-
-**Un riesgo que no se tocó:** el campo «Monto recibido» es un número del navegador. Si alguien
-escribe «380.000», el navegador lo convierte en 380 antes de enviarlo, y el servidor no lo puede
-distinguir. La confirmación del pago enseña el monto, pero un campo de dinero con formato colombiano
-lo evitaría del todo.
+Ya no se anotan aquí. Están en la lista única, `docs/09-plan-de-salida-al-mercado.md`: las de David son los
+pasos 1 a 7, y las de Angela y el asesor laboral van en el paso 11.
 
 ## Notas para la próxima sesión
 

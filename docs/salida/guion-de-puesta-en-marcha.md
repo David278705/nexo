@@ -1,6 +1,6 @@
 # Guion de la puesta en marcha
 
-> Paso 28 del plan de salida al mercado. Preparado el 2026-11-03 sobre el guion del documento 4, 12.2,
+> Paso 26 del plan de salida al mercado. Preparado el 2026-11-03 sobre el guion del documento 4, 12.2,
 > y las pantallas reales del sistema. **Falta cronometrarlo**: la primera vez, se anota el tiempo real de
 > cada bloque en la última columna. Ese número es el que confirma el precio de la implementación.
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | Contrato y acuerdo de tratamiento listos para que el cliente los lea; los acepta al primer ingreso | Angela | ☐ |
 | Certificado de Cámara de Comercio del cliente, en PDF | Angela | ☐ |
-| **El correo transaccional funcionando** (paso 21 del plan): sin él no llega la invitación | David | ☐ |
+| **El correo transaccional funcionando** (paso 20 del plan): sin él no llega la invitación | David | ☐ |
 | El ambiente de demostración revisado: Panel → Demostración | David | ☐ |
 | Las seis plantillas de `plantillas/` y la hoja de listas desplegables, listas para enviar | David | ☐ |
 | Decidir con el cliente quién será el superadministrador: nombre y correo | Angela | ☐ |

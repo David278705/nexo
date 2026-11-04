@@ -89,7 +89,9 @@ El producto se vende como software como servicio, con suscripción. La empresa n
 ### 2.3 Demostración comercial
 
 **REGLA.** Existe un ambiente de demostración con una empresa ficticia ya cargada: empleados de mentira, novedades, contratos e histórico suficiente para que los indicadores y reportes se vean poblados. Un sistema vacío no permite mostrar el valor del producto.
-- El prospecto recibe un usuario de prueba con vigencia limitada a un número de días definido.
+- El prospecto recibe **su propia cuenta de prueba**, con vigencia limitada a un número de días definido:
+  una empresa ficticia solo para él, ya poblada con los mismos datos de la demostración. Lo que cambie no lo
+  ve ningún otro prospecto (`PROD-17`, decidido por David el 2026-11-03).
 - Dentro de la demostración puede agregar, editar y eliminar registros, consultar el dashboard y descargar reportes.
 - El proceso comercial es: primero una sesión guiada donde se le muestra el sistema, y después se le entrega el acceso para que lo explore por su cuenta.
 - Los datos de la demostración son ficticios. Ningún dato personal real se usa con fines comerciales.
@@ -278,9 +280,12 @@ Un contrato a término fijo que se prorroga no genera una vinculación nueva: no
 
 #### Acción "Cambiar a término indefinido"
 
-- Disponible únicamente en contratos a término fijo. El cambio inverso, de indefinido a fijo, no existe.
+- Disponible en contratos a término fijo y, **desde el 2026-11-03, en obra o labor** (`PROD-16`, decidido
+  por David): es el otrosí con que las partes acuerdan que el contrato sigue a término indefinido. Renovar
+  sigue siendo exclusivo del término fijo. El cambio inverso, de indefinido a fijo o a obra o labor, no
+  existe.
 - Queda registrado con la fecha en que se hizo el cambio, para efectos de trazabilidad y reportes.
-- **La fecha de ingreso del empleado no cambia: sigue siendo la del inicio del contrato a término fijo.** El vínculo es el mismo, solo cambia su modalidad. Los cálculos de vacaciones y antigüedad siguen corriendo desde la fecha original.
+- **La fecha de ingreso del empleado no cambia: sigue siendo la del inicio del contrato original.** El vínculo es el mismo, solo cambia su modalidad. Los cálculos de vacaciones y antigüedad siguen corriendo desde la fecha original.
 - Puede usarse de forma voluntaria por la empresa o como respuesta a la validación de tope legal.
 
 > **Contratos de obra o labor**

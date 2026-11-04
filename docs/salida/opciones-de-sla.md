@@ -1,6 +1,6 @@
 # Opciones de SLA
 
-> Paso 11 del plan de salida al mercado. Preparado el 2026-11-03 para que David y Angela decidan **antes**
+> Paso 3 del plan de salida al mercado. Preparado el 2026-11-03 para que David y Angela decidan **antes**
 > de que el abogado redacte el contrato. La decisión es de ellos; aquí van las opciones y una
 > recomendación.
 
@@ -55,7 +55,7 @@ trabajos. **Recomendación: adoptarlos tal cual.**
 | Media | Algo funciona mal pero se puede seguir trabajando | Dos días hábiles | Siguiente actualización |
 | Baja | Duda de uso, sugerencia o detalle cosmético | Tres días hábiles | Sin compromiso de fecha |
 
-> **Corrección al plan.** El paso 11 de `docs/09-plan-de-salida-al-mercado.md` proponía «cuatro horas si el
+> **Corrección al plan.** La primera versión de `docs/09-plan-de-salida-al-mercado.md` proponía «cuatro horas si el
 > sistema está caído para todos». El documento 4 dice «mismo día hábil», que es lo que se puede cumplir.
 > Manda el documento 4.
 
