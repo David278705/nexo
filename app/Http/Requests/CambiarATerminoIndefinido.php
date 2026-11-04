@@ -10,11 +10,10 @@ use Illuminate\Support\Carbon;
 /**
  * Las reglas de la acción «Cambiar a término indefinido» (documento 1, 5.5).
  *
- * La regla de existencia de la acción está en `authorize()`: **solo un término
- * fijo se convierte**. En un indefinido el cambio no significa nada, y en obra
- * o labor el paso a indefinido se hace por otrosí fuera del sistema, así que
- * enviar la petición a mano responde 403 y no un error de validación de un
- * campo que no existe.
+ * La regla de existencia de la acción está en `authorize()`: **se convierten el
+ * término fijo y la obra o labor** (`PROD-16`). En un indefinido el cambio no
+ * significa nada, así que enviar la petición a mano responde 403 y no un error
+ * de validación de un campo que no existe.
  *
  * El cambio inverso tampoco existe, y no hace falta prohibirlo: no hay ninguna
  * ruta que lo haga.

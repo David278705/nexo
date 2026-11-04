@@ -95,9 +95,9 @@ class DetalleDelContrato
             'estado' => $this->vigencia->estado(),
             'tono' => $this->vigencia->tono(),
             /*
-             * Renovar y cambiar a indefinido son exclusivas del término fijo
-             * (documento 1, 5.5). Cada botón lee su propia bandera: la de
-             * renovar exige además un vencimiento del que colgar la prórroga.
+             * Renovar es exclusivo del término fijo (documento 1, 5.5). El
+             * botón de cambiar a indefinido lee su propia bandera, la de
+             * `CambioAIndefinido`, porque también existe en obra o labor.
              */
             'admiteRenovacion' => $tipo->admiteRenovacion(),
         ];

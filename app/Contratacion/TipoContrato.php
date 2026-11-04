@@ -52,14 +52,27 @@ enum TipoContrato: string
     }
 
     /**
-     * Si sobre esta modalidad se ofrecen renovar y cambiar a indefinido.
-     *
-     * Ambas acciones son exclusivas del término fijo (documento 1, 5.5). En
-     * obra o labor el paso a indefinido se hace por otrosí, fuera del sistema.
+     * Si sobre esta modalidad se ofrece renovar: solo el término fijo, que es
+     * el único que tiene un vencimiento del que colgar la prórroga
+     * (documento 1, 5.5).
      */
     public function admiteRenovacion(): bool
     {
         return $this === self::Fijo;
+    }
+
+    /**
+     * Si esta modalidad se puede cambiar a término indefinido.
+     *
+     * El término fijo desde siempre (documento 1, 5.5) y la obra o labor desde
+     * el 2026-11-03 (`PROD-16`, decidido por David): es el otrosí con que las
+     * partes acuerdan que el contrato sigue a término indefinido, que antes se
+     * hacía fuera del sistema y dejaba el contrato registrado como obra o
+     * labor. El inverso no existe.
+     */
+    public function admiteCambioAIndefinido(): bool
+    {
+        return $this === self::Fijo || $this === self::ObraLabor;
     }
 
     /**

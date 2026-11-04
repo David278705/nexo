@@ -43,14 +43,12 @@ class CambioAIndefinido
     }
 
     /**
-     * Si esta pantalla ofrece la acción.
-     *
-     * Solo el término fijo (documento 1, 5.5). El cambio inverso no existe, y en
-     * obra o labor el paso a indefinido se hace por otrosí, fuera del sistema.
+     * Si esta pantalla ofrece la acción: en el término fijo y en la obra o labor
+     * (`PROD-16`). El cambio inverso no existe.
      */
     public function disponible(): bool
     {
-        return $this->historial->tipoDeContratoVigente()?->admiteRenovacion() === true;
+        return $this->historial->tipoDeContratoVigente()?->admiteCambioAIndefinido() === true;
     }
 
     /**
@@ -126,15 +124,26 @@ class CambioAIndefinido
         return [
             'disponible' => $this->disponible(),
             'entrada' => 'Vas a cambiar el contrato de '.$this->vinculacion->persona->nombreCompleto()
-                .' de término fijo a término indefinido.',
+                .' de '.$this->desde().' a término indefinido.',
             'titulo' => 'Qué implica este cambio',
             'implicaciones' => $this->implicaciones($fecha),
             'advertencia' => 'Este cambio no se puede revertir desde el sistema. Un contrato '
-                .'indefinido no puede volver a ser a término fijo.',
+                .'indefinido no puede volver a ser '.$this->desde().'.',
             'fecha' => $fecha->toDateString(),
             'minimo' => $this->limiteInferior()->toDateString(),
             'maximo' => $this->limiteSuperior()->toDateString(),
         ];
+    }
+
+    /**
+     * La modalidad de la que se sale, en minúscula para ir dentro de la frase:
+     * «término fijo» u «obra o labor».
+     */
+    private function desde(): string
+    {
+        $tipo = $this->historial->tipoDeContratoVigente() ?? TipoContrato::Fijo;
+
+        return mb_strtolower($tipo->etiqueta());
     }
 
     /**
@@ -169,7 +178,9 @@ class CambioAIndefinido
             'El vínculo continúa. No hay salida ni liquidación.',
             'La fecha de ingreso no cambia: sigue siendo el '.$ingreso.'.',
             'La antigüedad y el saldo de vacaciones siguen corriendo desde esa fecha.',
-            'Dejarán de generarse las alertas de vencimiento y renovación.',
+            $this->historial->tipoDeContratoVigente() === TipoContrato::ObraLabor
+                ? 'Deja de aparecer en el listado bimestral de contratos de obra o labor activos.'
+                : 'Dejarán de generarse las alertas de vencimiento y renovación.',
             'El cambio queda registrado en el historial con fecha del '
                 .Formato::fecha($fecha).' y en la auditoría.',
         ];

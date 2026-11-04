@@ -90,14 +90,20 @@ describe('cuándo se ofrece la acción', function () {
         expect(detalleDeContrato($contrato)['cambioAIndefinido']['disponible'])->toBeFalse();
     });
 
-    it('no la ofrece en obra o labor, donde el paso a indefinido se hace por otrosí', function () {
+    it('la ofrece en obra o labor: es el otrosí que antes se hacía fuera del sistema (PROD-16)', function () {
         $contrato = contratoSinPlazo('DeObra', TipoContrato::ObraLabor);
 
-        expect(detalleDeContrato($contrato)['cambioAIndefinido']['disponible'])->toBeFalse();
+        expect(detalleDeContrato($contrato)['cambioAIndefinido']['disponible'])->toBeTrue();
+    });
+
+    it('no ofrece renovar la obra o labor, que no tiene vencimiento', function () {
+        $contrato = contratoSinPlazo('DeObra', TipoContrato::ObraLabor);
+
+        expect(detalleDeContrato($contrato)['contrato']['admiteRenovacion'])->toBeFalse();
     });
 
     it('rechaza la petición enviada a mano donde la acción no existe', function () {
-        $contrato = contratoSinPlazo('DeObra', TipoContrato::ObraLabor);
+        $contrato = contratoSinPlazo('YaIndefinido', TipoContrato::Indefinido);
 
         cambiarAIndefinido($contrato)->assertForbidden();
 
@@ -336,5 +342,48 @@ describe('el aislamiento entre empresas', function () {
             ->assertNotFound();
 
         expect($contrato->fresh()->tipo_contrato)->toBe(TipoContrato::Fijo);
+    });
+});
+
+describe('desde obra o labor (PROD-16)', function () {
+    it('cambia la obra o labor a término indefinido con un tramo nuevo, sin mover el ingreso', function () {
+        $contrato = contratoSinPlazo('DeObra', TipoContrato::ObraLabor);
+
+        cambiarAIndefinido($contrato)->assertRedirect();
+
+        $contrato->refresh();
+
+        expect($contrato->tipo_contrato)->toBe(TipoContrato::Indefinido)
+            ->and($contrato->fecha_ingreso->toDateString())->toBe('2026-01-15')
+            ->and(tramosDe($contrato))->toHaveCount(2);
+    });
+
+    it('el modal dice que sale de obra o labor y no de término fijo', function () {
+        $contrato = contratoSinPlazo('DeObra', TipoContrato::ObraLabor);
+
+        $cambio = cambioAIndefinidoDe($contrato);
+
+        expect($cambio['entrada'])->toContain('de obra o labor a término indefinido')
+            ->and($cambio['advertencia'])->toContain('no puede volver a ser obra o labor')
+            ->and($cambio['implicaciones'])->toContain(
+                'Deja de aparecer en el listado bimestral de contratos de obra o labor activos.'
+            );
+    });
+
+    it('en el término fijo el modal sigue diciendo lo mismo de siempre', function () {
+        $contrato = contratoFijo('Fijo', '2025-07-15', '2026-09-12');
+
+        $cambio = cambioAIndefinidoDe($contrato);
+
+        expect($cambio['entrada'])->toContain('de término fijo a término indefinido')
+            ->and($cambio['implicaciones'])->toContain('Dejarán de generarse las alertas de vencimiento y renovación.');
+    });
+
+    it('deja de ofrecerla después del cambio', function () {
+        $contrato = contratoSinPlazo('DeObra', TipoContrato::ObraLabor);
+
+        cambiarAIndefinido($contrato);
+
+        expect(detalleDeContrato($contrato->fresh())['cambioAIndefinido']['disponible'])->toBeFalse();
     });
 });
