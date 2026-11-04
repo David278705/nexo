@@ -2718,3 +2718,34 @@ para el `owner` y sin correo; el bloque «¿Necesita ayuda?» al pie de `BarraLa
 como texto seleccionable además del enlace. `despliegue:verificar` avisa si falta el correo. 7 pruebas
 de Pest y 5 de Vitest.
 
+## Plan de salida al mercado, segunda sesión: documentos (3 de noviembre de 2026)
+
+La parte que me tocaba de los pasos 03, 10, 11, 13, 14, 25 y 28. Son documentos, no código, y viven en
+`docs/salida/`. Ninguno de esos pasos queda completo: a todos les falta una decisión o un tercero.
+
+### [x] DOC-01 · Los cinco documentos para salir a vender
+
+Hecho: `encargo-al-abogado.md` (pasos 10, 14 y 25), `opciones-de-sla.md` (11),
+`manual-de-consultas-y-reclamos.md` (13), `propuesta-de-precios.md` (03) y
+`guion-de-puesta-en-marcha.md` (28). Salieron de leer el código, no de suponerlo, y de ahí tres hallazgos:
+
+- **La invitación sale antes de la carga.** `CreacionDeEmpresa` emite la invitación del superadministrador
+  al crear la empresa, y el documento 1, 2.2, y el documento 4, 12.2, dicen que el acceso se entrega
+  **después** de la carga inicial. Pregunta para David en `ESTADO.md`.
+- **El WhatsApp de soporte contradice el documento 4, 13.2**, que pide un solo canal, el correo. `PROD-12`
+  lo dejó opcional y vacío. Pregunta para David.
+- **La Ley 1581 obliga a registrar «reclamo en trámite»** (artículo 18, literal g) y el sistema no tiene
+  dónde. Es `PROD-14`.
+
+### [ ] PROD-14 · Marcar a una persona con «reclamo en trámite»
+
+La Ley 1581, artículo 18, literal g, obliga al encargado a «registrar en la base de datos la leyenda
+"reclamo en trámite"» mientras se decide un reclamo del titular, y el artículo 15 da dos días hábiles para
+ponerla. Hoy el sistema no tiene dónde.
+
+**Hecho cuando:** una persona puede quedar marcada con «reclamo en trámite», con su motivo y su fecha; la
+marca se ve en la ficha del empleado y en el listado; se quita cuando el reclamo se decide, y las dos
+acciones quedan en la auditoría; solo la ponen y la quitan el superadministrador del cliente y el
+proveedor; y el aislamiento entre empresas tiene su caso si hace falta una tabla nueva.
+**Fuente:** Ley 1581 de 2012, artículos 15 y 18 · `docs/salida/manual-de-consultas-y-reclamos.md`, punto 6
+

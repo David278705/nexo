@@ -1,15 +1,28 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-11-03 · Plan de salida al mercado, primera sesión de código: pasos 01, 16 y 17
-(`PROD-11`, `PROD-12`, `PROD-13`).
-**Verificación:** ver la tarea `PROD-13` del backlog; `composer audit` sin avisos.
-**Siguiente sesión:** los documentos que me tocan del plan —encargo para el abogado (pasos 10 y 25),
-opciones de SLA (11), procedimiento de habeas data (13), propuesta de precios (03) y guion de puesta en
-marcha (28)—. No piden nada de David para empezar.
+**Última sesión:** 2026-11-03 · Plan de salida al mercado, segunda sesión: los cinco documentos de
+`docs/salida/` (`DOC-01`). Antes, el mismo día: pasos 01, 16 y 17 (`PROD-11`, `PROD-12`, `PROD-13`).
+**Verificación:** esta sesión no tocó código. La última verificación completa, de `PROD-12`, quedó en verde.
+**Siguiente tarea:** `PROD-14`, la marca de «reclamo en trámite» que exige la Ley 1581. No pide nada de
+David.
 
-**Lo que espera a David:** crear el correo de soporte y ponerlo en `SOPORTE_CORREO`; el nombre comercial
-(bloquea el logo y la landing); los textos del abogado (bloquean el paso 12); y las tres preguntas de
-`OL-01` (columna en la carga inicial, texto de reingreso, corregir la fecha estimada).
+## Lo que espera una decisión de David
+
+Ninguna de estas bloquea a `PROD-14`, pero cada una bloquea un paso del plan:
+
+- **El nombre comercial.** Bloquea el logo (paso 15), la landing (26), el dominio y la marca.
+- **Los textos del abogado.** Bloquean pegarlos en el sistema (paso 12). El encargo ya está listo:
+  `docs/salida/encargo-al-abogado.md`.
+- **El correo de soporte** para `SOPORTE_CORREO`, y quién responde las consultas de datos personales.
+- **Confirmar el SLA** (`docs/salida/opciones-de-sla.md`) y **los precios**
+  (`docs/salida/propuesta-de-precios.md`).
+- **La invitación antes de la carga.** Hoy el superadministrador recibe su invitación al crear la empresa,
+  antes de que sus datos estén cargados, y los documentos 1 y 4 dicen lo contrario. Propuesta: que crear
+  la empresa no envíe la invitación y que se envíe desde la ficha al terminar la carga.
+- **¿WhatsApp en el soporte?** El documento 4, 13.2, pide un solo canal, el correo. Propuesta: quitar la
+  opción de WhatsApp que agregó `PROD-12`.
+- **Las tres de `OL-01`:** la columna de fecha estimada en la plantilla de Excel, el texto del aviso de
+  reingreso, y si hace falta corregir la fecha estimada después de registrarla.
 ## Qué se hizo en OL-01
 
 David decidió que la obra o labor tenga periodo de prueba, calculado con las reglas del término fijo

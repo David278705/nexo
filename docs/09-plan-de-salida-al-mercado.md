@@ -63,9 +63,7 @@ Esta semana. Sin costo.
       están libres. El nombre lo eligen ustedes dos.
 - [ ] `[Los dos]` **03 · Calcular el costo por cliente y fijar la tabla de precios** (documento 6, A.1: primero
       el costo, después el precio). La cuenta está abajo. Bloquea el contrato y la landing. **Medio día.**
-      **Mi parte:** armo la tabla por rangos de empleados y de usuarios con la cuenta completa detrás. Los
-      números finales los fijan ustedes, y los planes se crean desde el panel.
-
+      **Mi parte, hecha el 2026-11-03:** `docs/salida/propuesta-de-precios.md` — tres planes por tamaño —Micro, Pequeña, Mediana— con la cuenta del punto de equilibrio. **Falta:** que David y Angela fijen los números y creen los planes en el panel.
 ## Fase 2 · Formalización
 
 2 a 4 semanas. Arranca la misma semana que la fase 1: depende de terceros.
@@ -97,20 +95,17 @@ Esta semana. Sin costo.
       autorización para los empleados del cliente **con autorización expresa para datos de salud**
       (el sistema guarda `codigo_diagnostico`, que es dato sensible). Los componentes del contrato
       están en el documento 6, A.2, y no hay que inventarlos. **$2.000.000-$6.000.000 · 2-4 semanas.**
-      **Mi parte:** redacto el encargo para el abogado —qué debe contener cada documento y qué datos trata
-      el sistema de verdad, incluido `codigo_diagnostico`—. Es lo que él no puede adivinar.
+      **Mi parte, hecha el 2026-11-03:** `docs/salida/encargo-al-abogado.md` — qué datos trata el sistema, cómo se protegen, los terceros que los tocan fuera de Colombia y las seis preguntas que el abogado tiene que resolver. **Falta:** contratar al abogado y entregárselo.
 - [ ] `[Los dos]` **11 · Decidir el SLA antes de que el abogado lo redacte.** Recomendación del documento 6, A.3:
-      99% mensual, 4 horas de respuesta si está caído para todos, 1 día hábil para lo demás, y
+      99% mensual, respuesta el mismo día hábil si está caído para todos (documento 4, 13.1), y
       descuento en factura si se incumple. Un SLA sin consecuencia no es exigible. **$0 · 1 hora.**
-      **Mi parte:** escribo las opciones con lo que compromete cada una en horas de caída al mes. El número
-      lo eligen ustedes.
+      **Mi parte, hecha el 2026-11-03:** `docs/salida/opciones-de-sla.md` — recomendación de 99 %, los tiempos de respuesta del documento 4, un compromiso propio sobre las alertas y la tabla de descuentos. **Falta:** que David y Angela confirmen los números.
 - [ ] `[Claude]` **12 · Pegar los cuatro textos en el sistema.** Cada uno en su archivo, `estado: borrador` →
       `estado: vigente`, subir la `version`. Sin tocar código (`docs/08-despliegue.md`). Desde ahí
       ninguna empresa trabaja hasta que su superadministrador acepte. **$0 · 1 hora.**
 - [ ] `[Los dos]` **13 · Montar el canal de habeas data y escribirlo en la política.** Un correo propio y los
       plazos de la Ley 1581: consultas 10 días hábiles, reclamos 15. **$0 · 2 horas.**
-      **Mi parte:** escribo el procedimiento y lo conecto en la aplicación. La dirección de correo y quién
-      contesta los pone David.
+      **Mi parte, hecha el 2026-11-03:** `docs/salida/manual-de-consultas-y-reclamos.md` — el manual que el artículo 18, literal f, de la Ley 1581 le exige al encargado, con los plazos de la ley. **Falta:** el correo y quién responde.
 - [ ] `[Los dos]` **14 · Las dos preguntas abiertas: respondidas, falta validarlas.** Salen de la norma
       y de sentencias; el abogado y el asesor laboral validan. **$0 extra.**
 
@@ -153,9 +148,7 @@ Esta semana. Sin costo.
       debe quedar en el contrato y en el acuerdo de tratamiento?». Al asesor laboral: «¿Existe
       jurisprudencia de la Corte Suprema que admita un nuevo periodo de prueba en un contrato sucesivo
       con labor distinta, o mantenemos la recomendación de no pactarlo?».
-
-      **Mi parte:** cuando confirmen, aplico los cambios en `TablasDeLaEmpresa`, la eliminación y las
-      constancias.
+      **Mi parte, hecha el 2026-11-03:** la pregunta del abogado va en el punto 3 de `docs/salida/encargo-al-abogado.md`; la del asesor laboral es la de arriba. Cuando respondan, aplico los cambios en `TablasDeLaEmpresa`, la eliminación y las constancias. **Falta:** las dos respuestas.
 
 ## Fase 4 · Marca y remates del producto
 
@@ -218,8 +211,7 @@ registro de accesos guarde las IPs reales, que la imagen compile, y `despliegue:
 - [ ] `[Los dos]` **25 · Escribir en el contrato los mismos números de mora que ya tiene el sistema**
       (`config/panel.php`: aviso a los 5 días, segundo a los 15, suspensión a los 30). Y la regla del
       documento 6: ante el impago se suspende el servicio, **nunca** se retienen los datos. **$0.**
-      **Mi parte:** doy los números exactos que el sistema ya aplica, para que el abogado los copie.
-
+      **Mi parte, hecha el 2026-11-03:** `docs/salida/encargo-al-abogado.md` — la tabla con los siete números que el contrato tiene que copiar del sistema. **Falta:** que el abogado los copie.
 ## Fase 7 · Salir a vender
 
 2 semanas. Necesita todo lo anterior.
@@ -234,7 +226,7 @@ registro de accesos guarde las IPs reales, que la imagen compile, y `despliegue:
 - [ ] `[Los dos]` **28 · Escribir y cronometrar el guion de la reunión de puesta en marcha.** La carga inicial es
       el momento de mayor riesgo del ciclo de vida del cliente, y la hacen ustedes. Cronometrarla da
       el número de soporte que el paso 03 solo pudo estimar. **$0 · 1 día.**
-      **Mi parte:** redacto el guion paso por paso. Cronometrarlo exige una reunión de verdad.
+      **Mi parte, hecha el 2026-11-03:** `docs/salida/guion-de-puesta-en-marcha.md` — antes, durante y después de la reunión, con las pantallas reales y una columna para el tiempo real. **Falta:** cronometrarlo con el primer cliente.
 - [ ] `[Solo David]` **29 · Registrar la marca ante la SIC.** Puede ir después de la primera venta, pero antes de
       gastar en publicidad. Tarifa reducida para microempresas; el sistema admite varias clases en
       una solicitud. **$1.179.000-$1.347.500 · meses de trámite.**
