@@ -5,6 +5,7 @@ import Armazon from "@/Components/Armazon.vue";
 import Aviso from "@/Components/Aviso.vue";
 import AvisoDeReingreso from "@/Components/AvisoDeReingreso.vue";
 import Boton from "@/Components/Boton.vue";
+import CampoDinero from "@/Components/CampoDinero.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
 import PasosDelAsistente from "@/Components/PasosDelAsistente.vue";
@@ -658,17 +659,15 @@ const resumenDelPerfil = computed(() =>
                         :error="form.errors.fecha_fin_estimada ?? ''"
                     />
 
-                    <CampoTexto
+                    <CampoDinero
                         v-model="form.salario"
                         etiqueta="Salario mensual"
-                        tipo="number"
                         :error="form.errors.salario ?? ''"
                     />
 
-                    <CampoTexto
+                    <CampoDinero
                         v-model="form.bonificacion"
                         etiqueta="Bonificación"
-                        tipo="number"
                         ayuda="Puede quedar en cero."
                         :error="form.errors.bonificacion ?? ''"
                     />

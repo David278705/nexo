@@ -19,6 +19,9 @@ const props = defineProps({
     // campo, así que no afectan a nadie más.
     minimo: { type: String, default: "" },
     maximo: { type: String, default: "" },
+    // El teclado que ofrece el celular (`inputmode`): «decimal» para el
+    // dinero, que se escribe en un campo de texto y no en uno `number`.
+    modoTeclado: { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:modelValue", "salir"]);
@@ -58,6 +61,7 @@ const descripcion = computed(() => {
             :autofocus="autoenfoque"
             :min="minimo || undefined"
             :max="maximo || undefined"
+            :inputmode="modoTeclado || undefined"
             :aria-invalid="error ? 'true' : undefined"
             :aria-describedby="descripcion"
             class="mt-1 block h-control w-full rounded-[var(--radius-caja)] border bg-superficie px-3 text-tabla text-texto placeholder:text-texto-terciario"

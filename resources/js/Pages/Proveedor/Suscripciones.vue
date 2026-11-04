@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import ArmazonProveedor from "@/Components/Proveedor/ArmazonProveedor.vue";
 import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
+import CampoDinero from "@/Components/CampoDinero.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
 import DistribucionLista from "@/Components/DistribucionLista.vue";
@@ -312,9 +313,8 @@ const puedeAbrirSuscripcion = computed(
                     etiqueta="Nombre del plan"
                     :error="formularioDePlan.errors.nombre"
                 />
-                <CampoTexto
+                <CampoDinero
                     v-model="formularioDePlan.precio_mensual"
-                    tipo="number"
                     etiqueta="Valor mensual"
                     ayuda="Sin sugerencia: la tabla de precios se calcula desde el costo por cliente."
                     :error="formularioDePlan.errors.precio_mensual"

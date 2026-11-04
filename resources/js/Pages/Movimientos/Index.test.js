@@ -422,7 +422,9 @@ describe("corregir y eliminar un movimiento (REV-03)", () => {
 
         expect(campo("Cargo actual").value).toBe("Analista Senior");
         expect(campo("Salario actual").value).toBe("$ 2.700.000");
-        expect(campo("Nuevo salario").value).toBe("3200000.00");
+        // Se enseña a la colombiana (PROD-11); lo que viaja al servidor sigue
+        // siendo el número limpio.
+        expect(campo("Nuevo salario").value).toBe("$ 3.200.000");
         expect(campo("Nuevo cargo").value).toBe("Coordinadora de Operaciones");
 
         componente.unmount();

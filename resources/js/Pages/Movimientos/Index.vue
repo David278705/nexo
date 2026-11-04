@@ -6,6 +6,7 @@ import { useNovedad } from "@/Utilidades/useNovedad";
 import Armazon from "@/Components/Armazon.vue";
 import BarraFiltros from "@/Components/BarraFiltros.vue";
 import Boton from "@/Components/Boton.vue";
+import CampoDinero from "@/Components/CampoDinero.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
 import ModalDeBorrado from "@/Components/ModalDeBorrado.vue";
@@ -436,10 +437,9 @@ const empleadoDeNovedad = computed(() => usePage().props.empleadoDeNovedad);
                     etiqueta="Salario actual"
                     solo-lectura
                 />
-                <CampoTexto
+                <CampoDinero
                     v-model="form.salario_nuevo"
                     etiqueta="Nuevo salario"
-                    tipo="number"
                     :error="form.errors.salario_nuevo"
                 />
             </div>

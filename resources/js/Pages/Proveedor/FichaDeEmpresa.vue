@@ -6,6 +6,7 @@ import Aviso from "@/Components/Aviso.vue";
 import Boton from "@/Components/Boton.vue";
 import EstadoVacio from "@/Components/EstadoVacio.vue";
 import Etiqueta from "@/Components/Etiqueta.vue";
+import CampoDinero from "@/Components/CampoDinero.vue";
 import CampoFecha from "@/Components/CampoFecha.vue";
 import CampoTexto from "@/Components/CampoTexto.vue";
 import ListaDeDatos from "@/Components/ListaDeDatos.vue";
@@ -839,9 +840,8 @@ const columnasDeVisitas = [
             @cerrar="cerrarModal"
         >
             <div class="grid gap-4">
-                <CampoTexto
+                <CampoDinero
                     v-model="formularioDePago.monto"
-                    tipo="number"
                     etiqueta="Monto recibido"
                     ayuda="Se escribe y no se deduce del plan: hay clientes que pagan dos meses juntos."
                     :error="formularioDePago.errors.monto"
