@@ -60,10 +60,11 @@ return [
     | 15, suspensión a los 30. **Los números son una decisión de ustedes**».
     | El capítulo 17.3 la repite entre lo que sigue pendiente.
     |
-    | Así que los números de aquí son **la propuesta del propio documento**,
-    | escrita en el único sitio donde se puede cambiar sin tocar lógica, y
-    | anotada en `ESTADO.md` bajo «Decisiones para David». No son una regla
-    | legal: son criterio comercial, igual que la salud de uso de arriba.
+    | Los números los decidió David el 2026-11-03 —5, 10 y 15 días— y viven
+    | en el único sitio donde se pueden cambiar sin tocar lógica. No son una
+    | regla legal: son criterio comercial, igual que la salud de uso de arriba.
+    | El contrato de servicio tiene que decir exactamente lo mismo
+    | (`docs/salida/encargo-al-abogado.md`).
     |
     | Dos cosas que estos números **no** hacen, y es a propósito:
     |
@@ -71,9 +72,8 @@ return [
     |   el aviso en la pantalla de Suscripciones; suspender sigue siendo una
     |   acción del owner, con su motivo escrito, porque el documento la pide
     |   «con motivo y constancia» y un motivo no lo puede redactar un
-    |   proceso. Mientras la escalera sea una propuesta y no una decisión
-    |   escrita, automatizar el corte del servicio de un cliente que paga
-    |   sería tomarle a David una decisión que el documento le atribuye.
+    |   proceso. Suspender a un cliente que paga es una decisión que se toma
+    |   mirando el caso, no algo que deba hacer un proceso solo.
     | - **No mandan ningún correo.** Los dos avisos de la escalera son
     |   correos al cliente, y los correos del sistema salen del motor de
     |   alertas del capítulo 9, que es de las empresas y sus empleados. Un
@@ -162,11 +162,13 @@ return [
         // el prototipo lo enseña como «Vence en 3 días» en ámbar.
         'dias_por_vencer' => 5,
 
-        // La escalera del capítulo 6, tal como el documento la propone.
+        // La escalera decidida por David el 2026-11-03: avisos a los 5 y a
+        // los 10 días de mora, suspensión a los 15. El documento 4 proponía
+        // 5, 15 y 30. El contrato tiene que copiar estos mismos números.
         'escalera_de_mora' => [
             'primer_aviso' => 5,
-            'segundo_aviso' => 15,
-            'suspension' => 30,
+            'segundo_aviso' => 10,
+            'suspension' => 15,
         ],
 
     ],

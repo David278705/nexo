@@ -213,12 +213,22 @@ it('escribe los días de atraso en la celda de pago', function () {
 });
 
 it('avisa de la mora nombrando la empresa y el peldaño de la suspensión', function () {
-    empresaConSuscripcion($this->plan, ['proxima_fecha_cobro' => Carbon::today()->subDays(22)]);
+    // Entre el segundo aviso y la suspensión: con la escalera de 5, 10 y 15
+    // días, a los 12 todavía hay tiempo de llamar.
+    empresaConSuscripcion($this->plan, ['proxima_fecha_cobro' => Carbon::today()->subDays(12)]);
 
     expect(PanelDeSuscripciones::avisoDeMora())
-        ->toContain('Textiles Aurora Ltda. lleva 22 días de mora')
+        ->toContain('Textiles Aurora Ltda. lleva 12 días de mora')
         ->toContain('la suspensión es a los '.EscaleraDeMora::diasParaSuspender().' días')
         ->toContain('Conviene llamar antes');
+});
+
+it('usa la escalera decidida por David: avisos a los 5 y 10 días, suspensión a los 15', function () {
+    expect(config('panel.cobro.escalera_de_mora'))->toBe([
+        'primer_aviso' => 5,
+        'segundo_aviso' => 10,
+        'suspension' => 15,
+    ])->and(EscaleraDeMora::diasParaSuspender())->toBe(15);
 });
 
 it('dice que ya le corresponde la suspensión al pasar el último peldaño', function () {

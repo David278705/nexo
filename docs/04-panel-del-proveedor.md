@@ -151,6 +151,8 @@ Es el asistente de carga inicial, descrito en el Documento 3. Vive aquí, no en 
 > Lo que nunca se hace es retener la información como forma de presión: eso está expresamente descartado en el acuerdo de tratamiento de datos. El cliente en mora puede pedir su información y hay que entregársela.
 >
 > Conviene definir la escalera: aviso a los 5 días de mora, segundo aviso a los 15, suspensión a los 30. Los números son una decisión de ustedes.
+>
+> **Decidido por David el 2026-11-03:** aviso a los 5 días, segundo aviso a los 10, suspensión a los 15 (`config/panel.php`).
 
 ### 7. Alertas
 
@@ -194,7 +196,10 @@ La pantalla de constantes legales es más importante de lo que parece: es donde 
 ### 10. Demostración y equipo
 
 - Estado del ambiente de demostración, con un botón para restaurarlo de inmediato si un prospecto lo dejó desordenado.
-- Generación de accesos de prueba con vigencia limitada, y listado de los que están activos.
+- Generación de accesos de prueba con vigencia limitada, y listado de los que están activos. **Desde el
+  2026-11-03, cada acceso crea una cuenta de prueba propia** para ese prospecto, con la planta de la
+  demostración ya cargada (`PROD-17`). El ambiente compartido queda para la sesión guiada y se sigue
+  restaurando cada noche; las cuentas propias no se restauran, porque son del prospecto.
 - Usuarios internos del equipo, con dos niveles: acceso completo, y acceso de soporte sin ver datos de empleados ni facturación.
 - Segundo factor de autenticación obligatorio para todo el equipo. Estas cuentas ven la información de todos los clientes a la vez.
 
