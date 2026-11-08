@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { Link } from "@inertiajs/vue3";
+import Marca from "@/Components/Marca.vue";
 
 /*
  * La barra lateral del documento 3, sección 4.1: los módulos a la izquierda y
@@ -89,6 +90,7 @@ function estaActivo(modulo) {
         :class="oscuro ? 'bg-marca-oscuro' : 'bg-marca'"
     >
         <div class="border-b border-menu-borde px-[18px] py-5">
+            <Marca invertida class="mb-3" />
             <p class="text-tabla font-semibold text-texto-invertido">
                 {{ titulo }}
             </p>

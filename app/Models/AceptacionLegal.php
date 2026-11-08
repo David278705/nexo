@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $aceptado_por_correo
  * @property string $documento
  * @property string $version
+ * @property string|null $huella_del_texto
  * @property string|null $ip
  * @property string|null $agente
  * @property Carbon $aceptado_en
@@ -40,6 +41,7 @@ class AceptacionLegal extends Model
         'aceptado_por_nombre',
         'aceptado_por_correo',
         'documento',
+        'huella_del_texto',
         'version',
         'ip',
         'agente',

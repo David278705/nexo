@@ -125,6 +125,19 @@ describe('aceptar', function () {
             ->and($constancia->aceptado_por_correo)->toBe($this->superadmin->email);
     });
 
+    it('guarda la huella del texto exacto que se aceptó (PROD-25)', function () {
+        $this->actingAs($this->superadmin)->post('/aceptacion', ['acepto' => '1']);
+
+        $constancia = app(ContextoTenant::class)->paraTenant($this->empresa, fn () => AceptacionLegal::query()
+            ->where('documento', 'terminos')->first());
+
+        $documento = app(DocumentosLegales::class)->todos();
+        $terminos = collect($documento)->firstWhere('clave', 'terminos');
+
+        expect($constancia->huella_del_texto)->toHaveLength(64)
+            ->and($constancia->huella_del_texto)->toBe($terminos->huella());
+    });
+
     it('vuelve a pedir aceptar cuando el documento cambia de versión, y solo ese', function () {
         $this->actingAs($this->superadmin)->post('/aceptacion', ['acepto' => '1']);
 

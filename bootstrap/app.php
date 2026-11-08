@@ -94,7 +94,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Las dos direcciones del acceso. Sin esto, Laravel busca la ruta
         // `login`, que en este proyecto se llama `acceso` y está en español.
-        $middleware->redirectGuestsTo('/acceso');
+        // La raíz del dominio, sin sesión, lleva a la página pública de Nexo
+        // (PROD-27); cualquier otra dirección protegida, a iniciar sesión.
+        $middleware->redirectGuestsTo(
+            fn (Request $peticion) => $peticion->is('/') ? '/bienvenida' : '/acceso',
+        );
 
         // A dónde va quien ya tiene sesión y vuelve a pedir la pantalla de
         // acceso: a su propia página de inicio, que es una regla del usuario

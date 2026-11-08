@@ -11,6 +11,7 @@ use App\Http\Controllers\Acceso\SesionController;
 use App\Http\Controllers\AceptacionLegalController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AuditoriaController;
+use App\Http\Controllers\BienvenidaController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpleadoController;
@@ -68,6 +69,13 @@ Route::middleware('guest')->group(function () {
  */
 Route::get('/prueba/{token}', [AccesoDePruebaController::class, 'entrar'])
     ->name('demostracion.entrar');
+
+/*
+ * La página pública de Nexo (PROD-27): qué hace, cuánto cuesta y a dónde
+ * escribir. Sin sesión y con sesión; a ella llega la raíz del dominio cuando
+ * nadie ha iniciado sesión.
+ */
+Route::get('/bienvenida', BienvenidaController::class)->name('bienvenida');
 
 /*
  * Los documentos legales, públicos: cualquiera debe poder leer un contrato antes

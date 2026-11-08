@@ -50,8 +50,12 @@ function usuarioConModulos(Tenant $empresa, Modulo ...$modulos): User
     });
 }
 
-it('manda a la pantalla de acceso a quien no ha iniciado sesión', function () {
-    $this->get('/')->assertRedirect('/acceso');
+it('manda a la página pública a quien abre la raíz sin sesión (PROD-27)', function () {
+    $this->get('/')->assertRedirect('/bienvenida');
+});
+
+it('manda a la pantalla de acceso a quien abre una sección protegida sin sesión', function () {
+    $this->get('/empleados')->assertRedirect('/acceso');
 });
 
 it('muestra la pantalla de iniciar sesión', function () {
@@ -312,8 +316,9 @@ describe('el destino después de entrar', function () {
     it('lleva al owner a su panel aunque antes hubiera intentado abrir la raíz', function () {
         $owner = User::factory()->owner()->create();
 
-        // Es el camino de cualquiera: abrir el sistema y que lo manden a entrar.
-        $this->get('/')->assertRedirect('/acceso');
+        // Es el camino de cualquiera: abrir el sistema sin sesión, ver la página
+        // pública y entrar desde ella.
+        $this->get('/')->assertRedirect('/bienvenida');
 
         $this->post('/acceso', [
             'correo' => $owner->email,

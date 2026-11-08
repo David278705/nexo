@@ -101,7 +101,7 @@ class PeriodoDePrueba
     private function duracionPactadaEnDias(): ?int
     {
         $fin = match ($this->modalidadInicial()) {
-            TipoContrato::Fijo => $this->tramoInicial()?->fecha_fin ?? $this->vinculacion->fecha_fin,
+            TipoContrato::Fijo => $this->tramoInicial()->fecha_fin ?? $this->vinculacion->fecha_fin,
             TipoContrato::ObraLabor => $this->vinculacion->fecha_fin_estimada,
             default => null,
         };
@@ -125,7 +125,7 @@ class PeriodoDePrueba
      */
     public function modalidadInicial(): TipoContrato
     {
-        return $this->tramoInicial()?->tipo_contrato ?? $this->vinculacion->tipo_contrato;
+        return $this->tramoInicial()->tipo_contrato ?? $this->vinculacion->tipo_contrato;
     }
 
     private function tramoInicial(): ?PeriodoContractual

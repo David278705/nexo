@@ -53,7 +53,7 @@ it('la marca se ve en la ficha y en el listado', function () {
 
     expect($ficha['reclamo']['motivo'])->toBe('Pide corregir su dirección.')
         ->and($ficha['puedeMarcarReclamo'])->toBeTrue()
-        ->and($listado['reclamo'])->toBeTrue();
+        ->and($listado['reclamo'])->toBe(1);
 });
 
 it('el superadministrador la quita cuando el reclamo se decide', function () {

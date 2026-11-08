@@ -77,6 +77,7 @@ final class AceptacionDeLaEmpresa
                     // Quién aceptó, guardado en la constancia misma: el usuario
                     // se elimina si el cliente se va, la prueba no (`PROD-15`).
                     'aceptado_por_nombre' => $usuario->name,
+                    'huella_del_texto' => $documento->huella(),
                     'aceptado_por_correo' => $usuario->email,
                     'ip' => $ip,
                     'agente' => $agente === null ? null : mb_substr($agente, 0, 500),

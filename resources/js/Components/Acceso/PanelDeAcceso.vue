@@ -1,6 +1,7 @@
 <script setup>
 import { Head, usePage } from "@inertiajs/vue3";
 import Aviso from "@/Components/Aviso.vue";
+import Marca from "@/Components/Marca.vue";
 
 defineProps({
     titulo: { type: String, required: true },
@@ -17,8 +18,8 @@ const pagina = usePage();
         class="flex min-h-screen items-center justify-center bg-fondo px-4 py-10"
     >
         <div class="w-full max-w-md">
-            <p class="mb-6 text-center text-lg font-semibold text-marca">
-                {{ pagina.props.nombreAplicacion }}
+            <p class="mb-6 flex justify-center">
+                <Marca :tamano="36" />
             </p>
 
             <div

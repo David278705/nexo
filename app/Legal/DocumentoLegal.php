@@ -36,6 +36,16 @@ final class DocumentoLegal
         ]);
     }
 
+    /**
+     * La huella SHA-256 del texto exacto (`PROD-25`). Se guarda con cada
+     * aceptación: prueba qué decía el documento ese día, aunque después alguien
+     * lo corrija sin subir la versión.
+     */
+    public function huella(): string
+    {
+        return hash('sha256', $this->contenido);
+    }
+
     public function url(): string
     {
         return route('legal.documento', $this->clave);
