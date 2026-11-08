@@ -23,6 +23,18 @@
  * **Cargar el año siguiente es una tarea anual del proveedor**, hecha y
  * verificada antes de que el año empiece.
  *
+ * **El festivo de la Virgen de Chiquinquirá** (`PROD-28`, 2026-11-08). La Ley
+ * 2578 de 2026 declaró festivo nacional el 9 de julio, y su artículo 6 lo
+ * traslada con la Ley 51 de 1983: en 2026 cae el lunes 13 de julio, en 2027 el
+ * lunes 12 y en 2028 el lunes 10. Faltaba en 2026 y 2027, y con él faltaba un
+ * día no hábil en cada vacación que lo cruzara. Hay una demanda ante la Corte
+ * Constitucional contra ese artículo 6: si lo tumba, el festivo se queda el 9
+ * de julio y hay que corregir estas tres fechas.
+ *
+ * **2028** se cargó el 2026-11-08 con la lista publicada por
+ * calendariodecolombia.com, verificada fecha por fecha contra la Ley 51 de 1983
+ * y la Pascua del 16 de abril de 2028.
+ *
  * @return array<int, array<string, string>> año => (fecha `Y-m-d` => nombre)
  */
 return [
@@ -56,6 +68,8 @@ return [
         '2026-06-08' => 'Corpus Christi',
         '2026-06-15' => 'Sagrado Corazón de Jesús',
         '2026-06-29' => 'San Pedro y San Pablo',
+        // Ley 2578 de 2026: el jueves 9 de julio, trasladado al lunes.
+        '2026-07-13' => 'Virgen de Chiquinquirá',
         '2026-07-20' => 'Día de la Independencia',
         '2026-08-07' => 'Batalla de Boyacá',
         '2026-08-17' => 'Asunción de la Virgen',
@@ -78,6 +92,8 @@ return [
         '2027-05-31' => 'Corpus Christi',
         '2027-06-07' => 'Sagrado Corazón de Jesús',
         '2027-07-05' => 'San Pedro y San Pablo',
+        // Ley 2578 de 2026: el viernes 9 de julio, trasladado al lunes.
+        '2027-07-12' => 'Virgen de Chiquinquirá',
         '2027-07-20' => 'Día de la Independencia',
         // También en sábado.
         '2027-08-07' => 'Batalla de Boyacá',
@@ -88,5 +104,28 @@ return [
         '2027-12-08' => 'Día de la Inmaculada Concepción',
         // Y el tercero en sábado de este año.
         '2027-12-25' => 'Navidad',
+    ],
+    2028 => [
+        // Cae en sábado y se carga igual.
+        '2028-01-01' => 'Año Nuevo',
+        '2028-01-10' => 'Día de los Reyes Magos',
+        '2028-03-20' => 'Día de San José',
+        '2028-04-13' => 'Jueves Santo',
+        '2028-04-14' => 'Viernes Santo',
+        '2028-05-01' => 'Día del Trabajo',
+        '2028-05-29' => 'Ascensión del Señor',
+        '2028-06-19' => 'Corpus Christi',
+        '2028-06-26' => 'Sagrado Corazón de Jesús',
+        '2028-07-03' => 'San Pedro y San Pablo',
+        // Ley 2578 de 2026: el domingo 9 de julio, trasladado al lunes.
+        '2028-07-10' => 'Virgen de Chiquinquirá',
+        '2028-07-20' => 'Día de la Independencia',
+        '2028-08-07' => 'Batalla de Boyacá',
+        '2028-08-21' => 'Asunción de la Virgen',
+        '2028-10-16' => 'Día de la Raza',
+        '2028-11-06' => 'Día de Todos los Santos',
+        '2028-11-13' => 'Independencia de Cartagena',
+        '2028-12-08' => 'Día de la Inmaculada Concepción',
+        '2028-12-25' => 'Navidad',
     ],
 ];

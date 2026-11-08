@@ -125,12 +125,13 @@ describe('con los catálogos cargados', function () {
     });
 
     it('carga el calendario de festivos año por año', function () {
-        expect(Festivo::aniosCargados())->toBe([2025, 2026, 2027]);
+        expect(Festivo::aniosCargados())->toBe([2025, 2026, 2027, 2028]);
 
-        // 2026 tiene los dieciocho festivos del calendario colombiano. 2025
-        // tiene diecisiete filas para dieciocho celebraciones: San Pedro y el
-        // Sagrado Corazón caen los dos en el lunes 30 de junio.
-        expect(Festivo::delAnio(2026)->count())->toBe(18)
+        // 2026 tiene diecinueve: los dieciocho de siempre más la Virgen de
+        // Chiquinquirá de la Ley 2578 de 2026 (PROD-28). 2025 tiene diecisiete
+        // filas para dieciocho celebraciones: San Pedro y el Sagrado Corazón
+        // caen los dos en el lunes 30 de junio.
+        expect(Festivo::delAnio(2026)->count())->toBe(19)
             ->and(Festivo::delAnio(2025)->count())->toBe(17)
             ->and(Festivo::where('fecha', '2025-06-30')->value('nombre'))
             ->toContain('San Pedro');
