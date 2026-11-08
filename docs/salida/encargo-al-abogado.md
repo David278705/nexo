@@ -1,6 +1,6 @@
 # Encargo al abogado
 
-> Paso 11 del plan de salida al mercado (`docs/09-plan-de-salida-al-mercado.md`).
+> Paso 1 del plan de salida al mercado (`docs/09-plan-de-salida-al-mercado.md`).
 > Preparado el 2026-11-03 a partir del código del sistema, para entregárselo al abogado tal cual.
 > **No es un texto legal**: es lo que el abogado necesita saber para redactar sin adivinar, y lo que
 > encarece su factura si lo descubre a mitad del trabajo.
@@ -27,7 +27,7 @@ Además, aparte de estos cuatro: **el acuerdo entre socios**.
   legal**: fin del periodo de prueba, preaviso de un término fijo, tope de prórrogas, vacaciones
   acumuladas. El sistema calcula y recuerda; **no da asesoría jurídica** ni le quita al empleador la
   responsabilidad de cumplir la ley laboral. Esa cláusula ya está aprobada por Angela (documento 6, A.2).
-- Hoy el proveedor son dos personas. La sociedad se está constituyendo (paso 8 del plan).
+- Hoy el proveedor son dos personas. La sociedad se está constituyendo (paso 3 del plan).
 
 ## Qué datos trata el sistema
 
@@ -63,7 +63,7 @@ Esto es lo que el acuerdo de tratamiento puede afirmar sin exagerar, porque el c
 - **El diagnóstico solo lo ve quien tiene permiso sobre novedades**, y la auditoría lo guarda oculto.
 - Permisos por módulo, verificados en el servidor en cada petición.
 - Copias de seguridad de la base de datos del proveedor de infraestructura. **La restauración todavía
-  no se ha probado** (paso 22 del plan): no conviene prometer un tiempo de recuperación hasta hacerlo.
+  no se ha probado** (paso 11 del plan): no conviene prometer un tiempo de recuperación hasta hacerlo.
 
 ## Lo que el abogado tiene que resolver
 
@@ -152,10 +152,17 @@ Dos reglas que también tienen que quedar escritas:
 - **La suspensión no es automática**: la decide el proveedor, con un motivo escrito.
 - Ante el impago se suspende el servicio; **nunca se retienen los datos** del cliente (documento 6, A.4).
 
-## El SLA
+## El SLA y los precios
 
-Lo eligen David y Angela antes de que el abogado redacte. Las opciones están en
-`docs/salida/opciones-de-sla.md`, con la recomendación.
+Ya están decididos (2026-11-08). El SLA está en `docs/salida/opciones-de-sla.md`: 99 % mensual, los
+tiempos de respuesta por gravedad, el compromiso sobre las alertas y la tabla de descuentos. Los precios, en
+`docs/salida/propuesta-de-precios.md`: Micro $250.000, Pequeña $450.000 y Mediana $750.000 al mes más IVA,
+usuario adicional $40.000 y una implementación única de $400.000, $800.000 o $1.500.000. El contrato tiene
+que decir lo mismo que la página pública, que los lee de la base de datos.
+
+## El nombre comercial
+
+**Nexo.** Es el nombre del producto, de la página pública y de la marca que se va a registrar ante la SIC.
 
 ## Cómo se entregan los textos
 

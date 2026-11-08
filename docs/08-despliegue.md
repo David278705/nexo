@@ -46,7 +46,7 @@ APP_NAME=Nexo
 APP_ENV=production
 APP_DEBUG=false
 APP_KEY=base64:...                       # la que generaste
-APP_URL=https://app.tudominio.co         # el dominio final, con https
+APP_URL=https://tudominio.co             # el dominio final, con https: la raíz lleva a la página pública
 APP_TIMEZONE=America/Bogota
 APP_LOCALE=es
 APP_FALLBACK_LOCALE=es
@@ -77,6 +77,9 @@ MAIL_FROM_NAME=Nexo
 # El canal de soporte que el cliente ve en la barra lateral. Vacío, no se enseña.
 SOPORTE_CORREO=soporte@tudominio.co
 SOPORTE_HORARIO="Lunes a viernes, de 8:00 a. m. a 5:00 p. m."   # el mismo del SLA
+
+# El correo al que escriben los prospectos desde la página pública. Vacío, usa el de soporte.
+COMERCIAL_CORREO=
 ```
 
 ## Paso 3 · El servicio web
@@ -118,6 +121,10 @@ Al desplegar, el log del servicio web debe mostrar, en este orden:
    correo, por ahora). **Si aparece un `✘`, el servicio no arranca, y es a propósito**: el mensaje
    dice qué corregir.
 3. Las migraciones.
+4. `catalogos:inicializar`: la primera vez dice «Planes cargados por primera vez» y «Catálogos
+   cargados por primera vez» (países, municipios, EPS, fondos, ARL, cajas, bancos, festivos y los
+   tres planes de la propuesta de precios); las siguientes, que solo actualizó los festivos. Sin este
+   paso una base nueva no tiene ni una ciudad y no se puede crear ninguna empresa.
 
 El worker y el scheduler muestran solo la revisión y quedan esperando trabajo.
 
@@ -181,7 +188,7 @@ archivo, cambia `estado: borrador` por `estado: vigente` y sube la `version`. No
 código. Cada empresa tendrá que aceptar las versiones nuevas la próxima vez que entre su
 superadministrador, y hasta entonces nadie de esa empresa puede trabajar: es a propósito.
 
-Los cuatro se leen en `https://app.tudominio.co/legal/{nombre-del-archivo}`, sin sesión, para
+Los cuatro se leen en `https://tudominio.co/legal/{nombre-del-archivo}`, sin sesión, para
 enlazarlos desde el sitio web.
 
 ## Los certificados

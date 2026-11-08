@@ -1,8 +1,8 @@
 # Propuesta de tabla de precios
 
-> Paso 2 del plan de salida al mercado. Propuesta del 2026-11-03 para que David y Angela decidan.
-> **Los números finales son de ellos**; esto es la cuenta detrás, para que decidan sobre algo calculado y
-> no sobre una intuición. Sigue el método del documento 6, A.1: primero el costo, después el precio.
+> Propuesta del 2026-11-03.
+> **Aceptada por David el 2026-11-08** (`PROD-24`): los tres planes se cargan solos en una base nueva y
+> la página pública los enseña. Se cambian en el panel, en Suscripciones, sin desplegar. Sigue el método del documento 6, A.1: primero el costo, después el precio.
 
 ## Las dos variables
 
@@ -25,7 +25,7 @@ Del plan de salida al mercado, en un escenario medio:
 | Soporte, a $60.000 la hora | Según el tamaño | Es el que crece con cada cliente |
 
 El soporte estimado por cliente y por mes: **1,5 horas** una microempresa, **3** una pequeña y **5** una
-mediana. Es una estimación: el número real lo da el primer cliente (paso 26).
+mediana. Es una estimación: el número real lo da el primer cliente (paso 14).
 
 ## La propuesta
 
@@ -36,7 +36,7 @@ mediana. Es una estimación: el número real lo da el primer cliente (paso 26).
 | **Mediana** | Hasta 200 | 3 | **$750.000** | $1.500.000 |
 | Usuario adicional | — | +1 | **$40.000** | — |
 
-**Más IVA del 19 %.** El SaaS está gravado (paso 9 del plan), así que el precio publicado tiene que decir
+**Más IVA del 19 %.** El SaaS está gravado (paso 4 del plan), así que el precio publicado tiene que decir
 «más IVA» o incluirlo. La recomendación es publicarlo **más IVA**, que es lo habitual en software para
 empresas: el cliente que es responsable de IVA lo descuenta.
 

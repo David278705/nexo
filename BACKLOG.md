@@ -2737,7 +2737,7 @@ Hecho: `encargo-al-abogado.md` (pasos 10, 14 y 25), `opciones-de-sla.md` (11),
 - **La Ley 1581 obliga a registrar «reclamo en trámite»** (artículo 18, literal g) y el sistema no tiene
   dónde. Es `PROD-14`.
 
-### [ ] PROD-14 · Marcar a una persona con «reclamo en trámite»
+### [x] PROD-14 · Marcar a una persona con «reclamo en trámite»
 
 La Ley 1581, artículo 18, literal g, obliga al encargado a «registrar en la base de datos la leyenda
 "reclamo en trámite"» mientras se decide un reclamo del titular, y el artículo 15 da dos días hábiles para
@@ -2748,6 +2748,12 @@ marca se ve en la ficha del empleado y en el listado; se quita cuando el reclamo
 acciones quedan en la auditoría; solo la ponen y la quitan el superadministrador del cliente y el
 proveedor; y el aislamiento entre empresas tiene su caso si hace falta una tabla nueva.
 **Fuente:** Ley 1581 de 2012, artículos 15 y 18 · `docs/salida/manual-de-consultas-y-reclamos.md`, punto 6
+
+Hecho (2026-11-08): dos columnas en `personas` —`reclamo_en_tramite_desde` y `_motivo`—, porque el titular
+es la persona y no una de sus vinculaciones. `ReclamoEnTramiteController` pone y quita la marca;
+`MarcarReclamoEnTramite` exige el motivo y que sea el superadministrador. La ficha la enseña arriba con su
+fecha y motivo, con el botón para marcarla o quitarla; el listado, como etiqueta junto al estado. La
+auditoría la escribe el observador. Siete pruebas de Pest y dos de Vitest.
 
 ## Decisiones de David y lista única (3 de noviembre de 2026)
 
@@ -2790,7 +2796,7 @@ compartida queda para la sesión guiada y se sigue restaurando. `Tenant::esFicti
 empresas; las alertas ya no les llegan porque nacen `en_prueba`. Los accesos anteriores siguen entrando a la
 demostración compartida. Siete pruebas nuevas en `AccesosDePruebaTest`.
 
-### [ ] PROD-19 · El periodo de prueba no cambia cuando cambia la modalidad
+### [x] PROD-19 · El periodo de prueba no cambia cuando cambia la modalidad
 
 `PeriodoDePrueba` lee la modalidad vigente de la vinculación. Si un término fijo o una obra o labor pasa a
 indefinido en sus primeros meses, el periodo se recalcula como si el contrato hubiera nacido indefinido —dos
@@ -2803,4 +2809,71 @@ parte; una obra o labor que pasa a indefinido conserva el periodo de su fecha es
 pruebas del motor cubren los dos casos antes de tocar el código.
 **Fuente:** `app/Dominio/Calculo/PeriodoDePrueba.php` · `.claude/rules/20-calculo-y-reglas-legales.md` ·
 documento 6, C.3
+
+Hecho (2026-11-08), con las pruebas primero: `PeriodoDePrueba` lee la modalidad y el vencimiento del tramo
+inicial del historial (`modalidadInicial()`), y las alertas eligen candidatas por esa modalidad. Las pruebas
+destaparon un segundo error del mismo origen: **un término fijo prorrogado tomaba la quinta parte de la
+duración total con sus prórrogas**, no la del término inicial. Seis pruebas en
+`PeriodoDePruebaConCambioDeModalidadTest`.
+
+## Cierre del código antes de Railway (8 de noviembre de 2026)
+
+David pidió cerrar todo lo que me tocaba y aplicar todas mis recomendaciones, con Nexo como nombre, para
+que solo quedara subir a Railway. Lo que queda está en `docs/09-plan-de-salida-al-mercado.md` y es todo
+de David y Angela.
+
+### [x] PROD-20 · El arranque carga los catálogos en una base nueva
+
+Ni `docker/arrancar.sh` ni la guía cargaban los catálogos: una base nueva de Railway no tenía ni una ciudad
+y no se podía crear ninguna empresa. Hecho: `catalogos:inicializar`, que el servicio web corre después de
+migrar. Carga los catálogos solo si la base está vacía —después son del proveedor y volver a sembrarlos
+haría reaparecer una entidad renombrada— y los festivos siempre.
+
+### [x] PROD-21 · Tres decisiones cortas
+
+Recomendadas y aceptadas. El `owner` que entra a `/` va a su panel en vez de recibir 403. El aviso de
+reingreso, en obra o labor, no promete alertas que solo salen con fecha estimada (`NOTA_OBRA_LABOR`), y el
+asistente vuelve a preguntar al cambiar el tipo de contrato. El soporte queda solo por correo, como pide el
+documento 4, 13.2: se quitó `SOPORTE_WHATSAPP`. Además: `HD-12` se cierra sin plantilla de terminaciones,
+que ningún documento pide, y se borró `stash@{0}`, con su parche respaldado fuera del repositorio.
+
+### [x] PROD-22 · La invitación sale cuando la carga está lista
+
+Crear una empresa enviaba la invitación de inmediato, contra los documentos 1 (2.2) y 4 (12.2). Hecho: crear
+no la envía; el botón «Enviar invitación» de la pestaña Usuarios de la ficha es como se le entrega la cuenta
+al cliente.
+
+### [x] PROD-23 · La fecha estimada se corrige y se carga por Excel
+
+Hecho: «Corregir fecha estimada» en el detalle de una obra o labor vigente (`CorregirFechaEstimada`), que
+también la quita o la agrega. La plantilla de empleados trae la columna «Fecha de finalización estimada»,
+al final del archivo: insertarla en medio habría corrido las validaciones de cada celda, y PhpSpreadsheet
+dañaba el archivo al guardarlo, así que se agregó editando el XML del `.xlsx`.
+
+### [x] PROD-24 · Los planes de la propuesta de precios
+
+Aceptada la propuesta. Hecho: `PlanesSeeder` con Micro, Pequeña y Mediana, que `catalogos:inicializar` carga
+solo si no hay ningún plan. La implementación y el usuario adicional, en `config/comercial.php`.
+
+### [x] PROD-25 · La aceptación legal guarda la huella del texto
+
+Hecho: `aceptaciones_legales.huella_del_texto`, el SHA-256 del texto exacto que se aceptó.
+
+### [x] PROD-26 · La marca de Nexo
+
+Hecho: `Marca.vue`, en la barra lateral y en las pantallas de acceso, y `favicon.svg`, `favicon.ico` y
+`apple-touch-icon.png`, conectados en la plantilla raíz.
+
+### [x] PROD-27 · La página pública
+
+Hecho: `/bienvenida`, a la que llega la raíz del dominio sin sesión. En la misma aplicación y no en un sitio
+aparte, para que todo se despliegue de una vez en Railway. Lee los planes de la tabla, la implementación y
+el correo comercial de `config/comercial.php`, y enlaza los documentos legales. Cinco pruebas.
+
+### [x] PROD-28 · El festivo de la Ley 2578 de 2026 y el calendario de 2028
+
+Al buscar los festivos de 2028 apareció la Ley 2578 de 2026: el 9 de julio es festivo nacional y se traslada
+con la Ley Emiliani. Faltaban el 13 de julio de 2026 y el 12 de julio de 2027, y con ellos un día no hábil
+en cada vacación que los cruzara. Hecho: las dos fechas y el año 2028 completo, verificado fecha por fecha.
+Hay una demanda contra el artículo 6 de esa ley: está anotada en la lista única.
 

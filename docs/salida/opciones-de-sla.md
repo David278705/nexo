@@ -1,8 +1,8 @@
 # Opciones de SLA
 
-> Paso 3 del plan de salida al mercado. Preparado el 2026-11-03 para que David y Angela decidan **antes**
-> de que el abogado redacte el contrato. La decisión es de ellos; aquí van las opciones y una
-> recomendación.
+> Preparado el 2026-11-03. **La recomendación la aceptó David el 2026-11-08**: 99 % de disponibilidad, los
+> tiempos de respuesta del documento 4, el compromiso propio sobre las alertas y los descuentos de 10 %,
+> 25 % y 50 %. Es lo que se le entrega al abogado para el contrato.
 
 ## Qué hay que decidir
 

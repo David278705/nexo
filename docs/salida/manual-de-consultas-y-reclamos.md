@@ -1,6 +1,6 @@
 # Manual de consultas y reclamos de datos personales
 
-> Pasos 4 y 11 del plan de salida al mercado. Borrador del 2026-11-03 para revisión del abogado.
+> Pasos 1 y 8 del plan de salida al mercado. Borrador del 2026-11-03 para revisión del abogado.
 >
 > **Es obligatorio.** La Ley 1581 de 2012, artículo 18, literal f, le exige al encargado del tratamiento
 > «adoptar un manual interno de políticas y procedimientos para garantizar el adecuado cumplimiento de la
@@ -17,9 +17,9 @@ El proveedor trata datos en dos calidades distintas, y el procedimiento cambia s
 
 ## 2. El canal
 
-- **Un correo propio, del dominio de la empresa**, que se publica en la política de tratamiento.
-  Puede ser el mismo de soporte (`SOPORTE_CORREO`) o uno aparte. *Por definir por David.*
-- Responde: *por definir* (recomendación: Angela, con copia a David).
+- **El correo de soporte** (`SOPORTE_CORREO`), del dominio propio, que se publica en la política de
+  tratamiento. Un solo correo para soporte y para datos personales, mientras el equipo sea de dos.
+- Responde **Angela, con copia a David** (adoptado el 2026-11-08).
 - La ley exige que el medio permita **mantener prueba** de la solicitud (artículo 14). Un correo lo
   permite; un WhatsApp personal no.
 
@@ -72,12 +72,14 @@ El proveedor la resuelve directamente dentro de los plazos del punto 4. Una supr
 administrador se hace **desactivándolo**: el sistema no borra físicamente (regla 4 del proyecto) y la
 auditoría conserva quién hizo qué mientras el cliente esté activo.
 
-## 6. Lo que el sistema todavía no permite
+## 6. La leyenda «reclamo en trámite» en el sistema
 
-**La leyenda «reclamo en trámite».** La ley obliga al encargado a registrarla en la base de datos
-(artículo 18, literal g), y hoy el sistema no tiene dónde. Es una tarea de código pequeña —una marca en la
-persona, con su motivo, visible en la ficha— y está anotada en el backlog como siguiente tarea de código.
-Mientras no exista, queda solo en la hoja de registro del punto 3.
+La ley obliga al encargado a registrarla en la base de datos (artículo 18, literal g). Desde `PROD-14` se
+hace en la ficha del empleado: el superadministrador de la empresa pulsa «Marcar reclamo en trámite», escribe
+el motivo, y la leyenda queda visible en la ficha y en el listado de empleados hasta que pulse «El reclamo se
+decidió: quitar la leyenda». Las dos acciones quedan en la auditoría. Como la decisión es de la empresa
+cliente, la pone su superadministrador; si el reclamo llega al proveedor, se le traslada y se le pide que la
+ponga dentro de los dos días hábiles.
 
 ## 7. Incidentes de seguridad
 

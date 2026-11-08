@@ -1,6 +1,6 @@
 # Dos preguntas investigadas
 
-> Investigación del 2026-11-02, paso 14 del plan de salida al mercado. Se conserva aquí para el abogado y
+> Investigación del 2026-11-02 para el plan de salida al mercado. Se conserva aquí para el abogado y
 > el asesor laboral.
 >
 > **Estado al 2026-11-03.** La primera pregunta ya la decidió David y está construida (`PROD-15`): ver

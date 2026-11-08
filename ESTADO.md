@@ -1,14 +1,14 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-11-03 · Cuatro cambios pedidos por David (`PROD-15` a `PROD-18`) y la lista única.
-**Verificación:** ver la tarea `PROD-17` del backlog.
-**Dónde vamos:** todo lo que falta está en **una sola lista**, `docs/09-plan-de-salida-al-mercado.md`,
-«Lo que falta, en orden». Lo siguiente es de David: los pasos 1 a 7 (cuatro decisiones y tres preguntas
-cortas) y arrancar los trámites 8 a 11. Lo siguiente mío, que no depende de nadie, son los pasos 12
-(`PROD-14`) y 13 (`PROD-19`).
+**Última sesión:** 2026-11-08 · Cierre del código antes de Railway (`PROD-14`, `PROD-19` a `PROD-28`).
+**Verificación:** verde, ver la tarea `PROD-28` del backlog.
+**Dónde vamos:** el código está terminado. Lo que falta está en `docs/09-plan-de-salida-al-mercado.md`, y es
+todo de David y Angela: trámites, contratos, cuentas, desplegar en Railway y probar con ojos propios.
+**Siguiente sesión de código:** ninguna pendiente. Una sesión nueva solo hace falta si cambia una decisión,
+llegan los textos del abogado (paso 12, que también puede hacer David) o aparece algo al desplegar.
 
-**Regla para las próximas sesiones:** una decisión nueva, un hallazgo o una tarea nueva **entra a esa lista
-en su lugar**. No se anota en este archivo ni en ningún otro como pendiente suelto.
+**Regla para las próximas sesiones:** una decisión nueva, un hallazgo o una tarea nueva **entra a la lista
+única en su lugar**. No se anota en este archivo ni en ningún otro como pendiente suelto.
 
 ## Qué se hizo el 2 y el 3 de noviembre
 
@@ -63,8 +63,9 @@ El detalle de cada pieza está en las tareas `PROD-*` del backlog y en los mensa
 
 ## Preguntas para Angela y decisiones para David
 
-Ya no se anotan aquí. Están en la lista única, `docs/09-plan-de-salida-al-mercado.md`: las de David son los
-pasos 1 a 7, y las de Angela y el asesor laboral van en el paso 11.
+Ya no se anotan aquí. Están en la lista única, `docs/09-plan-de-salida-al-mercado.md`: las de Angela y el
+asesor laboral son el paso 2. Las decisiones de producto que estaban abiertas se cerraron el 2026-11-08 con
+las recomendaciones (`PROD-21` a `PROD-27`).
 
 ## Notas para la próxima sesión
 
