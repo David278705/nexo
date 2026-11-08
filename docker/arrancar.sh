@@ -32,6 +32,11 @@ case "$ROL" in
         # está hecha.
         php artisan migrate --force
 
+        # Los catálogos la primera vez y los festivos siempre (PROD-20). Sin
+        # esto, una base nueva no tiene ni una ciudad y no se puede crear
+        # ninguna empresa.
+        php artisan catalogos:inicializar
+
         # HTTP plano: Railway termina el HTTPS en su borde y reenvía aquí.
         exec frankenphp php-server --listen ":${PORT:-8080}" --root public/
         ;;
