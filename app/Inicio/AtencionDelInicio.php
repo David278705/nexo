@@ -126,6 +126,7 @@ enum AtencionDelInicio: string
          */
         $candidatas = Vinculacion::query()
             ->activas()
+            ->with('periodos')
             ->whereDate('fecha_ingreso', '<=', $hasta)
             ->whereDate('fecha_ingreso', '>=', $hoy->copy()->subMonths(self::MESES_DE_LA_VENTANA))
             ->get();

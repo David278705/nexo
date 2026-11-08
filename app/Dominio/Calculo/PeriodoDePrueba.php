@@ -3,6 +3,7 @@
 namespace App\Dominio\Calculo;
 
 use App\Contratacion\TipoContrato;
+use App\Models\PeriodoContractual;
 use App\Models\Vinculacion;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -21,6 +22,12 @@ use Illuminate\Support\Carbon;
  * Es un periodo **sugerido**: el sistema no puede saber si la fecha estimada se
  * ajusta a la obra real, y por eso `esEstimado()` existe para que cada pantalla
  * y cada correo lo digan.
+ *
+ * **Se calcula con el tramo inicial del contrato, no con lo vigente** (`PROD-19`).
+ * El periodo de prueba se pacta al inicio, y ni una prórroga ni el paso a
+ * indefinido abren uno nuevo (documento 6, C.3). Antes, un fijo que pasaba a
+ * indefinido quedaba con los dos meses del indefinido, y un fijo prorrogado
+ * tomaba la quinta parte de la duración total con sus prórrogas.
  *
  * De aquí salen las cinco alertas de periodo de prueba del capítulo 9, que son
  * la promesa que se vende: avisar antes de que se venza el plazo.
@@ -85,16 +92,16 @@ class PeriodoDePrueba
 
     /**
      * Los días del contrato sobre los que se toma la quinta parte, o nulo si
-     * la modalidad no tiene esa fracción.
+     * la modalidad inicial no tiene esa fracción.
      *
-     * El término fijo usa su vencimiento pactado; la obra o labor, su fecha
-     * estimada. En el indefinido no hay fracción y el periodo de prueba es el
-     * general de dos meses.
+     * El término fijo usa el vencimiento de su tramo inicial; la obra o labor,
+     * su fecha estimada. En el indefinido no hay fracción y el periodo de
+     * prueba es el general de dos meses.
      */
     private function duracionPactadaEnDias(): ?int
     {
-        $fin = match ($this->vinculacion->tipo_contrato) {
-            TipoContrato::Fijo => $this->vinculacion->fecha_fin,
+        $fin = match ($this->modalidadInicial()) {
+            TipoContrato::Fijo => $this->tramoInicial()?->fecha_fin ?? $this->vinculacion->fecha_fin,
             TipoContrato::ObraLabor => $this->vinculacion->fecha_fin_estimada,
             default => null,
         };
@@ -108,7 +115,26 @@ class PeriodoDePrueba
 
     private function esObraOLabor(): bool
     {
-        return $this->vinculacion->tipo_contrato === TipoContrato::ObraLabor;
+        return $this->modalidadInicial() === TipoContrato::ObraLabor;
+    }
+
+    /**
+     * La modalidad con la que nació el contrato. El historial nunca está vacío
+     * —el tramo inicial lo abre `ObservadorDeVinculacion`—; lo vigente queda
+     * solo como respaldo de una vinculación armada sin guardar.
+     */
+    public function modalidadInicial(): TipoContrato
+    {
+        return $this->tramoInicial()?->tipo_contrato ?? $this->vinculacion->tipo_contrato;
+    }
+
+    private function tramoInicial(): ?PeriodoContractual
+    {
+        if (! $this->vinculacion->exists) {
+            return null;
+        }
+
+        return $this->vinculacion->periodos->first();
     }
 
     /**

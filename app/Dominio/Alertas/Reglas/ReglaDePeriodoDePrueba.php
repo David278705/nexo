@@ -2,6 +2,7 @@
 
 namespace App\Dominio\Alertas\Reglas;
 
+use App\Contratacion\EventoContractual;
 use App\Contratacion\FechaFinEstimada;
 use App\Contratacion\TipoContrato;
 use App\Dominio\Alertas\AlertaPorEnviar;
@@ -164,13 +165,18 @@ abstract class ReglaDePeriodoDePrueba implements ReglaDeAlerta
      */
     private function candidatas(Carbon $fechaDelDisparo): Collection
     {
+        // Por la modalidad con la que nació el contrato, no por la vigente
+        // (`PROD-19`): un fijo que pasó a indefinido conserva los avisos de su
+        // periodo de prueba, y no recibe los del indefinido.
         return Vinculacion::query()
             ->activas()
-            ->with('persona')
-            ->whereIn('tipo_contrato', array_map(
-                fn (TipoContrato $modalidad): string => $modalidad->value,
-                $this->modalidades(),
-            ))
+            ->with(['persona', 'periodos'])
+            ->whereHas('periodos', fn ($tramo) => $tramo
+                ->where('evento', EventoContractual::Inicial->value)
+                ->whereIn('tipo_contrato', array_map(
+                    fn (TipoContrato $modalidad): string => $modalidad->value,
+                    $this->modalidades(),
+                )))
             ->whereDate('fecha_ingreso', '<=', $fechaDelDisparo)
             ->whereDate('fecha_ingreso', '>=', $fechaDelDisparo->copy()->subMonths(self::MESES_DE_LA_VENTANA))
             ->get();
