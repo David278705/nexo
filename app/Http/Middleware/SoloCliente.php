@@ -10,10 +10,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * La puerta simétrica de `SoloProveedor`: el `owner` no tiene nada que hacer
- * en el entorno del cliente y aquí recibe 403, igual que el documento 4, 4.1
- * dice que debe pasarle en «todas las secciones» —**salvo durante una visita
- * registrada** (documento 4, 4.4), que es la misma excepción que ya aplica
- * `PoliticaDeModulos` para el resto de las secciones.
+ * en el inicio del cliente —**salvo durante una visita registrada**
+ * (documento 4, 4.4), que es la misma excepción que ya aplica
+ * `PoliticaDeModulos` para el resto de las secciones—.
+ *
+ * **Se le manda a su panel en vez de responderle 403** (decidido por David el
+ * 2026-11-08, `PROD-21`). `/` es la dirección que cualquiera escribe primero;
+ * un 403 ahí le decía al proveedor que algo estaba mal cuando solo estaba en la
+ * puerta equivocada. Las demás secciones del cliente le siguen respondiendo 403:
+ * esas no se escriben por costumbre.
  *
  * Casi todas las secciones ya lo cumplen solas: cada una declara su módulo
  * con `modulo:`, y `PoliticaDeModulos` le niega al `owner` los módulos de
@@ -39,7 +44,7 @@ class SoloCliente
         if ($usuario instanceof User
             && $usuario->esOwner()
             && app(AccesoAlEntorno::class)->enCurso() === null) {
-            abort(403);
+            return redirect($usuario->paginaDeInicio());
         }
 
         return $siguiente($peticion);

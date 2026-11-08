@@ -157,6 +157,24 @@ describe('el texto', function () {
     });
 });
 
+describe('la nota según el tipo de contrato (PROD-21)', function () {
+    it('en obra o labor no promete alertas que solo salen con fecha estimada', function () {
+        personaQueYaSalio('2026-07-31');
+
+        $advertencia = advertenciaDe(['numero_documento' => '1017245880', 'tipo_contrato' => 'obra_labor']);
+
+        expect($advertencia['nota'])->toBe(AdvertenciaDeReingreso::NOTA_OBRA_LABOR)
+            ->and($advertencia['nota'])->toContain('solo envía alertas de periodo de prueba si usted registra una fecha estimada');
+    });
+
+    it('en las otras modalidades conserva la nota literal', function (string $tipo) {
+        personaQueYaSalio('2026-07-31');
+
+        expect(advertenciaDe(['numero_documento' => '1017245880', 'tipo_contrato' => $tipo])['nota'])
+            ->toBe(AdvertenciaDeReingreso::NOTA);
+    })->with(['indefinido', 'fijo']);
+});
+
 describe('el énfasis de los 30 días', function () {
     it('marca el reingreso ocurrido dentro de los 30 días siguientes a la salida', function () {
         personaQueYaSalio('2026-07-31');

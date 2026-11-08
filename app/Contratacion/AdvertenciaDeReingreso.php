@@ -41,6 +41,18 @@ final class AdvertenciaDeReingreso
     public const NOTA = 'Por configuración del sistema usted recibirá las alertas de periodo de prueba estipuladas. Sin embargo, le corresponde a usted verificar si ese periodo de prueba es válido, considerando que la persona ya tuvo una vinculación previa.';
 
     /**
+     * La nota cuando el contrato que se registra es de obra o labor
+     * (`PROD-21`, decidido por David el 2026-11-08).
+     *
+     * La literal promete «las alertas de periodo de prueba estipuladas», y una
+     * obra o labor solo las recibe si se registra la fecha estimada de
+     * finalización (`OL-01`). Esta dice lo que de verdad va a pasar.
+     */
+    public const NOTA_OBRA_LABOR = 'En un contrato de obra o labor, el sistema solo envía alertas de periodo de '
+        .'prueba si usted registra una fecha estimada de finalización. Sin embargo, le corresponde a usted verificar '
+        .'si es válido pactar periodo de prueba, considerando que la persona ya tuvo una vinculación previa.';
+
+    /**
      * La ventana que le da énfasis especial al aviso (documento 1, 5.6).
      */
     public const DIAS_DE_ENFASIS = 30;
@@ -53,9 +65,12 @@ final class AdvertenciaDeReingreso
      * mide contra hoy, que es la mejor estimación disponible, y se recalcula
      * cuando la fecha de ingreso se escribe en el tercer paso.
      *
+     * `$tipoDeContrato` es lo que ya se eligió en el tercer paso, o nada si
+     * todavía no: decide cuál de las dos notas acompaña al aviso.
+     *
      * @return array<string, mixed>|null
      */
-    public static function para(?string $numeroDeDocumento, ?string $fechaDeIngreso = null): ?array
+    public static function para(?string $numeroDeDocumento, ?string $fechaDeIngreso = null, ?string $tipoDeContrato = null): ?array
     {
         $documento = trim((string) $numeroDeDocumento);
 
@@ -78,7 +93,7 @@ final class AdvertenciaDeReingreso
 
         return [
             'texto' => self::TEXTO,
-            'nota' => self::NOTA,
+            'nota' => $tipoDeContrato === TipoContrato::ObraLabor->value ? self::NOTA_OBRA_LABOR : self::NOTA,
             'nombre' => $persona->nombreCompleto(),
             'vinculaciones' => $persona->vinculaciones->count(),
             'reciente' => $reciente,

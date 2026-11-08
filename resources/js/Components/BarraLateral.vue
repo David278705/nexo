@@ -144,9 +144,6 @@ function estaActivo(modulo) {
             >
                 {{ soporte.correo }}
             </a>
-            <p v-if="soporte.whatsapp" class="mt-1 text-apoyo text-menu-apoyo">
-                WhatsApp {{ soporte.whatsapp }}
-            </p>
             <p class="mt-1 text-apoyo text-menu-apoyo">{{ soporte.horario }}</p>
         </section>
     </div>

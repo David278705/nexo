@@ -111,7 +111,6 @@ describe("BarraLateral", () => {
     describe("el canal de soporte (PROD-12)", () => {
         const SOPORTE = {
             correo: "soporte@nexo.co",
-            whatsapp: "3001234567",
             horario: "Lunes a viernes, de 8:00 a. m. a 5:00 p. m.",
         };
 
@@ -119,25 +118,19 @@ describe("BarraLateral", () => {
             expect(montar().text()).not.toContain("¿Necesita ayuda?");
         });
 
-        it("enseña el correo, el WhatsApp y el horario", () => {
+        it("enseña el correo y el horario, y ningún otro canal", () => {
             const texto = montar({ soporte: SOPORTE }).text();
 
             expect(texto).toContain("¿Necesita ayuda?");
             expect(texto).toContain("soporte@nexo.co");
-            expect(texto).toContain("WhatsApp 3001234567");
             expect(texto).toContain(SOPORTE.horario);
+            expect(texto).not.toContain("WhatsApp");
         });
 
         it("ofrece escribir al correo con un enlace", () => {
             const enlace = montar({ soporte: SOPORTE }).find('a[href^="mailto:"]');
 
             expect(enlace.attributes("href")).toBe("mailto:soporte@nexo.co");
-        });
-
-        it("no inventa una línea de WhatsApp si no hay número", () => {
-            const texto = montar({ soporte: { ...SOPORTE, whatsapp: null } }).text();
-
-            expect(texto).not.toContain("WhatsApp");
         });
 
         it("no se cuenta entre los módulos del menú", () => {

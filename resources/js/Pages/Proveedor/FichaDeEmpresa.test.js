@@ -303,7 +303,7 @@ describe("la ficha de la empresa", () => {
 
         const reenviar = pantalla
             .findAll("button")
-            .find((boton) => boton.text().includes("Reenviar invitación"));
+            .find((boton) => boton.text().includes("Enviar invitación"));
 
         await reenviar.trigger("click");
 

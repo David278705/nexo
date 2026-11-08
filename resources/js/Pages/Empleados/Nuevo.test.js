@@ -347,7 +347,7 @@ describe("Advertencia de reingreso", () => {
 
         expect(recargar).toHaveBeenCalledWith({
             only: ["reingreso"],
-            data: { numero_documento: "1017245880", fecha_ingreso: "" },
+            data: { numero_documento: "1017245880", fecha_ingreso: "", tipo_contrato: "" },
         });
     });
 

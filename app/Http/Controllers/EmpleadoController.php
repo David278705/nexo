@@ -111,6 +111,7 @@ class EmpleadoController extends Controller
             'reingreso' => Inertia::optional(fn (): ?array => AdvertenciaDeReingreso::para(
                 $this->consultado($peticion, 'numero_documento'),
                 $this->consultado($peticion, 'fecha_ingreso'),
+                $this->consultado($peticion, 'tipo_contrato'),
             )),
             'opciones' => [
                 'documentos' => TipoDocumento::paraElegir(),

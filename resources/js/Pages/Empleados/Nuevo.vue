@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import Armazon from "@/Components/Armazon.vue";
 import Aviso from "@/Components/Aviso.vue";
 import AvisoDeReingreso from "@/Components/AvisoDeReingreso.vue";
@@ -122,7 +122,7 @@ const ultimaConsulta = ref("");
 
 function consultar() {
     const documento = form.numero_documento.trim();
-    const consulta = `${documento}|${form.fecha_ingreso}`;
+    const consulta = `${documento}|${form.fecha_ingreso}|${form.tipo_contrato}`;
 
     if (documento === "" || consulta === ultimaConsulta.value) {
         return;
@@ -135,9 +135,17 @@ function consultar() {
         data: {
             numero_documento: documento,
             fecha_ingreso: form.fecha_ingreso,
+            tipo_contrato: form.tipo_contrato,
         },
     });
 }
+
+// La nota del aviso depende del tipo de contrato (PROD-21): en obra o labor no
+// promete alertas que no van a salir. Cambiar la modalidad vuelve a preguntar.
+watch(
+    () => form.tipo_contrato,
+    () => consultar(),
+);
 
 /*
  * Qué campo obligatorio vive en qué paso. Sirve para las dos direcciones: no

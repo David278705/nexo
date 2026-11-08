@@ -162,12 +162,13 @@ class EmpresaController extends Controller
     }
 
     /**
-     * Vuelve a mandarle a un usuario el enlace de su primer ingreso.
+     * Le manda a un usuario el enlace de su primer ingreso.
      *
-     * Es la primera de las dos acciones de la pestaña «Usuarios». `emitir()` da
-     * por caducadas las invitaciones anteriores del mismo usuario, así que
-     * reenviar no reparte dos enlaces válidos: el viejo deja de servir en ese
-     * momento.
+     * Es la primera de las dos acciones de la pestaña «Usuarios», y desde
+     * `PROD-22` es también **como se le entrega la cuenta al cliente**: crear la
+     * empresa ya no envía la invitación, se envía desde aquí cuando su carga
+     * inicial está lista. `emitir()` da por caducadas las invitaciones anteriores
+     * del mismo usuario, así que enviar otra vez no reparte dos enlaces válidos.
      */
     public function reenviarInvitacion(Tenant $empresa, User $usuario, Invitaciones $invitaciones): RedirectResponse
     {
@@ -177,8 +178,8 @@ class EmpresaController extends Controller
 
         return redirect()
             ->route('proveedor.empresas.ficha', $empresa)
-            ->with('estado', 'Se reenvió la invitación a '.$usuario->getAttribute('email')
-                .'. El enlace anterior dejó de servir y el nuevo vence en '
+            ->with('estado', 'Se envió la invitación a '.$usuario->getAttribute('email')
+                .'. Si había un enlace anterior, dejó de servir; el nuevo vence en '
                 .Formato::dias(Invitaciones::DIAS_DE_VIGENCIA).'.');
     }
 

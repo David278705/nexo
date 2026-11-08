@@ -2,7 +2,6 @@
 
 namespace App\Proveedor;
 
-use App\Autenticacion\Invitaciones;
 use App\Autorizacion\Rol;
 use App\Configuracion\ParametrosDeLaEmpresa;
 use App\Models\Ciudad;
@@ -26,8 +25,9 @@ use Illuminate\Validation\Rule;
  *
  * 1. **La empresa y su superadministrador nacen juntos o no nace ninguno.** Una
  *    empresa sin cuenta es una empresa a la que nadie puede entrar, y un usuario
- *    sin empresa no pasa del inicio de sesión. Por eso las dos escrituras y la
- *    invitación van dentro de la misma transacción.
+ *    sin empresa no pasa del inicio de sesión. Por eso las dos escrituras van
+ *    dentro de la misma transacción. La invitación no: se envía desde la ficha
+ *    cuando la carga inicial esté lista (`PROD-22`).
  * 2. **Nadie escribe una contraseña aquí.** Se genera una al azar que no se
  *    enseña en ninguna parte y que nadie conoce, ni siquiera el proveedor; el
  *    superadministrador define la suya con el enlace de la invitación. Es la
@@ -94,10 +94,13 @@ class CreacionDeEmpresa
 
     public const TAMANO_MAXIMO_EN_KB = 10240;
 
-    public function __construct(private readonly Invitaciones $invitaciones) {}
-
     /**
-     * Escribe la empresa, su superadministrador y la invitación.
+     * Escribe la empresa y su superadministrador, **sin invitación**.
+     *
+     * La invitación se envía desde la ficha de la empresa cuando su carga
+     * inicial ya entró (decidido por David el 2026-11-08, `PROD-22`). Los
+     * documentos 1 (2.2) y 4 (12.2) lo piden así: un cliente que entra a un
+     * sistema vacío concluye que el producto no sirve.
      *
      * @param  array<string, mixed>  $datos  ya validados por `CrearEmpresa`
      */
@@ -124,7 +127,7 @@ class CreacionDeEmpresa
             /** @var array{nombre: string, correo: string} $cuenta */
             $cuenta = $datos['superadministrador'];
 
-            $this->invitaciones->emitir($this->superadministrador($empresa, $cuenta));
+            $this->superadministrador($empresa, $cuenta);
 
             return $empresa;
         });
@@ -318,13 +321,13 @@ class CreacionDeEmpresa
 
     /**
      * La frase que confirma lo que el servidor acaba de hacer. Está aquí y no en
-     * la pantalla porque afirma dos efectos —la empresa quedó creada y el correo
-     * salió— y una prueba tiene que poder leer la promesa y comprobarla.
+     * la pantalla porque afirma dos cosas —la empresa quedó creada y el correo
+     * todavía no salió— y una prueba tiene que poder leer la promesa y comprobarla.
      */
     public static function confirmacion(Tenant $empresa): string
     {
-        return $empresa->getAttribute('nombre').' quedó creada. La invitación va en camino al correo '
-            .'del superadministrador y vence en '.Formato::dias(Invitaciones::DIAS_DE_VIGENCIA).'.';
+        return $empresa->getAttribute('nombre').' quedó creada. Todavía no se le envió la invitación al '
+            .'superadministrador: envíala desde la pestaña Usuarios de la ficha cuando su carga inicial esté lista.';
     }
 
     /**

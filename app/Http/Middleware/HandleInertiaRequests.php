@@ -66,7 +66,7 @@ class HandleInertiaRequests extends Middleware
      * Nulo sin sesión, para el `owner` y mientras no haya correo configurado:
      * un canal sin dirección no es un canal.
      *
-     * @return array{correo: string, whatsapp: string|null, horario: string}|null
+     * @return array{correo: string, horario: string}|null
      */
     private function soporte(Request $request): ?array
     {
@@ -77,11 +77,8 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        $whatsapp = trim((string) config('soporte.whatsapp'));
-
         return [
             'correo' => $correo,
-            'whatsapp' => $whatsapp === '' ? null : $whatsapp,
             'horario' => (string) config('soporte.horario'),
         ];
     }

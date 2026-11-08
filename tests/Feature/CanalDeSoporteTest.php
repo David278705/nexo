@@ -18,7 +18,6 @@ beforeEach(function () {
 
     config([
         'soporte.correo' => 'soporte@nexo.co',
-        'soporte.whatsapp' => '3001234567',
         'soporte.horario' => 'Lunes a viernes, de 8:00 a. m. a 5:00 p. m.',
     ]);
 });
@@ -36,7 +35,6 @@ function soporteQueVe(User $usuario): ?array
 it('le enseña el canal a un usuario de la empresa', function () {
     expect(soporteQueVe(usuarioDe($this->empresa, Rol::Superadministrador)))->toBe([
         'correo' => 'soporte@nexo.co',
-        'whatsapp' => '3001234567',
         'horario' => 'Lunes a viernes, de 8:00 a. m. a 5:00 p. m.',
     ]);
 });
@@ -49,12 +47,6 @@ it('no enseña nada mientras no haya correo configurado', function () {
     config(['soporte.correo' => '']);
 
     expect(soporteQueVe(usuarioDe($this->empresa, Rol::Superadministrador)))->toBeNull();
-});
-
-it('deja el WhatsApp en nulo cuando no hay número', function () {
-    config(['soporte.whatsapp' => '']);
-
-    expect(soporteQueVe(usuarioDe($this->empresa, Rol::Superadministrador))['whatsapp'])->toBeNull();
 });
 
 it('no se lo enseña al proveedor, que no se escribe a sí mismo', function () {

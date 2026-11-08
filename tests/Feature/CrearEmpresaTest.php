@@ -90,7 +90,7 @@ it('ofrece crear empresa desde la sección de empresas', function () {
         ->assertInertia(fn ($pagina) => $pagina->where('accion.url', '/proveedor/empresas/nueva'));
 });
 
-it('crea la empresa, su superadministrador y su invitación de una sola vez', function () {
+it('crea la empresa y su superadministrador, sin enviarle todavía la invitación (PROD-22)', function () {
     Notification::fake();
 
     ownerEnElPanel();
@@ -112,6 +112,23 @@ it('crea la empresa, su superadministrador y su invitación de una sola vez', fu
     expect($cuenta)->not->toBeNull()
         ->and($cuenta->getAttribute('email'))->toBe('ana@elprogreso.com')
         ->and($cuenta->rol)->toBe(Rol::Superadministrador);
+
+    // La invitación sale desde la ficha cuando la carga inicial esté lista:
+    // un cliente que entra a un sistema vacío concluye que no sirve.
+    Notification::assertNotSentTo($cuenta, InvitacionAlSistema::class);
+});
+
+it('envía la invitación desde la ficha cuando el proveedor decide', function () {
+    Notification::fake();
+
+    ownerEnElPanel();
+    $this->post('/proveedor/empresas', datosDeEmpresa());
+    $empresa = Tenant::query()->where('nit', '900123456-7')->firstOrFail();
+    $cuenta = CreacionDeEmpresa::superadministradorDe($empresa);
+
+    $this->post("/proveedor/empresas/{$empresa->getKey()}/usuarios/{$cuenta->getKey()}/invitacion")
+        ->assertRedirect()
+        ->assertSessionHas('estado', fn (string $estado) => str_contains($estado, 'Se envió la invitación a ana@elprogreso.com'));
 
     Notification::assertSentTo($cuenta, InvitacionAlSistema::class);
 });

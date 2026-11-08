@@ -462,7 +462,7 @@ const columnasDeVisitas = [
                                     :enviando="reenviandoInvitacion === fila.id"
                                     @click="reenviarInvitacion(fila)"
                                 >
-                                    Reenviar invitación
+                                    Enviar invitación
                                 </Boton>
                                 <Boton
                                     tipo="button"
