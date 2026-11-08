@@ -183,6 +183,16 @@ class Persona extends Model
             'genero' => Genero::class,
             'fecha_nacimiento' => 'date',
             'fecha_expedicion_documento' => 'date',
+            'reclamo_en_tramite_desde' => 'datetime',
         ];
+    }
+
+    /**
+     * Si sobre sus datos hay un reclamo sin decidir (`PROD-14`, Ley 1581,
+     * artículo 18, literal g).
+     */
+    public function tieneReclamoEnTramite(): bool
+    {
+        return $this->getAttribute('reclamo_en_tramite_desde') !== null;
     }
 }

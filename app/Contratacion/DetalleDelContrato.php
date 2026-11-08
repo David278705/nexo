@@ -74,6 +74,21 @@ class DetalleDelContrato
              */
             'cambioAIndefinido' => CambioAIndefinido::de($this->vinculacion, $this->historial)
                 ->paraLaPantalla($fechaCambio),
+            /*
+             * La fecha estimada de una obra o labor vigente, para corregirla
+             * (`PROD-23`). Nula en cualquier otra modalidad: la pantalla no
+             * pinta la acción.
+             */
+            'fechaEstimada' => $this->tipoVigente() === TipoContrato::ObraLabor
+                ? [
+                    'valor' => $this->vinculacion->fecha_fin_estimada?->toDateString() ?? '',
+                    'texto' => $this->vinculacion->fecha_fin_estimada === null
+                        ? 'Sin registrar'
+                        : Formato::fecha($this->vinculacion->fecha_fin_estimada),
+                    'minimo' => $this->vinculacion->fecha_ingreso->copy()->addDay()->toDateString(),
+                    'nota' => FechaFinEstimada::NOTA,
+                ]
+                : null,
         ];
     }
 

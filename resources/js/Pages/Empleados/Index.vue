@@ -212,9 +212,14 @@ const confirmacion = computed(() => usePage().props.estado ?? "");
                 @ordenar="ordenar"
             >
                 <template #celda-estado="{ fila }">
-                    <Etiqueta :tono="fila.activo ? 'exito' : 'neutro'">
-                        {{ fila.estado }}
-                    </Etiqueta>
+                    <span class="inline-flex flex-wrap items-center gap-1">
+                        <Etiqueta :tono="fila.activo ? 'exito' : 'neutro'">
+                            {{ fila.estado }}
+                        </Etiqueta>
+                        <Etiqueta v-if="fila.reclamo" tono="advertencia">
+                            Reclamo en trámite
+                        </Etiqueta>
+                    </span>
                 </template>
 
                 <template #accion-vacio>

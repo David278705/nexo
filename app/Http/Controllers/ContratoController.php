@@ -8,6 +8,7 @@ use App\Contratacion\TipoContrato;
 use App\Contratacion\VigenciaDelContrato;
 use App\Exports\ContratosExport;
 use App\Http\Requests\CambiarATerminoIndefinido;
+use App\Http\Requests\CorregirFechaEstimada;
 use App\Http\Requests\RenovarContrato;
 use App\Models\Vinculacion;
 use App\Presentacion\Formato;
@@ -133,5 +134,24 @@ class ContratoController extends Controller
             ->route('contratos.detalle', $contrato)
             ->with('estado', 'El contrato quedó a término indefinido desde el '
                 .Formato::fecha($periodo->fecha_inicio).'. La fecha de ingreso no cambió.');
+    }
+
+    /**
+     * Corrige la fecha de finalización estimada de una obra o labor (`PROD-23`).
+     * El periodo de prueba sugerido se recalcula solo: no se guarda en ninguna
+     * parte. La auditoría deja la fecha anterior y la nueva.
+     */
+    public function corregirFechaEstimada(CorregirFechaEstimada $peticion, Vinculacion $contrato): RedirectResponse
+    {
+        $fecha = $peticion->validated('fecha_fin_estimada');
+
+        $contrato->forceFill(['fecha_fin_estimada' => $fecha === '' ? null : $fecha])->save();
+
+        return redirect()
+            ->route('contratos.detalle', $contrato)
+            ->with('estado', $fecha === null || $fecha === ''
+                ? 'Se quitó la fecha estimada: este contrato ya no tiene periodo de prueba sugerido.'
+                : 'Se corrigió la fecha estimada al '.Formato::fecha(Carbon::parse($fecha))
+                    .'. El periodo de prueba sugerido se recalculó con ella.');
     }
 }

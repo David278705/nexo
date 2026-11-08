@@ -303,3 +303,71 @@ describe('las pantallas', function () {
             ->not->toContain('Periodo de prueba sugerido');
     });
 });
+
+describe('corregir la fecha estimada (PROD-23)', function () {
+    function obraDeLaPrueba(?string $estimada = FIN_ESTIMADO_DE_LA_OBRA): Vinculacion
+    {
+        return app(ContextoTenant::class)->paraTenant(test()->empresa, fn (): Vinculacion => ($estimada === null
+            ? Vinculacion::factory()->deObraOLabor()
+            : Vinculacion::factory()->deObraOLaborEstimadaHasta($estimada))
+            ->conIngreso(INGRESO_DE_LA_OBRA)
+            ->create());
+    }
+
+    it('corrige la fecha y el periodo de prueba se recalcula con ella', function () {
+        $obra = obraDeLaPrueba();
+
+        $this->actingAs($this->usuario)
+            ->put("/contratos/{$obra->id}/fecha-estimada", ['fecha_fin_estimada' => '2027-12-31'])
+            ->assertRedirect("/contratos/{$obra->id}");
+
+        expect($obra->fresh()->fecha_fin_estimada->toDateString())->toBe('2027-12-31')
+            ->and(prueba($obra->fresh())->terminaEl()->toDateString())->toBe('2026-06-14');
+    });
+
+    it('la deja vacía y el contrato se queda sin periodo de prueba', function () {
+        $obra = obraDeLaPrueba();
+
+        $this->actingAs($this->usuario)
+            ->put("/contratos/{$obra->id}/fecha-estimada", ['fecha_fin_estimada' => ''])
+            ->assertRedirect();
+
+        expect($obra->fresh()->fecha_fin_estimada)->toBeNull()
+            ->and(prueba($obra->fresh())->aplica())->toBeFalse();
+    });
+
+    it('la agrega a una obra que no la tenía', function () {
+        $obra = obraDeLaPrueba(null);
+
+        $this->actingAs($this->usuario)
+            ->put("/contratos/{$obra->id}/fecha-estimada", ['fecha_fin_estimada' => FIN_ESTIMADO_DE_LA_OBRA]);
+
+        expect(prueba($obra->fresh())->terminaEl()->toDateString())->toBe('2026-05-20');
+    });
+
+    it('rechaza una fecha que no es posterior al ingreso', function () {
+        $obra = obraDeLaPrueba();
+
+        $this->actingAs($this->usuario)
+            ->put("/contratos/{$obra->id}/fecha-estimada", ['fecha_fin_estimada' => INGRESO_DE_LA_OBRA])
+            ->assertSessionHasErrors('fecha_fin_estimada');
+    });
+
+    it('no existe en un término fijo', function () {
+        $fijo = app(ContextoTenant::class)->paraTenant(test()->empresa, fn () => Vinculacion::factory()
+            ->aTerminoFijo(INGRESO_DE_LA_OBRA, FIN_ESTIMADO_DE_LA_OBRA)->create());
+
+        $this->actingAs($this->usuario)
+            ->put("/contratos/{$fijo->id}/fecha-estimada", ['fecha_fin_estimada' => '2027-01-01'])
+            ->assertForbidden();
+    });
+
+    it('el detalle del contrato trae la fecha para corregirla solo en obra o labor', function () {
+        $obra = obraDeLaPrueba();
+
+        $props = $this->actingAs($this->usuario)->get("/contratos/{$obra->id}")->viewData('page')['props'];
+
+        expect($props['fechaEstimada']['valor'])->toBe(FIN_ESTIMADO_DE_LA_OBRA)
+            ->and($props['fechaEstimada']['texto'])->toBe('14/10/2026');
+    });
+});

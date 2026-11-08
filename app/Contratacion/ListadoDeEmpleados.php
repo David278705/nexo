@@ -167,6 +167,8 @@ class ListadoDeEmpleados extends Listado
             'ingreso' => Formato::fecha($vinculacion->fecha_ingreso),
             'estado' => $estado instanceof EstadoVinculacion ? $estado->etiqueta() : '',
             'activo' => $vinculacion->estaActiva() ? 1 : 0,
+            // La leyenda de la Ley 1581 (PROD-14), al lado del estado.
+            'reclamo' => $persona->tieneReclamoEnTramite(),
         ];
     }
 

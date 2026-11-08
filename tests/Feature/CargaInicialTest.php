@@ -573,6 +573,25 @@ describe('la validación de la plantilla de empleados', function () {
         expect(simular(new PlantillaDeEmpleados, $conFechaDeMas)->motivosDe(2)[0])
             ->toContain('Solo el contrato a término fijo');
     });
+
+    it('carga la fecha estimada de una obra o labor y la prohíbe en las otras modalidades (PROD-23)', function () {
+        $obra = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Tipo de contrato' => 'Obra o labor', 'Fecha de finalización estimada' => '31/12/2026']),
+        ]);
+
+        ejecutar(new PlantillaDeEmpleados, $obra);
+
+        $vinculacion = app(ContextoTenant::class)->paraTenant(test()->empresa, fn () => Vinculacion::query()->sole());
+
+        expect($vinculacion->fecha_fin_estimada->toDateString())->toBe('2026-12-31');
+
+        $indefinidoConEstimada = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado(['Número de documento' => '52998877', 'Fecha de finalización estimada' => '31/12/2026']),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $indefinidoConEstimada)->motivosDe(2)[0])
+            ->toContain('Solo el contrato de obra o labor');
+    });
 });
 
 describe('las plantillas que se vinculan por documento', function () {

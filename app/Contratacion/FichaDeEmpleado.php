@@ -12,10 +12,12 @@ use App\Models\Movimiento;
 use App\Models\PerfilSociodemografico;
 use App\Models\PeriodoContractual;
 use App\Models\Persona;
+use App\Models\User;
 use App\Models\Vacacion;
 use App\Models\Vinculacion;
 use App\Presentacion\Formato;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
@@ -104,11 +106,15 @@ class FichaDeEmpleado
     /**
      * Nombre, cargo y estado: lo que identifica al empleado en la pantalla.
      *
-     * @return array{id: int, nombre: string, cargo: string, estado: string, activo: bool}
+     * También la leyenda «reclamo en trámite» (`PROD-14`), que se ve arriba y
+     * no en una pestaña: mientras exista, quien abra la ficha tiene que saberlo.
+     *
+     * @return array{id: int, nombre: string, cargo: string, estado: string, activo: bool, reclamo: array{desde: string, motivo: string}|null, puedeMarcarReclamo: bool}
      */
     public function encabezado(): array
     {
         $estado = $this->vinculacion->getAttribute('estado');
+        $usuario = Auth::user();
 
         return [
             'id' => (int) $this->vinculacion->getKey(),
@@ -116,6 +122,13 @@ class FichaDeEmpleado
             'cargo' => (string) $this->vinculacion->getAttribute('cargo'),
             'estado' => $estado instanceof EstadoVinculacion ? $estado->etiqueta() : '',
             'activo' => $this->vinculacion->estaActiva(),
+            'reclamo' => $this->persona->tieneReclamoEnTramite()
+                ? [
+                    'desde' => Formato::fecha($this->persona->getAttribute('reclamo_en_tramite_desde')),
+                    'motivo' => (string) $this->persona->getAttribute('reclamo_en_tramite_motivo'),
+                ]
+                : null,
+            'puedeMarcarReclamo' => $usuario instanceof User && $usuario->esSuperadministrador(),
         ];
     }
 

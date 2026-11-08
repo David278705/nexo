@@ -28,6 +28,7 @@ use App\Http\Controllers\Proveedor\PanelController;
 use App\Http\Controllers\Proveedor\SaludController;
 use App\Http\Controllers\Proveedor\SegundoFactorController;
 use App\Http\Controllers\Proveedor\SuscripcionController;
+use App\Http\Controllers\ReclamoEnTramiteController;
 use App\Http\Controllers\ServicioSuspendidoController;
 use App\Http\Controllers\TerminacionController;
 use App\Http\Controllers\VacacionController;
@@ -150,6 +151,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/empleados/{empleado}', [EmpleadoController::class, 'ficha'])
             ->whereNumber('empleado')
             ->name('empleados.ficha');
+
+        // La leyenda «reclamo en trámite» (PROD-14). Solo el superadministrador,
+        // que lo exige cada acción además del módulo.
+        Route::post('/empleados/{empleado}/reclamo', [ReclamoEnTramiteController::class, 'marcar'])
+            ->whereNumber('empleado')
+            ->name('empleados.reclamo.marcar');
+        Route::delete('/empleados/{empleado}/reclamo', [ReclamoEnTramiteController::class, 'quitar'])
+            ->whereNumber('empleado')
+            ->name('empleados.reclamo.quitar');
     });
 
     /*
@@ -182,6 +192,10 @@ Route::middleware('auth')->group(function () {
          * años, y es irreversible: el cambio inverso no existe y por eso no hay
          * ninguna ruta que lo haga.
          */
+        // Corregir la fecha estimada de una obra o labor (PROD-23).
+        Route::put('/contratos/{contrato}/fecha-estimada', [ContratoController::class, 'corregirFechaEstimada'])
+            ->whereNumber('contrato')
+            ->name('contratos.fecha-estimada');
         Route::post('/contratos/{contrato}/indefinido', [ContratoController::class, 'cambiarAIndefinido'])
             ->whereNumber('contrato')
             ->name('contratos.indefinido');

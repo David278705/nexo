@@ -1,8 +1,12 @@
 <script setup>
-import { Head, Link } from "@inertiajs/vue3";
+import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { ref } from "vue";
 import Armazon from "@/Components/Armazon.vue";
+import Aviso from "@/Components/Aviso.vue";
+import Boton from "@/Components/Boton.vue";
+import CampoTexto from "@/Components/CampoTexto.vue";
 import Etiqueta from "@/Components/Etiqueta.vue";
+import Modal from "@/Components/Modal.vue";
 import ListaDeDatos from "@/Components/ListaDeDatos.vue";
 import Pestanas from "@/Components/Pestanas.vue";
 import ResumenDeEmpleado from "@/Components/ResumenDeEmpleado.vue";
@@ -19,7 +23,7 @@ import TablaDatos from "@/Components/TablaDatos.vue";
  * de pestaña no pide nada porque el contenido de las cuatro ya está en las
  * props.
  */
-defineProps({
+const props = defineProps({
     empleado: { type: Object, required: true },
     resumen: { type: Array, required: true },
     datos: { type: Array, required: true },
@@ -36,6 +40,27 @@ const pestanas = [
 ];
 
 const activa = ref("datos");
+
+// La leyenda «reclamo en trámite» (PROD-14). Solo el superadministrador la pone
+// y la quita; el servidor lo vuelve a exigir en cada acción.
+const reclamoAbierto = ref(false);
+const formReclamo = useForm({ motivo: "" });
+
+function marcarReclamo() {
+    formReclamo.post(`/empleados/${props.empleado.id}/reclamo`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            reclamoAbierto.value = false;
+            formReclamo.reset();
+        },
+    });
+}
+
+function quitarReclamo() {
+    router.delete(`/empleados/${props.empleado.id}/reclamo`, {
+        preserveScroll: true,
+    });
+}
 
 const columnasHistorial = [
     { clave: "orden", titulo: "#", numerica: true },
@@ -81,9 +106,87 @@ const columnasMovimientos = [
                     <Etiqueta :tono="empleado.activo ? 'exito' : 'neutro'">
                         {{ empleado.estado }}
                     </Etiqueta>
+                    <Etiqueta v-if="empleado.reclamo" tono="advertencia">
+                        Reclamo en trámite
+                    </Etiqueta>
                 </p>
             </div>
+
+            <Boton
+                v-if="empleado.puedeMarcarReclamo && !empleado.reclamo"
+                variante="secundario"
+                tipo="button"
+                @click="reclamoAbierto = true"
+            >
+                Marcar reclamo en trámite
+            </Boton>
         </div>
+
+        <!--
+            La leyenda «reclamo en trámite» (PROD-14, Ley 1581, artículo 18,
+            literal g): se ve arriba, antes de cualquier dato, mientras el
+            reclamo no se decida.
+        -->
+        <Aviso
+            v-if="empleado.reclamo"
+            tono="advertencia"
+            titulo="Reclamo en trámite"
+            class="mt-4"
+        >
+            <p>
+                Desde el {{ empleado.reclamo.desde }}. Motivo:
+                {{ empleado.reclamo.motivo }}
+            </p>
+            <p class="mt-2">
+                La ley exige mantener esta leyenda hasta que el reclamo se
+                decida.
+            </p>
+            <Boton
+                v-if="empleado.puedeMarcarReclamo"
+                variante="texto"
+                tipo="button"
+                class="mt-2"
+                :enviando="formReclamo.processing"
+                @click="quitarReclamo"
+            >
+                El reclamo se decidió: quitar la leyenda
+            </Boton>
+        </Aviso>
+
+        <Modal
+            :abierto="reclamoAbierto"
+            titulo="Marcar reclamo en trámite"
+            @cerrar="reclamoAbierto = false"
+        >
+            <p class="text-texto">
+                La Ley 1581 exige registrar esta leyenda dentro de los dos días
+                hábiles siguientes a recibir un reclamo completo del titular, y
+                mantenerla hasta decidirlo.
+            </p>
+            <div class="mt-4">
+                <CampoTexto
+                    v-model="formReclamo.motivo"
+                    etiqueta="Motivo del reclamo"
+                    :error="formReclamo.errors.motivo"
+                />
+            </div>
+            <template #pie>
+                <Boton
+                    variante="texto"
+                    tipo="button"
+                    @click="reclamoAbierto = false"
+                >
+                    Cancelar
+                </Boton>
+                <Boton
+                    tipo="button"
+                    :enviando="formReclamo.processing"
+                    @click="marcarReclamo"
+                >
+                    Marcar
+                </Boton>
+            </template>
+        </Modal>
 
         <div class="mt-4">
             <ResumenDeEmpleado :datos="resumen" />

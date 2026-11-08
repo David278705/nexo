@@ -150,6 +150,28 @@ describe("la ficha del empleado", () => {
         expect(texto).toContain("Activo");
     });
 
+    it("enseña la leyenda «reclamo en trámite» con su fecha y motivo (PROD-14)", () => {
+        const texto = montar({
+            empleado: {
+                ...props.empleado,
+                reclamo: { desde: "05/11/2026", motivo: "Pide corregir su dirección." },
+                puedeMarcarReclamo: false,
+            },
+        }).text();
+
+        expect(texto).toContain("Reclamo en trámite");
+        expect(texto).toContain("Desde el 05/11/2026");
+        expect(texto).toContain("Pide corregir su dirección.");
+        expect(texto).not.toContain("quitar la leyenda");
+    });
+
+    it("solo el superadministrador ve cómo marcar el reclamo", () => {
+        expect(montar().text()).not.toContain("Marcar reclamo en trámite");
+        expect(
+            montar({ empleado: { ...props.empleado, reclamo: null, puedeMarcarReclamo: true } }).text(),
+        ).toContain("Marcar reclamo en trámite");
+    });
+
     it("enseña los datos de salida de una persona inactiva, junto a los de siempre", () => {
         const texto = montar({
             empleado: {

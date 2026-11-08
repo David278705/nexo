@@ -125,6 +125,12 @@ class PlantillaDeEmpleados extends Plantilla
             Columna::catalogo('Entidad bancaria', 'banco_id', Banco::class),
 
             Columna::decimal('Días de vacaciones disponibles hoy', 'saldo_inicial_vacaciones'),
+
+            // Solo obra o labor y opcional (`PROD-23`). Va al final del archivo
+            // y no junto a la fecha de finalización: insertarla en medio habría
+            // corrido las validaciones de cada celda de la plantilla real, y el
+            // lector encuentra las columnas por su título, no por su posición.
+            Columna::fecha('Fecha de finalización estimada', 'fecha_fin_estimada'),
         ];
     }
 
