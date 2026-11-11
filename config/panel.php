@@ -178,4 +178,8 @@ return [
     // quien todavía no tiene cuenta.
     'equipo_inicial' => env('NEXO_EQUIPO_INICIAL', ''),
 
+    // La clave de las cuentas de prueba de `DesarrolloSeeder` en un servidor
+    // que no es local (PROD-31). Vacía, esas cuentas no se crean allá.
+    'clave_cuentas_de_prueba' => env('NEXO_CLAVE_CUENTAS_DE_PRUEBA', ''),
+
 ];

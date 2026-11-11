@@ -41,6 +41,13 @@ case "$ROL" in
         # (PROD-30). Railway no da una consola dentro del contenedor.
         php artisan equipo:asegurar-inicial
 
+        # Las cuentas de prueba de siempre (owner@nexo.local y
+        # admin@empresademo.local), solo si NEXO_CLAVE_CUENTAS_DE_PRUEBA trae
+        # una clave (PROD-31). Volver a correrlo no duplica nada.
+        if [ -n "${NEXO_CLAVE_CUENTAS_DE_PRUEBA:-}" ]; then
+            php artisan db:seed --class=DesarrolloSeeder --force
+        fi
+
         # HTTP plano: Railway termina el HTTPS en su borde y reenvía aquí.
         exec frankenphp php-server --listen ":${PORT:-8080}" --root public/
         ;;

@@ -2,8 +2,11 @@
 
 use App\Models\User;
 use App\Notificaciones\InvitacionAlSistema;
+use Database\Seeders\CatalogosSeeder;
+use Database\Seeders\DesarrolloSeeder;
 use Illuminate\Mail\Message;
 use Illuminate\Mail\SentMessage;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
@@ -73,5 +76,42 @@ describe('el equipo inicial (PROD-30)', function () {
         $this->artisan('equipo:asegurar-inicial')->assertSuccessful();
 
         expect(User::query()->count())->toBe(0);
+    });
+});
+
+describe('las cuentas de prueba en un servidor (PROD-31)', function () {
+    beforeEach(function () {
+        $this->seed(CatalogosSeeder::class);
+    });
+
+    it('fuera de local no corre sin una clave propia', function () {
+        app()->detectEnvironment(fn () => 'production');
+        config(['panel.clave_cuentas_de_prueba' => '']);
+
+        expect(fn () => app(DesarrolloSeeder::class)->run())
+            ->toThrow(RuntimeException::class, 'NEXO_CLAVE_CUENTAS_DE_PRUEBA');
+    });
+
+    it('con clave propia crea las dos cuentas con esa clave, no con password', function () {
+        app()->detectEnvironment(fn () => 'production');
+        config(['panel.clave_cuentas_de_prueba' => 'una-clave-larga-y-propia']);
+
+        app(DesarrolloSeeder::class)->run();
+
+        foreach (['owner@nexo.local', 'admin@empresademo.local'] as $correo) {
+            $usuario = User::query()->where('email', $correo)->sole();
+            expect(Hash::check('una-clave-larga-y-propia', $usuario->password))->toBeTrue()
+                ->and(Hash::check('password', $usuario->password))->toBeFalse();
+        }
+    });
+
+    it('volver a correrlo no duplica nada', function () {
+        app()->detectEnvironment(fn () => 'production');
+        config(['panel.clave_cuentas_de_prueba' => 'una-clave-larga-y-propia']);
+
+        app(DesarrolloSeeder::class)->run();
+        app(DesarrolloSeeder::class)->run();
+
+        expect(User::query()->where('email', 'owner@nexo.local')->count())->toBe(1);
     });
 });

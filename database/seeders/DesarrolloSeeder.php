@@ -33,8 +33,11 @@ use RuntimeException;
  * 3. **La misma planta que la demostración** (`PlantaDeMuestra`), para que la
  *    empresa de trabajo se vea igual de usada que la que ve un prospecto.
  *
- * **No corre fuera de local.** Crea cuentas con contraseña conocida, que en un
- * servidor de verdad sería una puerta trasera. El guardia está aquí dentro y no
+ * **Fuera de local solo corre con una clave propia** (`PROD-31`). En local la
+ * clave es `password`, que en un servidor abierto a internet sería una puerta
+ * trasera. En un servidor de pruebas, como el primer despliegue en Railway,
+ * corre solo si `NEXO_CLAVE_CUENTAS_DE_PRUEBA` trae una clave, y entonces las
+ * dos cuentas usan esa clave y no `password`. El guardia está aquí dentro y no
  * en quien lo llama, para que no dependa de que alguien se acuerde.
  */
 class DesarrolloSeeder extends Seeder
@@ -53,9 +56,10 @@ class DesarrolloSeeder extends Seeder
 
     public function run(): void
     {
-        if (! app()->environment('local', 'testing')) {
+        if (! app()->environment('local', 'testing') && self::claveDePrueba() === '') {
             throw new RuntimeException(
-                'DesarrolloSeeder crea cuentas con contraseña conocida y solo corre en local.'
+                'DesarrolloSeeder crea cuentas con contraseña conocida: fuera de local solo corre con '
+                .'NEXO_CLAVE_CUENTAS_DE_PRUEBA definida.'
             );
         }
 
@@ -64,6 +68,22 @@ class DesarrolloSeeder extends Seeder
         $empresa = $this->empresaDeTrabajo();
 
         $this->poblar($empresa);
+    }
+
+    /**
+     * La clave de las dos cuentas: la de `NEXO_CLAVE_CUENTAS_DE_PRUEBA` si se
+     * definió, o `password` en local.
+     */
+    public static function clave(): string
+    {
+        $propia = self::claveDePrueba();
+
+        return $propia !== '' ? $propia : self::CLAVE;
+    }
+
+    private static function claveDePrueba(): string
+    {
+        return trim((string) config('panel.clave_cuentas_de_prueba', ''));
     }
 
     /**
@@ -84,7 +104,7 @@ class DesarrolloSeeder extends Seeder
             'rol' => Rol::Owner,
             'name' => 'Proveedor (desarrollo)',
             'email' => self::CORREO_PROVEEDOR,
-            'password' => Hash::make(self::CLAVE),
+            'password' => Hash::make(self::clave()),
             'email_verified_at' => Carbon::now(),
         ]);
     }
@@ -125,7 +145,7 @@ class DesarrolloSeeder extends Seeder
                 'rol' => PlantaDeMuestra::rolDeLaCuentaPrincipal(),
                 'name' => 'Administradora de pruebas',
                 'email' => self::CORREO_EMPRESA,
-                'password' => Hash::make(self::CLAVE),
+                'password' => Hash::make(self::clave()),
                 'email_verified_at' => Carbon::now(),
             ]);
 
