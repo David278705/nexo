@@ -35,13 +35,22 @@ La guía, paso a paso y con todas las variables, es `docs/08-despliegue.md`.
 
 6. **Comprar el dominio** de Nexo. $60.000 a $130.000 al año. La página pública y la aplicación viven en
    el mismo dominio.
-7. **Desplegar en Railway**: PostgreSQL y los tres servicios —web, worker y scheduler—. Al arrancar, el
+7. **Desplegar en Railway** — **hecho el 2026-11-10**, en el proyecto `nexo`, con la dirección
+   provisional `https://web-production-eac14903.up.railway.app`. Lo que sigue de este paso es poner el
+   dominio propio en el servicio web y en `APP_URL`. Quedaron PostgreSQL y los tres servicios —web, worker y scheduler—. Al arrancar, el
    sistema crea su rol de base de datos, revisa la configuración, migra y carga solo los catálogos, los
    festivos y los tres planes. USD 25 a 45 al mes.
-8. **El correo**: crear el correo de soporte del dominio, abrir cuenta en un proveedor transaccional
-   (Resend gratis hasta 3.000 al mes, o Postmark desde USD 15), configurar SPF, DKIM y DMARC en el DNS,
-   poner las variables `MAIL_*` y `SOPORTE_CORREO`, y correr `php artisan alertas:prueba` hasta que el
-   correo caiga en la bandeja de entrada. Responde las consultas Angela, con copia a David.
+8. **El correo.** Desde el 2026-11-10 el sistema ya envía por Resend, con su remitente de prueba
+   (`onboarding@resend.dev`) y solo a los correos de `MAIL_DESTINATARIOS_PERMITIDOS`. Falta, con el dominio
+   del paso 6:
+   - **Verificar el dominio en Resend** y poner SPF, DKIM y DMARC en el DNS. Mientras no, Resend solo
+     entrega al correo dueño de la cuenta de Resend: a Angela no le llega nada.
+   - **Cambiar `MAIL_FROM_ADDRESS`** a una dirección del dominio, por ejemplo `alertas@` del dominio.
+   - **Pendiente: el correo de soporte.** `SOPORTE_CORREO` tiene hoy `soporte@nexo.invalid`, que es de
+     relleno y no recibe nada. Se ve en el menú de los clientes y en la página pública. Responde Angela,
+     con copia a David.
+   - **Al empezar a vender, vaciar `MAIL_DESTINATARIOS_PERMITIDOS`**: mientras tenga algo, ningún correo
+     sale a los clientes.
 9. **Sentry y un monitor de disponibilidad** externo (UptimeRobot o similar) que consulte `/up`. $0. Sin
    el monitor no se puede demostrar que se cumplió el SLA del 99 %.
 10. **Las dos primeras cuentas** con `php artisan equipo:invitar`, el segundo factor activado, y después:
