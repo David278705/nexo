@@ -2877,3 +2877,22 @@ con la Ley Emiliani. Faltaban el 13 de julio de 2026 y el 12 de julio de 2027, y
 en cada vacación que los cruzara. Hecho: las dos fechas y el año 2028 completo, verificado fecha por fecha.
 Hay una demanda contra el artículo 6 de esa ley: está anotada en la lista única.
 
+
+### [x] PROD-29 · Los correos solo salen a una lista mientras el sistema está en pruebas
+
+`MAIL_DESTINATARIOS_PERMITIDOS` (lista separada por comas): cada correo se queda solo con los destinatarios
+de la lista y, si no queda ninguno, no se envía y deja una línea en el log
+(`App\Notificaciones\FiltroDeDestinatarios`). Vacía, todo sale normal. Pruebas en
+`tests/Feature/DespliegueInicialTest.php`.
+
+### [x] PROD-30 · El equipo inicial del proveedor se crea al arrancar
+
+Railway no da consola dentro del contenedor. `equipo:asegurar-inicial` lee `NEXO_EQUIPO_INICIAL`
+(`correo|Nombre;...`) e invita solo a quien no tiene cuenta; lo corre `docker/arrancar.sh` en el web.
+Por decisión de David, en Railway la variable está vacía: no se creó ninguna cuenta con nombre propio.
+
+### [x] PROD-31 · Las cuentas de prueba en un servidor, con una clave propia
+
+`DesarrolloSeeder` corre fuera de local solo si `NEXO_CLAVE_CUENTAS_DE_PRUEBA` trae una clave, y entonces
+`owner@nexo.local` y `admin@empresademo.local` usan esa clave y no `password`. El arranque del web lo corre
+si la variable existe. Desplegado en Railway el 2026-11-10 y probado: las dos cuentas entran.

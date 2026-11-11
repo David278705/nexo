@@ -1,7 +1,12 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-11-08 · Cierre del código antes de Railway (`PROD-14`, `PROD-19` a `PROD-28`).
-**Verificación:** verde, ver la tarea `PROD-28` del backlog.
+**Última sesión:** 2026-11-10 · Despliegue en Railway (`PROD-29` a `PROD-31`).
+**Verificación:** verde (1483 pruebas de Pest, Vitest, PHPStan, Pint y build).
+**Railway:** proyecto `nexo`, servicios web, worker y scheduler más Postgres, en
+https://web-production-eac14903.up.railway.app. Solo existen las dos cuentas de prueba; la clave está en la
+variable `NEXO_CLAVE_CUENTAS_DE_PRUEBA` del servicio web. El correo sale con el remitente de prueba de
+Resend y solo a los correos de `MAIL_DESTINATARIOS_PERMITIDOS`; el soporte es `soporte@nexo.invalid`
+hasta que haya uno real (paso 8 de la lista única).
 **Dónde vamos:** el código está terminado. Lo que falta está en `docs/09-plan-de-salida-al-mercado.md`, y es
 todo de David y Angela: trámites, contratos, cuentas, desplegar en Railway y probar con ojos propios.
 **Siguiente sesión de código:** ninguna pendiente. Una sesión nueva solo hace falta si cambia una decisión,
