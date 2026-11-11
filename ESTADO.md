@@ -3,10 +3,13 @@
 **Última sesión:** 2026-11-10 · Despliegue en Railway (`PROD-29` a `PROD-31`).
 **Verificación:** verde (1483 pruebas de Pest, Vitest, PHPStan, Pint y build).
 **Railway:** proyecto `nexo`, servicios web, worker y scheduler más Postgres, en
-https://web-production-eac14903.up.railway.app. Solo existen las dos cuentas de prueba; la clave está en la
-variable `NEXO_CLAVE_CUENTAS_DE_PRUEBA` del servicio web. El correo sale con el remitente de prueba de
-Resend y solo a los correos de `MAIL_DESTINATARIOS_PERMITIDOS`; el soporte es `soporte@nexo.invalid`
-hasta que haya uno real (paso 8 de la lista única).
+https://web-production-eac14903.up.railway.app. Queda solo la cuenta del proveedor (`owner@nexo.local`): la
+empresa de pruebas se retira con `PROD-32` y Angela crea la suya desde el panel. El correo sale con el
+remitente de prueba de la cuenta de Resend de Angela y solo a los correos de `MAIL_DESTINATARIOS_PERMITIDOS`;
+el soporte es `soporte@nexo.invalid` hasta que haya uno real (paso 8 de la lista única).
+**Simulación:** `docs/simulacion/` es el paquete para que Angela pruebe el sistema varias semanas con una
+sesión de Claude. `generar_escenario.py` se validó contra el motor real: con día 1 el 12 y el 27 de noviembre
+y el 2 de diciembre de 2026, las alertas del calendario coinciden una a una con las que genera el sistema.
 **Dónde vamos:** el código está terminado. Lo que falta está en `docs/09-plan-de-salida-al-mercado.md`, y es
 todo de David y Angela: trámites, contratos, cuentas, desplegar en Railway y probar con ojos propios.
 **Siguiente sesión de código:** ninguna pendiente. Una sesión nueva solo hace falta si cambia una decisión,
