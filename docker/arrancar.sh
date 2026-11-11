@@ -37,6 +37,10 @@ case "$ROL" in
         # ninguna empresa.
         php artisan catalogos:inicializar
 
+        # Las cuentas del equipo de NEXO_EQUIPO_INICIAL que todavía no existen
+        # (PROD-30). Railway no da una consola dentro del contenedor.
+        php artisan equipo:asegurar-inicial
+
         # HTTP plano: Railway termina el HTTPS en su borde y reenvía aquí.
         exec frankenphp php-server --listen ":${PORT:-8080}" --root public/
         ;;

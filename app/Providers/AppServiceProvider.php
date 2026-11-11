@@ -26,7 +26,10 @@ use App\Legal\DocumentosLegales;
 use App\Models\User;
 use App\Models\Vinculacion;
 use App\Multiempresa\ContextoTenant;
+use App\Notificaciones\FiltroDeDestinatarios;
 use App\Proveedor\AccesoAlEntorno;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -106,6 +109,10 @@ class AppServiceProvider extends ServiceProvider
         // No hay nada que agregar por cada tabla nueva: si se guarda en la base
         // de datos, queda registrado.
         ObservadorDeAuditoria::registrar();
+
+        // Mientras el sistema está en pruebas, el correo solo sale a la lista de
+        // MAIL_DESTINATARIOS_PERMITIDOS (PROD-29).
+        Event::listen(MessageSending::class, [FiltroDeDestinatarios::class, 'handle']);
 
         // Toda vinculación nace con su periodo inicial, venga del formulario,
         // de la carga inicial o de una prueba. El historial del contrato no

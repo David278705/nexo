@@ -115,4 +115,16 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Destinatarios permitidos mientras el sistema está en pruebas (PROD-29)
+    |--------------------------------------------------------------------------
+    |
+    | Lista separada por comas. Si tiene algo, ningún correo sale a una
+    | dirección fuera de ella. Vacía, todo sale normal.
+    |
+    */
+
+    'destinatarios_permitidos' => env('MAIL_DESTINATARIOS_PERMITIDOS', ''),
+
 ];

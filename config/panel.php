@@ -173,4 +173,9 @@ return [
 
     ],
 
+    // Las cuentas del equipo del proveedor que el primer arranque crea solas
+    // (PROD-30): `correo|Nombre`, separadas por punto y coma. Solo invita a
+    // quien todavía no tiene cuenta.
+    'equipo_inicial' => env('NEXO_EQUIPO_INICIAL', ''),
+
 ];
