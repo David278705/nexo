@@ -29,6 +29,7 @@ qué tiene que pasar cuando registras una novedad, y cómo revisar en Railway qu
 | `03-motor-de-alertas.md` | Todas las alertas: cuándo salen, a quién, qué dicen y cuáles NO deben salir |
 | `04-plan-de-la-simulacion.md` | El guion día por día, con las novedades y lo que se espera de cada una |
 | `05-verificacion-tecnica.md` | Cómo revisar Railway y Resend, y cómo armar el reporte de fallas para David |
+| `06-contexto-completo-del-sistema.md` | Todo el contexto para tus preguntas: en qué estado está Nexo, qué reglas sigue y con qué fundamento, qué está decidido y qué sigue abierto |
 | `generar_escenario.py` | Genera los Excel y el calendario de alertas a partir del día en que empiezas |
 | `1 - Empleados actuales (obligatoria).xlsx` | Plantilla original (está en la carpeta `plantillas/` del proyecto) |
 | `3 - Historico de incapacidades (opcional).xlsx` | Plantilla original |
@@ -49,6 +50,10 @@ nuevo dentro del proyecto, diciéndole qué día de la prueba es) y le dices:
 Claude te dice qué alertas tenían que llegar ese día, te pide confirmar si llegaron, te da las novedades del día
 con todos sus campos, y al final revisa Railway y Resend. Si algo no cuadra, te entrega un archivo
 `reporte-de-fallas-AAAA-MM-DD.md` para que se lo mandes a David.
+
+En cualquier momento puedes preguntarle cosas como «¿en qué estado está el sistema?», «¿qué regla sigue para
+las prórrogas y en qué norma se basa?» o «¿qué pasa con los datos cuando un cliente se va?». Responde con
+`06-contexto-completo-del-sistema.md`, y si algo no está ahí, te lo dice en vez de inventarlo.
 
 ## Tres cosas que no hay que olvidar
 

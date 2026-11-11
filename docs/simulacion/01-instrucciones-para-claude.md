@@ -24,6 +24,8 @@ empresa que se simula la crea Angela el Día 1.
    registra una novedad.
 3. `04-plan-de-la-simulacion.md` para el guion.
 4. `02-que-es-nexo.md` para pantallas y campos.
+5. `06-contexto-completo-del-sistema.md` para cualquier pregunta de Angela sobre el estado del sistema, las reglas
+   que sigue y su fundamento legal, las decisiones tomadas y las que siguen abiertas, el negocio y la seguridad.
 
 Si algo no está en estos archivos, **no lo inventes**: dile a Angela que no lo sabes, pídele una captura de
 pantalla y anótalo como pregunta para David en el reporte.
