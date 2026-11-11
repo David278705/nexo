@@ -65,6 +65,12 @@ class DesarrolloSeeder extends Seeder
 
         $this->cuentaDelProveedor();
 
+        // Si la empresa de pruebas se retiró (`cuentas-de-prueba:retirar-empresa`),
+        // no se revive: queda solo la cuenta del proveedor.
+        if (Tenant::onlyTrashed()->where('nit', self::NIT_EMPRESA)->exists()) {
+            return;
+        }
+
         $empresa = $this->empresaDeTrabajo();
 
         $this->poblar($empresa);

@@ -2896,3 +2896,11 @@ Por decisión de David, en Railway la variable está vacía: no se creó ninguna
 `DesarrolloSeeder` corre fuera de local solo si `NEXO_CLAVE_CUENTAS_DE_PRUEBA` trae una clave, y entonces
 `owner@nexo.local` y `admin@empresademo.local` usan esa clave y no `password`. El arranque del web lo corre
 si la variable existe. Desplegado en Railway el 2026-11-10 y probado: las dos cuentas entran.
+
+### [x] PROD-32 · Retirar la empresa de pruebas de Railway y dejar solo el proveedor
+
+David pidió quitar la empresa de pruebas para que Angela cree la suya desde el panel con su correo.
+`cuentas-de-prueba:retirar-empresa` le hace borrado lógico, con auditoría, a la empresa del NIT de la siembra
+y a sus usuarios, y no toca a nadie más; la siembra ya no la revive. Lo corre el arranque del web si
+`NEXO_RETIRAR_EMPRESA_DE_PRUEBA=si`. En Railway, además, `NEXO_CLAVE_CUENTAS_DE_PRUEBA` quedó vacía: la
+cuenta del proveedor ya existe y la siembra no vuelve a correr. El correo pasó a la cuenta de Resend de Angela.

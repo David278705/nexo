@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Tenant;
 use App\Models\User;
 use App\Notificaciones\InvitacionAlSistema;
 use Database\Seeders\CatalogosSeeder;
@@ -113,5 +114,48 @@ describe('las cuentas de prueba en un servidor (PROD-31)', function () {
         app(DesarrolloSeeder::class)->run();
 
         expect(User::query()->where('email', 'owner@nexo.local')->count())->toBe(1);
+    });
+});
+
+describe('retirar la empresa de pruebas (PROD-32)', function () {
+    beforeEach(function () {
+        $this->seed(CatalogosSeeder::class);
+        app()->detectEnvironment(fn () => 'production');
+        config(['panel.clave_cuentas_de_prueba' => 'una-clave-larga-y-propia']);
+        app(DesarrolloSeeder::class)->run();
+    });
+
+    it('le hace borrado lógico a la empresa y a su usuario, y deja al proveedor', function () {
+        $this->artisan('cuentas-de-prueba:retirar-empresa')->assertSuccessful();
+
+        $empresa = Tenant::withTrashed()->where('nit', DesarrolloSeeder::NIT_EMPRESA)->sole();
+        $admin = User::withTrashed()->where('email', DesarrolloSeeder::CORREO_EMPRESA)->sole();
+
+        expect($empresa->trashed())->toBeTrue()
+            ->and($admin->trashed())->toBeTrue()
+            ->and(User::query()->where('email', DesarrolloSeeder::CORREO_PROVEEDOR)->exists())->toBeTrue();
+    });
+
+    it('la siembra no revive la empresa retirada', function () {
+        $this->artisan('cuentas-de-prueba:retirar-empresa')->assertSuccessful();
+
+        app(DesarrolloSeeder::class)->run();
+
+        expect(Tenant::query()->where('nit', DesarrolloSeeder::NIT_EMPRESA)->exists())->toBeFalse();
+    });
+
+    it('correrlo otra vez no hace nada', function () {
+        $this->artisan('cuentas-de-prueba:retirar-empresa')->assertSuccessful();
+        $this->artisan('cuentas-de-prueba:retirar-empresa')
+            ->expectsOutputToContain('no se retira nada')
+            ->assertSuccessful();
+    });
+
+    it('no toca otras empresas', function () {
+        $cliente = Tenant::factory()->create();
+
+        $this->artisan('cuentas-de-prueba:retirar-empresa')->assertSuccessful();
+
+        expect($cliente->fresh()->trashed())->toBeFalse();
     });
 });

@@ -48,6 +48,12 @@ case "$ROL" in
             php artisan db:seed --class=DesarrolloSeeder --force
         fi
 
+        # Borrado lógico de la empresa de pruebas de la siembra, dejando solo la
+        # cuenta del proveedor (PROD-32). Volver a correrlo no hace nada.
+        if [ "${NEXO_RETIRAR_EMPRESA_DE_PRUEBA:-}" = "si" ]; then
+            php artisan cuentas-de-prueba:retirar-empresa
+        fi
+
         # HTTP plano: Railway termina el HTTPS en su borde y reenvía aquí.
         exec frankenphp php-server --listen ":${PORT:-8080}" --root public/
         ;;
