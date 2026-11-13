@@ -72,10 +72,7 @@ class ContratosVencidosSinGestionar extends ResumenMensual
         $vencidos = [];
 
         foreach ($this->candidatas($corte) as $vinculacion) {
-            $vencimiento = HistorialDeContrato::con(
-                $vinculacion->periodos,
-                (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
-            )->fechaDeVencimiento();
+            $vencimiento = HistorialDeContrato::deCargada($vinculacion)->fechaDeVencimiento();
 
             if (! $vencimiento instanceof Carbon) {
                 continue;

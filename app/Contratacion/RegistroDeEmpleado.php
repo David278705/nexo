@@ -204,6 +204,8 @@ class RegistroDeEmpleado
         return [
             'saldo_inicial_vacaciones' => $datos['saldo_inicial_vacaciones'],
             'fecha_corte_saldo' => $datos['fecha_corte_saldo'],
+            // Solo la carga inicial trae saldo con corte (PROD-33).
+            'origen' => OrigenDeVinculacion::CargaInicial->value,
         ];
     }
 

@@ -35,10 +35,7 @@ class DetalleDelContrato
     {
         $vinculacion->loadMissing(['persona', 'periodos']);
 
-        $historial = HistorialDeContrato::con(
-            $vinculacion->periodos,
-            (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
-        );
+        $historial = HistorialDeContrato::deCargada($vinculacion);
 
         return new self($vinculacion, $historial, VigenciaDelContrato::de($historial, $hoy));
     }

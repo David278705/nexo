@@ -94,7 +94,9 @@ class EfectoDelSilencio extends ReglaDePreavisoDelFijo
     private function consecuenciaDelSilencio(Carbon $vencimiento, HistorialDeContrato $historial): string
     {
         $tope = $historial->fechaDelTopeLegal();
-        $prorroga = $historial->finDeLaProrrogaAutomatica();
+        // La duración real de la prórroga automática (PROD-33): la del último
+        // tramo, o un año cuando la ley lo exige.
+        $prorroga = $historial->finDeLaProximaAutomaticaSinTope();
 
         if (! $tope instanceof Carbon || ! $prorroga instanceof Carbon) {
             return self::PRORROGA_COMPLETA;
@@ -112,6 +114,12 @@ class EfectoDelSilencio extends ReglaDePreavisoDelFijo
                 .', y al llegar a esa fecha se convierte en indefinido por ley.';
         }
 
-        return self::PRORROGA_COMPLETA;
+        if ($historial->laProximaAutomaticaEsDeUnAnio()) {
+            return 'Si no se avisa, el contrato queda prorrogado automáticamente por un año, hasta el '
+                .Formato::fechaLarga($prorroga).'.';
+        }
+
+        return 'Si no se avisa, el contrato queda prorrogado automáticamente por un término igual al '
+            .'último pactado, hasta el '.Formato::fechaLarga($prorroga).'.';
     }
 }

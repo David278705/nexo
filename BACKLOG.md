@@ -2904,3 +2904,26 @@ David pidió quitar la empresa de pruebas para que Angela cree la suya desde el 
 y a sus usuarios, y no toca a nadie más; la siembra ya no la revive. Lo corre el arranque del web si
 `NEXO_RETIRAR_EMPRESA_DE_PRUEBA=si`. En Railway, además, `NEXO_CLAVE_CUENTAS_DE_PRUEBA` quedó vacía: la
 cuenta del proveedor ya existe y la siembra no vuelve a correr. El correo pasó a la cuenta de Resend de Angela.
+
+### [x] PROD-33 · Prórrogas del término fijo: el tipo cuenta, la automática la calcula el sistema y bloquea
+
+Propuesta de Angela del 2026-11-11, que reemplaza la regla de agosto («tres cortas sin separar tipos», que
+advertía). Hecho:
+
+- **Tipo de prórroga**: la pactada pide la declaración de que consta por escrito; la automática no pide fecha, la
+  calcula el sistema (mismo término, meses exactos si el tramo lo es; un año desde la 4.ª en contratos iniciales
+  cortos; nunca más allá del tope).
+- **Regla de prórrogas cortas** en `HistorialDeContrato::limiteParaUnaProrrogaCorta()`, con los mensajes A, C y E
+  de la propuesta, y `renovacion_prorroga_minima` en `bloquea`. El tope dice la fecha máxima (mensaje D) y, si
+  la prórroga de un año no cabe, se puede renovar justo hasta esa fecha.
+- **Origen de la vinculación** (`vinculaciones.origen`): las de la carga inicial tratan sus prórrogas como
+  automáticas. La migración marca las existentes y convierte las prórrogas que escribió la carga.
+- **Carga inicial**: Simular rechaza una prórroga corta desde la 4.ª (inicial corto) y una fecha de fin más allá
+  del tope.
+- **Alertas**: «última renovación corta» con la regla nueva; el efecto del silencio dice la duración real y la
+  fecha; el plazo de renovación recuerda firmar antes del vencimiento.
+
+Pendiente fuera del código: el asesor laboral (caso mixto, tope contra prórroga mínima, prórrogas anteriores a
+la reforma) y el abogado (la marca «Pactada» como declaración del cliente). Sin hacer, a propósito: editar o
+eliminar una prórroga ya registrada no existe en el sistema, así que el punto 7 de la propuesta no aplica.
+

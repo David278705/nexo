@@ -313,8 +313,10 @@ class PlantillaDeEmpleados extends Plantilla
         $inicial?->update(['fecha_fin' => Carbon::parse((string) $primera['inicio'])->subDay()]);
 
         foreach ($completas as $tramo) {
+            // No hay cómo verificar que constaran por escrito: se tratan como
+            // automáticas (PROD-33, decidido por Angela el 2026-11-11).
             $vinculacion->registrarPeriodo(
-                EventoContractual::ProrrogaPactada,
+                EventoContractual::ProrrogaAutomatica,
                 TipoContrato::Fijo,
                 Carbon::parse((string) $tramo['inicio']),
                 Carbon::parse((string) $tramo['fin']),
@@ -575,6 +577,13 @@ class PlantillaDeEmpleados extends Plantilla
     {
         $numeros = $this->prorrogasEscritas($fila);
 
+        if ($numeros === [] && ! $fila->yaFallo('tipo_contrato')
+            && $fila->valor('tipo_contrato') === TipoContrato::Fijo->value) {
+            $this->noSuperaElTope($fila);
+
+            return;
+        }
+
         if ($numeros === null || $numeros === [] || $fila->yaFallo('tipo_contrato')) {
             return;
         }
@@ -592,7 +601,88 @@ class PlantillaDeEmpleados extends Plantilla
             return;
         }
 
-        $this->encadenarProrrogas($fila, $numeros);
+        if ($this->encadenarProrrogas($fila, $numeros)) {
+            $this->respetaLaProrrogaMinima($fila, $numeros);
+            $this->noSuperaElTope($fila);
+        }
+    }
+
+    /**
+     * Desde la 4.ª prórroga, ninguna puede ser inferior a un año cuando el
+     * contrato inicial lo fue (`PROD-33`, artículo 46 del CST; la regla de las
+     * tres prórrogas cortas ya existía antes de la reforma de 2025).
+     *
+     * Por ley esa prórroga se entiende de un año, así que la fecha de fin real
+     * puede ser otra: el proveedor revisa el caso con el cliente antes de cargar.
+     *
+     * @param  list<int>  $numeros
+     */
+    private function respetaLaProrrogaMinima(FilaTraducida $fila, array $numeros): void
+    {
+        $ingreso = Carbon::parse((string) $fila->valor('fecha_ingreso'));
+        $primera = Carbon::parse((string) $fila->valor("prorrogas.{$numeros[0]}.inicio"));
+
+        if (! self::esInferiorAUnAnio($ingreso, $primera->copy()->subDay())) {
+            return;
+        }
+
+        $limite = (int) config('reglas_laborales.prorrogas_cortas');
+
+        foreach ($numeros as $posicion => $n) {
+            $inicio = Carbon::parse((string) $fila->valor("prorrogas.{$n}.inicio"));
+            $fin = Carbon::parse((string) $fila->valor("prorrogas.{$n}.fin"));
+
+            if ($posicion >= $limite && self::esInferiorAUnAnio($inicio, $fin)) {
+                $fila->error(
+                    "Fecha de fin de la prórroga {$n}",
+                    "La prórroga {$n} dura menos de un año, pero el contrato inicial fue inferior a un año y ya "
+                        .'llevaba '.$limite.' prórrogas: desde la '.($limite + 1).'.ª la ley exige mínimo un año '
+                        .'(CST art. 46). Por ley esa prórroga se entiende de un año, así que su fecha de fin real '
+                        .'puede ser otra: revise el caso con la empresa antes de cargar.',
+                    "prorrogas.{$n}.fin",
+                );
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * La «Fecha de finalización del contrato» no puede pasar del tope de cuatro
+     * años a término fijo, contados desde el ingreso o desde el 25 de junio de
+     * 2025, la que sea más tarde (`PROD-33`, artículo 46 del CST).
+     */
+    private function noSuperaElTope(FilaTraducida $fila): void
+    {
+        $ingreso = $fila->valor('fecha_ingreso');
+        $fin = $fila->valor('fecha_fin');
+
+        if (! is_string($ingreso) || ! is_string($fin) || $fila->yaFallo('fecha_fin')) {
+            return;
+        }
+
+        $reforma = Carbon::parse((string) config('reglas_laborales.vigencia_reforma_termino_fijo'));
+        $desde = Carbon::parse($ingreso)->max($reforma);
+        $tope = $desde->copy()->addYears((int) config('reglas_laborales.tope_termino_fijo_anios'));
+
+        if (Carbon::parse($fin)->greaterThan($tope)) {
+            $fila->error(
+                'Fecha de finalización del contrato',
+                'La fecha de finalización pasa del tope legal de 4 años a término fijo, que para este contrato '
+                    .'se cumple el '.$tope->format('d/m/Y').' (CST art. 46). Si la relación sigue después de esa '
+                    .'fecha, el contrato es indefinido por ley: revise el caso con la empresa antes de cargar.',
+                'fecha_fin',
+            );
+        }
+    }
+
+    /**
+     * Si el tramo de esas dos fechas dura menos de un año: la misma cuenta de
+     * `PeriodoContractual::esInferiorAUnAnio()`.
+     */
+    private static function esInferiorAUnAnio(Carbon $inicio, Carbon $fin): bool
+    {
+        return $fin->lessThan($inicio->copy()->addYear()->subDay());
     }
 
     /**
@@ -661,22 +751,24 @@ class PlantillaDeEmpleados extends Plantilla
      * última exactamente en «Fecha de finalización del contrato» —que es de
      * donde sale la fecha de fin vigente de la vinculación—.
      *
+     * Devuelve si la cadena quedó bien, para seguir con las reglas legales.
+     *
      * @param  list<int>  $numeros
      */
-    private function encadenarProrrogas(FilaTraducida $fila, array $numeros): void
+    private function encadenarProrrogas(FilaTraducida $fila, array $numeros): bool
     {
         $finDelContrato = $fila->valor('fecha_fin');
 
         if (! is_string($finDelContrato)) {
             // Sin fecha de finalización no hay con qué comprobar el
             // encadenamiento; su propia regla ya señala esa ausencia.
-            return;
+            return false;
         }
 
         $ingresoEscrito = $fila->valor('fecha_ingreso');
 
         if (! is_string($ingresoEscrito)) {
-            return;
+            return false;
         }
 
         $ingreso = Carbon::parse($ingresoEscrito);
@@ -698,7 +790,7 @@ class PlantillaDeEmpleados extends Plantilla
                         "prorrogas.{$n}.inicio",
                     );
 
-                    return;
+                    return false;
                 }
             } elseif (! $inicio->equalTo($anteriorFin->copy()->addDay())) {
                 $fila->error(
@@ -708,7 +800,7 @@ class PlantillaDeEmpleados extends Plantilla
                     "prorrogas.{$n}.inicio",
                 );
 
-                return;
+                return false;
             }
 
             if (! $fin->greaterThan($inicio)) {
@@ -718,7 +810,7 @@ class PlantillaDeEmpleados extends Plantilla
                     "prorrogas.{$n}.fin",
                 );
 
-                return;
+                return false;
             }
 
             if ($n === $ultimo && ! $fin->equalTo(Carbon::parse($finDelContrato))) {
@@ -729,10 +821,12 @@ class PlantillaDeEmpleados extends Plantilla
                     "prorrogas.{$n}.fin",
                 );
 
-                return;
+                return false;
             }
 
             $anteriorFin = $fin;
         }
+
+        return true;
     }
 }

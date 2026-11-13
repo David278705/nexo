@@ -39,6 +39,10 @@ const renovacion = {
         { valor: "prorroga_pactada", texto: "Pactada por escrito" },
         { valor: "prorroga_automatica", texto: "Automática por silencio" },
     ],
+    automatica: { tipo: "prorroga_automatica", fin: "28/06/2026" },
+    pactada: "prorroga_pactada",
+    declaracion:
+        "Declaro que esta prórroga consta en un documento firmado por la empresa y el trabajador antes del vencimiento del contrato.",
     propuesta: { tipo: "", fecha_fin: "" },
     proyeccion: null,
 };
@@ -203,6 +207,41 @@ describe("el modal de renovación", () => {
 
         expect(post).toHaveBeenCalledTimes(1);
         expect(post.mock.calls[0][0]).toBe("/contratos/7/renovar");
+
+        componente.unmount();
+    });
+
+    it("en la pactada pide confirmar la declaración antes de registrar", async () => {
+        const componente = montar({
+            propuesta: { tipo: "prorroga_pactada", fecha_fin: "2026-06-30" },
+        });
+
+        expect(document.body.textContent).toContain(
+            "consta en un documento firmado",
+        );
+
+        const registrar = [...document.body.querySelectorAll("button")].at(-1);
+        expect(registrar.disabled).toBe(true);
+
+        const casilla = document.body.querySelector('input[type="checkbox"]');
+        casilla.checked = true;
+        casilla.dispatchEvent(new Event("change"));
+        await nextTick();
+
+        expect(registrar.disabled).toBe(false);
+
+        componente.unmount();
+    });
+
+    it("en la automática no pide la fecha: enseña la que calcula el sistema", () => {
+        const componente = montar({
+            propuesta: { tipo: "prorroga_automatica", fecha_fin: "" },
+        });
+
+        expect(document.body.querySelector('input[type="date"]')).toBeNull();
+        expect(document.body.querySelector('input[type="checkbox"]')).toBeNull();
+        expect(document.body.textContent).toContain("28/06/2026");
+        expect(document.body.textContent).toContain("La calcula el sistema");
 
         componente.unmount();
     });

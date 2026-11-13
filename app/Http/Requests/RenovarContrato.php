@@ -49,13 +49,19 @@ class RenovarContrato extends FormRequest
     {
         $vencimiento = $this->contrato()->historial()->fechaDeVencimiento();
 
+        $pactada = EventoContractual::ProrrogaPactada->value;
+
+        // En la automática la fecha la pone el sistema (PROD-33): solo la pactada
+        // la pide, y con ella la declaración de que consta por escrito.
         return [
             'tipo' => ['required', Rule::in(EventoContractual::valoresDeProrroga())],
             'fecha_fin' => [
+                'exclude_unless:tipo,'.$pactada,
                 'required',
                 'date',
                 ...$vencimiento instanceof Carbon ? ['after:'.$vencimiento->toDateString()] : [],
             ],
+            'declaracion' => ['exclude_unless:tipo,'.$pactada, 'accepted'],
         ];
     }
 
@@ -80,13 +86,20 @@ class RenovarContrato extends FormRequest
                     return;
                 }
 
+                if ($this->prorroga() === EventoContractual::ProrrogaAutomatica && $this->hastaOVacia() === null) {
+                    $validador->errors()->add(
+                        'tipo',
+                        'Este contrato ya llegó al tope legal de 4 años a término fijo y no admite más '
+                            .'prórrogas. Cámbialo a término indefinido.',
+                    );
+
+                    return;
+                }
+
                 $impedimentos = RenovacionDeContrato::de($this->contrato()->historial())
                     ->impedimentos([
                         'tipo' => $this->string('tipo')->toString(),
-                        // Ya pasó la regla `date`, así que se normaliza a ISO en
-                        // vez de confiar en que el navegador la mandó así.
-                        'fecha_fin' => Carbon::parse($this->string('fecha_fin')->toString())
-                            ->toDateString(),
+                        'fecha_fin' => $this->hastaOVacia()?->toDateString(),
                     ]);
 
                 foreach ($impedimentos as $mensaje) {
@@ -104,6 +117,7 @@ class RenovarContrato extends FormRequest
         return [
             'tipo' => 'tipo de prórroga',
             'fecha_fin' => 'nueva fecha de finalización',
+            'declaracion' => 'declaración de la prórroga pactada',
         ];
     }
 
@@ -115,17 +129,40 @@ class RenovarContrato extends FormRequest
         return [
             'fecha_fin.after' => 'La nueva fecha de finalización tiene que ser posterior al '
                 .'vencimiento vigente. Si la fecha está mal digitada, corrígela en vez de renovar.',
+            'declaracion.accepted' => 'Para registrar una prórroga pactada hay que confirmar que consta en '
+                .'un documento firmado antes del vencimiento del contrato. Si no hubo documento, es automática.',
         ];
     }
 
     public function prorroga(): EventoContractual
     {
-        return EventoContractual::from((string) $this->validated('tipo'));
+        return EventoContractual::from($this->string('tipo')->toString());
     }
 
+    /**
+     * La fecha de fin del tramo nuevo: la digitada en la pactada, la que
+     * calcula el sistema en la automática.
+     */
     public function hasta(): Carbon
     {
-        return Carbon::parse((string) $this->validated('fecha_fin'))->startOfDay();
+        $hasta = $this->hastaOVacia();
+
+        if (! $hasta instanceof Carbon) {
+            throw new \LogicException('La renovación ya validada no tiene fecha de fin.');
+        }
+
+        return $hasta;
+    }
+
+    private function hastaOVacia(): ?Carbon
+    {
+        if ($this->prorroga() === EventoContractual::ProrrogaAutomatica) {
+            return RenovacionDeContrato::de($this->contrato()->historial())->finDeLaAutomatica();
+        }
+
+        // Ya pasó la regla `date`, así que se normaliza en vez de confiar en
+        // que el navegador la mandó en ISO.
+        return Carbon::parse($this->string('fecha_fin')->toString())->startOfDay();
     }
 
     /**

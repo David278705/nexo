@@ -63,6 +63,7 @@ class PlazoDeRenovacion extends ReglaDePreavisoDelFijo
     ): string {
         return 'El contrato de '.$nombre.', '.$cargo.', termina el '.Formato::fechaLarga($vencimiento).'. '
             .$referencia->fraseCapitalizada().' vence el plazo legal de '.$this->diasDePreaviso()
-            .' días para avisarle si el contrato no se va a renovar.';
+            .' días para avisarle si el contrato no se va a renovar. Si van a pactar la prórroga, el '
+            .'documento debe firmarse antes del '.Formato::fechaLarga($vencimiento).'.';
     }
 }

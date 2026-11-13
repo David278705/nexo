@@ -248,6 +248,13 @@ Respuestas a las dudas que quedaron planteadas, con su fundamento. Se conservan 
 
 ### C.1 La regla de la cuarta prórroga — CORREGIDA por Angela, agosto de 2026
 
+> **Reemplazada el 2026-11-11 (`PROD-33`).** Angela pidió que el tipo de prórroga sí cuente: con 3 prórrogas, si
+> alguna fue automática o el contrato vino de la carga inicial, la 4.ª debe ser de un año; si las 3 fueron
+> pactadas en un contrato creado en Nexo, cabe una 4.ª pactada corta; desde la 5.ª, siempre un año. Bloquea.
+> El caso mixto no lo resuelve la ley y se aplica la lectura más favorable al trabajador. **Falta que el asesor
+> laboral confirme** el caso mixto, que el tope prevalece sobre la prórroga mínima de un año y que las prórrogas
+> anteriores al 25 de junio de 2025 cuentan para el límite. Lo que sigue es la versión de agosto, como referencia.
+
 **La duda:** si se firma un contrato de un mes, ¿pueden hacerse cuatro prórrogas más y es en la quinta cuando debe ser de un año?
 
 **La respuesta, en la forma que hay que programar:** **el límite es de tres prórrogas cortas, en una sola cuenta.** La cuarta prórroga de un contrato inferior a un año ya no puede ser corta, sin importar de qué tipo sea.

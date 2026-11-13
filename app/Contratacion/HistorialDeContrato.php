@@ -33,6 +33,7 @@ class HistorialDeContrato
     private function __construct(
         private readonly Collection $periodos,
         private readonly int $prorrogasPreviasALaCarga = 0,
+        private readonly bool $deLaCargaInicial = false,
     ) {}
 
     /**
@@ -43,6 +44,7 @@ class HistorialDeContrato
         return new self(
             $vinculacion->periodos()->enOrden()->get()->values(),
             (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
+            $vinculacion->vieneDeLaCargaInicial(),
         );
     }
 
@@ -54,11 +56,25 @@ class HistorialDeContrato
      *
      * @param  iterable<int, PeriodoContractual>  $periodos
      */
-    public static function con(iterable $periodos, int $prorrogasPreviasALaCarga = 0): self
+    public static function con(iterable $periodos, int $prorrogasPreviasALaCarga = 0, bool $deLaCargaInicial = false): self
     {
         return new self(
             (new Collection($periodos))->sortBy('orden')->values(),
             $prorrogasPreviasALaCarga,
+            $deLaCargaInicial,
+        );
+    }
+
+    /**
+     * El historial de una vinculación que ya trae sus tramos cargados: el camino
+     * de los listados y de las alertas, sin una consulta por fila.
+     */
+    public static function deCargada(Vinculacion $vinculacion): self
+    {
+        return self::con(
+            $vinculacion->periodos,
+            (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
+            $vinculacion->vieneDeLaCargaInicial(),
         );
     }
 
@@ -217,10 +233,165 @@ class HistorialDeContrato
     {
         $vigente = $this->vigente();
 
+        // Desde PROD-33 es la misma regla que aplica la renovación: la siguiente
+        // prórroga ya no puede ser corta, ni siquiera pactada.
         return $vigente instanceof PeriodoContractual
             && $vigente->esProrroga()
             && $vigente->esInferiorAUnAnio()
-            && $this->prorrogasCortasRestantes() === 0;
+            && $this->limiteParaUnaProrrogaCorta(EventoContractual::ProrrogaPactada) !== null;
+    }
+
+    /**
+     * Si el contrato entró por la carga inicial (`PROD-33`).
+     */
+    public function vieneDeLaCargaInicial(): bool
+    {
+        return $this->deLaCargaInicial;
+    }
+
+    /**
+     * Todas las prórrogas del contrato: las registradas como tramo y las que
+     * trajo la carga inicial sin detalle (REV-09).
+     */
+    public function prorrogasRegistradas(): int
+    {
+        return $this->prorrogasAcumuladas() + $this->prorrogasPreviasALaCarga;
+    }
+
+    /**
+     * Si alguna prórroga fue automática. Las que trajo la carga sin detalle
+     * cuentan como automáticas: no hay cómo saber si constaron por escrito.
+     */
+    public function tieneProrrogaAutomatica(): bool
+    {
+        return $this->prorrogasPreviasALaCarga > 0 || $this->prorrogasAutomaticas() > 0;
+    }
+
+    /**
+     * Qué impide que la próxima prórroga sea inferior a un año (`PROD-33`,
+     * decidido por Angela el 2026-11-11, sobre el artículo 46 del CST).
+     *
+     * Solo aplica a contratos con el periodo inicial inferior a un año. Nulo
+     * cuando la prórroga corta se puede registrar; si no, la clave del caso:
+     *
+     * - `LIMITE_POR_AUTOMATICA` (A): ya lleva 3 y al menos una fue automática.
+     *   El caso mixto no lo resuelve la ley y se toma la lectura más favorable
+     *   al trabajador: el límite de 3 de las automáticas.
+     * - `CUARTA_AUTOMATICA` (B): ya lleva 3, todas pactadas, y la nueva es
+     *   automática: es por un año, y la fecha la pone el sistema.
+     * - `LIMITE_SUPERADO` (C): ya lleva 4 o más.
+     * - `LIMITE_POR_CARGA` (E): ya lleva 3 y el contrato vino de la carga
+     *   inicial, cuyas prórrogas se tratan como automáticas.
+     *
+     * Con 3 prórrogas, todas pactadas, en un contrato creado en Nexo, una
+     * cuarta pactada corta sí se puede: es la regla de la prórroga pactada.
+     */
+    public function limiteParaUnaProrrogaCorta(EventoContractual $tipo): ?string
+    {
+        return self::limite(
+            $this->contratoInicialEsInferiorAUnAnio(),
+            $this->prorrogasRegistradas(),
+            $this->deLaCargaInicial,
+            $this->tieneProrrogaAutomatica(),
+            $tipo,
+        );
+    }
+
+    /**
+     * El mismo límite, para la renovación que vendría después de registrar una
+     * prórroga más de ese tipo. Sirve para avisar antes de firmar que la
+     * siguiente ya tendrá que ser de un año.
+     */
+    public function limiteDespuesDe(EventoContractual $tipo): ?string
+    {
+        return self::limite(
+            $this->contratoInicialEsInferiorAUnAnio(),
+            $this->prorrogasRegistradas() + 1,
+            $this->deLaCargaInicial,
+            $this->tieneProrrogaAutomatica() || $tipo === EventoContractual::ProrrogaAutomatica,
+            EventoContractual::ProrrogaPactada,
+        );
+    }
+
+    public const LIMITE_POR_AUTOMATICA = 'por_automatica';
+
+    public const CUARTA_AUTOMATICA = 'cuarta_automatica';
+
+    public const LIMITE_SUPERADO = 'superado';
+
+    public const LIMITE_POR_CARGA = 'por_carga';
+
+    private static function limite(
+        bool $inicialCorto,
+        int $prorrogas,
+        bool $deLaCarga,
+        bool $hayAutomatica,
+        EventoContractual $tipo,
+    ): ?string {
+        $limite = (int) config('reglas_laborales.prorrogas_cortas');
+
+        if (! $inicialCorto || $prorrogas < $limite) {
+            return null;
+        }
+
+        if ($prorrogas > $limite) {
+            return self::LIMITE_SUPERADO;
+        }
+
+        if ($deLaCarga) {
+            return self::LIMITE_POR_CARGA;
+        }
+
+        if ($hayAutomatica) {
+            return self::LIMITE_POR_AUTOMATICA;
+        }
+
+        return $tipo === EventoContractual::ProrrogaAutomatica ? self::CUARTA_AUTOMATICA : null;
+    }
+
+    /**
+     * Si la próxima prórroga automática tiene que ser de un año por ley: en un
+     * contrato inicial inferior a un año que ya lleva tres prórrogas o más.
+     */
+    public function laProximaAutomaticaEsDeUnAnio(): bool
+    {
+        return $this->contratoInicialEsInferiorAUnAnio()
+            && $this->prorrogasRegistradas() >= (int) config('reglas_laborales.prorrogas_cortas');
+    }
+
+    /**
+     * Hasta cuándo iría la próxima prórroga automática, **sin mirar el tope**:
+     * por el término del tramo vigente, o por un año cuando la ley lo exige.
+     */
+    public function finDeLaProximaAutomaticaSinTope(): ?Carbon
+    {
+        $vencimiento = $this->fechaDeVencimiento();
+        $fin = $this->finDeLaProrrogaAutomatica();
+
+        if (! $vencimiento instanceof Carbon || ! $fin instanceof Carbon) {
+            return null;
+        }
+
+        $unAnio = $vencimiento->copy()->addDay()->addYear()->subDay();
+
+        return $this->laProximaAutomaticaEsDeUnAnio() && $fin->lessThan($unAnio) ? $unAnio : $fin;
+    }
+
+    /**
+     * La fecha de fin que pone el sistema al registrar una prórroga automática.
+     * Si choca con el tope de cuatro años, gana el tope (pendiente de confirmar
+     * con el asesor laboral).
+     */
+    public function finDeLaProximaProrrogaAutomatica(): ?Carbon
+    {
+        $fin = $this->finDeLaProximaAutomaticaSinTope();
+        $tope = $this->fechaDelTopeLegal();
+
+        if ($fin instanceof Carbon && $tope instanceof Carbon && $fin->greaterThan($tope)) {
+            return $tope->copy();
+        }
+
+        return $fin;
     }
 
     /**
@@ -292,6 +463,18 @@ class HistorialDeContrato
 
         if ($vigente === null || ! $vencimiento instanceof Carbon) {
             return null;
+        }
+
+        // Un tramo de meses exactos se prorroga por los mismos meses (PROD-33): el
+        // del 1 de enero al 31 de marzo va del 1 de abril al 30 de junio, no al
+        // 29, aunque el primer trimestre tenga un día menos. Si no son meses
+        // exactos, por los mismos días.
+        $meses = MotorDeCalculo::mesesCumplidos($vigente->fecha_inicio, $vencimiento);
+
+        if ($meses > 0 && MotorDeCalculo::cumpleMesesEl($vigente->fecha_inicio, $meses)->isSameDay($vencimiento)) {
+            return Carbon::parse(
+                MotorDeCalculo::cumpleMesesEl($vencimiento->copy()->addDay(), $meses)->toDateString()
+            );
         }
 
         return $vencimiento->copy()->addDays(

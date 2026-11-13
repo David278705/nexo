@@ -77,12 +77,19 @@ Sistema: **Alertas**, **Auditoría**, **Configuración**. En la barra lateral es
   fijo** (ingreso y fin; prueba = quinta parte de la duración, máximo 2 meses) · **Obra o labor** (ingreso y,
   opcional, **fecha de finalización estimada**; si la tiene, se le sugiere un periodo de prueba con la regla del
   fijo y el sistema muestra una advertencia de que es una estimación; si no la tiene, no hay periodo de prueba).
-- **Renovar contrato** (solo término fijo): nueva fecha de fin; queda en el historial de renovaciones. Es distinto
-  de editar la fecha (que es corregir un error de digitación).
+- **Renovar contrato** (solo término fijo): queda en el historial de renovaciones, con su tipo. Es distinto de
+  editar la fecha (que es corregir un error de digitación). Pide el **tipo de prórroga**:
+  - **Pactada**: se digita la nueva fecha de fin y se marca la declaración de que la prórroga consta en un
+    documento firmado antes del vencimiento. Sin la marca no deja registrar.
+  - **Automática**: no se digita fecha; el sistema la calcula (mismo término del tramo vigente, un año cuando la
+    ley lo exige, nunca más allá del tope) y la muestra antes de registrar.
   - **Bloquea** si con la renovación el vínculo a término fijo supera **cuatro años** (contados desde el inicio o
-    desde el 25 de junio de 2025, lo que sea más tarde). Ofrece **Cambiar a término indefinido**.
-  - **Advierte pero deja guardar** si el contrato inicial es menor de un año, ya lleva tres prórrogas menores de un
-    año y la nueva también es menor de un año.
+    desde el 25 de junio de 2025, lo que sea más tarde): el mensaje dice la fecha máxima y ofrece renovar hasta ahí
+    o **Cambiar a término indefinido**.
+  - **Bloquea la prórroga corta que la ley ya no admite** en contratos con inicial menor de un año: la tabla
+    completa está en `03-motor-de-alertas.md`, «Las reglas al renovar». En resumen: desde la 4.ª prórroga debe ser
+    de mínimo un año, salvo que las 3 anteriores hayan sido pactadas en un contrato creado en Nexo, que admite una
+    4.ª pactada corta; los contratos de la carga inicial siempre tienen el límite de 3.
 - **Cambiar a término indefinido**: disponible en término fijo y en obra o labor. La fecha de ingreso no cambia.
 - **Reingreso**: si se crea un empleado con un documento que ya tuvo una vinculación en la empresa, aparece la
   advertencia «Esta persona ya tuvo una vinculación anterior con la empresa. Verifique si es válido pactar

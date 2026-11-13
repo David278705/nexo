@@ -127,7 +127,8 @@ describe('los textos de la sección 5.4', function () {
             ->and($alerta->cuerpo)->toBe(
                 'El contrato de Ana Gómez, Auxiliar contable, termina el 31 de diciembre de 2026. '
                 .'En dos días (1 de diciembre) vence el plazo legal de 30 días para avisarle si el '
-                .'contrato no se va a renovar.'
+                .'contrato no se va a renovar. Si van a pactar la prórroga, el documento debe firmarse '
+                .'antes del 31 de diciembre de 2026.'
             );
     });
 
@@ -138,7 +139,7 @@ describe('los textos de la sección 5.4', function () {
             ->and($alerta->cuerpo)->toBe(
                 'Hoy (1 de diciembre) es el último día para notificar a Ana Gómez que su contrato '
                 .'no se renovará. Si no se avisa, el contrato queda prorrogado automáticamente por '
-                .'un término igual al último pactado.'
+                .'un término igual al último pactado, hasta el 31 de diciembre de 2027.'
             );
     });
 });
@@ -308,7 +309,24 @@ describe('el efecto del silencio cuando el tope está cerca (documento 6, D.3)',
 
         expect($alerta->cuerpo)->toEndWith(
             'Si no se avisa, el contrato queda prorrogado automáticamente por un término igual al '
-            .'último pactado.'
+            .'último pactado, hasta el 31 de diciembre de 2027.'
+        );
+    });
+
+    it('dice «por un año» cuando la ley pone la prórroga automática en un año (PROD-33)', function () {
+        $otra = Tenant::factory()->create();
+        usuarioDe($otra, Rol::Administrador, Modulo::Contratos);
+
+        $contrato = empleadaEnPrueba($otra, Vinculacion::factory()->aTerminoFijo(INICIO_DEL_FIJO, '2026-03-31'));
+        conCadenaDeProrrogas($contrato, [
+            [EventoContractual::ProrrogaPactada, '2026-06-30'],
+            [EventoContractual::ProrrogaPactada, '2026-09-30'],
+            [EventoContractual::ProrrogaPactada, FIN_DEL_FIJO],
+        ]);
+
+        expect(alertasDe(new EfectoDelSilencio, $otra, LIMITE_DEL_PREAVISO)[0]->cuerpo)->toEndWith(
+            'Si no se avisa, el contrato queda prorrogado automáticamente por un año, hasta el 31 de '
+            .'diciembre de 2027.'
         );
     });
 });
@@ -363,6 +381,20 @@ describe('la última renovación corta posible', function () {
 
         // Dos cortas de las tres: todavía cabe una más.
         conCadenaDeProrrogas($contrato, [
+            [EventoContractual::ProrrogaPactada, '2026-09-30'],
+            [EventoContractual::ProrrogaPactada, FIN_DEL_FIJO],
+        ]);
+
+        expect(alertasDe(new UltimaRenovacionCorta, $otra, PLAZO_PARA_DEFINIR))->toBe([]);
+    });
+
+    it('con tres pactadas en un contrato de Nexo no sale todavía: cabe una cuarta pactada corta (PROD-33)', function () {
+        $otra = Tenant::factory()->create();
+        usuarioDe($otra, Rol::Administrador, Modulo::Contratos);
+
+        $contrato = empleadaEnPrueba($otra, Vinculacion::factory()->aTerminoFijo(INICIO_DEL_FIJO, '2026-03-31'));
+        conCadenaDeProrrogas($contrato, [
+            [EventoContractual::ProrrogaPactada, '2026-06-30'],
             [EventoContractual::ProrrogaPactada, '2026-09-30'],
             [EventoContractual::ProrrogaPactada, FIN_DEL_FIJO],
         ]);

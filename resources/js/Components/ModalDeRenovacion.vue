@@ -22,6 +22,10 @@ import Selector from "@/Components/Selector.vue";
  * servidor a la primera corrección, y el número que el usuario lee tiene que ser
  * el mismo que se va a guardar.
  *
+ * El tipo de prórroga cambia el formulario (PROD-33): en la **pactada** se digita
+ * la fecha y se confirma la declaración de que consta por escrito; en la
+ * **automática** la fecha la pone el servidor y aquí solo se muestra.
+ *
  * Si la prórroga incumple una de las dos validaciones de 5.5, la proyección llega
  * en rojo y con `bloqueado`, y el botón de registrar queda deshabilitado: es lo
  * que hace el prototipo.
@@ -41,7 +45,11 @@ const emit = defineEmits(["cerrar"]);
 const form = useForm({
     tipo: props.renovacion.propuesta?.tipo ?? "",
     fecha_fin: props.renovacion.propuesta?.fecha_fin ?? "",
+    declaracion: false,
 });
+
+const esPactada = computed(() => form.tipo === props.renovacion.pactada);
+const esAutomatica = computed(() => form.tipo === props.renovacion.automatica?.tipo);
 
 /*
  * Cada cambio de la fecha o del tipo pide al servidor la proyección de nuevo.
@@ -87,7 +95,11 @@ watch(
  * El servidor vuelve a rechazarla si alguien envía el formulario de todos modos.
  * Deshabilitar el botón es cortesía; la validación está en el otro lado.
  */
-const bloqueado = computed(() => props.renovacion.proyeccion?.bloqueado === true);
+const bloqueado = computed(
+    () =>
+        props.renovacion.proyeccion?.bloqueado === true ||
+        (esPactada.value && !form.declaracion),
+);
 
 function registrar() {
     if (bloqueado.value) {
@@ -130,12 +142,42 @@ function registrar() {
             />
 
             <CampoFecha
+                v-if="!esAutomatica"
                 v-model="form.fecha_fin"
                 etiqueta="Nueva fecha de finalización"
                 :error="form.errors.fecha_fin"
                 :ayuda="`El nuevo periodo empieza el ${renovacion.inicio}.`"
             />
+
+            <div v-else class="text-sm text-texto-secundario">
+                <p class="font-medium text-texto">Nueva fecha de finalización</p>
+                <p v-if="renovacion.automatica.fin" class="mt-1">
+                    {{ renovacion.automatica.fin }}. La calcula el sistema: el
+                    nuevo periodo empieza el {{ renovacion.inicio }}.
+                </p>
+                <p v-else class="mt-1">
+                    Este contrato ya no admite prórrogas: llegó al tope legal.
+                </p>
+            </div>
         </div>
+
+        <label
+            v-if="esPactada"
+            class="mt-4 flex items-start gap-3 text-sm text-texto-secundario"
+        >
+            <input
+                v-model="form.declaracion"
+                type="checkbox"
+                class="mt-0.5 rounded border-borde text-accion focus:ring-accion"
+            />
+            <span>{{ renovacion.declaracion }}</span>
+        </label>
+        <p v-if="form.errors.declaracion" class="mt-1 text-sm text-error-texto">
+            {{ form.errors.declaracion }}
+        </p>
+        <p v-if="form.errors.tipo && esAutomatica" class="mt-1 text-sm text-error-texto">
+            {{ form.errors.tipo }}
+        </p>
 
         <div v-if="renovacion.proyeccion" class="mt-4">
             <Aviso :tono="renovacion.proyeccion.tono">

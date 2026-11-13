@@ -62,6 +62,10 @@ return [
     | 08SE2026120300000006157 del 18 de febrero de 2026.
     | Decisión: documento 6, B.1 y B.3.
     */
-    'renovacion_prorroga_minima' => 'advierte',
+    // PROD-33, decidido por Angela el 2026-11-11: bloquea. Qué prórroga corta se
+    // permite lo dice `HistorialDeContrato::limiteParaUnaProrrogaCorta()`: con
+    // tres prórrogas, todas pactadas y en un contrato creado en Nexo, una cuarta
+    // pactada corta sí cabe; en los demás casos, desde la cuarta, mínimo un año.
+    'renovacion_prorroga_minima' => 'bloquea',
 
 ];

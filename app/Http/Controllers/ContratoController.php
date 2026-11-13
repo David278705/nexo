@@ -109,12 +109,15 @@ class ContratoController extends Controller
      */
     public function renovar(RenovarContrato $peticion, Vinculacion $contrato): RedirectResponse
     {
-        $periodo = $contrato->renovar($peticion->prorroga(), $peticion->hasta());
+        // La fecha se lee antes de guardar: en la automática la calcula el
+        // sistema sobre el tramo vigente, que deja de serlo al renovar.
+        $hasta = $peticion->hasta();
+        $periodo = $contrato->renovar($peticion->prorroga(), $hasta);
 
         return redirect()
             ->route('contratos.detalle', $contrato)
             ->with('estado', 'Se registró la '.mb_strtolower($periodo->evento->etiqueta(), 'UTF-8')
-                .'. El contrato vence ahora el '.Formato::fecha($peticion->hasta()).'.');
+                .'. El contrato vence ahora el '.Formato::fecha($hasta).'.');
     }
 
     /**

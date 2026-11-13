@@ -85,7 +85,7 @@ Cada tarea dice **qué hacer** y **qué se espera**. Si lo que se ve no coincide
 ### Tareas
 | # | Qué hacer | Valores | Se espera |
 |---|---|---|---|
-| 2.1 | **Renovar el contrato de E7** (Contratos → E7 → Renovar contrato). Es la respuesta a su alerta de plazo. | Nueva fecha de fin: un año después de la fecha de fin actual | Queda en el historial como prórroga. **El efecto del silencio de E7 ya no debe llegar**. El de E6 sí. |
+| 2.1 | **Renovar el contrato de E7** (Contratos → E7 → Renovar contrato). Es la respuesta a su alerta de plazo. | Tipo: **Pactada** · Nueva fecha de fin: un año después de la fecha de fin actual · Marcar la declaración | Sin marcar la declaración no deja registrar. Al registrarla queda en el historial como prórroga pactada, y en Auditoría con tu usuario. **El efecto del silencio de E7 ya no debe llegar**. El de E6 sí. |
 | 2.2 | **Terminar a E12** (Terminaciones → Nuevo) | Fecha de salida: hoy · Tipo: Terminación en periodo de prueba · Motivo: Desempeño insuficiente durante la inducción · Observaciones: «Prueba de la simulación» | E12 pasa a inactivo. **Ninguna alerta de E12 debe llegar desde hoy** (tenía «completó un mes» más adelante). |
 | 2.3 | Probar un documento que no existe (Incapacidades → Nuevo) | Documento: 1234567890 | «Empleado no encontrado» y no deja continuar |
 | 2.4 | Probar novedad sobre un inactivo (Incapacidades → Nuevo) | Documento de E12 | No lo deja registrar |
@@ -115,9 +115,11 @@ Cada tarea dice **qué hacer** y **qué se espera**. Si lo que se ve no coincide
 |---|---|---|---|
 | 4.1 | **Cambiar E10 a término indefinido** (Contratos → E10) | Fecha del cambio: hoy | Queda registrado el cambio con su fecha; la fecha de ingreso de E10 **no cambia** (4 de marzo de 2024). E10 sale del resumen de obra o labor del cierre de mes |
 | 4.2 | **Reingreso de E12** (Empleados → Nuevo) | Mismo documento de E12, mismos datos personales · Cargo: Auxiliar de despachos · Término indefinido · Ingreso: hoy · Salario 1.750.905 | Aparece la **advertencia de reingreso con énfasis** (salió hace menos de 30 días). Al guardar, es una vinculación nueva, y la anterior sigue inactiva. Le aplican las tres alertas del indefinido desde hoy: calcula sus fechas y súmalas al calendario |
-| 4.3 | **Probar el tope de 4 años con E6** (Contratos → E6 → Renovar) | Nueva fecha de fin: 31 de diciembre de 2030 | **Bloquea** con el mensaje del tope legal y ofrece «Cambiar a término indefinido». No guardes |
-| 4.4 | **Probar la regla de prórrogas cortas con E8** (Renovar) | Nueva fecha de fin: 6 meses después de la actual | **Advierte** que la próxima renovación debe ser de mínimo un año, **y deja guardar**. Cancela sin guardar |
-| 4.5 | **Exportar** Empleados y Vacaciones a Excel | — | Cada archivo trae documento, nombre completo y cargo |
+| 4.3 | **Probar el tope de 4 años con E6** (Contratos → E6 → Renovar) | Tipo: Pactada · Nueva fecha de fin: 31 de diciembre de 2030 | **Bloquea** con el mensaje del tope, que dice la **fecha máxima** (unos 4 años después del ingreso de E6) y ofrece renovar hasta ahí o «Cambiar a término indefinido». No guardes |
+| 4.4 | **Probar la regla de prórrogas cortas con E8** (Renovar). E8 vino de la carga con 3 prórrogas | Tipo: Pactada · Nueva fecha de fin: 6 meses después de la actual · Marcar la declaración | **Bloquea** con el mensaje E: «Este contrato se registró en la carga inicial y no es posible verificar cómo se hicieron sus prórrogas anteriores a Nexo…», con la fecha mínima (un año después del inicio de la nueva prórroga). No guardes |
+| 4.5 | **La automática de E8** (mismo modal) | Tipo: Automática | No pide fecha: muestra la que pone el sistema, **un año** después del vencimiento actual, con el aviso de que ya lleva 3 prórrogas. **Cancela sin guardar**: si se guarda, E8 ya no recibe su efecto del silencio |
+| 4.6 | **Historial de E8** (Contratos → E8) | — | Sus 3 prórrogas cargadas aparecen como **automáticas** |
+| 4.7 | **Exportar** Empleados y Vacaciones a Excel | — | Cada archivo trae documento, nombre completo y cargo |
 
 ---
 
@@ -127,7 +129,8 @@ Cada tarea dice **qué hacer** y **qué se espera**. Si lo que se ve no coincide
   - La alerta que el calendario marca «adelantada desde el sábado» (E11): debe llegar el viernes y decir
     «en dos días ([fecha])», no «mañana».
   - E8: el día de su plazo de renovación llegan **dos** correos (plazo y «última renovación corta»), y dos días
-    después el efecto del silencio.
+    después el efecto del silencio, que debe decir que se prorroga **por un año, hasta el [fecha]** (ya lleva 3
+    prórrogas y vino de la carga).
   - E9: los dos avisos de periodo de prueba de obra o labor, con la nota de la fecha estimada.
   - E12: nada, aunque el calendario original tenía alertas suyas.
 - Un día sin alertas en el calendario es un día sin correo. Que llegue algo ese día es una falla.

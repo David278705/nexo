@@ -41,9 +41,9 @@ it('bloquea el tope de cuatro años, donde la ley no deja alternativa', function
     expect(config('validaciones.'.RenovacionDeContrato::VALIDACION_TOPE))->toBe('bloquea');
 });
 
-it('solo advierte la prórroga mínima, mientras el asesor laboral la confirme', function () {
+it('bloquea la prórroga corta que la ley ya no admite, como decidió Angela (PROD-33)', function () {
     expect(config('validaciones.'.RenovacionDeContrato::VALIDACION_PRORROGA_MINIMA))
-        ->toBe('advierte');
+        ->toBe('bloquea');
 });
 
 it('no tiene validaciones configurables de más ni de menos', function () {

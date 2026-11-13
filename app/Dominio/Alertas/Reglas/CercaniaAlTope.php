@@ -62,10 +62,7 @@ class CercaniaAlTope implements ReglaDeAlerta
     public function evaluar(Carbon $fechaDelDisparo, Carbon $fechaDeEnvio): iterable
     {
         foreach ($this->candidatas() as $vinculacion) {
-            $historial = HistorialDeContrato::con(
-                $vinculacion->periodos,
-                (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
-            );
+            $historial = HistorialDeContrato::deCargada($vinculacion);
 
             $tope = $historial->fechaDelTopeLegal();
             $inicio = $historial->inicioDelConteoDelTope();

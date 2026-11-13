@@ -83,9 +83,10 @@ Cada año: cargar los festivos del año siguiente (hoy están 2025 a 2028).
 | Periodo de prueba, obra o labor | Igual que el fijo, sobre la fecha de finalización **estimada**; sin ella, no hay | Decidido por David el 2026-11-02; es una sugerencia y el sistema lo advierte |
 | Reingreso | Advierte que puede no ser válido pactar prueba; no decide; genera las alertas igual | CST art. 78 (no hay plazo legal entre contratos) |
 | Preaviso de no renovación | 30 días antes del fin | CST art. 46, mod. Ley 2466 de 2025, art. 6 |
-| Prórroga automática por silencio | Por un término igual al último pactado | CST art. 46 reformado |
-| Prórrogas cortas | En contratos iniciales de menos de un año, máximo **tres** prórrogas de menos de un año, en una sola cuenta; la cuarta debe ser de mínimo un año. El sistema **advierte y deja guardar** | CST art. 46 y Concepto MinTrabajo 6157 de 2026; decidido por Angela |
-| Tope del término fijo | 4 años, contados desde el inicio del contrato o desde el 25 de junio de 2025 si es anterior. Al superarlo es indefinido por ley, sin liquidar. El sistema **bloquea** la renovación que lo supere y ofrece cambiar a indefinido | CST art. 46 reformado |
+| Prórroga automática por silencio | Por un término igual al último (si son meses exactos, los mismos meses); por un año cuando el contrato inicial fue menor de un año y ya lleva 3 prórrogas o más; nunca más allá del tope. La fecha la calcula el sistema | CST art. 46 reformado |
+| Tipo de prórroga | Obligatorio al renovar. **Pactada** = hubo documento firmado; quien la registra marca una declaración, que queda en la auditoría. **Automática** = operó el silencio. Las prórrogas de la carga inicial se tratan como automáticas | Decidido por Angela el 2026-11-11 (`PROD-33`) |
+| Prórrogas cortas | En contratos con inicial menor de un año: con 3 prórrogas, si alguna fue automática o el contrato vino de la carga inicial, la 4.ª debe ser de mínimo un año; si las 3 fueron pactadas en un contrato creado en Nexo, cabe una 4.ª pactada corta; desde la 5.ª, siempre mínimo un año. El sistema **bloquea** | CST art. 46 (Ley 2466 de 2025) y Conceptos MinTrabajo 6157 y 26880 de 2026. El caso mixto no lo resuelve la ley: se aplica la lectura más favorable al trabajador (Const. art. 53, CST art. 21). Decidido por Angela el 2026-11-11 |
+| Tope del término fijo | 4 años, contados desde el inicio del contrato o desde el 25 de junio de 2025 si es anterior. Al superarlo es indefinido por ley, sin liquidar. El sistema **bloquea** la renovación que lo supere, dice la fecha máxima y ofrece renovar hasta ahí o cambiar a indefinido. Si una prórroga que debería ser de un año no cabe, gana el tope | CST art. 46 reformado |
 | Obra o labor prolongada | Si terminó la obra y la persona siguió sin acuerdo escrito, es indefinido desde el inicio. Por eso hay un listado bimestral de todas las obras activas, sin umbral | Decidido por Angela (D.2) |
 | Código de diagnóstico | Se guarda; es dato sensible: solo lo ven quienes tienen el módulo de novedades y el dashboard lo muestra agregado | Decreto 019 de 2012; Decreto 1072 de 2015 y Res. 0312 de 2019 |
 | Perfil sociodemográfico | Opcional por empresa; todos sus campos son opcionales | Decreto 1072 de 2015 (SG-SST) |
@@ -97,9 +98,8 @@ Las alertas, con sus fechas y textos exactos, están en `03-motor-de-alertas.md`
 
 | Tema | Decisión |
 |---|---|
-| Conteo de prórrogas cortas | Tres en total, sin separar pactadas de automáticas (Angela, agosto de 2026) |
-| ¿Bloquear o advertir? | Bloquea el tope de 4 años; advierte en prórrogas cortas (Angela) |
-| Tipo de prórroga | Se registra, pero no cambia el conteo (Angela) |
+| Prórrogas del término fijo | Reemplaza la decisión de agosto («tres en total, sin separar tipos» y «advierte»): el tipo de prórroga sí cuenta, la regla es la de la sección 4 y **bloquea** (Angela, 2026-11-11, `PROD-33`) |
+| Tope de 4 años | Bloquea, con la fecha máxima en el mensaje; si choca con la prórroga mínima de un año, gana el tope (Angela, 2026-11-11) |
 | Obra o labor prolongada | Sin umbral; listado cada dos meses (Angela) |
 | Cercanía al tope | Alerta 3 meses antes (Angela) |
 | Obra o labor con periodo de prueba | Con fecha estimada opcional (David, 2026-11-02) |
@@ -113,6 +113,15 @@ Las alertas, con sus fechas y textos exactos, están en `03-motor-de-alertas.md`
 | Segundo factor | Obligatorio para la cuenta del proveedor |
 
 ## 6. Preguntas que siguen abiertas
+
+- **Prórrogas del término fijo** (para el asesor laboral): confirmar la regla del caso mixto (pactadas y
+  automáticas), que el tope de 4 años prevalece sobre la prórroga mínima de un año, y que las prórrogas
+  anteriores al 25 de junio de 2025 cuentan para el límite. El sistema ya aplica lo que decidió Angela.
+- **Para el abogado**: que el contrato de servicio diga que la marca «Pactada» es declaración y responsabilidad
+  del cliente.
+- **Para David**: si se debe aceptar una renovación que termina justo el día en que se cumplen los 4 años (hoy
+  sí se acepta), y qué hacer el día que un contrato cumple los 4 años sin que nadie registre nada (hoy aparece en
+  «vencidos sin registrar», aunque por ley ya es indefinido).
 
 - **Periodo de prueba al pasar de obra o labor a indefinido con una labor completamente distinta.** La lectura
   conservadora, que es la que sigue el sistema, es que no procede. Falta la confirmación del asesor laboral.

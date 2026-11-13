@@ -269,7 +269,19 @@ Un contrato a término fijo que se prorroga no genera una vinculación nueva: no
 | Validación | Comportamiento |
 |---|---|
 | La nueva fecha de finalización hace que el vínculo a término fijo supere los cuatro años | Se bloquea el guardado. Mensaje: el contrato superaría el tope legal de duración a término fijo; al superarlo se convierte en indefinido por ley. Se ofrece la acción "Cambiar a término indefinido". |
-| El contrato es inferior a un año, **ya acumula tres prórrogas inferiores a un año** —contadas todas juntas, sin separar pactadas de automáticas— y la nueva prórroga también es inferior a un año | Mensaje: a partir de esta renovación el contrato no puede prorrogarse por menos de un año. Hoy **advierte y deja guardar**, por B.3 del documento 6; el detalle del conteo está en C.1 de ese mismo documento. |
+| El contrato inicial es inferior a un año y la nueva prórroga también: **desde la 4.ª prórroga debe ser de mínimo un año**, salvo que las 3 anteriores hayan sido pactadas en un contrato creado en Nexo, que admite una 4.ª pactada corta. Los contratos de la carga inicial tienen siempre el límite de 3. | **Bloquea** con el mensaje del caso (A, C o E). Decidido por Angela el 2026-11-11 (`PROD-33`); reemplaza la regla de agosto de 2026 («tres en total, sin separar tipos», que advertía). Detalle en el documento 6, C.1. |
+
+#### Tipo de prórroga (`PROD-33`)
+
+- **Pactada**: hubo documento firmado. Se digita la fecha y se marca la declaración «Declaro que esta prórroga
+  consta en un documento firmado por la empresa y el trabajador antes del vencimiento del contrato.». Queda en la
+  auditoría.
+- **Automática**: operó el silencio. La fecha **la calcula el sistema**: por el término del tramo vigente (meses
+  exactos si el tramo lo es), de un año cuando el contrato inicial fue menor de un año y ya lleva 3 prórrogas o
+  más, y nunca más allá del tope de 4 años (si choca, gana el tope).
+- Las prórrogas de los contratos de la **carga inicial** se tratan como automáticas: no hay cómo verificar que
+  constaran por escrito. El contrato queda con origen «Carga inicial».
+- El mensaje del tope dice la **fecha máxima** y deja renovar hasta ella o cambiar a indefinido.
 
 #### Historial de renovaciones
 

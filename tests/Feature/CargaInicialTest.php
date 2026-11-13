@@ -885,9 +885,9 @@ describe('la ejecución de la carga', function () {
             // hasta el día antes de que empiece la primera prórroga, que es
             // justo el dato que la plantilla anterior no podía reconstruir.
             ->and($resultado['periodos'][0])->toBe(['evento' => 'inicial', 'inicio' => '2018-01-01', 'fin' => '2018-06-30'])
-            ->and($resultado['periodos'][1])->toBe(['evento' => 'prorroga_pactada', 'inicio' => '2018-07-01', 'fin' => '2018-12-31'])
-            ->and($resultado['periodos'][2])->toBe(['evento' => 'prorroga_pactada', 'inicio' => '2019-01-01', 'fin' => '2019-12-31'])
-            ->and($resultado['periodos'][3])->toBe(['evento' => 'prorroga_pactada', 'inicio' => '2020-01-01', 'fin' => '2020-12-31'])
+            ->and($resultado['periodos'][1])->toBe(['evento' => 'prorroga_automatica', 'inicio' => '2018-07-01', 'fin' => '2018-12-31'])
+            ->and($resultado['periodos'][2])->toBe(['evento' => 'prorroga_automatica', 'inicio' => '2019-01-01', 'fin' => '2019-12-31'])
+            ->and($resultado['periodos'][3])->toBe(['evento' => 'prorroga_automatica', 'inicio' => '2020-01-01', 'fin' => '2020-12-31'])
             // Lo vigente de la vinculación termina donde termina la última
             // prórroga, como si «Renovar contrato» la hubiera registrado tres
             // veces desde la pantalla.
@@ -915,6 +915,54 @@ describe('la ejecución de la carga', function () {
 
         expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
             ->toContain('sin haber registrado antes la prórroga 1');
+    });
+
+    it('rechaza una prórroga corta desde la cuarta cuando el contrato inicial fue corto (PROD-33)', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de ingreso' => '01/01/2024',
+                'Fecha de finalización del contrato' => '31/12/2026',
+                'Fecha de inicio de la prórroga 1' => '01/07/2024',
+                'Fecha de fin de la prórroga 1' => '31/12/2024',
+                'Fecha de inicio de la prórroga 2' => '01/01/2025',
+                'Fecha de fin de la prórroga 2' => '30/06/2025',
+                'Fecha de inicio de la prórroga 3' => '01/07/2025',
+                'Fecha de fin de la prórroga 3' => '31/12/2025',
+                'Fecha de inicio de la prórroga 4' => '01/01/2026',
+                'Fecha de fin de la prórroga 4' => '30/06/2026',
+                'Fecha de inicio de la prórroga 5' => '01/07/2026',
+                'Fecha de fin de la prórroga 5' => '31/12/2026',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('La prórroga 4 dura menos de un año');
+    });
+
+    it('rechaza una fecha de finalización más allá del tope de cuatro años (PROD-33)', function () {
+        $archivo = archivoDeCarga(new PlantillaDeEmpleados, [
+            filaDeEmpleado([
+                'Tipo de contrato' => 'Término fijo',
+                'Fecha de ingreso' => '15/01/2026',
+                'Fecha de finalización del contrato' => '30/06/2030',
+            ]),
+        ]);
+
+        expect(simular(new PlantillaDeEmpleados, $archivo)->motivosDe(2)[0])
+            ->toContain('pasa del tope legal de 4 años')
+            ->toContain('15/01/2030');
+    });
+
+    it('marca el contrato con origen «carga inicial» (PROD-33)', function () {
+        ejecutar(new PlantillaDeEmpleados, archivoDeCarga(new PlantillaDeEmpleados, [filaDeEmpleado()]));
+
+        $cargada = app(ContextoTenant::class)->paraTenant(
+            test()->empresa,
+            fn () => Vinculacion::query()->firstOrFail()->vieneDeLaCargaInicial(),
+        );
+
+        expect($cargada)->toBeTrue();
     });
 
     it('exige las dos fechas de cada prórroga cargada', function () {

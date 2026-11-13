@@ -6,6 +6,7 @@ use App\Contratacion\CambioAIndefinido;
 use App\Contratacion\EstadoVinculacion;
 use App\Contratacion\EventoContractual;
 use App\Contratacion\HistorialDeContrato;
+use App\Contratacion\OrigenDeVinculacion;
 use App\Contratacion\RenovacionDeContrato;
 use App\Contratacion\TipoContrato;
 use App\Contratacion\TipoRiesgo;
@@ -71,6 +72,7 @@ class Vinculacion extends Model
         'saldo_inicial_vacaciones',
         'fecha_corte_saldo',
         'prorrogas_previas_a_la_carga',
+        'origen',
     ];
 
     /**
@@ -120,6 +122,15 @@ class Vinculacion extends Model
     public function historial(): HistorialDeContrato
     {
         return HistorialDeContrato::de($this);
+    }
+
+    /**
+     * Si el contrato entró por la carga inicial (`PROD-33`). Sus prórrogas
+     * anteriores a Nexo se tratan como automáticas.
+     */
+    public function vieneDeLaCargaInicial(): bool
+    {
+        return $this->getAttribute('origen') === OrigenDeVinculacion::CargaInicial;
     }
 
     /**
@@ -637,6 +648,7 @@ class Vinculacion extends Model
     {
         return [
             'tipo_contrato' => TipoContrato::class,
+            'origen' => OrigenDeVinculacion::class,
             'tipo_riesgo' => TipoRiesgo::class,
             'estado' => EstadoVinculacion::class,
             'fecha_ingreso' => 'date',

@@ -123,10 +123,7 @@ abstract class ReglaDePreavisoDelFijo implements ReglaDeAlerta
     public function evaluar(Carbon $fechaDelDisparo, Carbon $fechaDeEnvio): iterable
     {
         foreach ($this->candidatas($fechaDelDisparo) as $vinculacion) {
-            $historial = HistorialDeContrato::con(
-                $vinculacion->periodos,
-                (int) $vinculacion->getAttribute('prorrogas_previas_a_la_carga'),
-            );
+            $historial = HistorialDeContrato::deCargada($vinculacion);
 
             $vencimiento = $historial->fechaDeVencimiento();
             $limite = $historial->fechaLimiteDePreaviso();

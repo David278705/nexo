@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Última sesión:** 2026-11-10 · Despliegue en Railway (`PROD-29` a `PROD-31`).
+**Última sesión:** 2026-11-13 · Prórrogas del término fijo según la propuesta de Angela (`PROD-33`). Antes: despliegue en Railway (`PROD-29` a `PROD-32`).
 **Verificación:** verde (1483 pruebas de Pest, Vitest, PHPStan, Pint y build).
 **Railway:** proyecto `nexo`, servicios web, worker y scheduler más Postgres, en
 https://web-production-eac14903.up.railway.app. Queda solo la cuenta del proveedor (`owner@nexo.local`): la
